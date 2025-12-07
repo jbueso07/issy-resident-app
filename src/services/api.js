@@ -775,3 +775,106 @@ export const sendTipFeedback = async (tipId, helpful, dismissed = false) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==========================================
+// FINANCE - Facturas y Recibos
+// ==========================================
+
+export const getInvoices = async (status = null, limit = 20) => {
+  try {
+    let url = `/finance/invoices?limit=${limit}`;
+    if (status) url += `&status=${status}`;
+    const data = await authFetch(url);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUpcomingInvoices = async (days = 7) => {
+  try {
+    const data = await authFetch(`/finance/invoices/upcoming?days=${days}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching upcoming invoices:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createInvoice = async (invoiceData) => {
+  try {
+    const data = await authFetch('/finance/invoices', {
+      method: 'POST',
+      body: JSON.stringify(invoiceData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating invoice:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const markInvoicePaid = async (invoiceId, paymentDate = null) => {
+  try {
+    const data = await authFetch(`/finance/invoices/${invoiceId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({ payment_date: paymentDate }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error marking invoice paid:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteInvoice = async (invoiceId) => {
+  try {
+    const data = await authFetch(`/finance/invoices/${invoiceId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// FINANCE - Recordatorios
+// ==========================================
+
+export const getReminders = async () => {
+  try {
+    const data = await authFetch('/finance/reminders');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching reminders:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createReminder = async (reminderData) => {
+  try {
+    const data = await authFetch('/finance/reminders', {
+      method: 'POST',
+      body: JSON.stringify(reminderData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating reminder:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteReminder = async (reminderId) => {
+  try {
+    const data = await authFetch(`/finance/reminders/${reminderId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting reminder:', error);
+    return { success: false, error: error.message };
+  }
+};
