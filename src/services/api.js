@@ -608,3 +608,170 @@ export const switchOrganization = async (locationId) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==========================================
+// FINANCE - Finanzas Personales
+// ==========================================
+
+export const getFinanceDashboard = async () => {
+  try {
+    const data = await authFetch('/finance/dashboard');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching finance dashboard:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getTransactions = async (params = {}) => {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const data = await authFetch(`/finance/transactions${query ? `?${query}` : ''}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createTransaction = async (transactionData) => {
+  try {
+    const data = await authFetch('/finance/transactions', {
+      method: 'POST',
+      body: JSON.stringify(transactionData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteTransaction = async (id) => {
+  try {
+    await authFetch(`/finance/transactions/${id}`, {
+      method: 'DELETE',
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getCategories = async (type) => {
+  try {
+    const data = await authFetch(`/finance/categories${type ? `?type=${type}` : ''}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getFinanceGoals = async (status = 'active') => {
+  try {
+    const data = await authFetch(`/finance/goals?status=${status}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching goals:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createFinanceGoal = async (goalData) => {
+  try {
+    const data = await authFetch('/finance/goals', {
+      method: 'POST',
+      body: JSON.stringify(goalData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const addGoalContribution = async (goalId, contributionData) => {
+  try {
+    const data = await authFetch(`/finance/goals/${goalId}/contributions`, {
+      method: 'POST',
+      body: JSON.stringify(contributionData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error adding contribution:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getFinanceStats = async () => {
+  try {
+    const data = await authFetch('/finance/stats');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAchievements = async () => {
+  try {
+    const data = await authFetch('/finance/achievements');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching achievements:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// FINANCE - Consejos Financieros (Tips)
+// ==========================================
+
+export const getFinanceTips = async (category = null, limit = 10) => {
+  try {
+    let url = `/finance/tips?limit=${limit}`;
+    if (category) url += `&category=${category}`;
+    const data = await authFetch(url);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching tips:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getPersonalizedTips = async () => {
+  try {
+    const data = await authFetch('/finance/tips/personalized');
+    return { success: true, data: data.data || data, context: data.context };
+  } catch (error) {
+    console.error('Error fetching personalized tips:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const markTipAsRead = async (tipId) => {
+  try {
+    const data = await authFetch(`/finance/tips/${tipId}/read`, {
+      method: 'POST',
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error marking tip as read:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const sendTipFeedback = async (tipId, helpful, dismissed = false) => {
+  try {
+    const data = await authFetch(`/finance/tips/${tipId}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ helpful, dismissed }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error sending tip feedback:', error);
+    return { success: false, error: error.message };
+  }
+};

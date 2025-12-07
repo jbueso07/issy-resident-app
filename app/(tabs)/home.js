@@ -76,15 +76,13 @@ const B2C_SERVICES = [
     comingSoon: false  // ✅ Ya disponible
   },
   { 
-    id: 'finances', 
-    icon: '💰', 
-    title: 'Finanzas Personales', 
+    id: 'finances',
+    icon: '💰',
+    title: 'Finanzas Personales',
     subtitle: 'Control de gastos',
-    route: null,
+    route: '/finances',
     color: '#10B981',
-    badge: 'Próximamente',
-    available: false,
-    comingSoon: true
+    available: true
   },
   { 
     id: 'marketplace', 
