@@ -1,12 +1,23 @@
 // src/context/AuthContext.js
-// ISSY Resident App - Auth Context CORREGIDO v3
-// Fix: parsing correcto de respuesta del backend + no loop infinito
+// ISSY Resident App - Auth Context con Apple Sign In NATIVO
+// Usa expo-apple-authentication para iOS
 
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from '../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+
+// Import Apple Authentication only on iOS and wrap in try-catch
+let AppleAuthentication = null;
+if (Platform.OS === 'ios') {
+  try {
+    AppleAuthentication = require('expo-apple-authentication');
+  } catch (e) {
+    console.log('expo-apple-authentication not available');
+  }
+}
 
 const API_URL = 'https://api.joinissy.com/api';
 
@@ -51,7 +62,7 @@ export const AuthProvider = ({ children }) => {
         if (event === 'SIGNED_IN' && session?.user) {
           hasBeenAuthenticated.current = true;
           console.log('OAuth successful, syncing with backend...');
-          await syncWithBackend(session.user);
+          await syncGoogleWithBackend(session.user);
         }
 
         if (event === 'SIGNED_OUT' && hasBeenAuthenticated.current) {
@@ -77,9 +88,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const syncWithBackend = async (supabaseUser) => {
+  // Sync Google users with backend
+  const syncGoogleWithBackend = async (supabaseUser) => {
     try {
-      console.log('Syncing with backend:', supabaseUser.email);
+      console.log('Syncing Google user with backend:', supabaseUser.email);
 
       const response = await fetch(`${API_URL}/auth/google-sync`, {
         method: 'POST',
@@ -93,13 +105,12 @@ export const AuthProvider = ({ children }) => {
                 supabaseUser.email?.split('@')[0],
           supabase_id: supabaseUser.id,
           avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-          provider: supabaseUser.app_metadata?.provider || 'google'
+          provider: 'google'
         }),
       });
 
       const data = await response.json();
 
-      // El backend devuelve { success, data: { token, user } }
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -145,7 +156,7 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         setSupabaseSession(session);
         hasBeenAuthenticated.current = true;
-        await syncWithBackend(session.user);
+        await syncGoogleWithBackend(session.user);
       }
     } catch (error) {
       console.error('Error checking session:', error);
@@ -165,7 +176,6 @@ export const AuthProvider = ({ children }) => {
 
       if (response.ok) {
         const data = await response.json();
-        // El backend puede devolver { user } o { data: { user } }
         const userData = data.data?.user || data.user || data.data || data;
         setUser(userData);
         setProfile(userData);
@@ -181,7 +191,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ==========================================
-  // GOOGLE SIGN IN
+  // GOOGLE SIGN IN (via Supabase)
   // ==========================================
   const signInWithGoogle = async () => {
     try {
@@ -245,64 +255,120 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ==========================================
-  // APPLE SIGN IN
+  // APPLE SIGN IN - NATIVO con expo-apple-authentication
   // ==========================================
   const signInWithApple = async () => {
     try {
-      const redirectUrl = makeRedirectUri({
-        scheme: 'com.issy.resident',
-        path: 'auth/callback'
+      // Check if Apple Sign In is available (iOS only)
+      if (Platform.OS !== 'ios') {
+        return { success: false, error: 'Apple Sign In solo está disponible en iOS' };
+      }
+
+      // Check if module is available
+      if (!AppleAuthentication) {
+        console.log('Apple Authentication module not loaded, using fallback');
+        return { success: false, error: 'Apple Sign In no está configurado en este build' };
+      }
+
+      const isAvailable = await AppleAuthentication.isAvailableAsync();
+      if (!isAvailable) {
+        return { success: false, error: 'Apple Sign In no está disponible en este dispositivo' };
+      }
+
+      console.log('🍎 Starting native Apple Sign In...');
+
+      // Request Apple authentication
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
       });
 
-      console.log('Starting Apple Sign In...');
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true
-        }
+      console.log('🍎 Apple credential received:', {
+        user: credential.user,
+        email: credential.email,
+        fullName: credential.fullName,
+        hasIdentityToken: !!credential.identityToken
       });
 
-      if (error) throw error;
+      if (!credential.identityToken) {
+        throw new Error('No se recibió el token de identidad de Apple');
+      }
 
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUrl
-        );
-
-        if (result.type === 'success' && result.url) {
-          const url = new URL(result.url);
-          const params = new URLSearchParams(url.hash.substring(1));
-          const access_token = params.get('access_token');
-          const refresh_token = params.get('refresh_token');
-
-          if (access_token) {
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token,
-              refresh_token
-            });
-
-            if (sessionError) throw sessionError;
-            return { success: true };
-          }
-        }
-
-        if (result.type === 'cancel') {
-          return { success: false, error: 'Inicio de sesión cancelado' };
+      // Build full name from Apple response
+      let fullName = null;
+      if (credential.fullName) {
+        const nameParts = [
+          credential.fullName.givenName,
+          credential.fullName.familyName
+        ].filter(Boolean);
+        if (nameParts.length > 0) {
+          fullName = nameParts.join(' ');
         }
       }
 
-      return { success: false, error: 'No se pudo iniciar sesión' };
+      // Sync with our backend
+      console.log('🔄 Syncing Apple user with backend...');
+      
+      const response = await fetch(`${API_URL}/auth/apple-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          identityToken: credential.identityToken,
+          email: credential.email,
+          fullName: credential.fullName ? {
+            givenName: credential.fullName.givenName,
+            familyName: credential.fullName.familyName
+          } : null,
+          user: credential.user // Apple's unique user ID
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log('🍎 Backend response:', data.success ? 'success' : 'failed');
+
+      const tokenValue = data.data?.token || data.token;
+      const userValue = data.data?.user || data.user;
+      const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
+
+      if ((data.success || response.ok) && tokenValue) {
+        // Save tokens
+        await AsyncStorage.setItem('token', tokenValue);
+        if (refreshTokenValue) {
+          await AsyncStorage.setItem('refreshToken', refreshTokenValue);
+        }
+
+        // Update state
+        setToken(tokenValue);
+        setUser(userValue);
+        setProfile(userValue);
+        hasBeenAuthenticated.current = true;
+
+        console.log('✅ Apple Sign In successful:', userValue?.email);
+        return { success: true, data: { token: tokenValue, user: userValue } };
+      } else {
+        console.error('❌ Backend sync failed:', data.message || data.error);
+        return { success: false, error: data.message || data.error || 'Error al sincronizar con el servidor' };
+      }
+
     } catch (error) {
-      console.error('Apple Sign In error:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Apple Sign In error:', error);
+
+      // Handle specific Apple auth errors
+      if (error.code === 'ERR_REQUEST_CANCELED' || error.code === 'ERR_CANCELED') {
+        return { success: false, error: 'Inicio de sesión cancelado' };
+      }
+
+      return { success: false, error: error.message || 'Error al iniciar sesión con Apple' };
     }
   };
 
   // ==========================================
-  // EMAIL/PASSWORD SIGN IN - CORREGIDO
+  // EMAIL/PASSWORD SIGN IN
   // ==========================================
   const signIn = async (email, password) => {
     try {
@@ -318,8 +384,6 @@ export const AuthProvider = ({ children }) => {
       
       console.log('Login response:', JSON.stringify(data, null, 2));
 
-      // El backend devuelve { success: true, data: { token, user } }
-      // O puede devolver { token, user } directamente
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -348,7 +412,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ==========================================
-  // REGISTRO - CORREGIDO
+  // REGISTRO
   // ==========================================
   const signUp = async (userData) => {
     try {

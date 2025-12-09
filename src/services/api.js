@@ -878,3 +878,107 @@ export const deleteReminder = async (reminderId) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==========================================
+// FINANCE - Presupuestos
+// ==========================================
+
+export const getBudgets = async () => {
+  try {
+    const data = await authFetch('/finance/budgets');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching budgets:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getBudgetsStatus = async () => {
+  try {
+    const data = await authFetch('/finance/budgets/status');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching budgets status:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const createBudget = async (budgetData) => {
+  try {
+    const data = await authFetch('/finance/budgets', {
+      method: 'POST',
+      body: JSON.stringify(budgetData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating budget:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteBudget = async (budgetId) => {
+  try {
+    const data = await authFetch(`/finance/budgets/${budgetId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting budget:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// FINANCE - Suscripciones (CORREGIDO)
+// ==========================================
+
+// CORREGIDO: Usar endpoint público de subscriptions para obtener planes
+export const getFinancePlans = async () => {
+  try {
+    // Usar endpoint público de subscriptions (no requiere auth)
+    const response = await fetch(`${API_URL}/subscriptions/plans`);
+    const data = await response.json();
+    if (data.success) {
+      // Filtrar solo planes de finanzas
+      const financePlans = data.data.filter(p => p.vertical === 'finance');
+      return { success: true, data: financePlans };
+    }
+    return { success: false, error: 'Error loading plans' };
+  } catch (error) {
+    console.error('Error fetching plans:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getFinanceSubscription = async () => {
+  try {
+    const data = await authFetch('/finance/subscription');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching subscription:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getFinanceUsageLimits = async () => {
+  try {
+    const data = await authFetch('/finance/subscription/limits');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching usage limits:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const upgradeFinancePlan = async (planName, paymentMethod) => {
+  try {
+    const data = await authFetch('/finance/subscription/upgrade', {
+      method: 'POST',
+      body: JSON.stringify({ plan_name: planName, payment_method: paymentMethod }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error upgrading plan:', error);
+    return { success: false, error: error.message };
+  }
+};

@@ -326,7 +326,7 @@ export default function MySubscriptionScreen() {
                     <Text style={styles.planPeriod}>/mes</Text>
                   </View>
                   
-                  {plan.price_yearly && (
+                  {plan.price_yearly > 0 && (
                     <Text style={styles.yearlyPrice}>
                       ${plan.price_yearly}/año (ahorra {Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%)
                     </Text>

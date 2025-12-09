@@ -1,8 +1,7 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard
-// Detecta si usuario tiene ubicación y muestra contenido apropiado
+// ISSY Resident App - Home Dashboard (Diseño Final con Iconos SVG)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,99 +10,196 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
-  Linking,
+  Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
+import MaskedView from '@react-native-masked-view/masked-view';
+
+// Importar iconos SVG
+import {
+  StarIcon,
+  BellIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  BuildingIcon,
+  BriefcaseIcon,
+  PlusIcon,
+  ArrowRightIcon,
+  LocationIcon,
+  SwapIcon,
+} from '../../src/components/Icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Servicios de Comunidad (requieren ubicación)
+// Responsive scale basado en diseño de 375px
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ============ COLORES EXACTOS DE FIGMA ============
+const COLORS = {
+  lime: '#D4FE48',
+  cyan: '#009FF5',
+  orange: '#FF8C3A',
+  purple: '#7B8CEF',
+  navy: '#1A1A2E',
+  black: '#000000',
+  white: '#FFFFFF',
+  background: '#FAFAFA',
+  gray: '#6B7280',
+  grayLight: '#F2F2F2',
+  nameGradientStart: '#0FE0ED',
+  nameGradientEnd: '#334A89',
+  b2cGradientStart: '#11D6E6',
+  b2cGradientEnd: '#D4FE48',
+};
+
+// ============ SERVICIOS DE COMUNIDAD ============
 const COMMUNITY_SERVICES = [
   { 
     id: 'visitors', 
-    icon: '🎫', 
     title: 'Visitantes', 
     subtitle: 'Genera códigos QR',
     route: '/(tabs)/visits',
-    color: '#6366F1',
-    available: true 
+    bgColor: COLORS.lime,
+    textColor: COLORS.black,
+    iconColor: COLORS.black,
+    available: true,
   },
   { 
     id: 'announcements', 
-    icon: '📢', 
     title: 'Anuncios', 
-    subtitle: 'De tu comunidad',
+    subtitle: 'De tus comunidades',
     route: '/announcements',
-    color: '#F59E0B',
+    bgColor: COLORS.cyan,
+    textColor: COLORS.white,
+    iconColor: COLORS.white,
     available: true,
-    comingSoon: false
   },
   { 
     id: 'reservations', 
-    icon: '📅', 
     title: 'Reservaciones', 
     subtitle: 'Áreas comunes',
     route: '/reservations',
-    color: '#10B981',
+    bgColor: COLORS.orange,
+    textColor: COLORS.white,
+    iconColor: COLORS.white,
     available: true,
-    comingSoon: false
   },
   { 
     id: 'payments', 
-    icon: '💳', 
     title: 'Pagos', 
     subtitle: 'Estado de cuenta',
     route: '/(tabs)/payments',
-    color: '#EC4899',
-    available: true 
+    bgColor: COLORS.purple,
+    textColor: COLORS.white,
+    iconColor: COLORS.white,
+    available: true,
   },
 ];
 
-// Servicios B2C (disponibles para todos)
+// ============ SERVICIOS B2C ============
 const B2C_SERVICES = [
   { 
     id: 'pms', 
-    icon: '🏠', 
     title: 'Gestor de Propiedades', 
-    subtitle: 'Administra tus alquileres',
+    subtitle: 'Administrar tus alquileres',
     route: '/pms',
-    color: '#8B5CF6',
-    badge: 'PMS',
     available: true,
-    comingSoon: false  // ✅ Ya disponible
   },
   { 
     id: 'finances',
-    icon: '💰',
     title: 'Finanzas Personales',
-    subtitle: 'Control de gastos',
+    subtitle: 'Control de Gastos',
     route: '/finances',
-    color: '#10B981',
-    available: true
-  },
-  { 
-    id: 'marketplace', 
-    icon: '🛒', 
-    title: 'Marketplace', 
-    subtitle: 'Servicios para tu hogar',
-    route: null,
-    color: '#F59E0B',
-    badge: 'Próximamente',
-    available: false,
-    comingSoon: true
+    available: true,
   },
 ];
 
-// Acciones rápidas para usuarios con ubicación
+// ============ QUICK ACTIONS ============
 const QUICK_ACTIONS = [
-  { id: 'qr', icon: '➕', label: 'Nuevo QR', route: '/(tabs)/visits' },
-  { id: 'reserve', icon: '📅', label: 'Reservar', route: '/reservations' },
-  { id: 'announce', icon: '📢', label: 'Anuncios', route: '/announcements' },
-  { id: 'pay', icon: '💳', label: 'Pagar', route: '/(tabs)/payments' },
+  { 
+    id: 'qr', 
+    label: 'Nuevo QR', 
+    route: '/(tabs)/visits',
+    iconBg: COLORS.lime,
+    iconColor: COLORS.black,
+  },
+  { 
+    id: 'reserve', 
+    label: 'Reservas', 
+    route: '/reservations',
+    iconBg: COLORS.orange,
+    iconColor: COLORS.white,
+  },
+  { 
+    id: 'announce', 
+    label: 'Anuncios', 
+    route: '/announcements',
+    iconBg: COLORS.cyan,
+    iconColor: COLORS.white,
+  },
+  { 
+    id: 'pay', 
+    label: 'Pagos', 
+    route: '/(tabs)/payments',
+    iconBg: COLORS.purple,
+    iconColor: COLORS.white,
+  },
 ];
+
+// ============ COMPONENTE TEXTO CON GRADIENTE ============
+const GradientText = ({ text, style }) => {
+  return (
+    <MaskedView
+      maskElement={
+        <Text style={[style, { backgroundColor: 'transparent' }]}>{text}</Text>
+      }
+    >
+      <LinearGradient
+        colors={[COLORS.nameGradientStart, COLORS.nameGradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
+        <Text style={[style, { opacity: 0 }]}>{text}</Text>
+      </LinearGradient>
+    </MaskedView>
+  );
+};
+
+// ============ COMPONENTE DE ICONO PARA SERVICIOS ============
+const ServiceIcon = ({ serviceId, color, size = 22 }) => {
+  switch (serviceId) {
+    case 'visitors':
+      return <StarIcon size={size} color={color} />;
+    case 'announcements':
+      return <BellIcon size={size} color={color} />;
+    case 'reservations':
+      return <CalendarIcon size={size} color={color} />;
+    case 'payments':
+      return <CreditCardIcon size={size} color={color} />;
+    default:
+      return null;
+  }
+};
+
+// ============ COMPONENTE DE ICONO PARA QUICK ACTIONS ============
+const QuickActionIcon = ({ actionId, color, size = 24 }) => {
+  switch (actionId) {
+    case 'qr':
+      return <PlusIcon size={size} color={color} />;
+    case 'reserve':
+      return <CalendarIcon size={size} color={color} />;
+    case 'announce':
+      return <BellIcon size={size} color={color} />;
+    case 'pay':
+      return <CreditCardIcon size={size} color={color} />;
+    default:
+      return null;
+  }
+};
 
 export default function Home() {
   const { user, profile, hasLocation, refreshProfile } = useAuth();
@@ -118,23 +214,11 @@ export default function Home() {
       await refreshProfile();
     }
     setRefreshing(false);
-  }, []);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '¡Buenos días!';
-    if (hour < 18) return '¡Buenas tardes!';
-    return '¡Buenas noches!';
-  };
+  }, [refreshProfile]);
 
   const handleServicePress = (service) => {
-    if (service.comingSoon || !service.available) {
-      // Mostrar que está próximamente
-      return;
-    }
-    if (service.route) {
-      router.push(service.route);
-    }
+    if (!service.available || !service.route) return;
+    router.push(service.route);
   };
 
   const handleQuickAction = (action) => {
@@ -147,85 +231,110 @@ export default function Home() {
     router.push('/join-community');
   };
 
+  const getUserName = () => {
+    return profile?.name || user?.email?.split('@')[0] || 'Usuario';
+  };
+
+  const getUserInitials = () => {
+    const name = profile?.name || user?.email || 'U';
+    return name.charAt(0).toUpperCase();
+  };
+
   // ========================================
   // RENDER: Usuario SIN ubicación
   // ========================================
   if (!userHasLocation) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
           }
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.greeting}>{getGreeting()} 👋</Text>
-            <Text style={styles.userName}>{profile?.name || user?.email || 'Usuario'}</Text>
-          </View>
-
-          {/* Card: Únete a tu comunidad */}
-          <View style={styles.joinCommunityCard}>
-            <LinearGradient
-              colors={['#EEF2FF', '#E0E7FF']}
-              style={styles.joinCommunityGradient}
-            >
-              <View style={styles.joinCommunityIcon}>
-                <Text style={styles.joinCommunityEmoji}>🏡</Text>
+          {/* Header Card */}
+          <View style={styles.headerCard}>
+            {/* Imagen de fondo del header */}
+            <View style={styles.headerImageContainer}>
+              <Image
+                source={require('../../assets/header-gradient.png')}
+                style={styles.headerImage}
+                resizeMode="cover"
+              />
+              <View style={styles.headerOverlay}>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatar}>
+                    {profile?.avatar_url ? (
+                      <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                    ) : (
+                      <Text style={styles.avatarText}>{getUserInitials()}</Text>
+                    )}
+                  </View>
+                </View>
               </View>
-              <Text style={styles.joinCommunityTitle}>¿Vives en una comunidad privada?</Text>
-              <Text style={styles.joinCommunitySubtitle}>
-                Únete a tu comunidad para acceder al control de acceso, reservaciones y más beneficios.
-              </Text>
-              <TouchableOpacity
-                style={styles.joinCommunityButton}
-                onPress={handleJoinCommunity}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.joinCommunityButtonText}>Unirme a mi comunidad</Text>
-              </TouchableOpacity>
-            </LinearGradient>
+            </View>
+            
+            {/* Greeting */}
+            <View style={styles.greetingContainer}>
+              <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
+              <GradientText text={getUserName()} style={styles.userName} />
+            </View>
           </View>
 
-          {/* Servicios B2C */}
-          <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
-          <Text style={styles.sectionSubtitle}>Explora nuestras soluciones para tu día a día</Text>
+          {/* Join Community Card */}
+          <View style={styles.joinCard}>
+            <View style={styles.joinIconContainer}>
+              <Text style={styles.joinIcon}>🏡</Text>
+            </View>
+            <Text style={styles.joinTitle}>¿Vives en una comunidad privada?</Text>
+            <Text style={styles.joinSubtitle}>
+              Únete para acceder al control de acceso, reservaciones y más.
+            </Text>
+            <TouchableOpacity
+              style={styles.joinButton}
+              onPress={handleJoinCommunity}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.joinButtonText}>Unirme a mi comunidad</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* B2C Services */}
+          <Text style={styles.sectionTitle}>Mas Servicios</Text>
+          <Text style={styles.sectionSubtitle}>Soluciones personales</Text>
           
-          <View style={styles.servicesGrid}>
+          <View style={styles.b2cGrid}>
             {B2C_SERVICES.map((service) => (
               <TouchableOpacity
                 key={service.id}
-                style={[
-                  styles.serviceCard,
-                  !service.available && styles.serviceCardDisabled
-                ]}
+                style={styles.b2cCard}
                 onPress={() => handleServicePress(service)}
-                activeOpacity={service.available ? 0.7 : 1}
+                activeOpacity={0.7}
               >
-                {service.badge && (
-                  <View style={[
-                    styles.serviceBadge,
-                    (service.comingSoon || !service.available) && styles.serviceBadgeGray
-                  ]}>
-                    <Text style={[
-                      styles.serviceBadgeText,
-                      (service.comingSoon || !service.available) && styles.serviceBadgeTextGray
-                    ]}>
-                      {service.badge}
-                    </Text>
+                <View style={styles.b2cTopSection}>
+                  <Text style={styles.b2cTitle}>{service.title}</Text>
+                  <View style={styles.b2cIconBox}>
+                    {service.id === 'pms' ? (
+                      <BuildingIcon size={22} color={COLORS.black} />
+                    ) : (
+                      <BriefcaseIcon size={22} color={COLORS.black} />
+                    )}
                   </View>
-                )}
-                <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '20' }]}>
-                  <Text style={styles.serviceIcon}>{service.icon}</Text>
                 </View>
-                <Text style={styles.serviceTitle}>{service.title}</Text>
-                <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
+                <LinearGradient
+                  colors={[COLORS.b2cGradientStart, COLORS.b2cGradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.b2cBottomSection}
+                >
+                  <Text style={styles.b2cSubtitle}>{service.subtitle}</Text>
+                </LinearGradient>
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={{ height: 100 }} />
+          <View style={{ height: scale(120) }} />
         </ScrollView>
       </SafeAreaView>
     );
@@ -235,367 +344,448 @@ export default function Home() {
   // RENDER: Usuario CON ubicación
   // ========================================
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>{getGreeting()} 👋</Text>
-          <Text style={styles.userName}>{profile?.name || user?.email || 'Residente'}</Text>
-          {(profile?.location_name || profile?.location?.name) && (
-            <View style={styles.locationBadge}>
-              <Text style={styles.locationIcon}>📍</Text>
-              <Text style={styles.locationName}>
-                {profile?.location_name || profile?.location?.name}
-              </Text>
+        {/* Header Card */}
+        <View style={styles.headerCard}>
+          {/* Imagen de fondo del header */}
+          <View style={styles.headerImageContainer}>
+            <Image
+              source={require('../../assets/header-gradient.png')}
+              style={styles.headerImage}
+              resizeMode="cover"
+            />
+            <View style={styles.headerOverlay}>
+              <View style={styles.headerRow}>
+                {/* Avatar */}
+                <View style={styles.avatar}>
+                  {profile?.avatar_url ? (
+                    <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarText}>{getUserInitials()}</Text>
+                  )}
+                </View>
+                
+                {/* Location Pill */}
+                <View style={styles.locationPill}>
+                  <View style={styles.locationIconCircle}>
+                    <LocationIcon size={14} color={COLORS.white} />
+                  </View>
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {profile?.location_name || profile?.location?.name || 'Mi ubicación'}
+                  </Text>
+                  <SwapIcon size={14} color={COLORS.white} />
+                </View>
+              </View>
             </View>
-          )}
-        </View>
+          </View>
+          
+          {/* Greeting */}
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
+            <GradientText text={getUserName()} style={styles.userName} />
+          </View>
 
-        {/* Acciones Rápidas */}
-        <View style={styles.quickActionsContainer}>
-          {QUICK_ACTIONS.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={styles.quickActionButton}
-              onPress={() => handleQuickAction(action)}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={action.route ? ['#6366F1', '#8B5CF6'] : ['#E5E7EB', '#D1D5DB']}
-                style={styles.quickActionGradient}
+          {/* Quick Actions */}
+          <View style={styles.quickActionsRow}>
+            {QUICK_ACTIONS.map((action) => (
+              <TouchableOpacity
+                key={action.id}
+                style={styles.quickActionItem}
+                onPress={() => handleQuickAction(action)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.quickActionIcon}>{action.icon}</Text>
-              </LinearGradient>
-              <Text style={[
-                styles.quickActionLabel,
-                !action.route && styles.quickActionLabelDisabled
-              ]}>
-                {action.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.quickActionBox}>
+                  <View style={[styles.quickActionIconCircle, { backgroundColor: action.iconBg }]}>
+                    <QuickActionIcon 
+                      actionId={action.id} 
+                      color={action.iconColor} 
+                      size={20} 
+                    />
+                  </View>
+                </View>
+                <Text style={styles.quickActionLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-        {/* Servicios de Comunidad */}
-        <Text style={styles.sectionTitle}>Servicios de tu Comunidad</Text>
+        {/* Community Services */}
+        <Text style={styles.sectionTitle}>Servicios de tu comunida</Text>
         
-        <View style={styles.servicesGrid}>
+        <View style={styles.communityGrid}>
           {COMMUNITY_SERVICES.map((service) => (
             <TouchableOpacity
               key={service.id}
-              style={styles.serviceCard}
+              style={[styles.communityCard, { backgroundColor: service.bgColor }]}
               onPress={() => handleServicePress(service)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              {service.comingSoon && (
-                <View style={styles.serviceBadgeGray}>
-                  <Text style={styles.serviceBadgeTextGray}>Pronto</Text>
-                </View>
-              )}
-              <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '20' }]}>
-                <Text style={styles.serviceIcon}>{service.icon}</Text>
+              {/* Icon */}
+              <View style={styles.communityIconBox}>
+                <ServiceIcon 
+                  serviceId={service.id} 
+                  color={service.iconColor} 
+                  size={22} 
+                />
               </View>
-              <Text style={styles.serviceTitle}>{service.title}</Text>
-              <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
+              
+              <View style={styles.communityContent}>
+                <Text style={[styles.communityTitle, { color: service.textColor }]}>
+                  {service.title}
+                </Text>
+                <Text style={[styles.communitySubtitle, { color: service.textColor }]}>
+                  {service.subtitle}
+                </Text>
+              </View>
+              
+              {/* Arrow */}
+              <View style={styles.communityArrow}>
+                <ArrowRightIcon size={24} color={service.textColor} />
+              </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Servicios B2C */}
-        <Text style={styles.sectionTitle}>Más Servicios</Text>
-        <Text style={styles.sectionSubtitle}>Soluciones personales para ti</Text>
+        {/* B2C Services */}
+        <Text style={styles.sectionTitle}>Mas Servicios</Text>
+        <Text style={styles.sectionSubtitle}>Soluciones personales</Text>
         
-        <View style={styles.servicesGrid}>
+        <View style={styles.b2cGrid}>
           {B2C_SERVICES.map((service) => (
             <TouchableOpacity
               key={service.id}
-              style={[
-                styles.serviceCard,
-                !service.available && styles.serviceCardDisabled
-              ]}
+              style={styles.b2cCard}
               onPress={() => handleServicePress(service)}
-              activeOpacity={service.available ? 0.7 : 1}
+              activeOpacity={0.7}
             >
-              {service.badge && (
-                <View style={[
-                  styles.serviceBadge,
-                  (service.comingSoon || !service.available) && styles.serviceBadgeGray
-                ]}>
-                  <Text style={[
-                    styles.serviceBadgeText,
-                    (service.comingSoon || !service.available) && styles.serviceBadgeTextGray
-                  ]}>
-                    {service.badge}
-                  </Text>
+              <View style={styles.b2cTopSection}>
+                <Text style={styles.b2cTitle}>{service.title}</Text>
+                <View style={styles.b2cIconBox}>
+                  {service.id === 'pms' ? (
+                    <BuildingIcon size={22} color={COLORS.black} />
+                  ) : (
+                    <BriefcaseIcon size={22} color={COLORS.black} />
+                  )}
                 </View>
-              )}
-              <View style={[styles.serviceIconContainer, { backgroundColor: service.color + '20' }]}>
-                <Text style={styles.serviceIcon}>{service.icon}</Text>
               </View>
-              <Text style={styles.serviceTitle}>{service.title}</Text>
-              <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
+              <LinearGradient
+                colors={[COLORS.b2cGradientStart, COLORS.b2cGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.b2cBottomSection}
+              >
+                <Text style={styles.b2cSubtitle}>{service.subtitle}</Text>
+              </LinearGradient>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Actividad Reciente */}
-        <Text style={styles.sectionTitle}>Actividad Reciente</Text>
-        <View style={styles.activityCard}>
-          <Text style={styles.activityEmptyIcon}>📋</Text>
-          <Text style={styles.activityEmptyText}>No hay actividad reciente</Text>
-          <Text style={styles.activityEmptySubtext}>
-            Tus últimas acciones aparecerán aquí
-          </Text>
-        </View>
-
-        <View style={{ height: 100 }} />
+        <View style={{ height: scale(120) }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ============ ESTILOS ============
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
-  header: {
-    padding: 24,
-    paddingBottom: 16,
+  scrollContent: {
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
-  greeting: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  userName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginTop: 4,
-  },
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  locationIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  locationName: {
-    fontSize: 14,
-    color: '#6366F1',
-    fontWeight: '500',
-  },
-  // Quick Actions
-  quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 16,
-    marginBottom: 24,
-  },
-  quickActionButton: {
-    alignItems: 'center',
-  },
-  quickActionGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  quickActionIcon: {
-    fontSize: 24,
-  },
-  quickActionLabel: {
-    fontSize: 12,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  quickActionLabelDisabled: {
-    color: '#9CA3AF',
-  },
-  // Section
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    paddingHorizontal: 24,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  // Services Grid
-  servicesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 16,
-  },
-  serviceCard: {
-    width: (SCREEN_WIDTH - 44) / 2,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+  
+  // ============ HEADER CARD ============
+  headerCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: scale(13),
+    marginTop: scale(10),
+    borderRadius: scale(13),
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    position: 'relative',
-  },
-  serviceCardDisabled: {
-    opacity: 0.6,
-  },
-  serviceBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  serviceBadgeGray: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#E5E7EB',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  serviceBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  serviceBadgeTextGray: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  serviceIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  serviceIcon: {
-    fontSize: 24,
-  },
-  serviceTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  serviceSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  // Join Community Card
-  joinCommunityCard: {
-    marginHorizontal: 24,
-    marginBottom: 24,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  joinCommunityGradient: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  joinCommunityIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  joinCommunityEmoji: {
-    fontSize: 40,
-  },
-  joinCommunityTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  joinCommunitySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  joinCommunityButton: {
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
-  joinCommunityButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  headerImageContainer: {
+    height: scale(121),
+    overflow: 'hidden',
   },
-  // Activity Card
-  activityCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 32,
-    marginHorizontal: 24,
+  headerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    paddingTop: scale(20),
+    paddingHorizontal: scale(16),
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  avatarContainer: {
+    alignItems: 'flex-start',
+  },
+  avatar: {
+    width: scale(58),
+    height: scale(58),
+    borderRadius: scale(29),
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarText: {
+    fontSize: scale(24),
+    fontWeight: '600',
+    color: COLORS.navy,
+  },
+  
+  // Location Pill
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#130F26',
+    paddingVertical: scale(10),
+    paddingLeft: scale(6),
+    paddingRight: scale(16),
+    borderRadius: scale(30),
+    maxWidth: scale(200),
+    height: scale(43),
+  },
+  locationIconCircle: {
+    width: scale(31),
+    height: scale(31),
+    borderRadius: scale(15.5),
+    backgroundColor: 'rgba(255, 255, 255, 0.13)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(8),
+  },
+  locationText: {
+    color: COLORS.grayLight,
+    fontSize: scale(14),
+    fontWeight: '400',
+    flex: 1,
+    textAlign: 'center',
+  },
+  
+  // Greeting
+  greetingContainer: {
+    paddingHorizontal: scale(17),
+    paddingTop: scale(12),
+    paddingBottom: scale(8),
+  },
+  greetingText: {
+    fontSize: scale(11),
+    fontWeight: '400',
+    color: COLORS.black,
+  },
+  userName: {
+    fontSize: scale(20),
+    fontWeight: '800',
+    marginTop: scale(4),
+  },
+  
+  // ============ QUICK ACTIONS ============
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(20),
+    paddingTop: scale(8),
+    paddingBottom: scale(16),
+  },
+  quickActionItem: {
+    alignItems: 'center',
+  },
+  quickActionBox: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(13),
+    backgroundColor: COLORS.black,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(6),
+  },
+  quickActionIconCircle: {
+    width: scale(30),
+    height: scale(30),
+    borderRadius: scale(15),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: scale(11),
+    fontWeight: '400',
+    color: COLORS.navy,
+    textAlign: 'center',
+  },
+  
+  // ============ SECTIONS ============
+  sectionTitle: {
+    fontSize: scale(14),
+    fontWeight: '400',
+    color: COLORS.navy,
+    paddingHorizontal: scale(21),
+    marginTop: scale(20),
+    marginBottom: scale(2),
+  },
+  sectionSubtitle: {
+    fontSize: scale(11),
+    fontWeight: '400',
+    color: COLORS.black,
+    paddingHorizontal: scale(21),
+    marginBottom: scale(12),
+  },
+  
+  // ============ COMMUNITY SERVICES ============
+  communityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: scale(16),
+    justifyContent: 'space-between',
+    marginTop: scale(8),
+  },
+  communityCard: {
+    width: (SCREEN_WIDTH - scale(42)) / 2,
+    height: scale(113),
+    borderRadius: scale(13),
+    padding: scale(14),
+    position: 'relative',
+    marginBottom: scale(10),
+  },
+  communityIconBox: {
+    marginBottom: scale(8),
+  },
+  communityContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  communityTitle: {
+    fontSize: scale(14),
+    fontWeight: '400',
+  },
+  communitySubtitle: {
+    fontSize: scale(11),
+    fontWeight: '400',
+    marginTop: scale(2),
+    opacity: 0.9,
+  },
+  communityArrow: {
+    position: 'absolute',
+    bottom: scale(14),
+    right: scale(14),
+  },
+  
+  // ============ B2C SERVICES ============
+  b2cGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: scale(16),
+    justifyContent: 'space-between',
+  },
+  b2cCard: {
+    width: (SCREEN_WIDTH - scale(42)) / 2,
+    borderRadius: scale(13),
+    overflow: 'hidden',
+    backgroundColor: COLORS.white,
+    marginBottom: scale(10),
+  },
+  b2cTopSection: {
+    height: scale(93),
+    padding: scale(16),
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.white,
+  },
+  b2cTitle: {
+    fontSize: scale(14),
+    fontWeight: '400',
+    color: COLORS.black,
+    flex: 1,
+    paddingRight: scale(8),
+  },
+  b2cIconBox: {
+    width: scale(22),
+    height: scale(22),
+  },
+  b2cBottomSection: {
+    paddingHorizontal: scale(13),
+    paddingVertical: scale(10),
+  },
+  b2cSubtitle: {
+    fontSize: scale(11),
+    fontWeight: '400',
+    color: COLORS.black,
+  },
+  
+  // ============ JOIN COMMUNITY ============
+  joinCard: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: scale(16),
+    marginTop: scale(20),
+    borderRadius: scale(16),
+    padding: scale(24),
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-  activityEmptyIcon: {
-    fontSize: 40,
-    marginBottom: 12,
+  joinIconContainer: {
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(35),
+    backgroundColor: COLORS.grayLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
   },
-  activityEmptyText: {
-    fontSize: 16,
+  joinIcon: {
+    fontSize: scale(36),
+  },
+  joinTitle: {
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#374151',
+    color: COLORS.black,
+    textAlign: 'center',
+    marginBottom: scale(8),
   },
-  activityEmptySubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
+  joinSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.gray,
+    textAlign: 'center',
+    marginBottom: scale(20),
+    lineHeight: scale(18),
+  },
+  joinButton: {
+    backgroundColor: COLORS.purple,
+    paddingHorizontal: scale(28),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+  },
+  joinButtonText: {
+    color: COLORS.white,
+    fontSize: scale(14),
+    fontWeight: '600',
   },
 });

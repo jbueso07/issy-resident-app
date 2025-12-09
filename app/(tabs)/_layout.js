@@ -1,33 +1,45 @@
 // app/(tabs)/_layout.js
-// ISSY Resident App - Premium Tab Bar with ISSY Logo Center
-// Colores de marca: #FC6447 (coral), #FF5A5F (rojo), #343434 (gris)
+// ISSY Resident App - Tab Bar con iconos SVG
+// Basado en el original, solo actualizando estilos visuales
 
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Image, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, StyleSheet, Image, Platform, Dimensions } from 'react-native';
+import { HomeIcon, ChatIcon, HeadsetIcon, UserIcon } from '../../src/components/Icons';
 
-// Tab Bar Icon Component
-const TabIcon = ({ icon, color, focused }) => (
-  <View style={styles.tabIconContainer}>
-    <Text style={[styles.tabIcon, { opacity: focused ? 1 : 0.6 }]}>{icon}</Text>
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+const COLORS = {
+  black: '#000000',
+  white: '#FFFFFF',
+  navy: '#1A1A2E',
+};
+
+// Tab Icon con fondo cuando está activo
+const TabIcon = ({ IconComponent, focused, size = 22 }) => (
+  <View style={[
+    styles.tabIconContainer,
+    focused && styles.tabIconContainerActive
+  ]}>
+    <IconComponent 
+      size={size} 
+      color={focused ? COLORS.black : COLORS.white} 
+    />
   </View>
 );
 
-// Center Logo Button Component
-const CenterLogoButton = ({ focused }) => (
+// Logo ISSY flotante en el centro
+const CenterLogoButton = () => (
   <View style={styles.centerButtonContainer}>
-    <LinearGradient
-      colors={['#FF5A5F', '#FC6447']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.centerButton}
-    >
-      <Image
-        source={require('../../assets/Isologotipo Blanco.png')}
-        style={styles.centerLogo}
-        resizeMode="contain"
-      />
-    </LinearGradient>
+    <View style={styles.centerButtonOuter}>
+      <View style={styles.centerButton}>
+        <Image
+          source={require('../../assets/Isologotipo Blanco.png')}
+          style={styles.centerLogo}
+          resizeMode="contain"
+        />
+      </View>
+    </View>
   </View>
 );
 
@@ -37,18 +49,17 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#FC6447',
-        tabBarInactiveTintColor: '#9CA3AF',
-        tabBarLabelStyle: styles.tabBarLabel,
-        tabBarItemStyle: styles.tabBarItem,
+        tabBarActiveTintColor: COLORS.white,
+        tabBarInactiveTintColor: COLORS.white,
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon icon="🏠" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon IconComponent={HomeIcon} focused={focused} size={24} />
           ),
         }}
       />
@@ -56,8 +67,8 @@ export default function TabsLayout() {
         name="visits"
         options={{
           title: 'Visitas',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon icon="🎫" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon IconComponent={ChatIcon} focused={focused} size={22} />
           ),
         }}
       />
@@ -65,15 +76,12 @@ export default function TabsLayout() {
         name="center"
         options={{
           title: '',
-          tabBarIcon: ({ focused }) => <CenterLogoButton focused={focused} />,
+          tabBarIcon: () => <CenterLogoButton />,
           tabBarLabel: () => null,
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
-            // Prevent default navigation, just show the logo
-            // Or you can navigate to a specific screen here
             e.preventDefault();
-            // Optional: navigate to home or another action
             navigation.navigate('home');
           },
         })}
@@ -82,8 +90,8 @@ export default function TabsLayout() {
         name="support"
         options={{
           title: 'Soporte',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon icon="💬" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon IconComponent={HeadsetIcon} focused={focused} size={22} />
           ),
         }}
       />
@@ -91,8 +99,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon icon="👤" color={color} focused={focused} />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon IconComponent={UserIcon} focused={focused} size={22} />
           ),
         }}
       />
@@ -100,7 +108,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="payments"
         options={{
-          href: null, // Hide from tab bar
+          href: null,
           title: 'Pagos',
         }}
       />
@@ -111,54 +119,55 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.black,
     borderTopWidth: 0,
-    height: Platform.OS === 'ios' ? 88 : 70,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-    paddingTop: 10,
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
+    height: Platform.OS === 'ios' ? scale(88) : scale(70),
+    paddingBottom: Platform.OS === 'ios' ? scale(28) : scale(10),
+    paddingTop: scale(12),
+    paddingHorizontal: scale(10),
+    shadowColor: COLORS.navy,
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 15,
   },
-  tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  tabBarItem: {
-    paddingTop: 5,
-  },
+  
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: scale(44),
+    height: scale(38),
+    borderRadius: scale(12),
   },
-  tabIcon: {
-    fontSize: 24,
+  tabIconContainerActive: {
+    backgroundColor: COLORS.white,
   },
+  
   centerButtonContainer: {
     position: 'absolute',
-    top: -28,
+    top: scale(-28),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerButtonOuter: {
+    width: scale(68),
+    height: scale(68),
+    borderRadius: scale(34),
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: scale(4),
   },
   centerButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(30),
+    backgroundColor: COLORS.black,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#FC6447',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   centerLogo: {
-    width: 40,
-    height: 40,
-    tintColor: '#FFFFFF',
+    width: scale(45),
+    height: scale(30),
   },
 });
