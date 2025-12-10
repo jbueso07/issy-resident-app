@@ -185,6 +185,16 @@ const ADMIN_SERVICES = [
     available: true,
   },
   { 
+    id: 'access-reports', 
+    title: 'Control de Acceso', 
+    subtitle: 'Auditoría de visitantes',
+    route: '/admin/access-reports',
+    bgColor: '#3B82F6',
+    textColor: COLORS.white,
+    icon: '📊',
+    available: true,
+  },
+  { 
     id: 'location-settings', 
     title: 'Mi Ubicación', 
     subtitle: 'Configuración general',
