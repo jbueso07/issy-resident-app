@@ -1,5 +1,5 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard (Diseño Final con Iconos SVG)
+// ISSY Resident App - Home Dashboard con sección Administrar para Admins
 
 import { useState, useCallback } from 'react';
 import {
@@ -30,7 +30,6 @@ import {
   PlusIcon,
   ArrowRightIcon,
   LocationIcon,
-  SwapIcon,
 } from '../../src/components/Icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -54,6 +53,11 @@ const COLORS = {
   nameGradientEnd: '#334A89',
   b2cGradientStart: '#11D6E6',
   b2cGradientEnd: '#D4FE48',
+  // Colores para Admin
+  adminRed: '#FA5967',
+  adminDark: '#1A1A2E',
+  adminTeal: '#14B8A6',
+  adminIndigo: '#6366F1',
 };
 
 // ============ SERVICIOS DE COMUNIDAD ============
@@ -114,6 +118,90 @@ const B2C_SERVICES = [
     title: 'Finanzas Personales',
     subtitle: 'Control de Gastos',
     route: '/finances',
+    available: true,
+  },
+];
+
+// ============ SERVICIOS DE ADMINISTRADOR ============
+const ADMIN_SERVICES = [
+  { 
+    id: 'create-announcement', 
+    title: 'Crear Anuncios', 
+    subtitle: 'Publicar en tu comunidad',
+    route: '/admin/announcements',
+    bgColor: COLORS.cyan,
+    textColor: COLORS.white,
+    icon: '📢',
+    available: true,
+  },
+  { 
+    id: 'common-areas', 
+    title: 'Áreas Comunes', 
+    subtitle: 'Configurar espacios y reglas',
+    route: '/admin/common-areas',
+    bgColor: COLORS.adminTeal,
+    textColor: COLORS.white,
+    icon: '🏊',
+    available: true,
+  },
+  { 
+    id: 'payment-manager', 
+    title: 'Gestor de Cobros', 
+    subtitle: 'Cuotas y pagos',
+    route: '/admin/payments',
+    bgColor: COLORS.purple,
+    textColor: COLORS.white,
+    icon: '💰',
+    available: true,
+  },
+  { 
+    id: 'expenses', 
+    title: 'Gastos', 
+    subtitle: 'Control de egresos',
+    route: '/admin/expenses',
+    bgColor: COLORS.adminRed,
+    textColor: COLORS.white,
+    icon: '📊',
+    available: true,
+  },
+  { 
+    id: 'users', 
+    title: 'Usuarios', 
+    subtitle: 'Residentes y roles',
+    route: '/admin/users',
+    bgColor: COLORS.adminIndigo,
+    textColor: COLORS.white,
+    icon: '👥',
+    available: true,
+  },
+  { 
+    id: 'guard-config', 
+    title: 'App Guardias', 
+    subtitle: 'Configuración de acceso',
+    route: '/admin/guard-config',
+    bgColor: COLORS.adminDark,
+    textColor: COLORS.white,
+    icon: '🔐',
+    available: true,
+  },
+  { 
+    id: 'location-settings', 
+    title: 'Mi Ubicación', 
+    subtitle: 'Configuración general',
+    route: '/admin/location-settings',
+    bgColor: COLORS.orange,
+    textColor: COLORS.white,
+    icon: '⚙️',
+    available: true,
+  },
+  { 
+    id: 'reports', 
+    title: 'Reportes', 
+    subtitle: 'Estadísticas y métricas',
+    route: '/admin/reports',
+    bgColor: COLORS.lime,
+    textColor: COLORS.black,
+    icon: '📈',
     available: true,
   },
 ];
@@ -207,6 +295,10 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
+  
+  // Verificar si el usuario es admin o superadmin
+  const userRole = profile?.role || user?.role || 'user';
+  const isAdmin = ['admin', 'superadmin'].includes(userRole);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -229,6 +321,14 @@ export default function Home() {
 
   const handleJoinCommunity = () => {
     router.push('/join-community');
+  };
+
+  const handleAdminServicePress = (service) => {
+    if (!service.available || !service.route) {
+      // TODO: Mostrar mensaje de "Próximamente"
+      return;
+    }
+    router.push(service.route);
   };
 
   const getUserName = () => {
@@ -372,7 +472,7 @@ export default function Home() {
                   )}
                 </View>
                 
-                {/* Location Pill */}
+                {/* Location Pill - Solo visual, no clickeable */}
                 <View style={styles.locationPill}>
                   <View style={styles.locationIconCircle}>
                     <LocationIcon size={14} color={COLORS.white} />
@@ -380,7 +480,6 @@ export default function Home() {
                   <Text style={styles.locationText} numberOfLines={1}>
                     {profile?.location_name || profile?.location?.name || 'Mi ubicación'}
                   </Text>
-                  <SwapIcon size={14} color={COLORS.white} />
                 </View>
               </View>
             </View>
@@ -390,6 +489,13 @@ export default function Home() {
           <View style={styles.greetingContainer}>
             <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
             <GradientText text={getUserName()} style={styles.userName} />
+            {isAdmin && (
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeText}>
+                  {userRole === 'superadmin' ? '👑 Super Admin' : '🛡️ Administrador'}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Quick Actions */}
@@ -417,7 +523,7 @@ export default function Home() {
         </View>
 
         {/* Community Services */}
-        <Text style={styles.sectionTitle}>Servicios de tu comunida</Text>
+        <Text style={styles.sectionTitle}>Servicios de tu comunidad</Text>
         
         <View style={styles.communityGrid}>
           {COMMUNITY_SERVICES.map((service) => (
@@ -486,6 +592,53 @@ export default function Home() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* ========================================
+            SECCIÓN ADMINISTRAR - Solo para Admin/SuperAdmin
+            ======================================== */}
+        {isAdmin && (
+          <>
+            <View style={styles.adminSectionHeader}>
+              <Text style={styles.adminSectionTitle}>Administrar</Text>
+              <View style={styles.adminSectionBadge}>
+                <Text style={styles.adminSectionBadgeText}>
+                  {userRole === 'superadmin' ? 'Super Admin' : 'Admin'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.sectionSubtitle}>Gestiona tu comunidad</Text>
+            
+            <View style={styles.adminGrid}>
+              {ADMIN_SERVICES.map((service) => (
+                <TouchableOpacity
+                  key={service.id}
+                  style={[styles.adminCard, { backgroundColor: service.bgColor }]}
+                  onPress={() => handleAdminServicePress(service)}
+                  activeOpacity={0.8}
+                >
+                  {/* Emoji Icon */}
+                  <View style={styles.adminIconBox}>
+                    <Text style={styles.adminIcon}>{service.icon}</Text>
+                  </View>
+                  
+                  <View style={styles.adminContent}>
+                    <Text style={[styles.adminCardTitle, { color: service.textColor }]}>
+                      {service.title}
+                    </Text>
+                    <Text style={[styles.adminCardSubtitle, { color: service.textColor }]}>
+                      {service.subtitle}
+                    </Text>
+                  </View>
+                  
+                  {/* Arrow */}
+                  <View style={styles.adminArrow}>
+                    <ArrowRightIcon size={20} color={service.textColor} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         <View style={{ height: scale(120) }} />
       </ScrollView>
@@ -602,6 +755,21 @@ const styles = StyleSheet.create({
     fontSize: scale(20),
     fontWeight: '800',
     marginTop: scale(4),
+  },
+  
+  // Admin Badge en Header
+  adminBadge: {
+    marginTop: scale(6),
+    backgroundColor: COLORS.adminDark,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
+    alignSelf: 'flex-start',
+  },
+  adminBadgeText: {
+    color: COLORS.white,
+    fontSize: scale(10),
+    fontWeight: '600',
   },
   
   // ============ QUICK ACTIONS ============
@@ -735,6 +903,71 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
     fontWeight: '400',
     color: COLORS.black,
+  },
+  
+  // ============ ADMIN SECTION ============
+  adminSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(21),
+    marginTop: scale(24),
+    marginBottom: scale(2),
+  },
+  adminSectionTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.adminDark,
+  },
+  adminSectionBadge: {
+    marginLeft: scale(10),
+    backgroundColor: COLORS.adminRed,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(8),
+  },
+  adminSectionBadgeText: {
+    color: COLORS.white,
+    fontSize: scale(9),
+    fontWeight: '700',
+  },
+  adminGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: scale(16),
+    justifyContent: 'space-between',
+  },
+  adminCard: {
+    width: (SCREEN_WIDTH - scale(42)) / 2,
+    height: scale(100),
+    borderRadius: scale(13),
+    padding: scale(12),
+    position: 'relative',
+    marginBottom: scale(10),
+  },
+  adminIconBox: {
+    marginBottom: scale(6),
+  },
+  adminIcon: {
+    fontSize: scale(22),
+  },
+  adminContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  adminCardTitle: {
+    fontSize: scale(13),
+    fontWeight: '500',
+  },
+  adminCardSubtitle: {
+    fontSize: scale(10),
+    fontWeight: '400',
+    marginTop: scale(2),
+    opacity: 0.85,
+  },
+  adminArrow: {
+    position: 'absolute',
+    bottom: scale(12),
+    right: scale(12),
   },
   
   // ============ JOIN COMMUNITY ============
