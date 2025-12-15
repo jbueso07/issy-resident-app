@@ -447,6 +447,17 @@ export default function AdminSettings() {
         {/* Guard App Tab */}
         {activeTab === 'guard' && guardSettings && (
           <View>
+            {/* Procesos de Acceso - Nueva sección */}
+            <TouchableOpacity
+              style={styles.navigationButton}
+              onPress={() => router.push(`/admin/access-process?locationId=${locationId}`)}
+            >
+              <View style={styles.navigationButtonContent}>
+                <Text style={styles.navigationButtonTitle}>📷 Procesos de Acceso</Text>
+                <Text style={styles.navigationButtonDescription}>Configurar qué datos capturar al registrar visitantes</Text>
+              </View>
+              <Text style={styles.navigationButtonArrow}>›</Text>
+            </TouchableOpacity>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Permisos de Acceso</Text>
               <SettingToggle
@@ -1092,4 +1103,34 @@ const styles = StyleSheet.create({
   historyMessage: { fontSize: 13, color: COLORS.gray, marginBottom: 8 },
   historyDate: { fontSize: 12, color: COLORS.gray },
   historyBy: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  // Navigation Button
+  navigationButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.white, 
+    marginHorizontal: 16, 
+    marginVertical: 8, 
+    padding: 16, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: COLORS.grayLight 
+  },
+  navigationButtonContent: { 
+    flex: 1 
+  },
+  navigationButtonTitle: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: COLORS.navy, 
+    marginBottom: 4 
+  },
+  navigationButtonDescription: { 
+    fontSize: 13, 
+    color: COLORS.gray 
+  },
+  navigationButtonArrow: { 
+    fontSize: 24, 
+    color: COLORS.gray, 
+    marginLeft: 8 
+  },
 });
