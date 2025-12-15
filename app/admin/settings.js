@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
   
   // Tabs
-  tabsContainer: { backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
+  tabsContainer: { backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight, flexGrow: 0, height: 52 },
   tabsContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: COLORS.grayLighter, height: 36, justifyContent: 'center' },
   tabActive: { backgroundColor: COLORS.primary },
