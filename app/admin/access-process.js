@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Clock, Check, ChevronLeft } from 'lucide-react-native';
+import { Clock, Check } from 'lucide-react-native';
 import { api } from '../../src/services/api';
 
 const ACCESS_PROCESSES = [
@@ -179,7 +179,7 @@ export default function AccessProcessScreen() {
   };
 
   const togglePreference = (key) => {
-    setPreferences(prev => ({
+    setPreferences((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
@@ -211,16 +211,10 @@ export default function AccessProcessScreen() {
           headerBackVisible: true,
           headerStyle: { backgroundColor: '#fff' },
           headerTintColor: '#1F2937',
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <ChevronLeft size={24} color="#1F2937" />
-            </TouchableOpacity>
-          ),
         }} 
       />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Access Process Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Proceso de Acceso</Text>
           <Text style={styles.sectionSubtitle}>
@@ -266,7 +260,6 @@ export default function AccessProcessScreen() {
           ))}
         </View>
 
-        {/* Security Preferences Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferencias de Seguridad</Text>
           
@@ -294,11 +287,9 @@ export default function AccessProcessScreen() {
           ))}
         </View>
 
-        {/* Spacer for button */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Save Button */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -325,10 +316,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  backButton: {
-    padding: 8,
-    marginLeft: -8,
   },
   scrollView: {
     flex: 1,
