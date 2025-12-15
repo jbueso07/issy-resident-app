@@ -9,9 +9,9 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, Clock, Check } from 'lucide-react-native';
+import { Clock, Check, ChevronLeft } from 'lucide-react-native';
 import { api } from '../../src/services/api';
 
 const ACCESS_PROCESSES = [
@@ -114,6 +114,7 @@ const SECURITY_PREFERENCES = [
 
 export default function AccessProcessScreen() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const locationId = params.locationId;
   
   const [loading, setLoading] = useState(true);
@@ -127,7 +128,12 @@ export default function AccessProcessScreen() {
   });
 
   useEffect(() => {
-    fetchSettings();
+    if (locationId) {
+      fetchSettings();
+    } else {
+      setLoading(false);
+      Alert.alert('Error', 'No se encontró la ubicación');
+    }
   }, [locationId]);
 
   const fetchSettings = async () => {
@@ -161,7 +167,9 @@ export default function AccessProcessScreen() {
         ...preferences,
       });
 
-      Alert.alert('Éxito', 'Configuración guardada correctamente');
+      Alert.alert('Éxito', 'Configuración guardada correctamente', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
     } catch (error) {
       console.error('Error saving settings:', error);
       Alert.alert('Error', 'No se pudo guardar la configuración');
@@ -180,7 +188,13 @@ export default function AccessProcessScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ title: 'Procesos de Acceso' }} />
+        <Stack.Screen 
+          options={{ 
+            title: 'Procesos de Acceso',
+            headerShown: true,
+            headerBackVisible: true,
+          }} 
+        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6366F1" />
         </View>
@@ -193,7 +207,15 @@ export default function AccessProcessScreen() {
       <Stack.Screen 
         options={{ 
           title: 'Procesos de Acceso',
+          headerShown: true,
+          headerBackVisible: true,
           headerStyle: { backgroundColor: '#fff' },
+          headerTintColor: '#1F2937',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeft size={24} color="#1F2937" />
+            </TouchableOpacity>
+          ),
         }} 
       />
       
@@ -303,6 +325,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
   scrollView: {
     flex: 1,
