@@ -53,32 +53,32 @@ const SUSPENSION_REASONS = [
 export default function AdminSettings() {
   const { user, profile } = useAuth();
   const router = useRouter();
-  
+
   const [activeTab, setActiveTab] = useState('guard');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Data states
   const [guardSettings, setGuardSettings] = useState(null);
   const [locationSettings, setLocationSettings] = useState(null);
   const [usersPaymentStatus, setUsersPaymentStatus] = useState([]);
   const [blacklist, setBlacklist] = useState([]);
   const [overdueUsers, setOverdueUsers] = useState([]);
-  
+
   // Modal states
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [suspensionHistory, setSuspensionHistory] = useState([]);
-  
+
   // Form states
   const [suspendForm, setSuspendForm] = useState({
     reason: 'admin_suspended',
     message: '',
   });
-  
+
   const [blacklistForm, setBlacklistForm] = useState({
     visitor_name: '',
     visitor_phone: '',
@@ -113,11 +113,11 @@ export default function AdminSettings() {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
-      
+
       if (activeTab === 'guard') {
         const res = await fetch(`${API_URL}/api/admin/settings/guard-app/${locationId}`, { headers });
         const data = await res.json();
@@ -130,7 +130,7 @@ export default function AdminSettings() {
         const res = await fetch(`${API_URL}/api/admin/users/payment-status?location_id=${locationId}`, { headers });
         const data = await res.json();
         setUsersPaymentStatus(Array.isArray(data) ? data : []);
-        
+
         const overdueRes = await fetch(`${API_URL}/api/admin/payments/overdue?location_id=${locationId}`, { headers });
         const overdueData = await overdueRes.json();
         setOverdueUsers(Array.isArray(overdueData) ? overdueData : []);
@@ -208,7 +208,7 @@ export default function AdminSettings() {
   // User suspension handlers
   const handleSuspendUser = async () => {
     if (!selectedUser) return;
-    
+
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_URL}/api/admin/users/${selectedUser.id}/suspend`, {
@@ -216,7 +216,7 @@ export default function AdminSettings() {
         headers,
         body: JSON.stringify(suspendForm),
       });
-      
+
       if (res.ok) {
         Alert.alert('Éxito', 'Usuario suspendido');
         setShowSuspendModal(false);
@@ -246,7 +246,7 @@ export default function AdminSettings() {
                 headers,
                 body: JSON.stringify({ notes: 'Reactivado desde app móvil' }),
               });
-              
+
               if (res.ok) {
                 Alert.alert('Éxito', 'Usuario reactivado');
                 loadData();
@@ -309,7 +309,7 @@ export default function AdminSettings() {
       Alert.alert('Error', 'La razón es requerida');
       return;
     }
-    
+
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_URL}/api/admin/blacklist`, {
@@ -317,7 +317,7 @@ export default function AdminSettings() {
         headers,
         body: JSON.stringify({ ...blacklistForm, location_id: locationId }),
       });
-      
+
       if (res.ok) {
         Alert.alert('Éxito', 'Agregado a lista negra');
         setShowBlacklistModal(false);
@@ -418,8 +418,8 @@ export default function AdminSettings() {
       </View>
 
       {/* Tabs */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
@@ -567,6 +567,70 @@ export default function AdminSettings() {
                 value={guardSettings.panic_button_enabled ?? true}
                 onChange={(v) => handleGuardSettingChange('panic_button_enabled', v)}
               />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Configuración de Cámara</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Modo de Cámara</Text>
+                  <Text style={styles.settingDescription}>Selecciona el tipo de cámara</Text>
+                </View>
+              </View>
+              <View style={styles.cameraOptions}>
+                {[
+                  { value: 'phone', label: '📱 Teléfono' },
+                  { value: 'ip_camera', label: '📹 Cámara IP' },
+                  { value: 'both', label: '📱+📹 Ambas' },
+                ].map(option => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.cameraOption,
+                      guardSettings.camera_mode === option.value && styles.cameraOptionActive
+                    ]}
+                    onPress={() => handleGuardSettingChange('camera_mode', option.value)}
+                  >
+                    <Text style={[
+                      styles.cameraOptionText,
+                      guardSettings.camera_mode === option.value && styles.cameraOptionTextActive
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {(guardSettings.camera_mode === 'ip_camera' || guardSettings.camera_mode === 'both') && (
+                <View style={styles.ipCameraConfig}>
+                  <Text style={styles.inputLabel}>URL de Cámara IP</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={guardSettings.ip_camera_url || ''}
+                    onChangeText={(v) => handleGuardSettingChange('ip_camera_url', v)}
+                    placeholder="rtsp://192.168.1.100:554/stream"
+                    placeholderTextColor={COLORS.gray}
+                    autoCapitalize="none"
+                  />
+                  <Text style={styles.inputLabel}>Usuario</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={guardSettings.ip_camera_username || ''}
+                    onChangeText={(v) => handleGuardSettingChange('ip_camera_username', v)}
+                    placeholder="admin"
+                    placeholderTextColor={COLORS.gray}
+                    autoCapitalize="none"
+                  />
+                  <Text style={styles.inputLabel}>Contraseña</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={guardSettings.ip_camera_password || ''}
+                    onChangeText={(v) => handleGuardSettingChange('ip_camera_password', v)}
+                    placeholder="••••••••"
+                    placeholderTextColor={COLORS.gray}
+                    secureTextEntry
+                  />
+                </View>
+              )}
             </View>
 
             <TouchableOpacity
@@ -1008,7 +1072,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
-  
+
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
@@ -1016,7 +1080,7 @@ const styles = StyleSheet.create({
   headerTitleContainer: { flex: 1, alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
   headerSubtitle: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  
+
   // Tabs
   tabsContainer: { backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight, flexGrow: 0, height: 52 },
   tabsContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
@@ -1024,27 +1088,27 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: COLORS.primary },
   tabText: { fontSize: 14, color: COLORS.gray, fontWeight: '500' },
   tabTextActive: { color: COLORS.white },
-  
+
   // Content
   content: { flex: 1 },
   scrollContent: { padding: 16 },
-  
+
   // Sections
   section: { backgroundColor: COLORS.white, borderRadius: 12, marginBottom: 16, overflow: 'hidden' },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.navy, padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  
+
   // Settings
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.grayLighter },
   settingInfo: { flex: 1, marginRight: 12 },
   settingLabel: { fontSize: 15, fontWeight: '500', color: COLORS.navy },
   settingDescription: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
   numberInput: { width: 60, height: 36, backgroundColor: COLORS.grayLighter, borderRadius: 8, textAlign: 'center', fontSize: 15, color: COLORS.navy },
-  
+
   // Save Button
   saveButton: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   saveButtonDisabled: { opacity: 0.7 },
   saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
-  
+
   // Alert Banner
   alertBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warning + '15', borderRadius: 12, padding: 14, marginBottom: 16 },
   alertIcon: { fontSize: 24, marginRight: 12 },
@@ -1053,7 +1117,7 @@ const styles = StyleSheet.create({
   alertSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
   alertButton: { backgroundColor: COLORS.warning, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   alertButtonText: { color: COLORS.white, fontSize: 13, fontWeight: '600' },
-  
+
   // User Card
   userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
   userInfo: { flex: 1 },
@@ -1066,11 +1130,11 @@ const styles = StyleSheet.create({
   userActions: { flexDirection: 'column', gap: 6 },
   actionButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   actionButtonText: { fontSize: 12, fontWeight: '600' },
-  
+
   // Add Button
   addButton: { backgroundColor: COLORS.danger, padding: 14, borderRadius: 12, alignItems: 'center', marginBottom: 16 },
   addButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
-  
+
   // Blacklist Card
   blacklistCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
   blacklistInfo: { flex: 1 },
@@ -1080,12 +1144,12 @@ const styles = StyleSheet.create({
   blacklistDate: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
   removeButton: { padding: 10 },
   removeButtonText: { fontSize: 20 },
-  
+
   // Empty
   emptyContainer: { alignItems: 'center', paddingVertical: 40 },
   emptyIcon: { fontSize: 60, marginBottom: 16 },
   emptyTitle: { fontSize: 16, color: COLORS.gray },
-  
+
   // Modal
   modalContainer: { flex: 1, backgroundColor: COLORS.white },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
@@ -1096,7 +1160,7 @@ const styles = StyleSheet.create({
   modalUserInfo: { alignItems: 'center', marginBottom: 24 },
   modalUserName: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
   modalUserEmail: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
-  
+
   // Form
   inputLabel: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 8, marginTop: 16 },
   input: { backgroundColor: COLORS.grayLighter, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: COLORS.navy },
@@ -1105,7 +1169,7 @@ const styles = StyleSheet.create({
   reasonOptionActive: { backgroundColor: COLORS.primary + '20', borderWidth: 1, borderColor: COLORS.primary },
   reasonOptionText: { fontSize: 15, color: COLORS.gray },
   reasonOptionTextActive: { color: COLORS.primary, fontWeight: '500' },
-  
+
   // History
   historyItem: { backgroundColor: COLORS.grayLighter, borderRadius: 10, padding: 14, marginBottom: 10 },
   historyBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 8 },
@@ -1116,32 +1180,62 @@ const styles = StyleSheet.create({
   historyBy: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
 
   // Navigation Button
-  navigationButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: COLORS.white, 
-    marginBottom: 16, 
-    padding: 16, 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    borderColor: COLORS.grayLight 
+  navigationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.grayLight
   },
-  navigationButtonContent: { 
-    flex: 1 
+  navigationButtonContent: {
+    flex: 1
   },
-  navigationButtonTitle: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: COLORS.navy, 
-    marginBottom: 4 
+  navigationButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.navy,
+    marginBottom: 4
   },
-  navigationButtonDescription: { 
-    fontSize: 13, 
-    color: COLORS.gray 
+  navigationButtonDescription: {
+    fontSize: 13,
+    color: COLORS.gray
   },
   navigationButtonArrow: { 
     fontSize: 24, 
     color: COLORS.gray, 
     marginLeft: 8 
+  },
+
+  // Camera Config
+  cameraOptions: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 16, 
+    paddingBottom: 16, 
+    gap: 8 
+  },
+  cameraOption: { 
+    flex: 1, 
+    paddingVertical: 12, 
+    borderRadius: 8, 
+    backgroundColor: COLORS.grayLighter, 
+    alignItems: 'center' 
+  },
+  cameraOptionActive: { 
+    backgroundColor: COLORS.primary 
+  },
+  cameraOptionText: { 
+    fontSize: 13, 
+    color: COLORS.gray, 
+    fontWeight: '500' 
+  },
+  cameraOptionTextActive: { 
+    color: COLORS.white 
+  },
+  ipCameraConfig: { 
+    paddingHorizontal: 16, 
+    paddingBottom: 16 
   },
 });
