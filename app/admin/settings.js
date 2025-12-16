@@ -458,6 +458,7 @@ export default function AdminSettings() {
               </View>
               <Text style={styles.navigationButtonArrow}>›</Text>
             </TouchableOpacity>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Permisos de Acceso</Text>
               <SettingToggle
@@ -555,6 +556,16 @@ export default function AdminSettings() {
                 description="Usuario bloqueado"
                 value={guardSettings.alert_on_suspended_resident}
                 onChange={(v) => handleGuardSettingChange('alert_on_suspended_resident', v)}
+              />
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Emergencias</Text>
+              <SettingToggle
+                label="Botón de Pánico"
+                description="Permitir alertas de emergencia"
+                value={guardSettings.panic_button_enabled ?? true}
+                onChange={(v) => handleGuardSettingChange('panic_button_enabled', v)}
               />
             </View>
 
@@ -1103,13 +1114,13 @@ const styles = StyleSheet.create({
   historyMessage: { fontSize: 13, color: COLORS.gray, marginBottom: 8 },
   historyDate: { fontSize: 12, color: COLORS.gray },
   historyBy: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+
   // Navigation Button
   navigationButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     backgroundColor: COLORS.white, 
-    marginHorizontal: 16, 
-    marginVertical: 8, 
+    marginBottom: 16, 
     padding: 16, 
     borderRadius: 12, 
     borderWidth: 1, 
