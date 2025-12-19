@@ -1,15 +1,15 @@
 // src/context/AuthContext.js
-// ISSY Resident App - Auth Context con Apple Sign In NATIVO
-// Usa expo-apple-authentication para iOS
-
+// ISSY Resident App - Auth Context con Apple Sign In NATIVO + Biometría
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { supabase } from '../config/supabase';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 
-// Import Apple Authentication only on iOS and wrap in try-catch
+// Import Apple Authentication only on iOS
 let AppleAuthentication = null;
 if (Platform.OS === 'ios') {
   try {
@@ -20,6 +20,12 @@ if (Platform.OS === 'ios') {
 }
 
 const API_URL = 'https://api.joinissy.com/api';
+
+// Secure Store Keys
+const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
+const SECURE_TOKEN_KEY = 'secure_token';
+const SECURE_REFRESH_TOKEN_KEY = 'secure_refresh_token';
+const SECURE_USER_EMAIL_KEY = 'secure_user_email';
 
 const AuthContext = createContext({});
 
@@ -33,25 +39,196 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [supabaseSession, setSupabaseSession] = useState(null);
-  
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState(null); // 'face' | 'fingerprint' | 'iris'
   const hasBeenAuthenticated = useRef(false);
 
   useEffect(() => {
     let mounted = true;
-    
     const init = async () => {
+      await checkBiometricAvailability();
       await checkSession();
       if (mounted) {
         setupSupabaseListener();
       }
     };
-    
     init();
-    
     return () => {
       mounted = false;
     };
   }, []);
+
+  // ==========================================
+  // BIOMETRIC FUNCTIONS
+  // ==========================================
+  
+  const checkBiometricAvailability = async () => {
+    try {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      
+      setBiometricAvailable(compatible && enrolled);
+      
+      if (compatible && enrolled) {
+        const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+        if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+          setBiometricType('face');
+        } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+          setBiometricType('fingerprint');
+        } else if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+          setBiometricType('iris');
+        }
+      }
+      
+      // Check if user has enabled biometric
+      const enabled = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
+      setBiometricEnabled(enabled === 'true');
+      
+    } catch (error) {
+      console.log('Biometric check error:', error);
+      setBiometricAvailable(false);
+    }
+  };
+
+  const getBiometricLabel = () => {
+    switch (biometricType) {
+      case 'face':
+        return Platform.OS === 'ios' ? 'Face ID' : 'Reconocimiento facial';
+      case 'fingerprint':
+        return Platform.OS === 'ios' ? 'Touch ID' : 'Huella digital';
+      case 'iris':
+        return 'Reconocimiento de iris';
+      default:
+        return 'Biometría';
+    }
+  };
+
+  const authenticateWithBiometric = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: `Iniciar sesión con ${getBiometricLabel()}`,
+        cancelLabel: 'Cancelar',
+        disableDeviceFallback: false,
+        fallbackLabel: 'Usar contraseña',
+      });
+
+      if (result.success) {
+        // Get stored credentials
+        const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
+        const storedRefreshToken = await SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY);
+        
+        if (storedToken) {
+          // Verify token is still valid
+          const profileResult = await loadProfile(storedToken);
+          
+          if (profileResult.success) {
+            setToken(storedToken);
+            await AsyncStorage.setItem('token', storedToken);
+            if (storedRefreshToken) {
+              await AsyncStorage.setItem('refreshToken', storedRefreshToken);
+            }
+            hasBeenAuthenticated.current = true;
+            return { success: true };
+          } else {
+            // Token expired, clear biometric data
+            await disableBiometric();
+            return { success: false, error: 'Sesión expirada. Por favor inicia sesión nuevamente.' };
+          }
+        }
+        return { success: false, error: 'No hay credenciales guardadas' };
+      } else {
+        if (result.error === 'user_cancel') {
+          return { success: false, error: 'Autenticación cancelada', cancelled: true };
+        }
+        return { success: false, error: 'Autenticación fallida' };
+      }
+    } catch (error) {
+      console.error('Biometric auth error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const enableBiometric = async () => {
+    try {
+      if (!biometricAvailable) {
+        return { success: false, error: 'Biometría no disponible en este dispositivo' };
+      }
+
+      if (!token) {
+        return { success: false, error: 'Debes iniciar sesión primero' };
+      }
+
+      // Authenticate first to confirm it's the user
+      const authResult = await LocalAuthentication.authenticateAsync({
+        promptMessage: `Confirmar ${getBiometricLabel()} para inicio rápido`,
+        cancelLabel: 'Cancelar',
+      });
+
+      if (!authResult.success) {
+        return { success: false, error: 'Autenticación cancelada' };
+      }
+
+      // Store credentials securely
+      await SecureStore.setItemAsync(SECURE_TOKEN_KEY, token);
+      
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      if (refreshToken) {
+        await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, refreshToken);
+      }
+      
+      if (user?.email) {
+        await SecureStore.setItemAsync(SECURE_USER_EMAIL_KEY, user.email);
+      }
+
+      await AsyncStorage.setItem(BIOMETRIC_ENABLED_KEY, 'true');
+      setBiometricEnabled(true);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Enable biometric error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const disableBiometric = async () => {
+    try {
+      await SecureStore.deleteItemAsync(SECURE_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(SECURE_REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(SECURE_USER_EMAIL_KEY);
+      await AsyncStorage.removeItem(BIOMETRIC_ENABLED_KEY);
+      setBiometricEnabled(false);
+      return { success: true };
+    } catch (error) {
+      console.error('Disable biometric error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const promptEnableBiometric = () => {
+    if (!biometricAvailable || biometricEnabled) return;
+
+    Alert.alert(
+      `¿Activar ${getBiometricLabel()}?`,
+      `Inicia sesión más rápido usando ${getBiometricLabel()} la próxima vez.`,
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        { 
+          text: 'Activar', 
+          onPress: async () => {
+            const result = await enableBiometric();
+            if (result.success) {
+              Alert.alert('¡Listo!', `${getBiometricLabel()} activado correctamente.`);
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  // ==========================================
+  // SESSION MANAGEMENT
+  // ==========================================
 
   const setupSupabaseListener = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -88,11 +265,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Sync Google users with backend
   const syncGoogleWithBackend = async (supabaseUser) => {
     try {
       console.log('Syncing Google user with backend:', supabaseUser.email);
-
+      
       const response = await fetch(`${API_URL}/auth/google-sync`, {
         method: 'POST',
         headers: {
@@ -110,7 +286,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-
+      
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -120,13 +296,17 @@ export const AuthProvider = ({ children }) => {
         if (refreshTokenValue) {
           await AsyncStorage.setItem('refreshToken', refreshTokenValue);
         }
-
+        
         setToken(tokenValue);
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
-
+        
         console.log('Backend sync successful:', userValue?.email);
+        
+        // Prompt to enable biometric after successful login
+        setTimeout(() => promptEnableBiometric(), 1000);
+        
         return { success: true, data: userValue };
       } else {
         console.error('Backend sync failed:', data.message || data.error);
@@ -140,6 +320,19 @@ export const AuthProvider = ({ children }) => {
 
   const checkSession = async () => {
     try {
+      // First check if biometric is enabled and try that
+      const biometricEnabledCheck = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
+      
+      if (biometricEnabledCheck === 'true' && biometricAvailable) {
+        const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
+        if (storedToken) {
+          // We have biometric credentials, but don't auto-authenticate
+          // User will need to trigger biometric auth from login screen
+          console.log('Biometric credentials available');
+        }
+      }
+
+      // Check for regular session
       const savedToken = await AsyncStorage.getItem('token');
       
       if (savedToken) {
@@ -147,12 +340,20 @@ export const AuthProvider = ({ children }) => {
         const result = await loadProfile(savedToken);
         if (result.success) {
           hasBeenAuthenticated.current = true;
+          
+          // Update secure store with current token if biometric enabled
+          if (biometricEnabled) {
+            await SecureStore.setItemAsync(SECURE_TOKEN_KEY, savedToken);
+          }
+          
           setLoading(false);
           return;
         }
       }
 
+      // Check Supabase session
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session?.user) {
         setSupabaseSession(session);
         hasBeenAuthenticated.current = true;
@@ -255,18 +456,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ==========================================
-  // APPLE SIGN IN - NATIVO con expo-apple-authentication
+  // APPLE SIGN IN - NATIVO
   // ==========================================
   const signInWithApple = async () => {
     try {
-      // Check if Apple Sign In is available (iOS only)
       if (Platform.OS !== 'ios') {
         return { success: false, error: 'Apple Sign In solo está disponible en iOS' };
       }
 
-      // Check if module is available
       if (!AppleAuthentication) {
-        console.log('Apple Authentication module not loaded, using fallback');
+        console.log('Apple Authentication module not loaded');
         return { success: false, error: 'Apple Sign In no está configurado en este build' };
       }
 
@@ -277,7 +476,6 @@ export const AuthProvider = ({ children }) => {
 
       console.log('🍎 Starting native Apple Sign In...');
 
-      // Request Apple authentication
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -285,18 +483,12 @@ export const AuthProvider = ({ children }) => {
         ],
       });
 
-      console.log('🍎 Apple credential received:', {
-        user: credential.user,
-        email: credential.email,
-        fullName: credential.fullName,
-        hasIdentityToken: !!credential.identityToken
-      });
+      console.log('🍎 Apple credential received');
 
       if (!credential.identityToken) {
         throw new Error('No se recibió el token de identidad de Apple');
       }
 
-      // Build full name from Apple response
       let fullName = null;
       if (credential.fullName) {
         const nameParts = [
@@ -308,7 +500,6 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      // Sync with our backend
       console.log('🔄 Syncing Apple user with backend...');
       
       const response = await fetch(`${API_URL}/auth/apple-sync`, {
@@ -323,46 +514,44 @@ export const AuthProvider = ({ children }) => {
             givenName: credential.fullName.givenName,
             familyName: credential.fullName.familyName
           } : null,
-          user: credential.user // Apple's unique user ID
+          user: credential.user
         }),
       });
 
       const data = await response.json();
-
-      console.log('🍎 Backend response:', data.success ? 'success' : 'failed');
-
+      
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
 
       if ((data.success || response.ok) && tokenValue) {
-        // Save tokens
         await AsyncStorage.setItem('token', tokenValue);
         if (refreshTokenValue) {
           await AsyncStorage.setItem('refreshToken', refreshTokenValue);
         }
 
-        // Update state
         setToken(tokenValue);
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
 
         console.log('✅ Apple Sign In successful:', userValue?.email);
+        
+        // Prompt to enable biometric
+        setTimeout(() => promptEnableBiometric(), 1000);
+
         return { success: true, data: { token: tokenValue, user: userValue } };
       } else {
         console.error('❌ Backend sync failed:', data.message || data.error);
         return { success: false, error: data.message || data.error || 'Error al sincronizar con el servidor' };
       }
-
     } catch (error) {
       console.error('❌ Apple Sign In error:', error);
-
-      // Handle specific Apple auth errors
+      
       if (error.code === 'ERR_REQUEST_CANCELED' || error.code === 'ERR_CANCELED') {
         return { success: false, error: 'Inicio de sesión cancelado' };
       }
-
+      
       return { success: false, error: error.message || 'Error al iniciar sesión con Apple' };
     }
   };
@@ -382,8 +571,6 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
       
-      console.log('Login response:', JSON.stringify(data, null, 2));
-
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -393,11 +580,15 @@ export const AuthProvider = ({ children }) => {
         if (refreshTokenValue) {
           await AsyncStorage.setItem('refreshToken', refreshTokenValue);
         }
+        
         setToken(tokenValue);
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
-        
+
+        // Prompt to enable biometric after successful login
+        setTimeout(() => promptEnableBiometric(), 1000);
+
         return { success: true, data: { token: tokenValue, user: userValue } };
       } else {
         return { 
@@ -425,7 +616,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-
+      
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
 
@@ -435,6 +626,7 @@ export const AuthProvider = ({ children }) => {
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
+
         return { success: true, data: { token: tokenValue, user: userValue } };
       } else {
         return { success: false, error: data.error || data.message || 'Error al registrar' };
@@ -453,6 +645,7 @@ export const AuthProvider = ({ children }) => {
       const headers = {
         'Content-Type': 'application/json',
       };
+      
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -462,7 +655,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-
+      
       if (response.ok && (data.success !== false)) {
         return { success: true, data: data.data || data };
       } else {
@@ -485,7 +678,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-
+      
       if (response.ok && (data.success !== false)) {
         await loadProfile(token);
         return { success: true, data: data.data || data };
@@ -501,11 +694,16 @@ export const AuthProvider = ({ children }) => {
   // ==========================================
   // CERRAR SESIÓN
   // ==========================================
-  const signOut = async () => {
+  const signOut = async (clearBiometric = false) => {
     try {
       hasBeenAuthenticated.current = false;
       
       await AsyncStorage.multiRemove(['token', 'refreshToken']);
+      
+      // Optionally clear biometric data
+      if (clearBiometric) {
+        await disableBiometric();
+      }
       
       setToken(null);
       setUser(null);
@@ -542,23 +740,39 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
+      // State
       user,
       profile,
       token,
       loading,
       supabaseSession,
+      isAuthenticated: !!token && !!user,
+      
+      // Biometric
+      biometricEnabled,
+      biometricAvailable,
+      biometricType,
+      getBiometricLabel,
+      authenticateWithBiometric,
+      enableBiometric,
+      disableBiometric,
+      
+      // Auth methods
       signIn,
       signUp,
       signInWithGoogle,
       signInWithApple,
       signOut,
+      
+      // Invitations
       verifyInvitation,
       acceptInvitation,
+      
+      // Helpers
       refreshProfile,
       hasLocation,
       getUserRole,
       isSuperAdmin,
-      isAuthenticated: !!token && !!user,
     }}>
       {children}
     </AuthContext.Provider>

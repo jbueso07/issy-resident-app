@@ -1,7 +1,7 @@
 // app/announcements.js
-// ISSY Resident App - Pantalla de Anuncios
+// ISSY Resident App - Pantalla de Anuncios (Figma Design)
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,16 @@ import {
   Modal,
   ScrollView,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const IMAGE_SIZE = SCREEN_WIDTH - 90; // Modal padding considered
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
@@ -27,6 +31,8 @@ export default function AnnouncementsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageScrollRef = useRef(null);
 
   const fetchAnnouncements = async () => {
     try {
@@ -53,46 +59,20 @@ export default function AnnouncementsScreen() {
 
   const handleOpenAnnouncement = async (announcement) => {
     setSelectedAnnouncement(announcement);
+    setCurrentImageIndex(0);
     setModalVisible(true);
     
     // Marcar como leído si no lo está
     if (!announcement.is_read) {
-      await markAnnouncementRead(announcement.id);
-      // Actualizar estado local
-      setAnnouncements(prev => 
-        prev.map(a => a.id === announcement.id ? { ...a, is_read: true } : a)
-      );
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'urgent': return '#EF4444';
-      case 'high': return '#F59E0B';
-      case 'normal': return '#3B82F6';
-      case 'low': return '#6B7280';
-      default: return '#6B7280';
-    }
-  };
-
-  const getPriorityLabel = (priority) => {
-    switch (priority) {
-      case 'urgent': return 'Urgente';
-      case 'high': return 'Alta';
-      case 'normal': return 'Normal';
-      case 'low': return 'Baja';
-      default: return 'Normal';
-    }
-  };
-
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case 'general': return 'megaphone-outline';
-      case 'maintenance': return 'construct-outline';
-      case 'security': return 'shield-checkmark-outline';
-      case 'event': return 'calendar-outline';
-      case 'payment': return 'card-outline';
-      default: return 'information-circle-outline';
+      try {
+        await markAnnouncementRead(announcement.id);
+        // Actualizar estado local
+        setAnnouncements(prev => 
+          prev.map(a => a.id === announcement.id ? { ...a, is_read: true } : a)
+        );
+      } catch (error) {
+        console.error('Error marking as read:', error);
+      }
     }
   };
 
@@ -100,54 +80,93 @@ export default function AnnouncementsScreen() {
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now - date);
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) {
-      return 'Hoy';
-    } else if (diffDays === 1) {
-      return 'Ayer';
+    if (diffMinutes < 60) {
+      return `Hace ${diffMinutes} min`;
+    } else if (diffHours < 24) {
+      return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
     } else if (diffDays < 7) {
-      return `Hace ${diffDays} días`;
+      return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
     } else {
       return date.toLocaleDateString('es-HN', { 
         day: 'numeric', 
-        month: 'short',
-        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        month: 'long',
+        year: 'numeric'
       });
     }
   };
 
+  const formatFullDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-HN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const handleImageScroll = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / IMAGE_SIZE);
+    setCurrentImageIndex(index);
+  };
+
+  const unreadCount = announcements.filter(a => !a.is_read).length;
+
   const renderAnnouncement = ({ item }) => (
     <TouchableOpacity
-      style={[styles.announcementCard, !item.is_read && styles.unreadCard]}
+      style={styles.announcementCard}
       onPress={() => handleOpenAnnouncement(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.cardHeader}>
-        <View style={[styles.categoryIcon, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
-          <Ionicons 
-            name={getCategoryIcon(item.category)} 
-            size={24} 
-            color={getPriorityColor(item.priority)} 
-          />
-        </View>
-        <View style={styles.cardHeaderText}>
-          <Text style={styles.announcementTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.metaRow}>
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
-              <Text style={styles.priorityText}>{getPriorityLabel(item.priority)}</Text>
-            </View>
+      {/* Gradient sidebar */}
+      <LinearGradient
+        colors={['#D4FE48', '#11DAE9']}
+        style={styles.gradientBar}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      />
+      
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleSection}>
+            <Text style={styles.announcementTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.announcementPreview} numberOfLines={1}>
+              {item.message}
+            </Text>
             <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
           </View>
+          
+          <View style={styles.cardRight}>
+            {/* Badge NUEVO/VISTO */}
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: item.is_read ? '#009FF5' : '#FA5967' }
+            ]}>
+              <Text style={styles.statusBadgeText}>
+                {item.is_read ? 'VISTO' : 'NUEVO'}
+              </Text>
+            </View>
+            
+            {/* Arrow icon */}
+            <TouchableOpacity 
+              style={styles.arrowButton}
+              onPress={() => handleOpenAnnouncement(item)}
+            >
+              <Ionicons name="arrow-forward" size={20} color="#000" />
+            </TouchableOpacity>
+          </View>
         </View>
-        {!item.is_read && <View style={styles.unreadDot} />}
       </View>
-      
-      <Text style={styles.announcementPreview} numberOfLines={2}>
-        {item.content}
-      </Text>
     </TouchableOpacity>
   );
 
@@ -163,11 +182,57 @@ export default function AnnouncementsScreen() {
     </View>
   );
 
+  const renderImageCarousel = () => {
+    const images = selectedAnnouncement?.images || [];
+    
+    if (images.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.carouselContainer}>
+        <ScrollView
+          ref={imageScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleImageScroll}
+          scrollEventThrottle={16}
+          style={styles.imageScroll}
+        >
+          {images.map((imageUrl, index) => (
+            <Image
+              key={index}
+              source={{ uri: imageUrl }}
+              style={styles.carouselImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+        
+        {/* Dots indicator */}
+        {images.length > 1 && (
+          <View style={styles.dotsContainer}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  { backgroundColor: index === currentImageIndex ? '#D4FE48' : '#FFFFFF' }
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FC6447" />
+          <ActivityIndicator size="large" color="#009FF5" />
           <Text style={styles.loadingText}>Cargando anuncios...</Text>
         </View>
       </SafeAreaView>
@@ -184,16 +249,18 @@ export default function AnnouncementsScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Anuncios</Text>
-        <View style={styles.headerRight}>
-          {announcements.filter(a => !a.is_read).length > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
-                {announcements.filter(a => !a.is_read).length}
-              </Text>
-            </View>
-          )}
+        <View style={styles.headerTitleContainer}>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>Anuncios</Text>
+            {unreadCount > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.headerSubtitle}>Centro de anuncios</Text>
         </View>
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Lista de anuncios */}
@@ -206,8 +273,8 @@ export default function AnnouncementsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#FC6447']}
-            tintColor="#FC6447"
+            colors={['#009FF5']}
+            tintColor="#009FF5"
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -217,81 +284,44 @@ export default function AnnouncementsScreen() {
       {/* Modal de detalle */}
       <Modal
         visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Close button */}
             <TouchableOpacity 
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}
             >
-              <Ionicons name="close" size={24} color="#1F2937" />
+              <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Detalle</Text>
-            <View style={{ width: 40 }} />
-          </View>
 
-          {selectedAnnouncement && (
-            <ScrollView 
-              style={styles.modalContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Icono y prioridad */}
-              <View style={styles.modalIconRow}>
-                <View style={[
-                  styles.modalCategoryIcon, 
-                  { backgroundColor: getPriorityColor(selectedAnnouncement.priority) + '20' }
-                ]}>
-                  <Ionicons 
-                    name={getCategoryIcon(selectedAnnouncement.category)} 
-                    size={32} 
-                    color={getPriorityColor(selectedAnnouncement.priority)} 
-                  />
-                </View>
-                <View style={[
-                  styles.modalPriorityBadge, 
-                  { backgroundColor: getPriorityColor(selectedAnnouncement.priority) }
-                ]}>
-                  <Text style={styles.modalPriorityText}>
-                    {getPriorityLabel(selectedAnnouncement.priority)}
-                  </Text>
-                </View>
-              </View>
+            {selectedAnnouncement && (
+              <ScrollView 
+                style={styles.modalContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Image Carousel */}
+                {renderImageCarousel()}
 
-              {/* Título */}
-              <Text style={styles.modalTitle}>{selectedAnnouncement.title}</Text>
-              
-              {/* Fecha */}
-              <Text style={styles.modalDate}>
-                {new Date(selectedAnnouncement.created_at).toLocaleDateString('es-HN', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </Text>
+                {/* Title */}
+                <Text style={styles.modalTitle}>{selectedAnnouncement.title}</Text>
 
-              {/* Contenido */}
-              <View style={styles.modalContentBox}>
-                <Text style={styles.modalContentText}>
-                  {selectedAnnouncement.content}
+                {/* Message */}
+                <Text style={styles.modalMessage}>
+                  {selectedAnnouncement.message}
                 </Text>
-              </View>
 
-              {/* Autor si existe */}
-              {selectedAnnouncement.author_name && (
-                <View style={styles.authorSection}>
-                  <Text style={styles.authorLabel}>Publicado por</Text>
-                  <Text style={styles.authorName}>{selectedAnnouncement.author_name}</Text>
-                </View>
-              )}
-            </ScrollView>
-          )}
-        </SafeAreaView>
+                {/* Date */}
+                <Text style={styles.modalDate}>
+                  {formatFullDate(selectedAnnouncement.created_at)}
+                </Text>
+              </ScrollView>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -300,7 +330,7 @@ export default function AnnouncementsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
@@ -311,16 +341,16 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#6B7280',
+    fontFamily: 'System',
   },
+  
+  // Header styles
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FAFAFA',
   },
   backButton: {
     width: 40,
@@ -330,98 +360,114 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000000',
   },
   unreadBadge: {
-    backgroundColor: '#FC6447',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    backgroundColor: '#FA5967',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 6,
   },
   unreadBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#000000',
+    fontSize: 9,
     fontWeight: '600',
   },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#000000',
+    marginTop: 2,
+  },
+  
+  // List styles
   listContent: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 100,
   },
+  
+  // Card styles
   announcementCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 13,
     marginBottom: 12,
+    flexDirection: 'row',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  unreadCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#FC6447',
+  gradientBar: {
+    width: 11,
+    borderTopLeftRadius: 13,
+    borderBottomLeftRadius: 13,
+  },
+  cardContent: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  categoryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  cardTitleSection: {
+    flex: 1,
     marginRight: 12,
   },
-  cardHeaderText: {
-    flex: 1,
-  },
   announcementTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  priorityText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FC6447',
-    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#000000',
+    marginBottom: 4,
   },
   announcementPreview: {
     fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    color: '#707883',
+    marginBottom: 8,
   },
+  dateText: {
+    fontSize: 10,
+    color: '#009FF5',
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 5,
+    marginBottom: 12,
+  },
+  statusBadgeText: {
+    color: '#000000',
+    fontSize: 9,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  arrowButton: {
+    padding: 4,
+  },
+  
+  // Empty state
   emptyState: {
     flex: 1,
     alignItems: 'center',
@@ -449,96 +495,84 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 40,
   },
+  
   // Modal styles
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
-  },
-  modalHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  modalContent: {
-    flex: 1,
+    alignItems: 'center',
     padding: 20,
   },
-  modalIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 13,
+    width: '100%',
+    maxHeight: '85%',
+    overflow: 'hidden',
   },
-  modalCategoryIcon: {
-    width: 64,
-    height: 64,
+  modalCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    width: 32,
+    height: 32,
     borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalPriorityBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  modalPriorityText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  modalDate: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 24,
-    textTransform: 'capitalize',
-  },
-  modalContentBox: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  modalContentText: {
-    fontSize: 16,
-    color: '#374151',
-    lineHeight: 24,
-  },
-  authorSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+  modalContent: {
+    padding: 24,
     paddingTop: 16,
   },
-  authorLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 4,
+  
+  // Carousel styles
+  carouselContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
   },
-  authorName: {
+  imageScroll: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 13,
+  },
+  carouselImage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 13,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -24,
+    paddingBottom: 8,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginHorizontal: 3,
+  },
+  
+  // Modal content
+  modalTitle: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: '400',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#707883',
+    lineHeight: 18,
+    marginBottom: 24,
+  },
+  modalDate: {
+    fontSize: 10,
+    color: '#707883',
+    textTransform: 'capitalize',
   },
 });

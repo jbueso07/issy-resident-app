@@ -1,8 +1,6 @@
 // app/(auth)/login.js
-// ISSY Resident App - Login Screen REDISEÑADO según Figma
-// Versión sin dependencias de fuentes custom para evitar crash
-
-import { useState } from 'react';
+// ISSY Resident App - Login Screen con Biometría (Face ID / Huella)
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,8 +26,26 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState(null);
-  const { signIn, signInWithGoogle, signInWithApple } = useAuth();
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  
+  const { 
+    signIn, 
+    signInWithGoogle, 
+    signInWithApple,
+    biometricEnabled,
+    biometricAvailable,
+    getBiometricLabel,
+    authenticateWithBiometric,
+  } = useAuth();
+  
   const router = useRouter();
+
+  // Auto-prompt biometric on mount if enabled
+  useEffect(() => {
+    if (biometricEnabled) {
+      handleBiometricLogin();
+    }
+  }, [biometricEnabled]);
 
   const handleLogin = async () => {
     if (!email.trim()) {
@@ -85,7 +101,42 @@ export default function Login() {
     }
   };
 
-  const isLoading = loading || socialLoading;
+  const handleBiometricLogin = async () => {
+    setBiometricLoading(true);
+    const result = await authenticateWithBiometric();
+    setBiometricLoading(false);
+
+    if (result.success) {
+      router.replace('/(tabs)/home');
+    } else if (result.error && !result.cancelled) {
+      // Only show alert for real errors, not cancellations
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  const isLoading = loading || socialLoading || biometricLoading;
+
+  // Get biometric icon based on type
+  const BiometricIcon = () => {
+    const label = getBiometricLabel ? getBiometricLabel() : 'Biometría';
+    const isFaceId = label.includes('Face');
+    
+    return (
+      <View style={{ width: 24, height: 24, marginRight: 10 }}>
+        {isFaceId ? (
+          // Face ID icon
+          <Svg viewBox="0 0 24 24" width={24} height={24} fill="#000">
+            <Path d="M9 10.5C9 9.67 8.33 9 7.5 9S6 9.67 6 10.5 6.67 12 7.5 12 9 11.33 9 10.5zm7.5-1.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm-5.5 6c-1.61 0-3.09.59-4.23 1.57l1.41 1.41C9.07 17.35 10.02 17 11 17s1.93.35 2.82.98l1.41-1.41C14.09 15.59 12.61 15 11 15zm1-13C6.48 2 3 5.48 3 10v4c0 4.42 3.48 8 8 8s8-3.58 8-8v-4c0-4.52-3.48-8-8-8zm6 12c0 3.31-2.69 6-6 6s-6-2.69-6-6v-4c0-3.31 2.69-6 6-6s6 2.69 6 6v4z"/>
+          </Svg>
+        ) : (
+          // Fingerprint icon
+          <Svg viewBox="0 0 24 24" width={24} height={24} fill="#000">
+            <Path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.5 3.75-3.27C9.98 4.04 14 4.03 17.15 5.65c1.5.77 2.76 1.86 3.75 3.25.16.22.11.54-.12.7-.23.16-.54.11-.7-.12-.9-1.26-2.04-2.25-3.39-2.94-2.87-1.47-6.54-1.47-9.4.01-1.36.7-2.5 1.7-3.4 2.96-.08.14-.23.21-.39.21zm6.25 12.07c-.13 0-.26-.05-.35-.15-.87-.87-1.34-1.43-2.01-2.64-.69-1.23-1.05-2.73-1.05-4.34 0-2.97 2.54-5.39 5.66-5.39s5.66 2.42 5.66 5.39c0 .28-.22.5-.5.5s-.5-.22-.5-.5c0-2.42-2.09-4.39-4.66-4.39-2.57 0-4.66 1.97-4.66 4.39 0 1.44.32 2.77.93 3.85.64 1.15 1.08 1.64 1.85 2.42.19.2.19.51 0 .71-.11.1-.24.15-.37.15zm7.17-1.85c-1.19 0-2.24-.3-3.1-.89-1.49-1.01-2.38-2.65-2.38-4.39 0-.28.22-.5.5-.5s.5.22.5.5c0 1.41.72 2.74 1.94 3.56.71.48 1.54.71 2.54.71.24 0 .64-.03 1.04-.1.27-.05.53.13.58.41.05.27-.13.53-.41.58-.57.11-1.07.12-1.21.12zM14.91 22c-.04 0-.09-.01-.13-.02-1.59-.44-2.63-1.03-3.72-2.1-1.4-1.39-2.17-3.24-2.17-5.22 0-1.62 1.38-2.94 3.08-2.94 1.7 0 3.08 1.32 3.08 2.94 0 1.07.93 1.94 2.08 1.94s2.08-.87 2.08-1.94c0-3.77-3.25-6.83-7.25-6.83-2.84 0-5.44 1.58-6.61 4.03-.39.81-.59 1.76-.59 2.8 0 .78.07 2.01.67 3.61.1.26-.03.55-.29.64-.26.1-.55-.04-.64-.29-.49-1.31-.73-2.61-.73-3.96 0-1.2.23-2.29.68-3.24 1.33-2.79 4.28-4.6 7.51-4.6 4.55 0 8.25 3.51 8.25 7.83 0 1.62-1.38 2.94-3.08 2.94s-3.08-1.32-3.08-2.94c0-1.07-.93-1.94-2.08-1.94s-2.08.87-2.08 1.94c0 1.71.66 3.31 1.87 4.51.95.94 1.86 1.46 3.27 1.85.27.07.42.35.35.61-.05.23-.26.38-.47.38z"/>
+          </Svg>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -114,6 +165,36 @@ export default function Login() {
               />
             </View>
           </View>
+
+          {/* Biometric Button - Show first if enabled */}
+          {biometricEnabled && (
+            <TouchableOpacity
+              style={styles.biometricButton}
+              onPress={handleBiometricLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              {biometricLoading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <>
+                  <BiometricIcon />
+                  <Text style={styles.biometricButtonText}>
+                    Continuar con {getBiometricLabel ? getBiometricLabel() : 'Biometría'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Divider after biometric */}
+          {biometricEnabled && (
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>o usa otra opción</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          )}
 
           {/* Social Login Buttons */}
           <View style={styles.socialButtons}>
@@ -349,6 +430,27 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 70,
     height: 50,
+  },
+
+  // Biometric Button
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D4FE48',
+    borderRadius: 13,
+    height: 50,
+    marginBottom: 16,
+    shadowColor: '#D4FE48',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  biometricButtonText: {
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: '600',
   },
 
   // Social Buttons

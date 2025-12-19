@@ -1,5 +1,5 @@
 // app/admin/announcements.js
-// ISSY Resident App - Admin: Gestión de Anuncios
+// ISSY Resident App - Admin: Gestión de Anuncios con Imágenes
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -13,12 +13,15 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
@@ -61,7 +64,6 @@ const TARGET_AUDIENCES = [
   { value: 'all', label: '👥 Todos' },
   { value: 'residents', label: '🏠 Residentes' },
   { value: 'guards', label: '🛡️ Guardias' },
-  { value: 'staff', label: '👔 Personal' },
   { value: 'admins', label: '⚙️ Administradores' },
 ];
 
@@ -75,6 +77,11 @@ export default function AdminAnnouncements() {
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  
+  // Images state
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -82,6 +89,7 @@ export default function AdminAnnouncements() {
     type: 'info',
     priority: 'normal',
     target_audience: 'all',
+    send_push: true,
   });
 
   const userRole = profile?.role || user?.role || 'user';
@@ -130,26 +138,111 @@ export default function AdminAnnouncements() {
 
   const handleCreate = () => {
     setEditingAnnouncement(null);
+    setSelectedImages([]);
+    setExistingImages([]);
     setFormData({
       title: '',
       message: '',
       type: 'info',
       priority: 'normal',
       target_audience: 'all',
+      send_push: true,
     });
     setShowModal(true);
   };
 
   const handleEdit = (announcement) => {
     setEditingAnnouncement(announcement);
+    setSelectedImages([]);
+    setExistingImages(announcement.images || []);
     setFormData({
       title: announcement.title,
       message: announcement.message,
       type: announcement.type || 'info',
       priority: announcement.priority || 'normal',
       target_audience: announcement.target_audience || 'all',
+      send_push: announcement.send_push !== false,
     });
     setShowModal(true);
+  };
+
+  // Image picker
+  const pickImages = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir imágenes');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 10 - selectedImages.length - existingImages.length,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: 'image/jpeg',
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+        }));
+        setSelectedImages([...selectedImages, ...newImages]);
+      }
+    } catch (error) {
+      console.error('Error picking images:', error);
+      Alert.alert('Error', 'No se pudieron seleccionar las imágenes');
+    }
+  };
+
+  const removeSelectedImage = (index) => {
+    setSelectedImages(selectedImages.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index) => {
+    setExistingImages(existingImages.filter((_, i) => i !== index));
+  };
+
+  // Upload images to server
+  const uploadImages = async () => {
+    if (selectedImages.length === 0) return [];
+
+    setUploading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const formData = new FormData();
+
+      selectedImages.forEach((image) => {
+        formData.append('images', {
+          uri: image.uri,
+          type: image.type,
+          name: image.name,
+        });
+      });
+
+      const response = await fetch(`${API_URL}/api/announcements/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        return data.data.urls || [];
+      } else {
+        throw new Error(data.message || 'Error uploading images');
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -164,6 +257,15 @@ export default function AdminAnnouncements() {
 
     setSaving(true);
     try {
+      // Upload new images first
+      let uploadedUrls = [];
+      if (selectedImages.length > 0) {
+        uploadedUrls = await uploadImages();
+      }
+
+      // Combine existing and new images
+      const allImages = [...existingImages, ...uploadedUrls];
+
       const headers = await getAuthHeaders();
       const url = editingAnnouncement 
         ? `${API_URL}/api/announcements/${editingAnnouncement.id}`
@@ -174,6 +276,7 @@ export default function AdminAnnouncements() {
         headers,
         body: JSON.stringify({
           ...formData,
+          images: allImages,
           location_id: profile?.location_id,
         }),
       });
@@ -301,42 +404,60 @@ export default function AdminAnnouncements() {
           announcements.map((announcement) => {
             const typeInfo = getTypeInfo(announcement.type);
             const priorityInfo = getPriorityInfo(announcement.priority);
+            const hasImages = announcement.images && announcement.images.length > 0;
             
             return (
               <View key={announcement.id} style={styles.announcementCard}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.typeBadge, { backgroundColor: typeInfo.color + '20' }]}>
-                    <Text style={[styles.typeBadgeText, { color: typeInfo.color }]}>
-                      {typeInfo.label}
-                    </Text>
-                  </View>
-                  <View style={[styles.priorityBadge, { backgroundColor: priorityInfo.color + '20' }]}>
-                    <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>
-                      {priorityInfo.label}
-                    </Text>
-                  </View>
-                </View>
+                {/* Image preview if exists */}
+                {hasImages && (
+                  <Image 
+                    source={{ uri: announcement.images[0] }} 
+                    style={styles.cardImage}
+                    resizeMode="cover"
+                  />
+                )}
                 
-                <Text style={styles.cardTitle}>{announcement.title}</Text>
-                <Text style={styles.cardMessage} numberOfLines={3}>
-                  {announcement.message}
-                </Text>
-                
-                <View style={styles.cardFooter}>
-                  <Text style={styles.cardDate}>{formatDate(announcement.created_at)}</Text>
-                  <View style={styles.cardActions}>
-                    <TouchableOpacity 
-                      style={styles.editButton}
-                      onPress={() => handleEdit(announcement)}
-                    >
-                      <Text style={styles.editButtonText}>✏️ Editar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={styles.deleteButton}
-                      onPress={() => handleDelete(announcement)}
-                    >
-                      <Text style={styles.deleteButtonText}>🗑️</Text>
-                    </TouchableOpacity>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.typeBadge, { backgroundColor: typeInfo.color + '20' }]}>
+                      <Text style={[styles.typeBadgeText, { color: typeInfo.color }]}>
+                        {typeInfo.label}
+                      </Text>
+                    </View>
+                    <View style={[styles.priorityBadge, { backgroundColor: priorityInfo.color + '20' }]}>
+                      <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>
+                        {priorityInfo.label}
+                      </Text>
+                    </View>
+                    {hasImages && (
+                      <View style={styles.imageCountBadge}>
+                        <Ionicons name="images" size={12} color={COLORS.gray} />
+                        <Text style={styles.imageCountText}>{announcement.images.length}</Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <Text style={styles.cardTitle}>{announcement.title}</Text>
+                  <Text style={styles.cardMessage} numberOfLines={3}>
+                    {announcement.message}
+                  </Text>
+                  
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardDate}>{formatDate(announcement.created_at)}</Text>
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity 
+                        style={styles.editButton}
+                        onPress={() => handleEdit(announcement)}
+                      >
+                        <Text style={styles.editButtonText}>✏️ Editar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDelete(announcement)}
+                      >
+                        <Text style={styles.deleteButtonText}>🗑️</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -362,8 +483,8 @@ export default function AdminAnnouncements() {
             <Text style={styles.modalTitle}>
               {editingAnnouncement ? 'Editar Anuncio' : 'Nuevo Anuncio'}
             </Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={saving}>
-              {saving ? (
+            <TouchableOpacity onPress={handleSubmit} disabled={saving || uploading}>
+              {saving || uploading ? (
                 <ActivityIndicator size="small" color={COLORS.primary} />
               ) : (
                 <Text style={styles.modalSave}>Guardar</Text>
@@ -397,6 +518,56 @@ export default function AdminAnnouncements() {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
+            </View>
+
+            {/* Imágenes */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Imágenes (máx. 10)</Text>
+              
+              {/* Existing images */}
+              {existingImages.length > 0 && (
+                <View style={styles.imagesContainer}>
+                  {existingImages.map((uri, index) => (
+                    <View key={`existing-${index}`} style={styles.imageWrapper}>
+                      <Image source={{ uri }} style={styles.imagePreview} />
+                      <TouchableOpacity 
+                        style={styles.removeImageButton}
+                        onPress={() => removeExistingImage(index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Selected images */}
+              {selectedImages.length > 0 && (
+                <View style={styles.imagesContainer}>
+                  {selectedImages.map((image, index) => (
+                    <View key={`selected-${index}`} style={styles.imageWrapper}>
+                      <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+                      <TouchableOpacity 
+                        style={styles.removeImageButton}
+                        onPress={() => removeSelectedImage(index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color={COLORS.danger} />
+                      </TouchableOpacity>
+                      <View style={styles.newImageBadge}>
+                        <Text style={styles.newImageBadgeText}>Nueva</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Add image button */}
+              {(existingImages.length + selectedImages.length) < 10 && (
+                <TouchableOpacity style={styles.addImageButton} onPress={pickImages}>
+                  <Ionicons name="camera" size={24} color={COLORS.primary} />
+                  <Text style={styles.addImageText}>Agregar Imágenes</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Tipo */}
@@ -478,6 +649,33 @@ export default function AdminAnnouncements() {
                   </TouchableOpacity>
                 ))}
               </View>
+            </View>
+
+            {/* Notificaciones Push */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Notificaciones</Text>
+              <TouchableOpacity 
+                style={styles.toggleRow}
+                onPress={() => setFormData({ ...formData, send_push: !formData.send_push })}
+              >
+                <View style={styles.toggleInfo}>
+                  <Ionicons 
+                    name="notifications" 
+                    size={20} 
+                    color={formData.send_push ? COLORS.primary : COLORS.gray} 
+                  />
+                  <Text style={styles.toggleLabel}>Enviar notificación push</Text>
+                </View>
+                <View style={[
+                  styles.toggleSwitch,
+                  formData.send_push && styles.toggleSwitchActive
+                ]}>
+                  <View style={[
+                    styles.toggleKnob,
+                    formData.send_push && styles.toggleKnobActive
+                  ]} />
+                </View>
+              </TouchableOpacity>
             </View>
 
             <View style={{ height: 100 }} />
@@ -597,18 +795,26 @@ const styles = StyleSheet.create({
   announcementCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: 150,
+  },
+  cardContent: {
+    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
+    flexWrap: 'wrap',
   },
   typeBadge: {
     paddingHorizontal: 10,
@@ -627,6 +833,19 @@ const styles = StyleSheet.create({
   priorityBadgeText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  imageCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: COLORS.grayLighter,
+  },
+  imageCountText: {
+    fontSize: 12,
+    color: COLORS.gray,
   },
   cardTitle: {
     fontSize: 16,
@@ -749,5 +968,101 @@ const styles = StyleSheet.create({
   optionButtonText: {
     fontSize: 13,
     color: COLORS.gray,
+  },
+
+  // Images
+  imagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: COLORS.grayLight,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+  },
+  newImageBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: COLORS.success,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  newImageBadgeText: {
+    fontSize: 8,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  addImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    backgroundColor: COLORS.primary + '10',
+  },
+  addImageText: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+
+  // Toggle
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.grayLighter,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.grayLight,
+  },
+  toggleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    color: COLORS.navy,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.grayLight,
+    padding: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: COLORS.primary,
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+  },
+  toggleKnobActive: {
+    transform: [{ translateX: 22 }],
   },
 });
