@@ -1,5 +1,6 @@
 // app/reservations.js
-// ISSY Resident App - Pantalla de Reservaciones
+// ISSY Resident App - Reservaciones con slots de disponibilidad
+// Sincronizado con la versión web
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -13,295 +14,373 @@ import {
   Modal,
   ScrollView,
   Alert,
-  TextInput,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { 
-  getCommonAreas, 
-  getMyReservations, 
-  createReservation, 
-  cancelReservation 
-} from '../src/services/api';
+import { supabase } from '../src/config/supabase';
+import { useAuth } from '../src/context/AuthContext';
+
+const { width } = Dimensions.get('window');
+
+// Info visual por tipo de área
+const TYPE_INFO = {
+  pool: { icon: 'water', color: '#3B82F6', label: 'Piscina' },
+  gym: { icon: 'fitness', color: '#EF4444', label: 'Gimnasio' },
+  court: { icon: 'tennisball', color: '#10B981', label: 'Cancha' },
+  bbq: { icon: 'flame', color: '#F59E0B', label: 'BBQ' },
+  salon: { icon: 'wine', color: '#8B5CF6', label: 'Salón' },
+  playground: { icon: 'happy', color: '#EC4899', label: 'Parque' },
+  terrace: { icon: 'sunny', color: '#6366F1', label: 'Terraza' },
+  garden: { icon: 'leaf', color: '#22C55E', label: 'Jardín' },
+  parking: { icon: 'car', color: '#64748B', label: 'Parqueo' },
+  other: { icon: 'grid', color: '#78716C', label: 'Otro' }
+};
+
+// Imágenes por defecto
+const DEFAULT_IMAGES = {
+  court: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&h=300&fit=crop',
+  pool: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=400&h=300&fit=crop',
+  gym: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&h=300&fit=crop',
+  salon: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=300&fit=crop',
+  garden: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400&h=300&fit=crop',
+  bbq: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
+  default: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop'
+};
+
+// Categorías agrupadas
+const CATEGORIES = [
+  { id: 'sports', label: 'DEPORTE', icon: 'tennisball', types: ['court', 'gym'] },
+  { id: 'social', label: 'SALONES', icon: 'wine', types: ['salon', 'terrace'] },
+  { id: 'outdoor', label: 'PARQUES', icon: 'leaf', types: ['garden', 'playground', 'bbq'] },
+  { id: 'other', label: 'MÁS ÁREAS', icon: 'grid', types: ['pool', 'parking', 'other'] },
+];
 
 export default function ReservationsScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('areas'); // 'areas' | 'myreservations'
-  const [commonAreas, setCommonAreas] = useState([]);
+  const { user, profile } = useAuth();
+  
+  const [areas, setAreas] = useState([]);
   const [myReservations, setMyReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
   // Modal states
-  const [reservationModal, setReservationModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState(null);
+  
+  // Create form state
+  const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
-  const [reservationDate, setReservationDate] = useState(new Date());
-  const [startTime, setStartTime] = useState(new Date());
-  const [endTime, setEndTime] = useState(new Date(Date.now() + 2 * 60 * 60 * 1000));
-  const [notes, setNotes] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [availability, setAvailability] = useState(null);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [selectedSlots, setSelectedSlots] = useState([]);
+  const [attendees, setAttendees] = useState(2);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     try {
-      const [areasResult, reservationsResult] = await Promise.all([
-        getCommonAreas(),
-        getMyReservations()
-      ]);
-      
-      if (areasResult.success) {
-        setCommonAreas(areasResult.data || []);
-      }
-      if (reservationsResult.success) {
-        setMyReservations(reservationsResult.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      await Promise.all([loadAreas(), loadMyReservations()]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const loadAreas = async () => {
+    try {
+      const locationId = profile?.location_id || user?.location_id;
+      if (!locationId) return;
+
+      const { data, error } = await supabase
+        .from('common_areas')
+        .select('*')
+        .eq('is_active', true)
+        .eq('location_id', locationId)
+        .order('name');
+
+      if (error) throw error;
+      setAreas(data || []);
+    } catch (error) {
+      console.error('Error loading areas:', error);
+    }
+  };
+
+  const loadMyReservations = async () => {
+    try {
+      const userId = profile?.id || user?.id;
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from('area_reservations')
+        .select('*')
+        .eq('user_id', userId)
+        .order('reservation_date', { ascending: false });
+
+      if (error) throw error;
+      setMyReservations(data || []);
+    } catch (error) {
+      console.error('Error loading reservations:', error);
+    }
+  };
+
+  const loadAvailability = async (areaId, date) => {
+    try {
+      setLoadingAvailability(true);
+      setSelectedSlots([]);
+
+      const { data, error } = await supabase.rpc('get_area_availability', {
+        p_area_id: areaId,
+        p_date: date
+      });
+
+      if (error) throw error;
+      setAvailability(data);
+    } catch (error) {
+      console.error('Error loading availability:', error);
+      setAvailability(null);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
   }, []);
 
-  const handleOpenReservation = (area) => {
-    setSelectedArea(area);
-    setReservationDate(new Date());
-    setStartTime(new Date());
-    setEndTime(new Date(Date.now() + 2 * 60 * 60 * 1000));
-    setNotes('');
-    setReservationModal(true);
+  // Helpers
+  function getTodayDate() {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  const getMaxDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + (selectedArea?.advance_booking_days || 30));
+    return date.toISOString().split('T')[0];
   };
 
-  const handleCreateReservation = async () => {
-    if (!selectedArea) return;
+  const getTypeInfo = (type) => TYPE_INFO[type] || TYPE_INFO.other;
 
-    setSubmitting(true);
-    try {
-      // Combinar fecha con horas
-      const startDateTime = new Date(reservationDate);
-      startDateTime.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+  const getAreaImage = (area) => {
+    if (!area) return DEFAULT_IMAGES.default;
+    return area.image_url || DEFAULT_IMAGES[area.type] || DEFAULT_IMAGES.default;
+  };
+
+  const getAreasForCategory = (categoryTypes) => {
+    return areas.filter(area => categoryTypes.includes(area.type));
+  };
+
+  const isAreaPaid = (area) => area?.hourly_rate && parseFloat(area.hourly_rate) > 0;
+
+  const formatTime = (time) => {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? 'p.m.' : 'a.m.';
+    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${hour}:${minutes || '00'} ${ampm}`;
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('es-HN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const isReservationActive = (reservation) => {
+    const today = getTodayDate();
+    return reservation.reservation_date >= today && 
+           (reservation.status === 'approved' || reservation.status === 'pending');
+  };
+
+  const getAreaById = (areaId) => areas.find(a => a.id === areaId);
+
+  // Handlers
+  const handleOpenCreate = () => {
+    setSelectedArea(null);
+    setSelectedDate(getTodayDate());
+    setSelectedSlots([]);
+    setAttendees(2);
+    setExpandedCategory(null);
+    setAvailability(null);
+    setShowCreateModal(true);
+  };
+
+  const handleSelectArea = (area) => {
+    setSelectedArea(area);
+    setSelectedSlots([]);
+    if (selectedDate) {
+      loadAvailability(area.id, selectedDate);
+    }
+  };
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    setSelectedSlots([]);
+    if (selectedArea) {
+      loadAvailability(selectedArea.id, date);
+    }
+  };
+
+  const handleSlotToggle = (slot) => {
+    if (!slot.available) return;
+
+    const slotKey = `${slot.start_time}-${slot.end_time}`;
+    const isSelected = selectedSlots.some(s => `${s.start_time}-${s.end_time}` === slotKey);
+
+    if (isSelected) {
+      setSelectedSlots(selectedSlots.filter(s => `${s.start_time}-${s.end_time}` !== slotKey));
+    } else {
+      if (selectedSlots.length >= 2) {
+        Alert.alert('Límite', 'Puedes seleccionar máximo dos turnos');
+        return;
+      }
       
-      const endDateTime = new Date(reservationDate);
-      endDateTime.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
+      if (selectedSlots.length === 0) {
+        setSelectedSlots([slot]);
+      } else {
+        const sortedSlots = [...selectedSlots, slot].sort((a, b) => 
+          a.start_time.localeCompare(b.start_time)
+        );
+        
+        let isConsecutive = true;
+        for (let i = 1; i < sortedSlots.length; i++) {
+          if (sortedSlots[i].start_time !== sortedSlots[i-1].end_time) {
+            isConsecutive = false;
+            break;
+          }
+        }
 
-      const result = await createReservation({
-        common_area_id: selectedArea.id,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
-        notes: notes || null,
+        if (isConsecutive) {
+          setSelectedSlots(sortedSlots);
+        } else {
+          Alert.alert('Error', 'Los turnos deben ser consecutivos');
+        }
+      }
+    }
+  };
+
+  const handleSubmitReservation = async () => {
+    if (!selectedArea || selectedSlots.length === 0) {
+      Alert.alert('Error', 'Selecciona un área y horario');
+      return;
+    }
+
+    const userId = profile?.id || user?.id;
+    if (!userId) {
+      Alert.alert('Error', 'No se pudo identificar el usuario');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const startTime = selectedSlots[0].start_time;
+      const endTime = selectedSlots[selectedSlots.length - 1].end_time;
+
+      const { data, error } = await supabase.rpc('create_reservation', {
+        p_area_id: selectedArea.id,
+        p_user_id: userId,
+        p_date: selectedDate,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_purpose: null,
+        p_attendees: attendees,
+        p_notes: null
       });
 
-      if (result.success) {
-        Alert.alert('¡Éxito!', 'Tu reservación ha sido creada');
-        setReservationModal(false);
-        fetchData();
+      if (error) throw error;
+
+      if (data.success) {
+        setShowCreateModal(false);
+        setShowSuccessModal(true);
+        loadMyReservations();
       } else {
-        Alert.alert('Error', result.error || 'No se pudo crear la reservación');
+        Alert.alert('Error', data.error || 'Error al crear la reserva');
       }
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al crear la reservación');
+      console.error('Error creating reservation:', error);
+      Alert.alert('Error', 'Error al crear la reserva');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelReservation = (reservation) => {
+  const handleCancelReservation = async (reservation) => {
     Alert.alert(
-      'Cancelar Reservación',
-      '¿Estás seguro que deseas cancelar esta reservación?',
+      'Cancelar Reserva',
+      '¿Estás seguro de cancelar esta reserva?',
       [
         { text: 'No', style: 'cancel' },
-        { 
-          text: 'Sí, cancelar', 
+        {
+          text: 'Sí, cancelar',
           style: 'destructive',
           onPress: async () => {
-            const result = await cancelReservation(reservation.id);
-            if (result.success) {
-              Alert.alert('Cancelada', 'La reservación ha sido cancelada');
-              fetchData();
-            } else {
-              Alert.alert('Error', result.error || 'No se pudo cancelar');
+            try {
+              const { error } = await supabase
+                .from('area_reservations')
+                .update({
+                  status: 'cancelled',
+                  cancelled_at: new Date().toISOString(),
+                  cancelled_by: profile?.id || user?.id
+                })
+                .eq('id', reservation.id);
+
+              if (error) throw error;
+              loadMyReservations();
+              Alert.alert('Listo', 'Reserva cancelada');
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo cancelar');
             }
           }
-        },
+        }
       ]
     );
   };
 
-  const getAreaIcon = (type) => {
-    switch (type) {
-      case 'pool': return 'water-outline';
-      case 'gym': return 'fitness-outline';
-      case 'party_room': return 'wine-outline';
-      case 'bbq': return 'flame-outline';
-      case 'court': return 'tennisball-outline';
-      case 'meeting_room': return 'people-outline';
-      case 'rooftop': return 'sunny-outline';
-      default: return 'grid-outline';
+  const handleViewDetail = (reservation) => {
+    setSelectedReservation(reservation);
+    setShowDetailModal(true);
+  };
+
+  // Generate dates for date picker
+  const generateDates = () => {
+    const dates = [];
+    const today = new Date();
+    const maxDays = selectedArea?.advance_booking_days || 30;
+    
+    for (let i = 0; i < Math.min(maxDays, 14); i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() + i);
+      dates.push({
+        date: date.toISOString().split('T')[0],
+        dayName: date.toLocaleDateString('es-HN', { weekday: 'short' }),
+        dayNum: date.getDate(),
+        month: date.toLocaleDateString('es-HN', { month: 'short' })
+      });
     }
+    return dates;
   };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed': return '#10B981';
-      case 'pending': return '#F59E0B';
-      case 'cancelled': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'confirmed': return 'Confirmada';
-      case 'pending': return 'Pendiente';
-      case 'cancelled': return 'Cancelada';
-      default: return status;
-    }
-  };
-
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const renderAreaCard = ({ item }) => (
-    <TouchableOpacity
-      style={styles.areaCard}
-      onPress={() => handleOpenReservation(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.areaIconContainer}>
-        <LinearGradient
-          colors={['#FC6447', '#FF5A5F']}
-          style={styles.areaIconGradient}
-        >
-          <Ionicons name={getAreaIcon(item.type)} size={28} color="#FFFFFF" />
-        </LinearGradient>
-      </View>
-      <View style={styles.areaInfo}>
-        <Text style={styles.areaName}>{item.name}</Text>
-        <Text style={styles.areaCapacity}>
-          <Ionicons name="people-outline" size={14} color="#6B7280" /> Capacidad: {item.capacity || 'N/A'} personas
-        </Text>
-        {item.hourly_rate && (
-          <Text style={styles.areaPrice}>
-            L. {item.hourly_rate}/hora
-          </Text>
-        )}
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-    </TouchableOpacity>
-  );
-
-  const renderReservationCard = ({ item }) => {
-    const isPast = new Date(item.end_time) < new Date();
-    const canCancel = item.status !== 'cancelled' && !isPast;
-
-    return (
-      <View style={[styles.reservationCard, isPast && styles.pastReservation]}>
-        <View style={styles.reservationHeader}>
-          <View style={styles.reservationIconContainer}>
-            <Ionicons 
-              name={getAreaIcon(item.common_area?.type)} 
-              size={24} 
-              color="#FC6447" 
-            />
-          </View>
-          <View style={styles.reservationInfo}>
-            <Text style={styles.reservationAreaName}>
-              {item.common_area?.name || 'Área común'}
-            </Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-              <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-              <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                {getStatusLabel(item.status)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.reservationDetails}>
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-            <Text style={styles.detailText}>
-              {formatDateTime(item.start_time)}
-            </Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={16} color="#6B7280" />
-            <Text style={styles.detailText}>
-              {new Date(item.start_time).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })} - {new Date(item.end_time).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </View>
-        </View>
-
-        {canCancel && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => handleCancelReservation(item)}
-          >
-            <Text style={styles.cancelButtonText}>Cancelar Reservación</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
-
-  const renderEmptyAreas = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="grid-outline" size={64} color="#D1D5DB" />
-      </View>
-      <Text style={styles.emptyTitle}>No hay áreas disponibles</Text>
-      <Text style={styles.emptySubtitle}>
-        Tu comunidad aún no tiene áreas comunes registradas
-      </Text>
-    </View>
-  );
-
-  const renderEmptyReservations = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
-      </View>
-      <Text style={styles.emptyTitle}>Sin reservaciones</Text>
-      <Text style={styles.emptySubtitle}>
-        Aún no tienes reservaciones. Explora las áreas disponibles para reservar.
-      </Text>
-      <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={() => setActiveTab('areas')}
-      >
-        <Text style={styles.emptyButtonText}>Ver Áreas Comunes</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FC6447" />
+          <ActivityIndicator size="large" color="#D4FE48" />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       </SafeAreaView>
@@ -312,231 +391,344 @@ export default function ReservationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reservaciones</Text>
+        <Text style={styles.headerTitle}>Reservas</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'areas' && styles.activeTab]}
-          onPress={() => setActiveTab('areas')}
-        >
-          <Text style={[styles.tabText, activeTab === 'areas' && styles.activeTabText]}>
-            Áreas Comunes
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'myreservations' && styles.activeTab]}
-          onPress={() => setActiveTab('myreservations')}
-        >
-          <Text style={[styles.tabText, activeTab === 'myreservations' && styles.activeTabText]}>
-            Mis Reservaciones
-          </Text>
-          {myReservations.filter(r => r.status !== 'cancelled').length > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {myReservations.filter(r => r.status !== 'cancelled').length}
-              </Text>
-            </View>
-          )}
+      {/* Create Button */}
+      <View style={styles.createButtonContainer}>
+        <TouchableOpacity style={styles.createButton} onPress={handleOpenCreate}>
+          <Ionicons name="calendar" size={20} color="#000" />
+          <Text style={styles.createButtonText}>Crear Reserva</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
+      {/* My Reservations */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Mis Reservas</Text>
+      </View>
+
       <FlatList
-        data={activeTab === 'areas' ? commonAreas : myReservations}
-        renderItem={activeTab === 'areas' ? renderAreaCard : renderReservationCard}
-        keyExtractor={(item) => item.id.toString()}
+        data={myReservations}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#FC6447']}
-            tintColor="#FC6447"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4FE48" />
         }
-        ListEmptyComponent={activeTab === 'areas' ? renderEmptyAreas : renderEmptyReservations}
-        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+            <Text style={styles.emptyTitle}>No tienes reservas</Text>
+            <Text style={styles.emptySubtitle}>Crea una nueva reserva para comenzar</Text>
+          </View>
+        )}
+        renderItem={({ item }) => {
+          const isActive = isReservationActive(item);
+          const area = getAreaById(item.area_id);
+          
+          return (
+            <TouchableOpacity 
+              style={styles.reservationCard}
+              onPress={() => handleViewDetail(item)}
+            >
+              <Image
+                source={{ uri: getAreaImage(area) }}
+                style={styles.reservationImage}
+              />
+              <View style={styles.reservationInfo}>
+                <Text style={styles.reservationAreaName}>{area?.name || 'Área'}</Text>
+                <Text style={styles.reservationDate}>
+                  {formatDate(item.reservation_date)}
+                </Text>
+                <Text style={styles.reservationTime}>
+                  {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                </Text>
+              </View>
+              <View style={styles.reservationActions}>
+                <View style={[styles.statusBadge, { backgroundColor: isActive ? '#D4FE48' : '#FEE2E2' }]}>
+                  <Text style={styles.statusText}>{isActive ? 'ACTIVA' : 'PASADA'}</Text>
+                </View>
+                {isActive && (
+                  <TouchableOpacity onPress={() => handleCancelReservation(item)}>
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
 
-      {/* Modal de Nueva Reservación */}
-      <Modal
-        visible={reservationModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setReservationModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
+      {/* Create Reservation Modal */}
+      <Modal visible={showCreateModal} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setReservationModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#1F2937" />
+            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Nueva Reservación</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.modalTitle}>Crear nueva reserva</Text>
+            <View style={{ width: 24 }} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* Category Selection */}
+            <Text style={styles.modalLabel}>Selecciona el área</Text>
+            
+            {CATEGORIES.map(category => {
+              const categoryAreas = getAreasForCategory(category.types);
+              if (categoryAreas.length === 0) return null;
+
+              return (
+                <View key={category.id} style={styles.categoryContainer}>
+                  <TouchableOpacity
+                    style={styles.categoryButton}
+                    onPress={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
+                  >
+                    <Text style={styles.categoryButtonText}>{category.label}</Text>
+                    <Ionicons 
+                      name={expandedCategory === category.id ? "chevron-down" : "chevron-forward"} 
+                      size={20} 
+                      color="#000" 
+                    />
+                  </TouchableOpacity>
+
+                  {expandedCategory === category.id && (
+                    <View style={styles.areasContainer}>
+                      {categoryAreas.map(area => {
+                        const typeInfo = getTypeInfo(area.type);
+                        const isSelected = selectedArea?.id === area.id;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={area.id}
+                            style={[styles.areaOption, isSelected && styles.areaOptionSelected]}
+                            onPress={() => handleSelectArea(area)}
+                          >
+                            <View style={[styles.areaIcon, { backgroundColor: typeInfo.color + '30' }]}>
+                              <Ionicons name={typeInfo.icon} size={24} color={typeInfo.color} />
+                            </View>
+                            <View style={styles.areaOptionInfo}>
+                              <Text style={styles.areaOptionName}>{area.name}</Text>
+                              <Text style={styles.areaOptionCapacity}>
+                                Capacidad: {area.capacity} personas
+                              </Text>
+                            </View>
+                            <View style={[styles.radioButton, isSelected && styles.radioButtonSelected]}>
+                              {isSelected && <Ionicons name="checkmark" size={16} color="#000" />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            {/* Date Selection */}
             {selectedArea && (
               <>
-                {/* Área seleccionada */}
-                <View style={styles.selectedAreaCard}>
-                  <LinearGradient
-                    colors={['#FC6447', '#FF5A5F']}
-                    style={styles.selectedAreaIcon}
-                  >
-                    <Ionicons name={getAreaIcon(selectedArea.type)} size={32} color="#FFFFFF" />
-                  </LinearGradient>
-                  <View>
-                    <Text style={styles.selectedAreaName}>{selectedArea.name}</Text>
-                    <Text style={styles.selectedAreaCapacity}>
-                      Capacidad: {selectedArea.capacity || 'N/A'} personas
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Fecha */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Fecha</Text>
-                  <TouchableOpacity
-                    style={styles.dateInput}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Ionicons name="calendar-outline" size={20} color="#6B7280" />
-                    <Text style={styles.dateInputText}>
-                      {reservationDate.toLocaleDateString('es-HN', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      })}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Hora inicio */}
-                <View style={styles.timeRow}>
-                  <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-                    <Text style={styles.formLabel}>Hora Inicio</Text>
-                    <TouchableOpacity
-                      style={styles.dateInput}
-                      onPress={() => setShowStartTimePicker(true)}
-                    >
-                      <Ionicons name="time-outline" size={20} color="#6B7280" />
-                      <Text style={styles.dateInputText}>
-                        {startTime.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-                    <Text style={styles.formLabel}>Hora Fin</Text>
-                    <TouchableOpacity
-                      style={styles.dateInput}
-                      onPress={() => setShowEndTimePicker(true)}
-                    >
-                      <Ionicons name="time-outline" size={20} color="#6B7280" />
-                      <Text style={styles.dateInputText}>
-                        {endTime.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Notas */}
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Notas (opcional)</Text>
-                  <TextInput
-                    style={styles.notesInput}
-                    placeholder="Ej: Fiesta de cumpleaños para 15 personas"
-                    placeholderTextColor="#9CA3AF"
-                    value={notes}
-                    onChangeText={setNotes}
-                    multiline
-                    numberOfLines={3}
-                  />
-                </View>
-
-                {/* Precio si aplica */}
-                {selectedArea.hourly_rate && (
-                  <View style={styles.priceInfo}>
-                    <Text style={styles.priceLabel}>Costo estimado</Text>
-                    <Text style={styles.priceValue}>
-                      L. {(selectedArea.hourly_rate * Math.ceil((endTime - startTime) / (1000 * 60 * 60))).toFixed(2)}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Botón de reservar */}
-                <TouchableOpacity
-                  style={[styles.reserveButton, submitting && styles.reserveButtonDisabled]}
-                  onPress={handleCreateReservation}
-                  disabled={submitting}
+                <Text style={styles.modalLabel}>Selecciona día</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.datesScroll}
                 >
-                  <LinearGradient
-                    colors={submitting ? ['#D1D5DB', '#D1D5DB'] : ['#FC6447', '#FF5A5F']}
-                    style={styles.reserveButtonGradient}
-                  >
-                    {submitting ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.reserveButtonText}>Confirmar Reservación</Text>
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
+                  {generateDates().map(d => (
+                    <TouchableOpacity
+                      key={d.date}
+                      style={[styles.dateChip, selectedDate === d.date && styles.dateChipSelected]}
+                      onPress={() => handleDateChange(d.date)}
+                    >
+                      <Text style={[styles.dateDayName, selectedDate === d.date && styles.dateTextSelected]}>
+                        {d.dayName}
+                      </Text>
+                      <Text style={[styles.dateDayNum, selectedDate === d.date && styles.dateTextSelected]}>
+                        {d.dayNum}
+                      </Text>
+                      <Text style={[styles.dateMonth, selectedDate === d.date && styles.dateTextSelected]}>
+                        {d.month}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </>
             )}
-          </ScrollView>
 
-          {/* Date/Time Pickers */}
-          {showDatePicker && (
-            <DateTimePicker
-              value={reservationDate}
-              mode="date"
-              display="default"
-              minimumDate={new Date()}
-              onChange={(event, date) => {
-                setShowDatePicker(false);
-                if (date) setReservationDate(date);
-              }}
-            />
-          )}
-          {showStartTimePicker && (
-            <DateTimePicker
-              value={startTime}
-              mode="time"
-              display="default"
-              onChange={(event, time) => {
-                setShowStartTimePicker(false);
-                if (time) setStartTime(time);
-              }}
-            />
-          )}
-          {showEndTimePicker && (
-            <DateTimePicker
-              value={endTime}
-              mode="time"
-              display="default"
-              onChange={(event, time) => {
-                setShowEndTimePicker(false);
-                if (time) setEndTime(time);
-              }}
-            />
-          )}
-        </SafeAreaView>
+            {/* Time Slots */}
+            {selectedArea && selectedDate && (
+              <>
+                <Text style={styles.modalLabel}>Selecciona horario disponible</Text>
+                
+                {loadingAvailability ? (
+                  <ActivityIndicator color="#D4FE48" style={{ marginVertical: 20 }} />
+                ) : !availability?.available ? (
+                  <Text style={styles.noAvailability}>
+                    {availability?.reason || 'No disponible para esta fecha'}
+                  </Text>
+                ) : (
+                  <View style={styles.slotsGrid}>
+                    {availability.slots?.map((slot, idx) => {
+                      const isSelected = selectedSlots.some(
+                        s => s.start_time === slot.start_time && s.end_time === slot.end_time
+                      );
+                      
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={[
+                            styles.slotButton,
+                            !slot.available && styles.slotUnavailable,
+                            isSelected && styles.slotSelected
+                          ]}
+                          onPress={() => handleSlotToggle(slot)}
+                          disabled={!slot.available}
+                        >
+                          <Text style={[
+                            styles.slotText,
+                            !slot.available && styles.slotTextUnavailable,
+                            isSelected && styles.slotTextSelected
+                          ]}>
+                            {formatTime(slot.start_time)}
+                          </Text>
+                          <Text style={[
+                            styles.slotTextSmall,
+                            !slot.available && styles.slotTextUnavailable,
+                            isSelected && styles.slotTextSelected
+                          ]}>
+                            {formatTime(slot.end_time)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+                
+                {availability?.available && (
+                  <Text style={styles.slotHint}>Puedes seleccionar máximo 2 turnos consecutivos</Text>
+                )}
+              </>
+            )}
+
+            {/* Attendees */}
+            {selectedArea && selectedSlots.length > 0 && (
+              <>
+                <Text style={styles.modalLabel}>Cantidad de personas</Text>
+                <View style={styles.attendeesContainer}>
+                  <TouchableOpacity
+                    style={styles.attendeeButton}
+                    onPress={() => setAttendees(Math.max(1, attendees - 1))}
+                  >
+                    <Ionicons name="remove" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                  <Text style={styles.attendeesText}>{attendees}</Text>
+                  <TouchableOpacity
+                    style={styles.attendeeButton}
+                    onPress={() => setAttendees(Math.min(selectedArea.capacity || 20, attendees + 1))}
+                  >
+                    <Ionicons name="add" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.capacityHint}>
+                  Capacidad máxima: {selectedArea.capacity} personas
+                </Text>
+              </>
+            )}
+
+            {/* Submit Button */}
+            {selectedArea && selectedSlots.length > 0 && (
+              <TouchableOpacity
+                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                onPress={handleSubmitReservation}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <>
+                    <Ionicons name="arrow-forward" size={20} color="#000" />
+                    <Text style={styles.submitButtonText}>Crear Reserva</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal visible={showDetailModal} animationType="slide" presentationStyle="pageSheet">
+        {selectedReservation && (() => {
+          const detailArea = getAreaById(selectedReservation.area_id);
+          return (
+            <View style={styles.detailModalContainer}>
+              <View style={styles.detailHeader}>
+                <Text style={styles.detailTitle}>{detailArea?.name || 'Área'}</Text>
+                <TouchableOpacity onPress={() => setShowDetailModal(false)}>
+                  <Ionicons name="close-circle" size={32} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <Image source={{ uri: getAreaImage(detailArea) }} style={styles.detailImage} />
+
+              <View style={styles.detailContent}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar" size={24} color="#D4FE48" />
+                  <Text style={styles.detailText}>{formatDate(selectedReservation.reservation_date)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time" size={24} color="#D4FE48" />
+                  <Text style={styles.detailText}>
+                    {formatTime(selectedReservation.start_time)} - {formatTime(selectedReservation.end_time)}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="people" size={24} color="#D4FE48" />
+                  <Text style={styles.detailText}>{selectedReservation.attendees || 1} personas</Text>
+                </View>
+
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeLabel}>Código de reserva</Text>
+                  <Text style={styles.codeValue}>
+                    {selectedReservation.id.substring(0, 8).toUpperCase()}
+                  </Text>
+                </View>
+
+                {detailArea?.rules && (
+                  <View style={styles.rulesContainer}>
+                    <Text style={styles.rulesTitle}>Reglas del área:</Text>
+                    <Text style={styles.rulesText}>{detailArea.rules}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          );
+        })()}
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={showSuccessModal} animationType="fade" transparent>
+        <View style={styles.successOverlay}>
+          <View style={styles.successContent}>
+            <View style={styles.successIcon}>
+              <Ionicons name="checkmark-circle" size={80} color="#D4FE48" />
+            </View>
+            <Text style={styles.successTitle}>¡Reserva creada!</Text>
+            <Text style={styles.successSubtitle}>Tu reserva ha sido registrada exitosamente</Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => setShowSuccessModal(false)}
+            >
+              <Text style={styles.successButtonText}>Ver mis reservas</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -545,7 +737,7 @@ export default function ReservationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
@@ -563,9 +755,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FFF',
   },
   backButton: {
     width: 40,
@@ -578,345 +768,436 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#000',
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+  createButtonContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingVertical: 12,
   },
-  tab: {
-    flex: 1,
+  createButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#F3F4F6',
-    gap: 6,
+    backgroundColor: '#D4FE48',
+    borderRadius: 50,
+    paddingVertical: 16,
+    gap: 8,
   },
-  activeTab: {
-    backgroundColor: '#FC6447',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  activeTabText: {
-    color: '#FFFFFF',
-  },
-  tabBadge: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  tabBadgeText: {
-    fontSize: 11,
+  createButtonText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#FC6447',
+    color: '#000',
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
   },
   listContent: {
     padding: 16,
     paddingBottom: 100,
   },
-  areaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  areaIconContainer: {
-    marginRight: 14,
-  },
-  areaIconGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  areaInfo: {
-    flex: 1,
-  },
-  areaName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  areaCapacity: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  areaPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FC6447',
-  },
-  reservationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  pastReservation: {
-    opacity: 0.6,
-  },
-  reservationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  reservationIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#FEF2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  reservationInfo: {
-    flex: 1,
-  },
-  reservationAreaName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  reservationDetails: {
-    gap: 8,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  cancelButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   emptyState: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 60,
   },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
+    color: '#374151',
+    marginTop: 16,
   },
   emptySubtitle: {
     fontSize: 14,
     color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    marginBottom: 20,
+    marginTop: 4,
   },
-  emptyButton: {
-    backgroundColor: '#FC6447',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+  reservationCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  reservationImage: {
+    width: 70,
+    height: 70,
     borderRadius: 12,
   },
-  emptyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+  reservationInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
-  // Modal styles
+  reservationAreaName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  reservationDate: {
+    fontSize: 14,
+    color: '#374151',
+    marginTop: 2,
+  },
+  reservationTime: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  reservationActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#000',
+  },
+
+  // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1a1a2e',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
   },
   modalContent: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
   },
-  selectedAreaCard: {
+  modalLabel: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  categoryContainer: {
+    marginBottom: 8,
+  },
+  categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    gap: 16,
+    justifyContent: 'space-between',
+    backgroundColor: '#D4FE48',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  selectedAreaIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+  categoryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  areasContainer: {
+    marginTop: 8,
+  },
+  areaOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  areaOptionSelected: {
+    borderColor: '#D4FE48',
+    backgroundColor: 'rgba(212,254,72,0.1)',
+  },
+  areaIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selectedAreaName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+  areaOptionInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
-  selectedAreaCapacity: {
+  areaOptionName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#FFF',
+  },
+  areaOptionCapacity: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#6B7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: '#D4FE48',
+    backgroundColor: '#D4FE48',
+  },
+  datesScroll: {
+    marginBottom: 8,
+  },
+  dateChip: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginRight: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  dateChipSelected: {
+    backgroundColor: '#D4FE48',
+    borderColor: '#D4FE48',
+  },
+  dateDayName: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textTransform: 'capitalize',
+  },
+  dateDayNum: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    marginVertical: 2,
+  },
+  dateMonth: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textTransform: 'capitalize',
+  },
+  dateTextSelected: {
+    color: '#000',
+  },
+  noAvailability: {
+    color: '#F59E0B',
+    textAlign: 'center',
+    paddingVertical: 20,
     fontSize: 14,
+  },
+  slotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  slotButton: {
+    width: (width - 60) / 3,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  slotUnavailable: {
+    opacity: 0.3,
+  },
+  slotSelected: {
+    backgroundColor: '#D4FE48',
+    borderColor: '#D4FE48',
+  },
+  slotText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  slotTextSmall: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  slotTextUnavailable: {
     color: '#6B7280',
   },
-  formGroup: {
-    marginBottom: 20,
+  slotTextSelected: {
+    color: '#000',
   },
-  formLabel: {
+  slotHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  attendeesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+  },
+  attendeeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attendeesText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFF',
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  capacityHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D4FE48',
+    borderRadius: 50,
+    paddingVertical: 16,
+    marginTop: 30,
+    gap: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+
+  // Detail Modal
+  detailModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  detailTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  detailImage: {
+    width: '100%',
+    height: 200,
+  },
+  detailContent: {
+    padding: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  detailText: {
+    fontSize: 16,
+    color: '#374151',
+  },
+  codeContainer: {
+    backgroundColor: '#D4FE48',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  codeLabel: {
+    fontSize: 12,
+    color: '#000',
+    opacity: 0.6,
+  },
+  codeValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+  rulesContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  rulesTitle: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#374151',
     marginBottom: 8,
   },
-  dateInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  dateInputText: {
-    fontSize: 15,
-    color: '#1F2937',
-    textTransform: 'capitalize',
-  },
-  timeRow: {
-    flexDirection: 'row',
-  },
-  notesInput: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1F2937',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  priceInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  priceLabel: {
+  rulesText: {
     fontSize: 14,
     color: '#6B7280',
+    lineHeight: 20,
   },
-  priceValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FC6447',
-  },
-  reserveButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginBottom: 40,
-  },
-  reserveButtonDisabled: {
-    opacity: 0.7,
-  },
-  reserveButtonGradient: {
-    flexDirection: 'row',
+
+  // Success Modal
+  successOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    padding: 40,
   },
-  reserveButtonText: {
-    color: '#FFFFFF',
+  successContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 40,
+    alignItems: 'center',
+    width: '100%',
+  },
+  successIcon: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+  },
+  successSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  successButton: {
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    backgroundColor: '#D4FE48',
+    borderRadius: 50,
+  },
+  successButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#000',
   },
 });
