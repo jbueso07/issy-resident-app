@@ -284,13 +284,16 @@ export default function AdminIncidents() {
         animationType="slide"
         onRequestClose={() => setDetailModalVisible(false)}
       >
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+            <TouchableOpacity 
+              onPress={() => setDetailModalVisible(false)}
+              style={styles.closeButton}
+            >
               <Ionicons name="close" size={24} color={COLORS.black} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Detalle del Incidente</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: scale(40) }} />
           </View>
 
           {loadingDetail ? (
@@ -402,7 +405,7 @@ export default function AdminIncidents() {
               </View>
             </KeyboardAvoidingView>
           ) : null}
-        </SafeAreaView>
+        </View>
       </Modal>
     );
   };
@@ -641,10 +644,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
+    paddingTop: Platform.OS === 'ios' ? scale(60) : scale(16),
+    paddingBottom: scale(12),
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayBorder,
+  },
+  closeButton: {
+    width: scale(40),
+    height: scale(40),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
     fontSize: scale(17),
@@ -806,7 +816,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.grayBorder,
     gap: scale(8),
-    paddingBottom: Platform.OS === 'ios' ? scale(24) : scale(12),
+    paddingBottom: Platform.OS === 'ios' ? scale(34) : scale(12),
   },
   commentInput: {
     flex: 1,
