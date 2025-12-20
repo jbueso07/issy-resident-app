@@ -58,21 +58,30 @@ const CATEGORIES = [
   { id: 'other', label: 'MÁS ÁREAS', icon: 'grid', types: ['pool', 'parking', 'other'] },
 ];
 
+// Estados de reserva
+const STATUS_CONFIG = {
+  pending: { label: 'Pendiente', color: '#F59E0B', bgColor: '#FEF3C7' },
+  approved: { label: 'Aprobada', color: '#10B981', bgColor: '#D1FAE5' },
+  rejected: { label: 'Rechazada', color: '#EF4444', bgColor: '#FEE2E2' },
+  cancelled: { label: 'Cancelada', color: '#6B7280', bgColor: '#F3F4F6' },
+  expired: { label: 'Expirada', color: '#DC2626', bgColor: '#FEE2E2' },
+};
+
 export default function ReservationsScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
-  
+
   const [areas, setAreas] = useState([]);
   const [myReservations, setMyReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
-  
+
   // Create form state
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
@@ -99,7 +108,10 @@ export default function ReservationsScreen() {
   const loadAreas = async () => {
     try {
       const locationId = profile?.location_id || user?.location_id;
-      if (!locationId) return;
+
+      if (!locationId) {
+        return;
+      }
 
       const { data, error } = await supabase
         .from('common_areas')
@@ -203,8 +215,25 @@ export default function ReservationsScreen() {
 
   const isReservationActive = (reservation) => {
     const today = getTodayDate();
-    return reservation.reservation_date >= today && 
-           (reservation.status === 'approved' || reservation.status === 'pending');
+    return reservation.reservation_date >= today &&
+      (reservation.status === 'approved' || reservation.status === 'pending');
+  };
+
+  // Verificar si el usuario puede cancelar (aprobada o pendiente, y fecha no pasada)
+  const canUserCancel = (reservation) => {
+    const today = getTodayDate();
+
+    // Solo puede cancelar si está pendiente o aprobada
+    if (!['pending', 'approved'].includes(reservation.status)) {
+      return false;
+    }
+
+    // No puede cancelar si la fecha ya pasó
+    if (reservation.reservation_date < today) {
+      return false;
+    }
+
+    return true;
   };
 
   const getAreaById = (areaId) => areas.find(a => a.id === areaId);
@@ -249,17 +278,17 @@ export default function ReservationsScreen() {
         Alert.alert('Límite', 'Puedes seleccionar máximo dos turnos');
         return;
       }
-      
+
       if (selectedSlots.length === 0) {
         setSelectedSlots([slot]);
       } else {
-        const sortedSlots = [...selectedSlots, slot].sort((a, b) => 
+        const sortedSlots = [...selectedSlots, slot].sort((a, b) =>
           a.start_time.localeCompare(b.start_time)
         );
-        
+
         let isConsecutive = true;
         for (let i = 1; i < sortedSlots.length; i++) {
-          if (sortedSlots[i].start_time !== sortedSlots[i-1].end_time) {
+          if (sortedSlots[i].start_time !== sortedSlots[i - 1].end_time) {
             isConsecutive = false;
             break;
           }
@@ -321,9 +350,11 @@ export default function ReservationsScreen() {
   };
 
   const handleCancelReservation = async (reservation) => {
+    const statusLabel = reservation.status === 'approved' ? 'aprobada' : 'pendiente';
+
     Alert.alert(
       'Cancelar Reserva',
-      '¿Estás seguro de cancelar esta reserva?',
+      `¿Estás seguro de cancelar esta reserva ${statusLabel}?`,
       [
         { text: 'No', style: 'cancel' },
         {
@@ -336,15 +367,17 @@ export default function ReservationsScreen() {
                 .update({
                   status: 'cancelled',
                   cancelled_at: new Date().toISOString(),
-                  cancelled_by: profile?.id || user?.id
+                  cancelled_by: profile?.id || user?.id,
+                  cancellation_reason: 'Cancelada por el usuario'
                 })
                 .eq('id', reservation.id);
 
               if (error) throw error;
               loadMyReservations();
-              Alert.alert('Listo', 'Reserva cancelada');
+              setShowDetailModal(false);
+              Alert.alert('Listo', 'Tu reserva ha sido cancelada');
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cancelar');
+              Alert.alert('Error', 'No se pudo cancelar la reserva');
             }
           }
         }
@@ -362,7 +395,7 @@ export default function ReservationsScreen() {
     const dates = [];
     const today = new Date();
     const maxDays = selectedArea?.advance_booking_days || 30;
-    
+
     for (let i = 0; i < Math.min(maxDays, 14); i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
@@ -426,11 +459,10 @@ export default function ReservationsScreen() {
           </View>
         )}
         renderItem={({ item }) => {
-          const isActive = isReservationActive(item);
           const area = getAreaById(item.area_id);
-          
+
           return (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.reservationCard}
               onPress={() => handleViewDetail(item)}
             >
@@ -448,10 +480,12 @@ export default function ReservationsScreen() {
                 </Text>
               </View>
               <View style={styles.reservationActions}>
-                <View style={[styles.statusBadge, { backgroundColor: isActive ? '#D4FE48' : '#FEE2E2' }]}>
-                  <Text style={styles.statusText}>{isActive ? 'ACTIVA' : 'PASADA'}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: STATUS_CONFIG[item.status]?.bgColor || '#F3F4F6' }]}>
+                  <Text style={[styles.statusText, { color: STATUS_CONFIG[item.status]?.color || '#6B7280' }]}>
+                    {STATUS_CONFIG[item.status]?.label || item.status}
+                  </Text>
                 </View>
-                {isActive && (
+                {canUserCancel(item) && (
                   <TouchableOpacity onPress={() => handleCancelReservation(item)}>
                     <Ionicons name="trash-outline" size={20} color="#EF4444" />
                   </TouchableOpacity>
@@ -477,7 +511,7 @@ export default function ReservationsScreen() {
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Category Selection */}
             <Text style={styles.modalLabel}>Selecciona el área</Text>
-            
+
             {CATEGORIES.map(category => {
               const categoryAreas = getAreasForCategory(category.types);
               if (categoryAreas.length === 0) return null;
@@ -489,10 +523,10 @@ export default function ReservationsScreen() {
                     onPress={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
                   >
                     <Text style={styles.categoryButtonText}>{category.label}</Text>
-                    <Ionicons 
-                      name={expandedCategory === category.id ? "chevron-down" : "chevron-forward"} 
-                      size={20} 
-                      color="#000" 
+                    <Ionicons
+                      name={expandedCategory === category.id ? "chevron-down" : "chevron-forward"}
+                      size={20}
+                      color="#000"
                     />
                   </TouchableOpacity>
 
@@ -501,7 +535,7 @@ export default function ReservationsScreen() {
                       {categoryAreas.map(area => {
                         const typeInfo = getTypeInfo(area.type);
                         const isSelected = selectedArea?.id === area.id;
-                        
+
                         return (
                           <TouchableOpacity
                             key={area.id}
@@ -533,8 +567,8 @@ export default function ReservationsScreen() {
             {selectedArea && (
               <>
                 <Text style={styles.modalLabel}>Selecciona día</Text>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.datesScroll}
                 >
@@ -563,7 +597,7 @@ export default function ReservationsScreen() {
             {selectedArea && selectedDate && (
               <>
                 <Text style={styles.modalLabel}>Selecciona horario disponible</Text>
-                
+
                 {loadingAvailability ? (
                   <ActivityIndicator color="#D4FE48" style={{ marginVertical: 20 }} />
                 ) : !availability?.available ? (
@@ -576,7 +610,7 @@ export default function ReservationsScreen() {
                       const isSelected = selectedSlots.some(
                         s => s.start_time === slot.start_time && s.end_time === slot.end_time
                       );
-                      
+
                       return (
                         <TouchableOpacity
                           key={idx}
@@ -607,7 +641,7 @@ export default function ReservationsScreen() {
                     })}
                   </View>
                 )}
-                
+
                 {availability?.available && (
                   <Text style={styles.slotHint}>Puedes seleccionar máximo 2 turnos consecutivos</Text>
                 )}
@@ -678,6 +712,13 @@ export default function ReservationsScreen() {
               <Image source={{ uri: getAreaImage(detailArea) }} style={styles.detailImage} />
 
               <View style={styles.detailContent}>
+                {/* Status Badge */}
+                <View style={[styles.detailStatusBadge, { backgroundColor: STATUS_CONFIG[selectedReservation.status]?.bgColor || '#F3F4F6' }]}>
+                  <Text style={[styles.detailStatusText, { color: STATUS_CONFIG[selectedReservation.status]?.color || '#6B7280' }]}>
+                    {STATUS_CONFIG[selectedReservation.status]?.label || selectedReservation.status}
+                  </Text>
+                </View>
+
                 <View style={styles.detailRow}>
                   <Ionicons name="calendar" size={24} color="#D4FE48" />
                   <Text style={styles.detailText}>{formatDate(selectedReservation.reservation_date)}</Text>
@@ -705,6 +746,17 @@ export default function ReservationsScreen() {
                     <Text style={styles.rulesTitle}>Reglas del área:</Text>
                     <Text style={styles.rulesText}>{detailArea.rules}</Text>
                   </View>
+                )}
+
+                {/* Cancel Button in Detail */}
+                {canUserCancel(selectedReservation) && (
+                  <TouchableOpacity
+                    style={styles.cancelDetailButton}
+                    onPress={() => handleCancelReservation(selectedReservation)}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
+                    <Text style={styles.cancelDetailButtonText}>Cancelar Reserva</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -860,7 +912,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#000',
   },
 
   // Modal Styles
@@ -1112,6 +1163,17 @@ const styles = StyleSheet.create({
   detailContent: {
     padding: 20,
   },
+  detailStatusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  detailStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1157,6 +1219,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
+  },
+  cancelDetailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+    gap: 8,
+  },
+  cancelDetailButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#EF4444',
   },
 
   // Success Modal

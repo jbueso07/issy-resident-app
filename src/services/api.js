@@ -56,6 +56,23 @@ export const logoutUser = async () => {
   await AsyncStorage.removeItem('token');
 };
 
+/**
+ * Actualizar perfil del usuario
+ * @param {Object} profileData - { name, phone, profile_photo_url }
+ */
+export const updateUserProfile = async (profileData) => {
+  try {
+    const data = await authFetch('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // ==========================================
 // QR CODES - TODAS LAS FUNCIONALIDADES
 // ==========================================

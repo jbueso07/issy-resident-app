@@ -1,7 +1,7 @@
 // app/admin/announcements.js
-// ISSY Resident App - Admin: Gestión de Anuncios con Imágenes
+// ISSY Resident App - Admin: Gestión de Anuncios (Diseño Figma)
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
-  Platform,
+  Dimensions,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,6 +23,10 @@ import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const IMAGE_SIZE = SCREEN_WIDTH - 90;
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
@@ -35,10 +40,11 @@ const COLORS = {
   navy: '#1A1A2E',
   black: '#000000',
   white: '#FFFFFF',
-  background: '#F3F4F6',
+  background: '#FAFAFA',
   gray: '#6B7280',
   grayLight: '#E5E7EB',
   grayLighter: '#F9FAFB',
+  pink: '#FA5967',
 };
 
 // Tipos de anuncios
@@ -68,13 +74,20 @@ const TARGET_AUDIENCES = [
 ];
 
 export default function AdminAnnouncements() {
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const router = useRouter();
+  const imageScrollRef = useRef(null);
   
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Modal states
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -105,17 +118,42 @@ export default function AdminAnnouncements() {
   }, []);
 
   const getAuthHeaders = async () => {
-    const token = await AsyncStorage.getItem('token');
+    const authToken = await AsyncStorage.getItem('token');
+    if (!authToken) {
+      throw new Error('No hay sesión activa');
+    }
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${authToken}`,
     };
+  };
+
+  const handleSessionExpired = () => {
+    Alert.alert(
+      'Sesión Expirada',
+      'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            signOut();
+            router.replace('/(auth)/login');
+          }
+        }
+      ]
+    );
   };
 
   const fetchAnnouncements = async () => {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/api/announcements`, { headers });
+      
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success || Array.isArray(data)) {
@@ -124,7 +162,11 @@ export default function AdminAnnouncements() {
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      Alert.alert('Error', 'No se pudieron cargar los anuncios');
+      if (error.message === 'No hay sesión activa') {
+        handleSessionExpired();
+      } else {
+        Alert.alert('Error', 'No se pudieron cargar los anuncios');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -163,7 +205,14 @@ export default function AdminAnnouncements() {
       target_audience: announcement.target_audience || 'all',
       send_push: announcement.send_push !== false,
     });
+    setShowDetailModal(false);
     setShowModal(true);
+  };
+
+  const handleOpenDetail = (announcement) => {
+    setSelectedAnnouncement(announcement);
+    setCurrentImageIndex(0);
+    setShowDetailModal(true);
   };
 
   // Image picker
@@ -176,7 +225,7 @@ export default function AdminAnnouncements() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.8,
         selectionLimit: 10 - selectedImages.length - existingImages.length,
@@ -204,17 +253,20 @@ export default function AdminAnnouncements() {
     setExistingImages(existingImages.filter((_, i) => i !== index));
   };
 
-  // Upload images to server
   const uploadImages = async () => {
     if (selectedImages.length === 0) return [];
 
     setUploading(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      const formData = new FormData();
+      const authToken = await AsyncStorage.getItem('token');
+      if (!authToken) {
+        throw new Error('No hay sesión activa');
+      }
+      
+      const uploadFormData = new FormData();
 
       selectedImages.forEach((image) => {
-        formData.append('images', {
+        uploadFormData.append('images', {
           uri: image.uri,
           type: image.type,
           name: image.name,
@@ -224,16 +276,19 @@ export default function AdminAnnouncements() {
       const response = await fetch(`${API_URL}/api/announcements/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'multipart/form-data',
         },
-        body: formData,
+        body: uploadFormData,
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
         return data.data.urls || [];
+      } else if (response.status === 401) {
+        handleSessionExpired();
+        throw new Error('Sesión expirada');
       } else {
         throw new Error(data.message || 'Error uploading images');
       }
@@ -257,13 +312,11 @@ export default function AdminAnnouncements() {
 
     setSaving(true);
     try {
-      // Upload new images first
       let uploadedUrls = [];
       if (selectedImages.length > 0) {
         uploadedUrls = await uploadImages();
       }
 
-      // Combine existing and new images
       const allImages = [...existingImages, ...uploadedUrls];
 
       const headers = await getAuthHeaders();
@@ -283,6 +336,11 @@ export default function AdminAnnouncements() {
 
       const data = await response.json();
 
+      if (response.status === 401) {
+        handleSessionExpired();
+        return;
+      }
+
       if (response.ok) {
         Alert.alert(
           'Éxito', 
@@ -295,7 +353,11 @@ export default function AdminAnnouncements() {
       }
     } catch (error) {
       console.error('Error saving announcement:', error);
-      Alert.alert('Error', 'No se pudo guardar el anuncio');
+      if (error.message === 'No hay sesión activa' || error.message === 'Sesión expirada') {
+        handleSessionExpired();
+      } else {
+        Alert.alert('Error', 'No se pudo guardar el anuncio');
+      }
     } finally {
       setSaving(false);
     }
@@ -318,15 +380,25 @@ export default function AdminAnnouncements() {
                 { method: 'DELETE', headers }
               );
 
+              if (response.status === 401) {
+                handleSessionExpired();
+                return;
+              }
+              
               if (response.ok) {
                 Alert.alert('Éxito', 'Anuncio eliminado');
+                setShowDetailModal(false);
                 fetchAnnouncements();
               } else {
                 const data = await response.json();
                 Alert.alert('Error', data.error || 'No se pudo eliminar');
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar el anuncio');
+              if (error.message === 'No hay sesión activa' || error.message === 'Sesión expirada') {
+                handleSessionExpired();
+              } else {
+                Alert.alert('Error', 'No se pudo eliminar el anuncio');
+              }
             }
           }
         },
@@ -334,25 +406,168 @@ export default function AdminAnnouncements() {
     );
   };
 
-  const getTypeInfo = (type) => {
-    return ANNOUNCEMENT_TYPES.find(t => t.value === type) || ANNOUNCEMENT_TYPES[0];
-  };
-
-  const getPriorityInfo = (priority) => {
-    return PRIORITIES.find(p => p.value === priority) || PRIORITIES[1];
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffMinutes < 60) {
+      return `Hace ${diffMinutes} min`;
+    } else if (diffHours < 24) {
+      return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+    } else if (diffDays < 7) {
+      return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+    } else {
+      return date.toLocaleDateString('es-HN', { 
+        day: 'numeric', 
+        month: 'long',
+        year: 'numeric'
+      });
+    }
+  };
+
+  const formatFullDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
     return date.toLocaleDateString('es-HN', {
+      weekday: 'long',
       day: 'numeric',
-      month: 'short',
+      month: 'long',
       year: 'numeric',
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
+      hour12: true
     });
   };
+
+  const handleImageScroll = (event) => {
+    const contentOffset = event.nativeEvent.contentOffset.x;
+    const index = Math.round(contentOffset / IMAGE_SIZE);
+    setCurrentImageIndex(index);
+  };
+
+  const renderImageCarousel = () => {
+    const images = selectedAnnouncement?.images || [];
+    
+    if (images.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.carouselContainer}>
+        <ScrollView
+          ref={imageScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleImageScroll}
+          scrollEventThrottle={16}
+          style={styles.imageScroll}
+        >
+          {images.map((imageUrl, index) => (
+            <Image
+              key={index}
+              source={{ uri: imageUrl }}
+              style={styles.carouselImage}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+        
+        {images.length > 1 && (
+          <View style={styles.dotsContainer}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  { backgroundColor: index === currentImageIndex ? '#D4FE48' : '#FFFFFF' }
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderAnnouncement = ({ item }) => {
+    const isNew = !item.is_read;
+    
+    return (
+      <TouchableOpacity
+        style={styles.announcementCard}
+        onPress={() => handleOpenDetail(item)}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={['#D4FE48', '#11DAE9']}
+          style={styles.gradientBar}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleSection}>
+              <Text style={styles.announcementTitle} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={styles.announcementPreview} numberOfLines={1}>
+                {item.message}
+              </Text>
+              <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
+            </View>
+            
+            <View style={styles.cardRight}>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: isNew ? COLORS.pink : COLORS.primary }
+              ]}>
+                <Text style={styles.statusBadgeText}>
+                  {isNew ? 'NUEVO' : 'VISTO'}
+                </Text>
+              </View>
+              
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => handleDelete(item)}
+                >
+                  <Ionicons name="trash-outline" size={18} color={COLORS.gray} />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={() => handleOpenDetail(item)}
+                >
+                  <Ionicons name="arrow-forward" size={18} color={COLORS.black} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="megaphone-outline" size={64} color="#D1D5DB" />
+      </View>
+      <Text style={styles.emptyTitle}>No hay anuncios</Text>
+      <Text style={styles.emptySubtitle}>
+        Crea tu primer anuncio para informar a tu comunidad
+      </Text>
+      <TouchableOpacity style={styles.emptyButton} onPress={handleCreate}>
+        <Text style={styles.emptyButtonText}>Crear Anuncio</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -369,104 +584,109 @@ export default function AdminAnnouncements() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>📢 Anuncios</Text>
-          <Text style={styles.headerSubtitle}>{announcements.length} anuncios</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.headerTitle}>Anuncios</Text>
+            {announcements.length > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{announcements.length}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.headerSubtitle}>Gestión de anuncios</Text>
         </View>
-        <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ Nuevo</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
+          <Ionicons name="add" size={24} color={COLORS.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Lista de Anuncios */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
+      {/* Lista de anuncios */}
+      <FlatList
+        data={announcements}
+        renderItem={renderAnnouncement}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
         }
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Botón flotante de crear */}
+      <TouchableOpacity style={styles.fab} onPress={handleCreate}>
+        <LinearGradient
+          colors={['#D4FE48', '#11DAE9']}
+          style={styles.fabGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name="add" size={28} color={COLORS.black} />
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Modal de detalle */}
+      <Modal
+        visible={showDetailModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDetailModal(false)}
       >
-        {announcements.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📢</Text>
-            <Text style={styles.emptyTitle}>No hay anuncios</Text>
-            <Text style={styles.emptySubtitle}>
-              Crea tu primer anuncio para informar a tu comunidad
-            </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleCreate}>
-              <Text style={styles.emptyButtonText}>Crear Anuncio</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.detailModalContainer}>
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowDetailModal(false)}
+            >
+              <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-          </View>
-        ) : (
-          announcements.map((announcement) => {
-            const typeInfo = getTypeInfo(announcement.type);
-            const priorityInfo = getPriorityInfo(announcement.priority);
-            const hasImages = announcement.images && announcement.images.length > 0;
-            
-            return (
-              <View key={announcement.id} style={styles.announcementCard}>
-                {/* Image preview if exists */}
-                {hasImages && (
-                  <Image 
-                    source={{ uri: announcement.images[0] }} 
-                    style={styles.cardImage}
-                    resizeMode="cover"
-                  />
-                )}
-                
-                <View style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <View style={[styles.typeBadge, { backgroundColor: typeInfo.color + '20' }]}>
-                      <Text style={[styles.typeBadgeText, { color: typeInfo.color }]}>
-                        {typeInfo.label}
-                      </Text>
-                    </View>
-                    <View style={[styles.priorityBadge, { backgroundColor: priorityInfo.color + '20' }]}>
-                      <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>
-                        {priorityInfo.label}
-                      </Text>
-                    </View>
-                    {hasImages && (
-                      <View style={styles.imageCountBadge}>
-                        <Ionicons name="images" size={12} color={COLORS.gray} />
-                        <Text style={styles.imageCountText}>{announcement.images.length}</Text>
-                      </View>
-                    )}
-                  </View>
-                  
-                  <Text style={styles.cardTitle}>{announcement.title}</Text>
-                  <Text style={styles.cardMessage} numberOfLines={3}>
-                    {announcement.message}
-                  </Text>
-                  
-                  <View style={styles.cardFooter}>
-                    <Text style={styles.cardDate}>{formatDate(announcement.created_at)}</Text>
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity 
-                        style={styles.editButton}
-                        onPress={() => handleEdit(announcement)}
-                      >
-                        <Text style={styles.editButtonText}>✏️ Editar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.deleteButton}
-                        onPress={() => handleDelete(announcement)}
-                      >
-                        <Text style={styles.deleteButtonText}>🗑️</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+
+            {selectedAnnouncement && (
+              <ScrollView 
+                style={styles.detailModalContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {renderImageCarousel()}
+
+                <Text style={styles.detailTitle}>{selectedAnnouncement.title}</Text>
+                <Text style={styles.detailMessage}>{selectedAnnouncement.message}</Text>
+                <Text style={styles.detailDate}>
+                  {formatFullDate(selectedAnnouncement.created_at)}
+                </Text>
+
+                {/* Admin actions */}
+                <View style={styles.adminActions}>
+                  <TouchableOpacity 
+                    style={styles.editDetailButton}
+                    onPress={() => handleEdit(selectedAnnouncement)}
+                  >
+                    <Ionicons name="pencil" size={18} color={COLORS.primary} />
+                    <Text style={styles.editDetailButtonText}>Editar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.deleteDetailButton}
+                    onPress={() => handleDelete(selectedAnnouncement)}
+                  >
+                    <Ionicons name="trash" size={18} color={COLORS.danger} />
+                    <Text style={styles.deleteDetailButtonText}>Eliminar</Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
-            );
-          })
-        )}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de Crear/Editar */}
       <Modal
@@ -475,24 +695,24 @@ export default function AdminAnnouncements() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={styles.formModalContainer}>
+          <View style={styles.formModalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.formModalCancel}>Cancelar</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
+            <Text style={styles.formModalTitle}>
               {editingAnnouncement ? 'Editar Anuncio' : 'Nuevo Anuncio'}
             </Text>
             <TouchableOpacity onPress={handleSubmit} disabled={saving || uploading}>
               {saving || uploading ? (
                 <ActivityIndicator size="small" color={COLORS.primary} />
               ) : (
-                <Text style={styles.modalSave}>Guardar</Text>
+                <Text style={styles.formModalSave}>Guardar</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
+          <ScrollView style={styles.formModalContent}>
             {/* Título */}
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Título *</Text>
@@ -500,7 +720,7 @@ export default function AdminAnnouncements() {
                 style={styles.formInput}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Ej: Mantenimiento de piscina"
+                placeholder="Ej: Fiesta de fin de año"
                 placeholderTextColor={COLORS.gray}
               />
             </View>
@@ -524,7 +744,6 @@ export default function AdminAnnouncements() {
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Imágenes (máx. 10)</Text>
               
-              {/* Existing images */}
               {existingImages.length > 0 && (
                 <View style={styles.imagesContainer}>
                   {existingImages.map((uri, index) => (
@@ -541,7 +760,6 @@ export default function AdminAnnouncements() {
                 </View>
               )}
 
-              {/* Selected images */}
               {selectedImages.length > 0 && (
                 <View style={styles.imagesContainer}>
                   {selectedImages.map((image, index) => (
@@ -561,7 +779,6 @@ export default function AdminAnnouncements() {
                 </View>
               )}
 
-              {/* Add image button */}
               {(existingImages.length + selectedImages.length) < 10 && (
                 <TouchableOpacity style={styles.addImageButton} onPress={pickImages}>
                   <Ionicons name="camera" size={24} color={COLORS.primary} />
@@ -698,92 +915,179 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
+    fontSize: 16,
     color: COLORS.gray,
-    fontSize: 14,
   },
   
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.background,
   },
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: COLORS.navy,
+    justifyContent: 'center',
   },
   headerTitleContainer: {
     flex: 1,
+    marginLeft: 12,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  countBadge: {
+    backgroundColor: COLORS.pink,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 6,
+  },
+  countBadgeText: {
+    color: COLORS.black,
+    fontSize: 11,
     fontWeight: '600',
-    color: COLORS.navy,
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: COLORS.gray,
+    fontSize: 14,
+    color: COLORS.black,
     marginTop: 2,
   },
   addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // Content
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
-
-  // Empty State
-  emptyContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // List
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 100,
+  },
+
+  // Card
+  announcementCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 13,
+    marginBottom: 12,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  gradientBar: {
+    width: 11,
+    borderTopLeftRadius: 13,
+    borderBottomLeftRadius: 13,
+  },
+  cardContent: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTitleSection: {
+    flex: 1,
+    marginRight: 12,
+  },
+  announcementTitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: COLORS.black,
+    marginBottom: 4,
+  },
+  announcementPreview: {
+    fontSize: 14,
+    color: '#707883',
+    marginBottom: 8,
+  },
+  dateText: {
+    fontSize: 10,
+    color: COLORS.primary,
+  },
+  cardRight: {
+    alignItems: 'flex-end',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 5,
+    marginBottom: 8,
+  },
+  statusBadgeText: {
+    color: COLORS.black,
+    fontSize: 9,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    padding: 4,
+  },
+
+  // Empty state
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 60,
   },
-  emptyIcon: {
-    fontSize: 60,
-    marginBottom: 16,
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: COLORS.navy,
+    color: '#1F2937',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
     color: COLORS.gray,
     textAlign: 'center',
-    marginBottom: 24,
     paddingHorizontal: 40,
+    marginBottom: 24,
   },
   emptyButton: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 25,
   },
   emptyButtonText: {
     color: COLORS.white,
@@ -791,116 +1095,154 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Announcement Card
-  announcementCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginBottom: 12,
+  // FAB
+  fab: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  cardImage: {
-    width: '100%',
-    height: 150,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  typeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  typeBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  priorityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  priorityBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  imageCountBadge: {
-    flexDirection: 'row',
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: COLORS.grayLighter,
-  },
-  imageCountText: {
-    fontSize: 12,
-    color: COLORS.gray,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.navy,
-    marginBottom: 8,
-  },
-  cardMessage: {
-    fontSize: 14,
-    color: COLORS.gray,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.grayLight,
-    paddingTop: 12,
-  },
-  cardDate: {
-    fontSize: 12,
-    color: COLORS.gray,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  editButton: {
-    backgroundColor: COLORS.grayLighter,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    fontSize: 12,
-    color: COLORS.navy,
-  },
-  deleteButton: {
-    backgroundColor: COLORS.danger + '10',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  deleteButtonText: {
-    fontSize: 14,
+    justifyContent: 'center',
   },
 
-  // Modal
-  modalContainer: {
+  // Detail Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  detailModalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 13,
+    width: '100%',
+    maxHeight: '85%',
+    overflow: 'hidden',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailModalContent: {
+    padding: 24,
+    paddingTop: 16,
+  },
+
+  // Carousel
+  carouselContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  imageScroll: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 13,
+  },
+  carouselImage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 13,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -24,
+    paddingBottom: 8,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginHorizontal: 3,
+  },
+
+  // Detail content
+  detailTitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: COLORS.black,
+    marginBottom: 12,
+  },
+  detailMessage: {
+    fontSize: 14,
+    color: '#707883',
+    lineHeight: 18,
+    marginBottom: 24,
+  },
+  detailDate: {
+    fontSize: 10,
+    color: '#707883',
+    textTransform: 'capitalize',
+    marginBottom: 20,
+  },
+
+  // Admin actions in detail modal
+  adminActions: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.grayLight,
+  },
+  editDetailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.primary + '15',
+  },
+  editDetailButtonText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteDetailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: COLORS.danger + '15',
+  },
+  deleteDetailButtonText: {
+    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Form Modal
+  formModalContainer: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
-  modalHeader: {
+  formModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -909,21 +1251,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayLight,
   },
-  modalCancel: {
+  formModalCancel: {
     fontSize: 16,
     color: COLORS.gray,
   },
-  modalTitle: {
+  formModalTitle: {
     fontSize: 17,
     fontWeight: '600',
     color: COLORS.navy,
   },
-  modalSave: {
+  formModalSave: {
     fontSize: 16,
     color: COLORS.primary,
     fontWeight: '600',
   },
-  modalContent: {
+  formModalContent: {
     flex: 1,
     padding: 16,
   },

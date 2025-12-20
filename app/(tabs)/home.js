@@ -1,7 +1,7 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard con sección Administrar para Admins
+// ISSY Resident App - Home Dashboard con selector de ubicación y diseño Figma
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,15 @@ import {
   Dimensions,
   Image,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
 import MaskedView from '@react-native-masked-view/masked-view';
+import { Ionicons } from '@expo/vector-icons';
 
 // Importar iconos SVG
 import {
@@ -53,6 +56,7 @@ const COLORS = {
   nameGradientEnd: '#334A89',
   b2cGradientStart: '#11D6E6',
   b2cGradientEnd: '#D4FE48',
+  locationPill: '#130F26',
   // Colores para Admin
   adminRed: '#FA5967',
   adminDark: '#1A1A2E',
@@ -142,6 +146,16 @@ const ADMIN_SERVICES = [
     bgColor: COLORS.adminTeal,
     textColor: COLORS.white,
     icon: '🏊',
+    available: true,
+  },
+  { 
+    id: 'reservations-admin', 
+    title: 'Gestión de Reservas', 
+    subtitle: 'Aprobar solicitudes',
+    route: '/admin/reservations',
+    bgColor: COLORS.orange,
+    textColor: COLORS.white,
+    icon: '📅',
     available: true,
   },
   { 
@@ -289,12 +303,40 @@ const QuickActionIcon = ({ actionId, color, size = 24 }) => {
   }
 };
 
+// ============ API CALL TO SWITCH LOCATION ============
+const API_URL = 'https://api.joinissy.com/api';
+
+const switchLocationAPI = async (token, locationId) => {
+  try {
+    const response = await fetch(`${API_URL}/auth/switch-location`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ location_id: locationId }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error switching location:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 export default function Home() {
-  const { user, profile, hasLocation, refreshProfile } = useAuth();
+  const { user, profile, token, hasLocation, refreshProfile } = useAuth();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [switchingLocation, setSwitchingLocation] = useState(false);
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
+  
+  // Get user locations from profile
+  const userLocations = profile?.user_locations || [];
+  const hasMultipleLocations = userLocations.length > 1;
+  const currentLocation = profile?.current_location || profile?.location || null;
   
   // Verificar si el usuario es admin o superadmin
   const userRole = profile?.role || user?.role || 'user';
@@ -324,11 +366,26 @@ export default function Home() {
   };
 
   const handleAdminServicePress = (service) => {
-    if (!service.available || !service.route) {
-      // TODO: Mostrar mensaje de "Próximamente"
-      return;
-    }
+    if (!service.available || !service.route) return;
     router.push(service.route);
+  };
+
+  const handleSwitchLocation = async (location) => {
+    if (!location?.location_id || switchingLocation) return;
+    
+    setSwitchingLocation(true);
+    try {
+      const result = await switchLocationAPI(token, location.location_id);
+      if (result.success) {
+        await refreshProfile();
+        setShowLocationModal(false);
+      } else {
+        console.error('Error switching location:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+    setSwitchingLocation(false);
   };
 
   const getUserName = () => {
@@ -339,6 +396,81 @@ export default function Home() {
     const name = profile?.name || user?.email || 'U';
     return name.charAt(0).toUpperCase();
   };
+
+  const getCurrentLocationName = () => {
+    if (currentLocation?.name) return currentLocation.name;
+    if (profile?.location?.name) return profile.location.name;
+    return 'Mi ubicación';
+  };
+
+  // ========================================
+  // RENDER: Location Selector Modal
+  // ========================================
+  const renderLocationModal = () => (
+    <Modal
+      visible={showLocationModal}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setShowLocationModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Cambiar ubicación</Text>
+            <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+              <Ionicons name="close" size={24} color={COLORS.black} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.locationList}>
+            {userLocations.map((loc, index) => (
+              <TouchableOpacity
+                key={loc.location_id || index}
+                style={[
+                  styles.locationItem,
+                  loc.location_id === currentLocation?.location_id && styles.locationItemActive
+                ]}
+                onPress={() => handleSwitchLocation(loc)}
+                disabled={switchingLocation}
+              >
+                <View style={styles.locationItemLeft}>
+                  <View style={[
+                    styles.locationDot,
+                    loc.location_id === currentLocation?.location_id && styles.locationDotActive
+                  ]} />
+                  <View>
+                    <Text style={styles.locationItemName}>{loc.name}</Text>
+                    {loc.address && (
+                      <Text style={styles.locationItemAddress} numberOfLines={1}>
+                        {loc.address}
+                      </Text>
+                    )}
+                    {loc.role && loc.role !== 'user' && (
+                      <View style={styles.locationRoleBadge}>
+                        <Text style={styles.locationRoleText}>
+                          {loc.role === 'admin' ? 'Admin' : loc.role === 'superadmin' ? 'Super Admin' : loc.role}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                {loc.location_id === currentLocation?.location_id && (
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          
+          {switchingLocation && (
+            <View style={styles.switchingOverlay}>
+              <ActivityIndicator size="large" color={COLORS.cyan} />
+              <Text style={styles.switchingText}>Cambiando ubicación...</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 
   // ========================================
   // RENDER: Usuario SIN ubicación
@@ -355,7 +487,6 @@ export default function Home() {
         >
           {/* Header Card */}
           <View style={styles.headerCard}>
-            {/* Imagen de fondo del header */}
             <View style={styles.headerImageContainer}>
               <Image
                 source={require('../../assets/header-gradient.png')}
@@ -375,7 +506,6 @@ export default function Home() {
               </View>
             </View>
             
-            {/* Greeting */}
             <View style={styles.greetingContainer}>
               <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
               <GradientText text={getUserName()} style={styles.userName} />
@@ -454,7 +584,6 @@ export default function Home() {
       >
         {/* Header Card */}
         <View style={styles.headerCard}>
-          {/* Imagen de fondo del header */}
           <View style={styles.headerImageContainer}>
             <Image
               source={require('../../assets/header-gradient.png')}
@@ -465,22 +594,41 @@ export default function Home() {
               <View style={styles.headerRow}>
                 {/* Avatar */}
                 <View style={styles.avatar}>
-                  {profile?.avatar_url ? (
-                    <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+                  {profile?.avatar_url || profile?.profile_photo_url ? (
+                    <Image 
+                      source={{ uri: profile.avatar_url || profile.profile_photo_url }} 
+                      style={styles.avatarImage} 
+                    />
                   ) : (
                     <Text style={styles.avatarText}>{getUserInitials()}</Text>
                   )}
                 </View>
                 
-                {/* Location Pill - Solo visual, no clickeable */}
-                <View style={styles.locationPill}>
-                  <View style={styles.locationIconCircle}>
-                    <LocationIcon size={14} color={COLORS.white} />
+                {/* Location Pill - Solo si tiene múltiples ubicaciones */}
+                {hasMultipleLocations ? (
+                  <TouchableOpacity 
+                    style={styles.locationPill}
+                    onPress={() => setShowLocationModal(true)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.locationIconCircle}>
+                      <Ionicons name="location" size={14} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {getCurrentLocationName()}
+                    </Text>
+                    <Ionicons name="swap-horizontal" size={15} color={COLORS.white} />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.locationPillStatic}>
+                    <View style={styles.locationIconCircle}>
+                      <Ionicons name="location" size={14} color={COLORS.white} />
+                    </View>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {getCurrentLocationName()}
+                    </Text>
                   </View>
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {profile?.location_name || profile?.location?.name || 'Mi ubicación'}
-                  </Text>
-                </View>
+                )}
               </View>
             </View>
           </View>
@@ -533,7 +681,6 @@ export default function Home() {
               onPress={() => handleServicePress(service)}
               activeOpacity={0.8}
             >
-              {/* Icon */}
               <View style={styles.communityIconBox}>
                 <ServiceIcon 
                   serviceId={service.id} 
@@ -551,7 +698,6 @@ export default function Home() {
                 </Text>
               </View>
               
-              {/* Arrow */}
               <View style={styles.communityArrow}>
                 <ArrowRightIcon size={24} color={service.textColor} />
               </View>
@@ -593,9 +739,7 @@ export default function Home() {
           ))}
         </View>
 
-        {/* ========================================
-            SECCIÓN ADMINISTRAR - Solo para Admin/SuperAdmin
-            ======================================== */}
+        {/* ADMIN SECTION */}
         {isAdmin && (
           <>
             <View style={styles.adminSectionHeader}>
@@ -616,7 +760,6 @@ export default function Home() {
                   onPress={() => handleAdminServicePress(service)}
                   activeOpacity={0.8}
                 >
-                  {/* Emoji Icon */}
                   <View style={styles.adminIconBox}>
                     <Text style={styles.adminIcon}>{service.icon}</Text>
                   </View>
@@ -630,7 +773,6 @@ export default function Home() {
                     </Text>
                   </View>
                   
-                  {/* Arrow */}
                   <View style={styles.adminArrow}>
                     <ArrowRightIcon size={20} color={service.textColor} />
                   </View>
@@ -642,6 +784,9 @@ export default function Home() {
 
         <View style={{ height: scale(120) }} />
       </ScrollView>
+
+      {/* Location Switcher Modal */}
+      {renderLocationModal()}
     </SafeAreaView>
   );
 }
@@ -659,7 +804,7 @@ const styles = StyleSheet.create({
   // ============ HEADER CARD ============
   headerCard: {
     backgroundColor: COLORS.white,
-    marginHorizontal: scale(13),
+    marginHorizontal: scale(12),
     marginTop: scale(10),
     borderRadius: scale(13),
     overflow: 'hidden',
@@ -711,11 +856,22 @@ const styles = StyleSheet.create({
     color: COLORS.navy,
   },
   
-  // Location Pill
+  // Location Pill (Figma: 240x43, #130F26, radius 30)
   locationPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#130F26',
+    backgroundColor: COLORS.locationPill,
+    paddingVertical: scale(10),
+    paddingLeft: scale(6),
+    paddingRight: scale(12),
+    borderRadius: scale(30),
+    maxWidth: scale(240),
+    height: scale(43),
+  },
+  locationPillStatic: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.locationPill,
     paddingVertical: scale(10),
     paddingLeft: scale(6),
     paddingRight: scale(16),
@@ -757,7 +913,7 @@ const styles = StyleSheet.create({
     marginTop: scale(4),
   },
   
-  // Admin Badge en Header
+  // Admin Badge
   adminBadge: {
     marginTop: scale(6),
     backgroundColor: COLORS.adminDark,
@@ -1020,5 +1176,103 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: scale(14),
     fontWeight: '600',
+  },
+
+  // ============ LOCATION MODAL ============
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+    maxHeight: '70%',
+    paddingBottom: Platform.OS === 'ios' ? scale(34) : scale(20),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(16),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.grayLight,
+  },
+  modalTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  locationList: {
+    paddingHorizontal: scale(20),
+    paddingTop: scale(12),
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: scale(14),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(12),
+    marginBottom: scale(8),
+    backgroundColor: COLORS.grayLight,
+  },
+  locationItemActive: {
+    backgroundColor: '#E8FFF0',
+    borderWidth: 1,
+    borderColor: COLORS.lime,
+  },
+  locationItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  locationDot: {
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: COLORS.gray,
+    marginRight: scale(12),
+  },
+  locationDotActive: {
+    backgroundColor: COLORS.lime,
+  },
+  locationItemName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  locationItemAddress: {
+    fontSize: scale(12),
+    color: COLORS.gray,
+    marginTop: scale(2),
+  },
+  locationRoleBadge: {
+    backgroundColor: COLORS.adminDark,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(2),
+    borderRadius: scale(6),
+    marginTop: scale(4),
+    alignSelf: 'flex-start',
+  },
+  locationRoleText: {
+    fontSize: scale(10),
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  switchingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+  },
+  switchingText: {
+    marginTop: scale(12),
+    fontSize: scale(14),
+    color: COLORS.gray,
   },
 });

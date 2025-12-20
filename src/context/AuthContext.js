@@ -62,14 +62,14 @@ export const AuthProvider = ({ children }) => {
   // ==========================================
   // BIOMETRIC FUNCTIONS
   // ==========================================
-  
+
   const checkBiometricAvailability = async () => {
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
-      
+
       setBiometricAvailable(compatible && enrolled);
-      
+
       if (compatible && enrolled) {
         const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
         if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
@@ -80,11 +80,11 @@ export const AuthProvider = ({ children }) => {
           setBiometricType('iris');
         }
       }
-      
+
       // Check if user has enabled biometric
       const enabled = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
       setBiometricEnabled(enabled === 'true');
-      
+
     } catch (error) {
       console.log('Biometric check error:', error);
       setBiometricAvailable(false);
@@ -117,11 +117,11 @@ export const AuthProvider = ({ children }) => {
         // Get stored credentials
         const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
         const storedRefreshToken = await SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY);
-        
+
         if (storedToken) {
           // Verify token is still valid
           const profileResult = await loadProfile(storedToken);
-          
+
           if (profileResult.success) {
             setToken(storedToken);
             await AsyncStorage.setItem('token', storedToken);
@@ -171,12 +171,12 @@ export const AuthProvider = ({ children }) => {
 
       // Store credentials securely
       await SecureStore.setItemAsync(SECURE_TOKEN_KEY, token);
-      
+
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       if (refreshToken) {
         await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, refreshToken);
       }
-      
+
       if (user?.email) {
         await SecureStore.setItemAsync(SECURE_USER_EMAIL_KEY, user.email);
       }
@@ -213,8 +213,8 @@ export const AuthProvider = ({ children }) => {
       `Inicia sesión más rápido usando ${getBiometricLabel()} la próxima vez.`,
       [
         { text: 'Ahora no', style: 'cancel' },
-        { 
-          text: 'Activar', 
+        {
+          text: 'Activar',
           onPress: async () => {
             const result = await enableBiometric();
             if (result.success) {
@@ -268,7 +268,7 @@ export const AuthProvider = ({ children }) => {
   const syncGoogleWithBackend = async (supabaseUser) => {
     try {
       console.log('Syncing Google user with backend:', supabaseUser.email);
-      
+
       const response = await fetch(`${API_URL}/auth/google-sync`, {
         method: 'POST',
         headers: {
@@ -276,9 +276,9 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({
           email: supabaseUser.email,
-          name: supabaseUser.user_metadata?.full_name || 
-                supabaseUser.user_metadata?.name || 
-                supabaseUser.email?.split('@')[0],
+          name: supabaseUser.user_metadata?.full_name ||
+            supabaseUser.user_metadata?.name ||
+            supabaseUser.email?.split('@')[0],
           supabase_id: supabaseUser.id,
           avatar_url: supabaseUser.user_metadata?.avatar_url || null,
           provider: 'google'
@@ -286,7 +286,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -296,17 +296,17 @@ export const AuthProvider = ({ children }) => {
         if (refreshTokenValue) {
           await AsyncStorage.setItem('refreshToken', refreshTokenValue);
         }
-        
+
         setToken(tokenValue);
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
-        
+
         console.log('Backend sync successful:', userValue?.email);
-        
+
         // Prompt to enable biometric after successful login
         setTimeout(() => promptEnableBiometric(), 1000);
-        
+
         return { success: true, data: userValue };
       } else {
         console.error('Backend sync failed:', data.message || data.error);
@@ -322,7 +322,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // First check if biometric is enabled and try that
       const biometricEnabledCheck = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
-      
+
       if (biometricEnabledCheck === 'true' && biometricAvailable) {
         const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
         if (storedToken) {
@@ -334,18 +334,18 @@ export const AuthProvider = ({ children }) => {
 
       // Check for regular session
       const savedToken = await AsyncStorage.getItem('token');
-      
+
       if (savedToken) {
         setToken(savedToken);
         const result = await loadProfile(savedToken);
         if (result.success) {
           hasBeenAuthenticated.current = true;
-          
+
           // Update secure store with current token if biometric enabled
           if (biometricEnabled) {
             await SecureStore.setItemAsync(SECURE_TOKEN_KEY, savedToken);
           }
-          
+
           setLoading(false);
           return;
         }
@@ -353,7 +353,7 @@ export const AuthProvider = ({ children }) => {
 
       // Check Supabase session
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
         setSupabaseSession(session);
         hasBeenAuthenticated.current = true;
@@ -501,7 +501,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       console.log('🔄 Syncing Apple user with backend...');
-      
+
       const response = await fetch(`${API_URL}/auth/apple-sync`, {
         method: 'POST',
         headers: {
@@ -519,7 +519,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -536,7 +536,7 @@ export const AuthProvider = ({ children }) => {
         hasBeenAuthenticated.current = true;
 
         console.log('✅ Apple Sign In successful:', userValue?.email);
-        
+
         // Prompt to enable biometric
         setTimeout(() => promptEnableBiometric(), 1000);
 
@@ -547,11 +547,11 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Apple Sign In error:', error);
-      
+
       if (error.code === 'ERR_REQUEST_CANCELED' || error.code === 'ERR_CANCELED') {
         return { success: false, error: 'Inicio de sesión cancelado' };
       }
-      
+
       return { success: false, error: error.message || 'Error al iniciar sesión con Apple' };
     }
   };
@@ -570,7 +570,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
       const refreshTokenValue = data.data?.refreshToken || data.refreshToken;
@@ -580,7 +580,7 @@ export const AuthProvider = ({ children }) => {
         if (refreshTokenValue) {
           await AsyncStorage.setItem('refreshToken', refreshTokenValue);
         }
-        
+
         setToken(tokenValue);
         setUser(userValue);
         setProfile(userValue);
@@ -591,9 +591,9 @@ export const AuthProvider = ({ children }) => {
 
         return { success: true, data: { token: tokenValue, user: userValue } };
       } else {
-        return { 
-          success: false, 
-          error: data.error || data.message || 'Credenciales inválidas' 
+        return {
+          success: false,
+          error: data.error || data.message || 'Credenciales inválidas'
         };
       }
     } catch (error) {
@@ -616,7 +616,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       const tokenValue = data.data?.token || data.token;
       const userValue = data.data?.user || data.user;
 
@@ -645,7 +645,7 @@ export const AuthProvider = ({ children }) => {
       const headers = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -655,7 +655,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       if (response.ok && (data.success !== false)) {
         return { success: true, data: data.data || data };
       } else {
@@ -678,7 +678,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      
+
       if (response.ok && (data.success !== false)) {
         await loadProfile(token);
         return { success: true, data: data.data || data };
@@ -697,20 +697,20 @@ export const AuthProvider = ({ children }) => {
   const signOut = async (clearBiometric = false) => {
     try {
       hasBeenAuthenticated.current = false;
-      
+
       await AsyncStorage.multiRemove(['token', 'refreshToken']);
-      
+
       // Optionally clear biometric data
       if (clearBiometric) {
         await disableBiometric();
       }
-      
+
       setToken(null);
       setUser(null);
       setProfile(null);
       setSupabaseSession(null);
-      
-      supabase.auth.signOut().catch(() => {});
+
+      supabase.auth.signOut().catch(() => { });
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -724,6 +724,72 @@ export const AuthProvider = ({ children }) => {
       return await loadProfile(token);
     }
     return { success: false, error: 'No hay sesión activa' };
+  };
+  // Get valid token - refresh if expired
+  const getValidToken = async () => {
+    try {
+      let currentToken = await AsyncStorage.getItem('token');
+
+      if (!currentToken) {
+        return { success: false, error: 'No hay token' };
+      }
+
+      // Try to validate current token
+      const response = await fetch(`${API_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        return { success: true, token: currentToken };
+      }
+
+      // Token expired, try to refresh
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+
+      if (!refreshToken) {
+        return { success: false, error: 'No hay refresh token' };
+      }
+
+      const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${refreshToken}`,
+        },
+      });
+
+      const refreshData = await refreshResponse.json();
+
+      if (refreshResponse.ok && (refreshData.success || refreshData.token)) {
+        const newToken = refreshData.data?.token || refreshData.token;
+        const newRefreshToken = refreshData.data?.refreshToken || refreshData.refreshToken;
+
+        await AsyncStorage.setItem('token', newToken);
+        if (newRefreshToken) {
+          await AsyncStorage.setItem('refreshToken', newRefreshToken);
+        }
+
+        setToken(newToken);
+
+        // Update secure store if biometric enabled
+        if (biometricEnabled) {
+          await SecureStore.setItemAsync(SECURE_TOKEN_KEY, newToken);
+          if (newRefreshToken) {
+            await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, newRefreshToken);
+          }
+        }
+
+        return { success: true, token: newToken };
+      }
+
+      return { success: false, error: 'No se pudo refrescar el token' };
+    } catch (error) {
+      console.error('Error getting valid token:', error);
+      return { success: false, error: error.message };
+    }
   };
 
   const hasLocation = () => {
@@ -747,7 +813,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       supabaseSession,
       isAuthenticated: !!token && !!user,
-      
+
       // Biometric
       biometricEnabled,
       biometricAvailable,
@@ -756,18 +822,18 @@ export const AuthProvider = ({ children }) => {
       authenticateWithBiometric,
       enableBiometric,
       disableBiometric,
-      
+
       // Auth methods
       signIn,
       signUp,
       signInWithGoogle,
       signInWithApple,
       signOut,
-      
+
       // Invitations
       verifyInvitation,
       acceptInvitation,
-      
+
       // Helpers
       refreshProfile,
       hasLocation,
