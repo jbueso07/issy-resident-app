@@ -1,12 +1,21 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
+import { deleteUserAccount } from '../../src/api/api';
 
 export default function Profile() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, token } = useAuth();
   const router = useRouter();
+  
+  // Delete account states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [confirmText, setConfirmText] = useState('');
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -24,6 +33,56 @@ export default function Profile() {
         },
       ]
     );
+  };
+
+  const openTerms = () => {
+    Linking.openURL('https://joinissy.com/terminos.html');
+  };
+
+  const openPrivacy = () => {
+    Linking.openURL('https://joinissy.com/privacidad.html');
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(true);
+    setDeleteStep(1);
+    setConfirmText('');
+    setPassword('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteStep === 1) {
+      setDeleteStep(2);
+      return;
+    }
+
+    if (confirmText !== 'ELIMINAR') {
+      Alert.alert('Error', 'Debes escribir ELIMINAR para confirmar');
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Debes ingresar tu contraseña');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deleteUserAccount(token, password);
+      setShowDeleteModal(false);
+      Alert.alert(
+        'Cuenta Eliminada',
+        'Tu cuenta ha sido eliminada exitosamente.',
+        [{ text: 'OK', onPress: () => {
+          signOut();
+          router.replace('/(auth)/login');
+        }}]
+      );
+    } catch (error) {
+      Alert.alert('Error', error.message || 'No se pudo eliminar la cuenta. Intenta de nuevo.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const menuSections = [
@@ -48,6 +107,13 @@ export default function Profile() {
           title: 'Métodos de Pago', 
           subtitle: 'Tarjetas guardadas',
           route: '/payment-methods'
+        },
+        { 
+          icon: '🗑️', 
+          title: 'Eliminar mi cuenta', 
+          subtitle: 'Elimina permanentemente tu cuenta',
+          action: 'delete',
+          isDelete: true
         },
       ]
     },
@@ -106,14 +172,26 @@ export default function Profile() {
           icon: '📄', 
           title: 'Términos y Privacidad', 
           subtitle: 'Políticas legales',
-          route: null
+          action: 'legal'
         },
       ]
     }
   ];
 
   const handleMenuPress = (item) => {
-    if (item.route) {
+    if (item.action === 'delete') {
+      handleDeleteAccount();
+    } else if (item.action === 'legal') {
+      Alert.alert(
+        'Documentos Legales',
+        'Selecciona el documento que deseas ver',
+        [
+          { text: 'Términos de Servicio', onPress: openTerms },
+          { text: 'Política de Privacidad', onPress: openPrivacy },
+          { text: 'Cancelar', style: 'cancel' },
+        ]
+      );
+    } else if (item.route) {
       router.push(item.route);
     } else {
       Alert.alert('Próximamente', 'Esta función estará disponible pronto');
@@ -171,7 +249,8 @@ export default function Profile() {
                     styles.menuItem,
                     index === section.items.length - 1 && styles.menuItemLast,
                     item.highlight && styles.menuItemHighlight,
-                    item.isIncident && styles.menuItemIncident
+                    item.isIncident && styles.menuItemIncident,
+                    item.isDelete && styles.menuItemDelete
                   ]}
                   onPress={() => handleMenuPress(item)}
                   activeOpacity={0.6}
@@ -179,7 +258,8 @@ export default function Profile() {
                   <View style={[
                     styles.menuIconContainer, 
                     item.highlight && styles.menuIconHighlight,
-                    item.isIncident && styles.menuIconIncident
+                    item.isIncident && styles.menuIconIncident,
+                    item.isDelete && styles.menuIconDelete
                   ]}>
                     <Text style={styles.menuIcon}>{item.icon}</Text>
                   </View>
@@ -188,7 +268,8 @@ export default function Profile() {
                       <Text style={[
                         styles.menuTitle, 
                         item.highlight && styles.menuTitleHighlight,
-                        item.isIncident && styles.menuTitleIncident
+                        item.isIncident && styles.menuTitleIncident,
+                        item.isDelete && styles.menuTitleDelete
                       ]}>
                         {item.title}
                       </Text>
@@ -198,12 +279,15 @@ export default function Profile() {
                         </View>
                       )}
                     </View>
-                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                    <Text style={[
+                      styles.menuSubtitle,
+                      item.isDelete && styles.menuSubtitleDelete
+                    ]}>{item.subtitle}</Text>
                   </View>
                   <Ionicons 
                     name="chevron-forward" 
                     size={20} 
-                    color={item.highlight ? '#6366F1' : item.isIncident ? '#FA5967' : '#D1D5DB'} 
+                    color={item.highlight ? '#6366F1' : item.isIncident ? '#FA5967' : item.isDelete ? '#DC2626' : '#D1D5DB'} 
                   />
                 </TouchableOpacity>
               ))}
@@ -219,6 +303,100 @@ export default function Profile() {
 
         <Text style={styles.version}>ISSY Resident App v1.0.0</Text>
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalWarningIcon}>
+                <Ionicons name="warning" size={32} color="#DC2626" />
+              </View>
+              <Text style={styles.modalTitle}>
+                {deleteStep === 1 ? '¿Eliminar tu cuenta?' : 'Confirmar eliminación'}
+              </Text>
+            </View>
+
+            {deleteStep === 1 ? (
+              <>
+                <Text style={styles.modalDescription}>
+                  Esta acción es <Text style={styles.boldText}>permanente e irreversible</Text>. 
+                  Se eliminarán todos tus datos incluyendo:
+                </Text>
+                <View style={styles.deleteList}>
+                  <Text style={styles.deleteListItem}>• Tu perfil y datos personales</Text>
+                  <Text style={styles.deleteListItem}>• Membresías en comunidades</Text>
+                  <Text style={styles.deleteListItem}>• Códigos QR generados</Text>
+                  <Text style={styles.deleteListItem}>• Historial de reservaciones</Text>
+                  <Text style={styles.deleteListItem}>• Datos financieros guardados</Text>
+                  <Text style={styles.deleteListItem}>• Contactos de emergencia</Text>
+                </View>
+                <Text style={styles.modalNote}>
+                  Los datos serán eliminados dentro de 30 días.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalDescription}>
+                  Escribe <Text style={styles.boldText}>ELIMINAR</Text> para confirmar:
+                </Text>
+                <TextInput
+                  style={styles.confirmInput}
+                  value={confirmText}
+                  onChangeText={setConfirmText}
+                  placeholder="Escribe ELIMINAR"
+                  autoCapitalize="characters"
+                />
+                <Text style={styles.modalDescription}>
+                  Ingresa tu contraseña:
+                </Text>
+                <TextInput
+                  style={styles.confirmInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Tu contraseña"
+                  secureTextEntry
+                />
+              </>
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => {
+                  if (deleteStep === 2) {
+                    setDeleteStep(1);
+                  } else {
+                    setShowDeleteModal(false);
+                  }
+                }}
+              >
+                <Text style={styles.cancelButtonText}>
+                  {deleteStep === 2 ? 'Volver' : 'Cancelar'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.confirmDeleteButton, deleting && styles.buttonDisabled]}
+                onPress={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.confirmDeleteText}>
+                    {deleteStep === 1 ? 'Continuar' : 'Eliminar Cuenta'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -349,6 +527,9 @@ const styles = StyleSheet.create({
   menuItemIncident: {
     backgroundColor: '#FEF2F2',
   },
+  menuItemDelete: {
+    backgroundColor: '#FFF',
+  },
   menuIconContainer: {
     width: 40,
     height: 40,
@@ -363,6 +544,9 @@ const styles = StyleSheet.create({
   },
   menuIconIncident: {
     backgroundColor: '#FA5967',
+  },
+  menuIconDelete: {
+    backgroundColor: '#FEE2E2',
   },
   menuIcon: {
     fontSize: 20,
@@ -388,6 +572,10 @@ const styles = StyleSheet.create({
     color: '#FA5967',
     fontWeight: '600',
   },
+  menuTitleDelete: {
+    color: '#DC2626',
+    fontWeight: '500',
+  },
   badge: {
     backgroundColor: '#6366F1',
     paddingHorizontal: 8,
@@ -404,6 +592,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
+  menuSubtitleDelete: {
+    color: '#9CA3AF',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,6 +610,107 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalWarningIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontSize: 15,
+    color: '#4B5563',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  boldText: {
+    fontWeight: 'bold',
+    color: '#DC2626',
+  },
+  deleteList: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  deleteListItem: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 8,
+  },
+  modalNote: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginBottom: 20,
+  },
+  confirmInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+  },
+  confirmDeleteText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   version: {
     textAlign: 'center',
