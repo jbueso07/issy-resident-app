@@ -159,6 +159,16 @@ const ADMIN_SERVICES = [
     available: true,
   },
   { 
+    id: 'incidents', 
+    title: 'Gestión de Incidentes', 
+    subtitle: 'Atender reportes y tickets',
+    route: '/admin/incidents',
+    bgColor: '#EF4444',
+    textColor: COLORS.white,
+    icon: '🚨',
+    available: true,
+  },
+  { 
     id: 'payment-manager', 
     title: 'Gestor de Cobros', 
     subtitle: 'Cuotas y pagos',

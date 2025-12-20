@@ -999,3 +999,107 @@ export const upgradeFinancePlan = async (planName, paymentMethod) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==========================================
+// INCIDENTS
+// ==========================================
+
+/**
+ * Create a new incident
+ */
+export const createIncident = async (incidentData) => {
+  try {
+    const data = await authFetch('/incidents', {
+      method: 'POST',
+      body: JSON.stringify(incidentData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating incident:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Get incidents for user's location
+ * @param {Object} params - { status, severity, limit, offset, my_incidents }
+ */
+export const getIncidents = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.status) queryParams.append('status', params.status);
+    if (params.severity) queryParams.append('severity', params.severity);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.offset) queryParams.append('offset', params.offset);
+    if (params.my_incidents) queryParams.append('my_incidents', params.my_incidents);
+    
+    const query = queryParams.toString();
+    const endpoint = query ? `/incidents?${query}` : '/incidents';
+    
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching incidents:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Get incident by ID
+ */
+export const getIncidentById = async (id) => {
+  try {
+    const data = await authFetch(`/incidents/${id}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching incident:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Add comment to incident
+ */
+export const addIncidentComment = async (incidentId, comment) => {
+  try {
+    const data = await authFetch(`/incidents/${incidentId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Update incident status (Admin only)
+ */
+export const updateIncidentStatus = async (incidentId, status, resolutionNotes = null) => {
+  try {
+    const data = await authFetch(`/incidents/${incidentId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, resolution_notes: resolutionNotes }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating incident status:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Delete incident
+ */
+export const deleteIncident = async (incidentId) => {
+  try {
+    const data = await authFetch(`/incidents/${incidentId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting incident:', error);
+    return { success: false, error: error.message };
+  }
+};

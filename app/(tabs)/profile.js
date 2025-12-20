@@ -90,10 +90,17 @@ export default function Profile() {
       title: 'Soporte',
       items: [
         { 
+          icon: '🚨', 
+          title: 'Reportar Incidente', 
+          subtitle: 'Reporta un problema en tu comunidad',
+          route: '/incidents',
+          isIncident: true
+        },
+        { 
           icon: '❓', 
           title: 'Ayuda', 
           subtitle: 'Soporte y FAQ',
-          route: null
+          route: '/support'
         },
         { 
           icon: '📄', 
@@ -127,8 +134,8 @@ export default function Profile() {
           activeOpacity={0.7}
         >
           <View style={styles.avatarContainer}>
-            {user?.avatar_url ? (
-              <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
+            {user?.avatar_url || user?.profile_photo_url ? (
+              <Image source={{ uri: user?.avatar_url || user?.profile_photo_url }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>
@@ -142,7 +149,7 @@ export default function Profile() {
           </View>
           <Text style={styles.profileName}>{user?.name || user?.email || 'Usuario'}</Text>
           <Text style={styles.profileRole}>
-            {user?.role === 'admin' ? 'Administrador' : 'Residente'}
+            {user?.role === 'admin' || user?.role === 'superadmin' ? 'Administrador' : 'Residente'}
           </Text>
           {user?.location_name && (
             <View style={styles.locationBadge}>
@@ -163,17 +170,26 @@ export default function Profile() {
                   style={[
                     styles.menuItem,
                     index === section.items.length - 1 && styles.menuItemLast,
-                    item.highlight && styles.menuItemHighlight
+                    item.highlight && styles.menuItemHighlight,
+                    item.isIncident && styles.menuItemIncident
                   ]}
                   onPress={() => handleMenuPress(item)}
                   activeOpacity={0.6}
                 >
-                  <View style={[styles.menuIconContainer, item.highlight && styles.menuIconHighlight]}>
+                  <View style={[
+                    styles.menuIconContainer, 
+                    item.highlight && styles.menuIconHighlight,
+                    item.isIncident && styles.menuIconIncident
+                  ]}>
                     <Text style={styles.menuIcon}>{item.icon}</Text>
                   </View>
                   <View style={styles.menuInfo}>
                     <View style={styles.menuTitleRow}>
-                      <Text style={[styles.menuTitle, item.highlight && styles.menuTitleHighlight]}>
+                      <Text style={[
+                        styles.menuTitle, 
+                        item.highlight && styles.menuTitleHighlight,
+                        item.isIncident && styles.menuTitleIncident
+                      ]}>
                         {item.title}
                       </Text>
                       {item.badge && (
@@ -184,7 +200,11 @@ export default function Profile() {
                     </View>
                     <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={item.highlight ? '#6366F1' : '#D1D5DB'} />
+                  <Ionicons 
+                    name="chevron-forward" 
+                    size={20} 
+                    color={item.highlight ? '#6366F1' : item.isIncident ? '#FA5967' : '#D1D5DB'} 
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -326,6 +346,9 @@ const styles = StyleSheet.create({
   menuItemHighlight: {
     backgroundColor: '#EEF2FF',
   },
+  menuItemIncident: {
+    backgroundColor: '#FEF2F2',
+  },
   menuIconContainer: {
     width: 40,
     height: 40,
@@ -337,6 +360,9 @@ const styles = StyleSheet.create({
   },
   menuIconHighlight: {
     backgroundColor: '#6366F1',
+  },
+  menuIconIncident: {
+    backgroundColor: '#FA5967',
   },
   menuIcon: {
     fontSize: 20,
@@ -356,6 +382,10 @@ const styles = StyleSheet.create({
   },
   menuTitleHighlight: {
     color: '#6366F1',
+    fontWeight: '600',
+  },
+  menuTitleIncident: {
+    color: '#FA5967',
     fontWeight: '600',
   },
   badge: {
