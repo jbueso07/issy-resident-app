@@ -13,9 +13,11 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function Register() {
@@ -25,9 +27,18 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [invitationCode, setInvitationCode] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signUp, verifyInvitation } = useAuth();
   const router = useRouter();
+
+  const openTerms = () => {
+    Linking.openURL('https://joinissy.com/terminos.html');
+  };
+
+  const openPrivacy = () => {
+    Linking.openURL('https://joinissy.com/privacidad.html');
+  };
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -52,6 +63,10 @@ export default function Register() {
     }
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Las contraseñas no coinciden');
+      return false;
+    }
+    if (!acceptedTerms) {
+      Alert.alert('Error', 'Debes aceptar los Términos de Servicio y Política de Privacidad');
       return false;
     }
     return true;
@@ -210,10 +225,33 @@ export default function Register() {
               </Text>
             </View>
 
+            {/* Terms and Conditions Checkbox */}
+            <TouchableOpacity 
+              style={styles.termsContainer}
+              onPress={() => setAcceptedTerms(!acceptedTerms)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
+                {acceptedTerms && (
+                  <Ionicons name="checkmark" size={16} color="#FFF" />
+                )}
+              </View>
+              <Text style={styles.termsText}>
+                Acepto los{' '}
+                <Text style={styles.termsLink} onPress={openTerms}>
+                  Términos de Servicio
+                </Text>
+                {' '}y la{' '}
+                <Text style={styles.termsLink} onPress={openPrivacy}>
+                  Política de Privacidad
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || !acceptedTerms) && styles.buttonDisabled]}
               onPress={handleRegister}
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
               activeOpacity={0.8}
             >
               {loading ? (
@@ -294,7 +332,7 @@ const styles = StyleSheet.create({
   },
   invitationContainer: {
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 16,
     padding: 16,
     backgroundColor: '#EEF2FF',
     borderRadius: 12,
@@ -314,6 +352,37 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 8,
   },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+  },
+  checkboxChecked: {
+    backgroundColor: '#6366F1',
+    borderColor: '#6366F1',
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: '#6366F1',
+    fontWeight: '600',
+  },
   button: {
     backgroundColor: '#6366F1',
     borderRadius: 12,
@@ -326,7 +395,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',

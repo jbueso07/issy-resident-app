@@ -1103,3 +1103,25 @@ export const deleteIncident = async (incidentId) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==========================================
+// ACCOUNT MANAGEMENT
+// ==========================================
+
+/**
+ * Delete user account permanently
+ * Required for Apple App Store compliance
+ * @param {string} password - User's current password for verification
+ */
+export const deleteUserAccount = async (password) => {
+  try {
+    const data = await authFetch('/auth/delete-account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    throw error;
+  }
+};
