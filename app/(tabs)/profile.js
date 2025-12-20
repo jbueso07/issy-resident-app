@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
-import { deleteUserAccount } from '../../src/api/api';
+import { deleteUserAccount } from '../../src/services/api';
 
 export default function Profile() {
   const { user, signOut, token } = useAuth();
