@@ -16,7 +16,15 @@
       "bundleIdentifier": "com.issy.resident",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.issy.resident",
+              "com.googleusercontent.apps.844659689774-9dmfp7uhgh4kj9pl7na3lfec8hdfk0pl"
+            ]
+          }
+        ]
       }
     },
     "android": {
