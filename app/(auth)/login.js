@@ -114,7 +114,7 @@ export default function Login() {
     }
   };
 
-  const isLoading = loading || socialLoading || biometricLoading;
+  const isLoading = loading || socialLoading !== null || biometricLoading;
 
   // Get biometric icon based on type
   const BiometricIcon = () => {

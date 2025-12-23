@@ -14,15 +14,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
-  Share,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { getMyQRCodes, generateQRCode, deleteQRCode } from '../../src/services/api';
@@ -90,6 +90,7 @@ const formatTimeForBackend = (date) => {
 export default function Visits() {
   const { profile } = useAuth();
   const qrRef = useRef(null);
+  const cardRef = useRef(null); // Ref para capturar toda la tarjeta
   
   // Lista de QRs
   const [qrCodes, setQrCodes] = useState([]);
@@ -284,74 +285,37 @@ export default function Visits() {
     );
   };
 
-  // Compartir QR como texto
-  const handleShareQR = async (qr) => {
-    try {
-      const hostName = profile?.name || 'Residente ISSY';
-      const communityName = profile?.location_name || 'Mi Comunidad';
-      
-      const message = `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `       🏠 *ISSY*\n` +
-        `    Control de Acceso\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `👤 *${qr.visitor_name}*\n` +
-        `    ¡Te esperamos!\n\n` +
-        `┌─────────────────────┐\n` +
-        `│ 🏡 Anfitrión: ${hostName}\n` +
-        `│ 📍 Ubicación: ${communityName}\n` +
-        `│ 📅 Válido: ${getValidityText(qr)}\n` +
-        `│ 🕐 Horario: ${getTimeText(qr)}\n` +
-        `└─────────────────────┘\n\n` +
-        `🔑 Código: ${(qr.qr_code || qr.id).substring(0, 12)}\n\n` +
-        `📱 Muestra este código al guardia\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n` +
-        `Powered by ISSY • joinissy.com`;
-
-      await Share.share({
-        message,
-        title: 'Código QR de Acceso - ISSY',
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
-
-  // Compartir QR como imagen
+  // Compartir QR como imagen de la tarjeta completa
   const handleShareQRImage = async (qr) => {
-    if (!qrRef.current) {
-      handleShareQR(qr);
+    if (!cardRef.current) {
+      Alert.alert('Error', 'No se pudo capturar la imagen. Intenta de nuevo.');
       return;
     }
 
     setSharingImage(true);
     
     try {
-      qrRef.current.toDataURL(async (dataURL) => {
-        try {
-          const filename = FileSystem.cacheDirectory + `qr_issy_${qr.id.substring(0, 8)}.png`;
-          await FileSystem.writeAsStringAsync(filename, dataURL, {
-            encoding: 'base64',
-          });
-          
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(filename, {
-              mimeType: 'image/png',
-              dialogTitle: 'Compartir código QR - ISSY',
-              UTI: 'public.png',
-            });
-          } else {
-            handleShareQR(qr);
-          }
-        } catch (writeError) {
-          console.error('Error writing/sharing file:', writeError);
-          handleShareQR(qr);
-        } finally {
-          setSharingImage(false);
-        }
+      // Capturar la tarjeta completa como imagen
+      const uri = await captureRef(cardRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
       });
+      
+      // Compartir la imagen
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Compartir código QR - ISSY',
+          UTI: 'public.png',
+        });
+      } else {
+        Alert.alert('Error', 'No se puede compartir en este dispositivo');
+      }
     } catch (error) {
       console.error('Error sharing image:', error);
-      handleShareQR(qr);
+      Alert.alert('Error', 'No se pudo compartir la imagen. Intenta de nuevo.');
+    } finally {
       setSharingImage(false);
     }
   };
@@ -531,7 +495,10 @@ export default function Visits() {
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleShareQR(qr)}
+              onPress={() => {
+                setSelectedQR(qr);
+                setShowQRModal(true);
+              }}
             >
               <Ionicons name="share-outline" size={18} color={COLORS.black} />
             </TouchableOpacity>
@@ -546,7 +513,7 @@ export default function Visits() {
 
         {/* View QR button (invisible touch area) */}
         <TouchableOpacity
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
           onPress={() => {
             setSelectedQR(qr);
             setShowQRModal(true);
@@ -558,7 +525,10 @@ export default function Visits() {
         <View style={styles.actionButtonsOverlay}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleShareQR(qr)}
+            onPress={() => {
+              setSelectedQR(qr);
+              setShowQRModal(true);
+            }}
           >
             <Ionicons name="share-outline" size={18} color={COLORS.black} />
           </TouchableOpacity>
@@ -979,8 +949,12 @@ export default function Visits() {
           >
             {selectedQR && (
               <>
-                {/* QR Card */}
-                <View style={styles.qrCardPremium}>
+                {/* QR Card - Capturar esta vista completa */}
+                <View 
+                  ref={cardRef}
+                  style={styles.qrCardPremium}
+                  collapsable={false}
+                >
                   {/* Header */}
                   <LinearGradient
                     colors={['#6366F1', '#8B5CF6']}
@@ -1066,10 +1040,10 @@ export default function Visits() {
                   </LinearGradient>
                 </View>
 
-                {/* Share Buttons */}
+                {/* Share Button - Solo imagen */}
                 <View style={styles.shareButtonsContainer}>
                   <TouchableOpacity
-                    style={styles.shareButtonPrimary}
+                    style={[styles.shareButtonPrimary, { flex: 1 }]}
                     onPress={() => handleShareQRImage(selectedQR)}
                     disabled={sharingImage}
                   >
@@ -1077,18 +1051,10 @@ export default function Visits() {
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
                       <>
-                        <Ionicons name="image-outline" size={18} color={COLORS.white} style={{ marginRight: 8 }} />
+                        <Ionicons name="share-outline" size={18} color={COLORS.white} style={{ marginRight: 8 }} />
                         <Text style={styles.shareButtonPrimaryText}>Compartir QR</Text>
                       </>
                     )}
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.shareButtonSecondary}
-                    onPress={() => handleShareQR(selectedQR)}
-                  >
-                    <Ionicons name="document-text-outline" size={18} color="#6366F1" style={{ marginRight: 8 }} />
-                    <Text style={styles.shareButtonSecondaryText}>Texto</Text>
                   </TouchableOpacity>
                 </View>
 

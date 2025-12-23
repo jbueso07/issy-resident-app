@@ -1,8 +1,8 @@
-// app/edit-profile.js - Editar Perfil
-import React, { useState, useEffect } from 'react';
+// app/edit-profile.js - Editar Perfil con Biometría
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, ActivityIndicator, Image
+  ScrollView, Alert, ActivityIndicator, Image, Switch
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,15 +13,26 @@ import { updateUserProfile, changePassword } from '../src/services/api';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { 
+    user, 
+    refreshUser,
+    refreshProfile,
+    biometricEnabled,
+    biometricAvailable,
+    biometricType,
+    getBiometricLabel,
+    enableBiometric,
+    disableBiometric,
+  } = useAuth();
   
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('info'); // info, password
+  const [activeTab, setActiveTab] = useState('info'); // info, password, security
+  const [biometricLoading, setBiometricLoading] = useState(false);
   
   // Profile form
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [avatar, setAvatar] = useState(user?.avatar_url || null);
+  const [avatar, setAvatar] = useState(user?.avatar_url || user?.profile_photo_url || null);
   
   // Password form
   const [newPassword, setNewPassword] = useState('');
@@ -60,7 +71,9 @@ export default function EditProfileScreen() {
 
     if (res.success) {
       Alert.alert('Éxito', 'Perfil actualizado');
+      // Compatibilidad con ambos métodos
       if (refreshUser) refreshUser();
+      if (refreshProfile) refreshProfile();
       router.back();
     } else {
       Alert.alert('Error', res.error || 'No se pudo actualizar');
@@ -90,6 +103,62 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handleToggleBiometric = async (value) => {
+    setBiometricLoading(true);
+    
+    try {
+      if (value) {
+        // Activar biometría
+        const result = await enableBiometric();
+        if (result.success) {
+          Alert.alert(
+            '¡Activado!', 
+            `${getBiometricLabel()} ha sido activado correctamente. La próxima vez podrás iniciar sesión más rápido.`
+          );
+        } else {
+          Alert.alert('Error', result.error || 'No se pudo activar la biometría');
+        }
+      } else {
+        // Desactivar biometría
+        Alert.alert(
+          'Desactivar ' + getBiometricLabel(),
+          '¿Estás seguro de desactivar el inicio rápido?',
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => setBiometricLoading(false) },
+            {
+              text: 'Desactivar',
+              style: 'destructive',
+              onPress: async () => {
+                const result = await disableBiometric();
+                if (result.success) {
+                  Alert.alert('Desactivado', `${getBiometricLabel()} ha sido desactivado.`);
+                }
+                setBiometricLoading(false);
+              }
+            }
+          ]
+        );
+        return; // Early return para el Alert de confirmación
+      }
+    } catch (error) {
+      console.error('Biometric toggle error:', error);
+      Alert.alert('Error', 'Ocurrió un error al cambiar la configuración');
+    } finally {
+      if (value) setBiometricLoading(false); // Solo si es activación
+    }
+  };
+
+  const getBiometricIcon = () => {
+    if (biometricType === 'face') {
+      return 'scan-outline';
+    } else if (biometricType === 'fingerprint') {
+      return 'finger-print-outline';
+    }
+    return 'shield-checkmark-outline';
+  };
+
+  const biometricLabel = getBiometricLabel ? getBiometricLabel() : 'Biometría';
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -108,7 +177,7 @@ export default function EditProfileScreen() {
           onPress={() => setActiveTab('info')}
         >
           <Ionicons name="person-outline" size={18} color={activeTab === 'info' ? '#6366F1' : '#6B7280'} />
-          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Información</Text>
+          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Info</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'password' && styles.tabActive]}
@@ -116,6 +185,13 @@ export default function EditProfileScreen() {
         >
           <Ionicons name="lock-closed-outline" size={18} color={activeTab === 'password' ? '#6366F1' : '#6B7280'} />
           <Text style={[styles.tabText, activeTab === 'password' && styles.tabTextActive]}>Contraseña</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'security' && styles.tabActive]}
+          onPress={() => setActiveTab('security')}
+        >
+          <Ionicons name="shield-checkmark-outline" size={18} color={activeTab === 'security' ? '#6366F1' : '#6B7280'} />
+          <Text style={[styles.tabText, activeTab === 'security' && styles.tabTextActive]}>Seguridad</Text>
         </TouchableOpacity>
       </View>
 
@@ -181,7 +257,7 @@ export default function EditProfileScreen() {
               )}
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : activeTab === 'password' ? (
           <View style={styles.section}>
             {/* New Password */}
             <View style={styles.inputGroup}>
@@ -225,6 +301,86 @@ export default function EditProfileScreen() {
               )}
             </TouchableOpacity>
           </View>
+        ) : (
+          // Security Tab
+          <View style={styles.section}>
+            {/* Biometric Section */}
+            <View style={styles.securityCard}>
+              <View style={styles.securityIconContainer}>
+                <Ionicons name={getBiometricIcon()} size={32} color="#6366F1" />
+              </View>
+              
+              <Text style={styles.securityTitle}>
+                {biometricAvailable ? biometricLabel : 'Biometría'}
+              </Text>
+              
+              <Text style={styles.securityDescription}>
+                {biometricAvailable 
+                  ? `Usa ${biometricLabel} para iniciar sesión más rápido sin necesidad de escribir tu contraseña.`
+                  : 'La autenticación biométrica no está disponible en este dispositivo.'
+                }
+              </Text>
+
+              {biometricAvailable && (
+                <View style={styles.toggleContainer}>
+                  <View style={styles.toggleInfo}>
+                    <Text style={styles.toggleLabel}>
+                      {biometricEnabled ? 'Activado' : 'Desactivado'}
+                    </Text>
+                    <Text style={styles.toggleStatus}>
+                      {biometricEnabled 
+                        ? `Puedes usar ${biometricLabel} para iniciar sesión`
+                        : 'Toca el switch para activar'
+                      }
+                    </Text>
+                  </View>
+                  
+                  {biometricLoading ? (
+                    <ActivityIndicator color="#6366F1" />
+                  ) : (
+                    <Switch
+                      value={biometricEnabled}
+                      onValueChange={handleToggleBiometric}
+                      trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
+                      thumbColor={biometricEnabled ? '#6366F1' : '#9CA3AF'}
+                      ios_backgroundColor="#D1D5DB"
+                    />
+                  )}
+                </View>
+              )}
+
+              {!biometricAvailable && (
+                <View style={styles.unavailableBox}>
+                  <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+                  <Text style={styles.unavailableText}>
+                    Configura Face ID o Touch ID en los ajustes de tu dispositivo para usar esta función.
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Security Info */}
+            <View style={styles.securityInfoBox}>
+              <View style={styles.securityInfoRow}>
+                <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                <Text style={styles.securityInfoText}>
+                  Tus datos biométricos nunca salen de tu dispositivo
+                </Text>
+              </View>
+              <View style={styles.securityInfoRow}>
+                <Ionicons name="lock-closed" size={20} color="#10B981" />
+                <Text style={styles.securityInfoText}>
+                  Las credenciales se almacenan de forma segura
+                </Text>
+              </View>
+              <View style={styles.securityInfoRow}>
+                <Ionicons name="key" size={20} color="#10B981" />
+                <Text style={styles.securityInfoText}>
+                  Siempre puedes usar tu contraseña como alternativa
+                </Text>
+              </View>
+            </View>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -238,9 +394,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937' },
   
   tabs: { flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6' },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6' },
   tabActive: { backgroundColor: '#EEF2FF' },
-  tabText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
+  tabText: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
   tabTextActive: { color: '#6366F1' },
 
   content: { flex: 1 },
@@ -264,4 +420,93 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#6366F1', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
   saveBtnDisabled: { backgroundColor: '#9CA3AF' },
   saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+
+  // Security Tab Styles
+  securityCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  securityIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  securityTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  securityDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  toggleInfo: {
+    flex: 1,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  toggleStatus: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  unavailableBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+    width: '100%',
+  },
+  unavailableText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  securityInfoBox: {
+    marginTop: 24,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  securityInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  securityInfoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#166534',
+  },
 });
