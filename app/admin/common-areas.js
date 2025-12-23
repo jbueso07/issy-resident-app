@@ -1,5 +1,5 @@
 // app/admin/common-areas.js
-// ISSY Resident App - Admin: Gestión de Áreas Comunes
+// ISSY Resident App - Admin: Gestión de Áreas Comunes con subida de imágenes
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -46,8 +46,10 @@ const AREA_TYPES = [
   { value: 'bbq', label: '🍖 Área de BBQ' },
   { value: 'playground', label: '🛝 Área de juegos' },
   { value: 'sports', label: '⚽ Cancha deportiva' },
+  { value: 'court', label: '🎾 Cancha de tenis' },
   { value: 'terrace', label: '🌇 Terraza' },
   { value: 'meeting', label: '💼 Sala de reuniones' },
+  { value: 'garden', label: '🌳 Jardín' },
   { value: 'general', label: '📍 General' },
 ];
 
@@ -63,6 +65,7 @@ export default function AdminCommonAreas() {
   const [editingArea, setEditingArea] = useState(null);
   const [blockingArea, setBlockingArea] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -104,6 +107,10 @@ export default function AdminCommonAreas() {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     };
+  };
+
+  const getAuthToken = async () => {
+    return await AsyncStorage.getItem('token');
   };
 
   const fetchAreas = async () => {
@@ -177,6 +184,120 @@ export default function AdminCommonAreas() {
       image_url: area.image_url || '',
     });
     setShowModal(true);
+  };
+
+  const pickImage = async () => {
+    try {
+      // Solicitar permisos
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permisos', 'Necesitamos acceso a tu galería para subir imágenes');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permisos', 'Necesitamos acceso a tu cámara para tomar fotos');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto');
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Agregar imagen',
+      'Selecciona una opción',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: '📷 Tomar foto', onPress: takePhoto },
+        { text: '🖼️ Galería', onPress: pickImage },
+      ]
+    );
+  };
+
+  const uploadImage = async (asset) => {
+    try {
+      setUploadingImage(true);
+      
+      const token = await getAuthToken();
+      
+      // Crear FormData
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', {
+        uri: asset.uri,
+        type: asset.mimeType || 'image/jpeg',
+        name: `area-${Date.now()}.jpg`,
+      });
+
+      const response = await fetch(`${API_URL}/api/upload/common-area-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formDataUpload,
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setFormData(prev => ({ ...prev, image_url: data.data.url }));
+        Alert.alert('Éxito', 'Imagen subida correctamente');
+      } else {
+        Alert.alert('Error', data.error || 'No se pudo subir la imagen');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      Alert.alert('Error', 'No se pudo subir la imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    Alert.alert(
+      'Eliminar imagen',
+      '¿Estás seguro de eliminar la imagen?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Eliminar', 
+          style: 'destructive',
+          onPress: () => setFormData(prev => ({ ...prev, image_url: '' }))
+        },
+      ]
+    );
   };
 
   const handleSubmit = async () => {
@@ -313,21 +434,6 @@ export default function AdminCommonAreas() {
     );
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      // TODO: Upload image to storage and get URL
-      // For now, just show a message
-      Alert.alert('Próximamente', 'La subida de imágenes estará disponible pronto');
-    }
-  };
-
   const getTypeLabel = (type) => {
     const found = AREA_TYPES.find(t => t.value === type);
     return found ? found.label : '📍 General';
@@ -387,8 +493,13 @@ export default function AdminCommonAreas() {
               !area.is_active && styles.areaCardInactive
             ]}>
               {/* Image */}
-              {area.image_url && (
+              {area.image_url ? (
                 <Image source={{ uri: area.image_url }} style={styles.areaImage} />
+              ) : (
+                <View style={[styles.areaImage, styles.noImage]}>
+                  <Ionicons name="image-outline" size={40} color={COLORS.grayLight} />
+                  <Text style={styles.noImageText}>Sin imagen</Text>
+                </View>
               )}
               
               <View style={styles.cardContent}>
@@ -512,6 +623,51 @@ export default function AdminCommonAreas() {
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* Imagen */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Imagen del área</Text>
+              {formData.image_url ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: formData.image_url }} style={styles.previewImage} />
+                  <View style={styles.imageActions}>
+                    <TouchableOpacity 
+                      style={styles.changeImageBtn}
+                      onPress={showImageOptions}
+                      disabled={uploadingImage}
+                    >
+                      <Ionicons name="camera" size={18} color={COLORS.white} />
+                      <Text style={styles.changeImageBtnText}>Cambiar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.removeImageBtn}
+                      onPress={removeImage}
+                    >
+                      <Ionicons name="trash" size={18} color={COLORS.danger} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.imagePickerBtn} 
+                  onPress={showImageOptions}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? (
+                    <>
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                      <Text style={styles.imagePickerText}>Subiendo imagen...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="camera" size={32} color={COLORS.gray} />
+                      <Text style={styles.imagePickerText}>Agregar imagen</Text>
+                      <Text style={styles.imagePickerHint}>Toca para tomar foto o elegir de galería</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Nombre */}
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Nombre *</Text>
@@ -691,20 +847,6 @@ export default function AdminCommonAreas() {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
-            </View>
-
-            {/* Imagen */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Imagen</Text>
-              <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
-                <Ionicons name="camera" size={24} color={COLORS.gray} />
-                <Text style={styles.imagePickerText}>
-                  {formData.image_url ? 'Cambiar imagen' : 'Agregar imagen'}
-                </Text>
-              </TouchableOpacity>
-              {formData.image_url && (
-                <Image source={{ uri: formData.image_url }} style={styles.previewImage} />
-              )}
             </View>
 
             <View style={{ height: 100 }} />
@@ -893,6 +1035,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
     backgroundColor: COLORS.grayLight,
+  },
+  noImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
   },
   cardContent: {
     padding: 16,
@@ -1134,26 +1285,58 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   imagePickerBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.grayLighter,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.grayLight,
     borderStyle: 'dashed',
-    borderRadius: 10,
-    padding: 20,
+    borderRadius: 12,
+    padding: 30,
     gap: 8,
   },
   imagePickerText: {
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.gray,
+    fontWeight: '500',
+  },
+  imagePickerHint: {
+    fontSize: 12,
+    color: COLORS.gray,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
   },
   previewImage: {
     width: '100%',
-    height: 150,
-    borderRadius: 10,
-    marginTop: 12,
+    height: 180,
+    borderRadius: 12,
+  },
+  imageActions: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  changeImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  changeImageBtnText: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  removeImageBtn: {
+    backgroundColor: COLORS.white,
+    padding: 8,
+    borderRadius: 8,
   },
   // Block Modal
   blockModalOverlay: {
