@@ -1,15 +1,77 @@
 // src/services/api.js
-// ISSY Resident App - API Service
+// ISSY Resident App - API Service con Auto-Refresh de Token
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://api.joinissy.com/api';
 
+// Flag para evitar múltiples refreshes simultáneos
+let isRefreshing = false;
+let refreshPromise = null;
+
 // ==========================================
-// HELPER
+// TOKEN REFRESH
 // ==========================================
 
-const authFetch = async (endpoint, options = {}) => {
+const refreshToken = async () => {
+  // Si ya está refrescando, esperar ese proceso
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  
+  refreshPromise = (async () => {
+    try {
+      const currentRefreshToken = await AsyncStorage.getItem('refreshToken');
+      
+      if (!currentRefreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: currentRefreshToken }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && (data.success || data.token || data.data?.token)) {
+        const newToken = data.data?.token || data.token;
+        const newRefreshToken = data.data?.refreshToken || data.refreshToken;
+
+        await AsyncStorage.setItem('token', newToken);
+        if (newRefreshToken) {
+          await AsyncStorage.setItem('refreshToken', newRefreshToken);
+        }
+
+        console.log('🔄 Token refreshed successfully');
+        return { success: true, token: newToken };
+      } else {
+        throw new Error('Refresh failed');
+      }
+    } catch (error) {
+      console.error('❌ Token refresh failed:', error);
+      // Clear tokens on refresh failure
+      await AsyncStorage.multiRemove(['token', 'refreshToken']);
+      return { success: false, error: error.message };
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
+// ==========================================
+// AUTH FETCH CON AUTO-REFRESH
+// ==========================================
+
+const authFetch = async (endpoint, options = {}, isRetry = false) => {
   const token = await AsyncStorage.getItem('token');
   
   const config = {
@@ -22,6 +84,25 @@ const authFetch = async (endpoint, options = {}) => {
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, config);
+  
+  // Si recibimos 401 y no es un retry, intentar refresh
+  if (response.status === 401 && !isRetry) {
+    console.log('🔐 Token expired, attempting refresh...');
+    
+    const refreshResult = await refreshToken();
+    
+    if (refreshResult.success) {
+      // Reintentar la petición original con el nuevo token
+      console.log('🔄 Retrying request with new token...');
+      return authFetch(endpoint, options, true);
+    } else {
+      // Refresh falló - el usuario necesita volver a iniciar sesión
+      const error = new Error('SESSION_EXPIRED');
+      error.sessionExpired = true;
+      throw error;
+    }
+  }
+
   const data = await response.json();
 
   if (!response.ok) {
@@ -56,10 +137,6 @@ export const logoutUser = async () => {
   await AsyncStorage.removeItem('token');
 };
 
-/**
- * Actualizar perfil del usuario
- * @param {Object} profileData - { name, phone, profile_photo_url }
- */
 export const updateUserProfile = async (profileData) => {
   try {
     const data = await authFetch('/auth/profile', {
@@ -69,38 +146,24 @@ export const updateUserProfile = async (profileData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error updating profile:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 // ==========================================
-// QR CODES - TODAS LAS FUNCIONALIDADES
+// QR CODES
 // ==========================================
 
-/**
- * Obtener mis códigos QR
- */
 export const getMyQRCodes = async () => {
   try {
     const data = await authFetch('/qr');
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching QR codes:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Generar código QR con todos los tipos soportados
- * @param {Object} qrData - Datos del QR
- * @param {string} qrData.visitor_name - Nombre del visitante (requerido)
- * @param {string} qrData.visitor_phone - Teléfono del visitante (requerido)
- * @param {string} qrData.visitor_id_number - Número de identidad (opcional)
- * @param {string} qrData.qr_type - Tipo: 'single', 'temporary', 'frequent'
- * @param {string} qrData.valid_from - Fecha/hora inicio (ISO string)
- * @param {string} qrData.valid_until - Fecha/hora fin (ISO string)
- * @param {Object} qrData.schedule - Para tipo 'frequent': { days: [0-6], start_time: 'HH:MM', end_time: 'HH:MM' }
- */
 export const generateQRCode = async (qrData) => {
   try {
     const data = await authFetch('/qr/generate', {
@@ -110,13 +173,10 @@ export const generateQRCode = async (qrData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error generating QR:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Generar QR de visitante simple (retrocompatibilidad)
- */
 export const generateVisitorQR = async (visitorData) => {
   try {
     const data = await authFetch('/qr/generate', {
@@ -132,33 +192,27 @@ export const generateVisitorQR = async (visitorData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error generating QR:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Eliminar código QR
- */
 export const deleteQRCode = async (id) => {
   try {
     await authFetch(`/qr/${id}`, { method: 'DELETE' });
     return { success: true };
   } catch (error) {
     console.error('Error deleting QR:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Obtener detalle de un QR específico
- */
 export const getQRCodeDetail = async (id) => {
   try {
     const data = await authFetch(`/qr/${id}`);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching QR detail:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -172,7 +226,7 @@ export const getMyPayments = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching payments:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -185,7 +239,7 @@ export const payPayment = async (paymentId, paymentMethodId) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error paying:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -199,7 +253,7 @@ export const getMyLeases = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching leases:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -213,7 +267,7 @@ export const getMyTickets = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching tickets:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -226,7 +280,7 @@ export const createTicket = async (ticketData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error creating ticket:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -236,7 +290,7 @@ export const getTicketDetail = async (id) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching ticket:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -250,7 +304,7 @@ export const getAnnouncements = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching announcements:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -260,178 +314,12 @@ export const markAnnouncementRead = async (id) => {
     return { success: true };
   } catch (error) {
     console.error('Error marking announcement read:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 // ==========================================
-// SUSCRIPCIONES
-// ==========================================
-
-export const getPlans = async (vertical = null) => {
-  try {
-    const url = vertical ? `/subscriptions/plans?vertical=${vertical}` : '/subscriptions/plans';
-    const data = await authFetch(url);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching plans:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getMySubscriptions = async () => {
-  try {
-    const data = await authFetch('/subscriptions/my');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching subscriptions:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const startTrial = async (planId) => {
-  try {
-    const data = await authFetch('/subscriptions/trial', {
-      method: 'POST',
-      body: JSON.stringify({ planId }),
-    });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error starting trial:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const subscribeToPlan = async (planId, paymentMethodId, billingPeriod = 'monthly') => {
-  try {
-    const data = await authFetch('/subscriptions/subscribe/saved-card', {
-      method: 'POST',
-      body: JSON.stringify({ planId, paymentMethodId, billingPeriod }),
-    });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error subscribing:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const cancelSubscription = async (subscriptionId, reason) => {
-  try {
-    const data = await authFetch(`/subscriptions/${subscriptionId}`, {
-      method: 'DELETE',
-      body: JSON.stringify({ reason }),
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error cancelling subscription:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// MÉTODOS DE PAGO (CLINPAYS)
-// ==========================================
-
-export const getPaymentMethods = async () => {
-  try {
-    const data = await authFetch('/clinpays/methods');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching payment methods:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const addPaymentMethod = async (cardData) => {
-  try {
-    const data = await authFetch('/clinpays/methods', {
-      method: 'POST',
-      body: JSON.stringify(cardData),
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error adding payment method:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const deletePaymentMethod = async (cardId) => {
-  try {
-    await authFetch(`/clinpays/methods/${cardId}`, { method: 'DELETE' });
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting payment method:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const setDefaultPaymentMethod = async (cardId) => {
-  try {
-    const data = await authFetch(`/clinpays/methods/${cardId}/default`, {
-      method: 'PATCH',
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error setting default card:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// PERFIL
-// ==========================================
-
-export const getUserProfile = async () => {
-  try {
-    const data = await authFetch('/auth/me');
-    return { success: true, data: data.user || data };
-  } catch (error) {
-    console.error('Error fetching profile:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const updateProfile = async (profileData) => {
-  try {
-    const data = await authFetch('/users/profile', {
-      method: 'PATCH',
-      body: JSON.stringify(profileData),
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// INVITACIONES
-// ==========================================
-
-export const verifyInvitation = async (code) => {
-  try {
-    const data = await authFetch(`/invitations/verify/${code}`);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error verifying invitation:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const acceptInvitation = async (code) => {
-  try {
-    const data = await authFetch(`/invitations/accept/${code}`, {
-      method: 'POST',
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error accepting invitation:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// ÁREAS COMUNES / RESERVACIONES
+// COMMON AREAS & RESERVATIONS
 // ==========================================
 
 export const getCommonAreas = async () => {
@@ -440,7 +328,17 @@ export const getCommonAreas = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching common areas:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const getCommonAreaById = async (id) => {
+  try {
+    const data = await authFetch(`/common-areas/${id}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching common area:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -450,7 +348,7 @@ export const getMyReservations = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching reservations:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -463,191 +361,55 @@ export const createReservation = async (reservationData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error creating reservation:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 export const cancelReservation = async (id) => {
   try {
-    await authFetch(`/reservations/${id}`, { method: 'DELETE' });
-    return { success: true };
-  } catch (error) {
-    console.error('Error cancelling reservation:', error);
-    return { success: false, error: error.message };
-  }
-};
-// ==========================================
-// PMS - GESTOR DE PROPIEDADES
-// ==========================================
-
-export const getPMSDashboard = async () => {
-  try {
-    const data = await authFetch('/rental/dashboard');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching PMS dashboard:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getPMSProperties = async () => {
-  try {
-    const data = await authFetch('/rental/properties');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching properties:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const createPMSProperty = async (propertyData) => {
-  try {
-    const data = await authFetch('/rental/properties', {
-      method: 'POST',
-      body: JSON.stringify(propertyData),
+    const data = await authFetch(`/reservations/${id}/cancel`, {
+      method: 'PUT',
     });
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error creating property:', error);
-    return { success: false, error: error.message };
+    console.error('Error canceling reservation:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const deletePMSProperty = async (id) => {
+export const getAreaAvailability = async (areaId, date) => {
   try {
-    await authFetch(`/rental/properties/${id}`, { method: 'DELETE' });
-    return { success: true };
-  } catch (error) {
-    console.error('Error deleting property:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getPMSTenants = async () => {
-  try {
-    const data = await authFetch('/rental/tenants');
+    const data = await authFetch(`/reservations/availability/${areaId}?date=${date}`);
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching tenants:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getPMSPayments = async () => {
-  try {
-    const data = await authFetch('/rental/payments');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching PMS payments:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const recordPMSPayment = async (paymentId) => {
-  try {
-    const data = await authFetch(`/rental/payments/${paymentId}/record`, {
-      method: 'POST',
-    });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error recording payment:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getPMSMaintenance = async () => {
-  try {
-    const data = await authFetch('/rental/maintenance');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching maintenance:', error);
-    return { success: false, error: error.message };
+    console.error('Error fetching availability:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 // ==========================================
-// SUSCRIPCIONES
+// FINANCE - Transacciones
 // ==========================================
-
-export const getVerticalPlans = async (vertical) => {
-  try {
-    const url = vertical ? `/subscriptions/plans?vertical=${vertical}` : '/subscriptions/plans';
-    const data = await authFetch(url);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching plans:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// ORGANIZACIONES E INVITACIONES
-// ==========================================
-
-export const verifyInvitationCode = async (code) => {
-  try {
-    const response = await fetch(`https://api.joinissy.com/api/invitations/verify/${code}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Código inválido');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error verifying invitation:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const acceptInvitationCode = async (code) => {
-  try {
-    const data = await authFetch(`/invitations/accept/${code}`, { method: 'POST' });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error accepting invitation:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getMyOrganizations = async () => {
-  try {
-    const data = await authFetch('/invitations/my-organizations');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching organizations:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const switchOrganization = async (locationId) => {
-  try {
-    const data = await authFetch(`/invitations/switch-organization/${locationId}`, { method: 'POST' });
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error switching organization:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// FINANCE - Finanzas Personales
-// ==========================================
-
-export const getFinanceDashboard = async () => {
-  try {
-    const data = await authFetch('/finance/dashboard');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching finance dashboard:', error);
-    return { success: false, error: error.message };
-  }
-};
 
 export const getTransactions = async (params = {}) => {
   try {
-    const query = new URLSearchParams(params).toString();
-    const data = await authFetch(`/finance/transactions${query ? `?${query}` : ''}`);
+    const queryParams = new URLSearchParams();
+    if (params.type) queryParams.append('type', params.type);
+    if (params.category_id) queryParams.append('category_id', params.category_id);
+    if (params.account_id) queryParams.append('account_id', params.account_id);
+    if (params.start_date) queryParams.append('start_date', params.start_date);
+    if (params.end_date) queryParams.append('end_date', params.end_date);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.offset) queryParams.append('offset', params.offset);
+    
+    const query = queryParams.toString();
+    const endpoint = query ? `/finance/transactions?${query}` : '/finance/transactions';
+    
+    const data = await authFetch(endpoint);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -657,68 +419,140 @@ export const createTransaction = async (transactionData) => {
       method: 'POST',
       body: JSON.stringify(transactionData),
     });
-    return { success: true, data: data.data || data };
+    return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
     console.error('Error creating transaction:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const deleteTransaction = async (id) => {
+export const updateTransaction = async (transactionId, transactionData) => {
   try {
-    await authFetch(`/finance/transactions/${id}`, {
+    const data = await authFetch(`/finance/transactions/${transactionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(transactionData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating transaction:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const deleteTransaction = async (transactionId) => {
+  try {
+    const data = await authFetch(`/finance/transactions/${transactionId}`, {
       method: 'DELETE',
     });
-    return { success: true };
+    return { success: true, message: data.message };
   } catch (error) {
     console.error('Error deleting transaction:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const getCategories = async (type) => {
+// ==========================================
+// FINANCE - Categorías
+// ==========================================
+
+export const getCategories = async () => {
   try {
-    const data = await authFetch(`/finance/categories${type ? `?type=${type}` : ''}`);
+    const data = await authFetch('/finance/categories');
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const getFinanceGoals = async (status = 'active') => {
+export const createCategory = async (categoryData) => {
   try {
-    const data = await authFetch(`/finance/goals?status=${status}`);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching goals:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const createFinanceGoal = async (goalData) => {
-  try {
-    const data = await authFetch('/finance/goals', {
+    const data = await authFetch('/finance/categories', {
       method: 'POST',
-      body: JSON.stringify(goalData),
+      body: JSON.stringify(categoryData),
     });
-    return { success: true, data: data.data || data };
+    return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
-    console.error('Error creating goal:', error);
-    return { success: false, error: error.message };
+    console.error('Error creating category:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const addGoalContribution = async (goalId, contributionData) => {
+export const deleteCategory = async (categoryId) => {
   try {
-    const data = await authFetch(`/finance/goals/${goalId}/contributions`, {
-      method: 'POST',
-      body: JSON.stringify(contributionData),
+    const data = await authFetch(`/finance/categories/${categoryId}`, {
+      method: 'DELETE',
     });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - Cuentas
+// ==========================================
+
+export const getAccounts = async () => {
+  try {
+    const data = await authFetch('/finance/accounts');
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error adding contribution:', error);
-    return { success: false, error: error.message };
+    console.error('Error fetching accounts:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const createAccount = async (accountData) => {
+  try {
+    const data = await authFetch('/finance/accounts', {
+      method: 'POST',
+      body: JSON.stringify(accountData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const updateAccount = async (accountId, accountData) => {
+  try {
+    const data = await authFetch(`/finance/accounts/${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(accountData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const deleteAccount = async (accountId) => {
+  try {
+    const data = await authFetch(`/finance/accounts/${accountId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - Dashboard/Summary
+// ==========================================
+
+export const getFinanceSummary = async (period = 'month') => {
+  try {
+    const data = await authFetch(`/finance/summary?period=${period}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching summary:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -728,132 +562,116 @@ export const getFinanceStats = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching stats:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - Metas de Ahorro
+// ==========================================
+
+export const getSavingsGoals = async () => {
+  try {
+    const data = await authFetch('/finance/savings-goals');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching savings goals:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const createSavingsGoal = async (goalData) => {
+  try {
+    const data = await authFetch('/finance/savings-goals', {
+      method: 'POST',
+      body: JSON.stringify(goalData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating savings goal:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const updateSavingsGoal = async (goalId, goalData) => {
+  try {
+    const data = await authFetch(`/finance/savings-goals/${goalId}`, {
+      method: 'PUT',
+      body: JSON.stringify(goalData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating savings goal:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const deleteSavingsGoal = async (goalId) => {
+  try {
+    const data = await authFetch(`/finance/savings-goals/${goalId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting savings goal:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const addSavingsContribution = async (goalId, amount) => {
+  try {
+    const data = await authFetch(`/finance/savings-goals/${goalId}/contribute`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error adding contribution:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - Gamificación
+// ==========================================
+
+export const getGamificationStats = async () => {
+  try {
+    const data = await authFetch('/finance/gamification/stats');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching gamification stats:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 export const getAchievements = async () => {
   try {
-    const data = await authFetch('/finance/achievements');
+    const data = await authFetch('/finance/gamification/achievements');
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching achievements:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-// ==========================================
-// FINANCE - Consejos Financieros (Tips)
-// ==========================================
-
-export const getFinanceTips = async (category = null, limit = 10) => {
+export const getStreakInfo = async () => {
   try {
-    let url = `/finance/tips?limit=${limit}`;
-    if (category) url += `&category=${category}`;
-    const data = await authFetch(url);
+    const data = await authFetch('/finance/gamification/streak');
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching tips:', error);
-    return { success: false, error: error.message };
+    console.error('Error fetching streak info:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-export const getPersonalizedTips = async () => {
+export const getDailyChallenges = async () => {
   try {
-    const data = await authFetch('/finance/tips/personalized');
-    return { success: true, data: data.data || data, context: data.context };
-  } catch (error) {
-    console.error('Error fetching personalized tips:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const markTipAsRead = async (tipId) => {
-  try {
-    const data = await authFetch(`/finance/tips/${tipId}/read`, {
-      method: 'POST',
-    });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error marking tip as read:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const sendTipFeedback = async (tipId, helpful, dismissed = false) => {
-  try {
-    const data = await authFetch(`/finance/tips/${tipId}/feedback`, {
-      method: 'POST',
-      body: JSON.stringify({ helpful, dismissed }),
-    });
+    const data = await authFetch('/finance/gamification/challenges');
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error sending tip feedback:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// ==========================================
-// FINANCE - Facturas y Recibos
-// ==========================================
-
-export const getInvoices = async (status = null, limit = 20) => {
-  try {
-    let url = `/finance/invoices?limit=${limit}`;
-    if (status) url += `&status=${status}`;
-    const data = await authFetch(url);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching invoices:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const getUpcomingInvoices = async (days = 7) => {
-  try {
-    const data = await authFetch(`/finance/invoices/upcoming?days=${days}`);
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching upcoming invoices:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const createInvoice = async (invoiceData) => {
-  try {
-    const data = await authFetch('/finance/invoices', {
-      method: 'POST',
-      body: JSON.stringify(invoiceData),
-    });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error creating invoice:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const markInvoicePaid = async (invoiceId, paymentDate = null) => {
-  try {
-    const data = await authFetch(`/finance/invoices/${invoiceId}/pay`, {
-      method: 'POST',
-      body: JSON.stringify({ payment_date: paymentDate }),
-    });
-    return { success: true, data: data.data || data, message: data.message };
-  } catch (error) {
-    console.error('Error marking invoice paid:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-export const deleteInvoice = async (invoiceId) => {
-  try {
-    const data = await authFetch(`/finance/invoices/${invoiceId}`, {
-      method: 'DELETE',
-    });
-    return { success: true, message: data.message };
-  } catch (error) {
-    console.error('Error deleting invoice:', error);
-    return { success: false, error: error.message };
+    console.error('Error fetching daily challenges:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -867,7 +685,7 @@ export const getReminders = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching reminders:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -880,7 +698,7 @@ export const createReminder = async (reminderData) => {
     return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
     console.error('Error creating reminder:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -892,7 +710,7 @@ export const deleteReminder = async (reminderId) => {
     return { success: true, message: data.message };
   } catch (error) {
     console.error('Error deleting reminder:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -906,7 +724,7 @@ export const getBudgets = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching budgets:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -916,7 +734,7 @@ export const getBudgetsStatus = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching budgets status:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -929,7 +747,7 @@ export const createBudget = async (budgetData) => {
     return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
     console.error('Error creating budget:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -941,22 +759,19 @@ export const deleteBudget = async (budgetId) => {
     return { success: true, message: data.message };
   } catch (error) {
     console.error('Error deleting budget:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
 // ==========================================
-// FINANCE - Suscripciones (CORREGIDO)
+// FINANCE - Suscripciones
 // ==========================================
 
-// CORREGIDO: Usar endpoint público de subscriptions para obtener planes
 export const getFinancePlans = async () => {
   try {
-    // Usar endpoint público de subscriptions (no requiere auth)
     const response = await fetch(`${API_URL}/subscriptions/plans`);
     const data = await response.json();
     if (data.success) {
-      // Filtrar solo planes de finanzas
       const financePlans = data.data.filter(p => p.vertical === 'finance');
       return { success: true, data: financePlans };
     }
@@ -973,7 +788,7 @@ export const getFinanceSubscription = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching subscription:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -983,7 +798,7 @@ export const getFinanceUsageLimits = async () => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching usage limits:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -996,7 +811,7 @@ export const upgradeFinancePlan = async (planName, paymentMethod) => {
     return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
     console.error('Error upgrading plan:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -1004,9 +819,6 @@ export const upgradeFinancePlan = async (planName, paymentMethod) => {
 // INCIDENTS
 // ==========================================
 
-/**
- * Create a new incident
- */
 export const createIncident = async (incidentData) => {
   try {
     const data = await authFetch('/incidents', {
@@ -1016,14 +828,10 @@ export const createIncident = async (incidentData) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error creating incident:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Get incidents for user's location
- * @param {Object} params - { status, severity, limit, offset, my_incidents }
- */
 export const getIncidents = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
@@ -1040,26 +848,20 @@ export const getIncidents = async (params = {}) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching incidents:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Get incident by ID
- */
 export const getIncidentById = async (id) => {
   try {
     const data = await authFetch(`/incidents/${id}`);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching incident:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Add comment to incident
- */
 export const addIncidentComment = async (incidentId, comment) => {
   try {
     const data = await authFetch(`/incidents/${incidentId}/comments`, {
@@ -1069,13 +871,10 @@ export const addIncidentComment = async (incidentId, comment) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error adding comment:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Update incident status (Admin only)
- */
 export const updateIncidentStatus = async (incidentId, status, resolutionNotes = null) => {
   try {
     const data = await authFetch(`/incidents/${incidentId}/status`, {
@@ -1085,13 +884,10 @@ export const updateIncidentStatus = async (incidentId, status, resolutionNotes =
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error updating incident status:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
-/**
- * Delete incident
- */
 export const deleteIncident = async (incidentId) => {
   try {
     const data = await authFetch(`/incidents/${incidentId}`, {
@@ -1100,7 +896,7 @@ export const deleteIncident = async (incidentId) => {
     return { success: true, message: data.message };
   } catch (error) {
     console.error('Error deleting incident:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
 
@@ -1108,11 +904,6 @@ export const deleteIncident = async (incidentId) => {
 // ACCOUNT MANAGEMENT
 // ==========================================
 
-/**
- * Delete user account permanently
- * Required for Apple App Store compliance
- * @param {string} password - User's current password for verification
- */
 export const deleteUserAccount = async (password) => {
   try {
     const data = await authFetch('/auth/delete-account', {
