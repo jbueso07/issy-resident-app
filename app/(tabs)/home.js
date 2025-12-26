@@ -139,6 +139,16 @@ const ADMIN_SERVICES = [
     available: true,
   },
   { 
+    id: 'community-management', 
+    title: 'Gestión de Comunidad', 
+    subtitle: 'Miembros y configuración',
+    route: '/admin/community-management',
+    bgColor: '#10B981',
+    textColor: COLORS.white,
+    icon: '🏘️',
+    available: true,
+  },
+  { 
     id: 'common-areas', 
     title: 'Áreas Comunes', 
     subtitle: 'Configurar espacios y reglas',

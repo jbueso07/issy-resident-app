@@ -242,7 +242,7 @@ export default function CommunityManagement() {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(
-        `${API_URL}/invitations/organization/members/${membershipId}/status`,
+        `${API_URL}/invitations/organization/members/${membershipId}`,
         {
           method: 'PUT',
           headers,
