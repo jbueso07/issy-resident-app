@@ -8,6 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import useNotifications from '../hooks/useNotifications';
 
 // Import Apple Authentication only on iOS
 let AppleAuthentication = null;
@@ -43,6 +44,8 @@ export const AuthProvider = ({ children }) => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState(null); // 'face' | 'fingerprint' | 'iris'
   const hasBeenAuthenticated = useRef(false);
+  // Push notifications
+const { expoPushToken } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
