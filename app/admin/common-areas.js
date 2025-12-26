@@ -1,111 +1,164 @@
-import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { supabase } from '../config/supabase';
-import { useAuth } from '../context/AuthContext';
-import { usePermissions } from '../utils/usePermissions';
+// app/admin/common-areas.js
+// ISSY Resident App - Admin Common Areas Management (React Native)
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.joinissy.com';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  Image,
+  Switch,
+  Dimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../../src/context/AuthContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const API_URL = 'https://api.joinissy.com/api';
+
+// ==========================================
+// CONSTANTS
+// ==========================================
 
 const CATEGORIES = [
-  { id: 'pool', icon: '🏊', color: '#3B82F6' },
-  { id: 'gym', icon: '🏋️', color: '#EF4444' },
-  { id: 'court', icon: '🎾', color: '#10B981' },
-  { id: 'bbq', icon: '🍖', color: '#F59E0B' },
-  { id: 'salon', icon: '🎉', color: '#8B5CF6' },
-  { id: 'playground', icon: '🛝', color: '#EC4899' },
-  { id: 'terrace', icon: '🌇', color: '#6366F1' },
-  { id: 'garden', icon: '🌳', color: '#22C55E' },
-  { id: 'parking', icon: '🅿️', color: '#64748B' },
-  { id: 'other', icon: '📍', color: '#78716C' }
+  { id: 'pool', icon: '🏊', label: 'Piscina', color: '#3B82F6' },
+  { id: 'gym', icon: '🏋️', label: 'Gimnasio', color: '#EF4444' },
+  { id: 'court', icon: '🎾', label: 'Cancha', color: '#10B981' },
+  { id: 'bbq', icon: '🍖', label: 'BBQ', color: '#F59E0B' },
+  { id: 'salon', icon: '🎉', label: 'Salón', color: '#8B5CF6' },
+  { id: 'playground', icon: '🛝', label: 'Juegos', color: '#EC4899' },
+  { id: 'terrace', icon: '🌇', label: 'Terraza', color: '#6366F1' },
+  { id: 'garden', icon: '🌳', label: 'Jardín', color: '#22C55E' },
+  { id: 'parking', icon: '🅿️', label: 'Parking', color: '#64748B' },
+  { id: 'other', icon: '📍', label: 'Otro', color: '#78716C' },
 ];
 
 const DAYS_OF_WEEK = [
-  { id: 0, key: 'sunday' },
-  { id: 1, key: 'monday' },
-  { id: 2, key: 'tuesday' },
-  { id: 3, key: 'wednesday' },
-  { id: 4, key: 'thursday' },
-  { id: 5, key: 'friday' },
-  { id: 6, key: 'saturday' }
+  { id: 0, label: 'Domingo', short: 'Dom' },
+  { id: 1, label: 'Lunes', short: 'Lun' },
+  { id: 2, label: 'Martes', short: 'Mar' },
+  { id: 3, label: 'Miércoles', short: 'Mié' },
+  { id: 4, label: 'Jueves', short: 'Jue' },
+  { id: 5, label: 'Viernes', short: 'Vie' },
+  { id: 6, label: 'Sábado', short: 'Sáb' },
 ];
 
-const CommonAreas = () => {
-  const { t } = useTranslation();
-  const { user, token } = useAuth();
-  const permissions = usePermissions();
-  const fileInputRef = useRef(null);
+const COLORS = {
+  primary: '#6366F1',
+  primaryDark: '#4F46E5',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  gray: '#6B7280',
+  grayLight: '#F3F4F6',
+  grayDark: '#374151',
+  white: '#FFFFFF',
+  black: '#111827',
+  background: '#F9FAFB',
+  border: '#E5E7EB',
+};
 
+// ==========================================
+// MAIN COMPONENT
+// ==========================================
+
+export default function AdminCommonAreas() {
+  const router = useRouter();
+  const { user, profile, token } = useAuth();
+
+  // State
   const [areas, setAreas] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
+
+  // Modal states
   const [showModal, setShowModal] = useState(false);
-  const [editingArea, setEditingArea] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingArea, setEditingArea] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
   const [schedules, setSchedules] = useState([]);
-  
-  // Image upload state
+
+  // Image upload
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
 
   // Form state
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    category: 'other',
-    is_paid: false,
-    price_per_hour: 0,
-    capacity: 10,
-    min_hours: 1,
-    max_hours: 4,
-    max_advance_days: 30,
-    requires_approval: false,
-    location_id: '',
-    is_24_hours: false,
-    available_from: '08:00',
-    available_until: '20:00',
-    image_url: ''
-  });
+  const [form, setForm] = useState(getInitialForm());
+
+  // Permissions
+  const isSuperAdmin = profile?.role === 'superadmin';
+  const isAdmin = ['admin', 'superadmin'].includes(profile?.role);
+
+  // ==========================================
+  // INITIAL FORM
+  // ==========================================
+
+  function getInitialForm() {
+    return {
+      name: '',
+      description: '',
+      category: 'other',
+      is_paid: false,
+      price_per_hour: '',
+      capacity: '10',
+      min_hours: '1',
+      max_hours: '4',
+      max_advance_days: '30',
+      requires_approval: false,
+      location_id: profile?.location_id || '',
+      is_24_hours: false,
+      available_from: '08:00',
+      available_until: '20:00',
+      image_url: '',
+    };
+  }
+
+  // ==========================================
+  // DATA LOADING
+  // ==========================================
 
   useEffect(() => {
-    loadAreas();
-    loadStats();
-    if (permissions.isSuperAdmin) {
-      loadLocations();
-    }
+    loadData();
   }, []);
 
-  const loadLocations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('id, name, address')
-        .eq('is_active', true)
-        .order('name');
-      
-      if (error) throw error;
-      setLocations(data || []);
-    } catch (error) {
-      console.error('Error loading locations:', error);
-    }
+  const loadData = async () => {
+    await Promise.all([
+      loadAreas(),
+      loadStats(),
+      isSuperAdmin ? loadLocations() : Promise.resolve(),
+    ]);
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
 
   const loadAreas = async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('common_areas')
-        .select('*, location:locations(name)')
-        .order('name');
-
-      if (permissions.isAdmin && !permissions.isSuperAdmin) {
-        query = query.eq('location_id', user?.location_id);
+      const response = await fetch(`${API_URL}/common-areas`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setAreas(data.data || data || []);
       }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setAreas(data || []);
     } catch (error) {
       console.error('Error loading areas:', error);
     } finally {
@@ -113,13 +166,35 @@ const CommonAreas = () => {
     }
   };
 
+  const loadLocations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/locations`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setLocations(data.data || data || []);
+      }
+    } catch (error) {
+      console.error('Error loading locations:', error);
+    }
+  };
+
   const loadStats = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_area_stats', {
-        p_location_id: permissions.isAdmin && !permissions.isSuperAdmin ? user?.location_id : null
+      const response = await fetch(`${API_URL}/common-areas/stats`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
-      if (error) throw error;
-      setStats(data);
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setStats(data.data || data);
+      }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -127,55 +202,66 @@ const CommonAreas = () => {
 
   const loadSchedules = async (areaId) => {
     try {
-      const { data, error } = await supabase
-        .from('area_schedules')
-        .select('*')
-        .eq('area_id', areaId)
-        .order('day_of_week');
-      
-      if (error) throw error;
-      setSchedules(data || []);
+      const response = await fetch(`${API_URL}/common-areas/${areaId}/schedules`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setSchedules(data.data || data || []);
+      }
     } catch (error) {
       console.error('Error loading schedules:', error);
+      setSchedules([]);
     }
   };
 
-  // Image upload handler
-  const handleImageSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ==========================================
+  // IMAGE HANDLING
+  // ==========================================
 
-    // Validar tipo de archivo
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Solo se permiten imágenes JPEG, PNG o WebP');
-      return;
+  const pickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir imágenes.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'No se pudo seleccionar la imagen');
     }
+  };
 
-    // Validar tamaño (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no debe superar 5MB');
-      return;
-    }
-
-    // Mostrar preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-
-    // Subir imagen
+  const uploadImage = async (uri) => {
     try {
       setUploadingImage(true);
-      
-      const formData = new FormData();
-      formData.append('image', file);
 
-      const response = await fetch(`${API_URL}/api/upload/common-area-image`, {
+      const formData = new FormData();
+      formData.append('image', {
+        uri,
+        type: 'image/jpeg',
+        name: 'area-image.jpg',
+      });
+
+      const response = await fetch(`${API_URL}/upload/common-area-image`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
         body: formData,
       });
@@ -183,139 +269,152 @@ const CommonAreas = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setForm(prev => ({ ...prev, image_url: data.data.url }));
+        setForm((prev) => ({ ...prev, image_url: data.data.url }));
       } else {
-        alert(data.error || 'Error al subir la imagen');
-        setImagePreview(null);
+        Alert.alert('Error', data.error || 'No se pudo subir la imagen');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error al subir la imagen');
-      setImagePreview(null);
+      Alert.alert('Error', 'No se pudo subir la imagen');
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const removeImage = () => {
-    setForm(prev => ({ ...prev, image_url: '' }));
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  // ==========================================
+  // CRUD OPERATIONS
+  // ==========================================
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Determinar location_id
-    let locationId;
-    if (permissions.isSuperAdmin) {
-      if (!form.location_id) {
-        alert('Por favor selecciona una ubicación');
-        return;
-      }
-      locationId = form.location_id;
-    } else {
-      locationId = user?.location_id;
+  const handleSubmit = async () => {
+    if (!form.name.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
     }
 
+    const locationId = isSuperAdmin ? form.location_id : profile?.location_id;
     if (!locationId) {
-      alert('Error: No se pudo determinar la ubicación');
+      Alert.alert('Error', 'Debes seleccionar una ubicación');
       return;
     }
 
     try {
       const payload = {
         location_id: locationId,
-        name: form.name,
+        name: form.name.trim(),
         type: form.category,
-        description: form.description || null,
-        capacity: form.capacity,
-        hourly_rate: form.is_paid ? form.price_per_hour : 0,
-        min_duration_hours: form.min_hours,
-        max_duration_hours: form.max_hours,
-        advance_booking_days: form.max_advance_days,
+        description: form.description.trim() || null,
+        capacity: parseInt(form.capacity) || 10,
+        hourly_rate: form.is_paid ? parseFloat(form.price_per_hour) || 0 : 0,
+        min_duration_hours: parseInt(form.min_hours) || 1,
+        max_duration_hours: parseInt(form.max_hours) || 4,
+        advance_booking_days: parseInt(form.max_advance_days) || 30,
         requires_approval: form.requires_approval,
         is_24_hours: form.is_24_hours,
         available_from: form.is_24_hours ? '00:00:00' : form.available_from + ':00',
         available_until: form.is_24_hours ? '23:59:00' : form.available_until + ':00',
-        image_url: form.image_url || null
+        image_url: form.image_url || null,
       };
 
-      if (editingArea) {
-        const { error } = await supabase
-          .from('common_areas')
-          .update(payload)
-          .eq('id', editingArea.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('common_areas')
-          .insert([payload]);
-        if (error) throw error;
-      }
+      const url = editingArea
+        ? `${API_URL}/common-areas/${editingArea.id}`
+        : `${API_URL}/common-areas`;
 
-      setShowModal(false);
-      resetForm();
-      loadAreas();
-      loadStats();
+      const response = await fetch(url, {
+        method: editingArea ? 'PUT' : 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Éxito', editingArea ? 'Área actualizada' : 'Área creada');
+        setShowModal(false);
+        resetForm();
+        loadAreas();
+        loadStats();
+      } else {
+        Alert.alert('Error', data.error || 'No se pudo guardar el área');
+      }
     } catch (error) {
       console.error('Error saving area:', error);
-      alert(t('errors.generic'));
+      Alert.alert('Error', 'No se pudo guardar el área');
     }
   };
 
   const handleEdit = (area) => {
     setEditingArea(area);
     setForm({
-      name: area.name,
+      name: area.name || '',
       description: area.description || '',
       category: area.type || 'other',
       is_paid: (area.hourly_rate || 0) > 0,
-      price_per_hour: area.hourly_rate || 0,
-      capacity: area.capacity || 10,
-      min_hours: area.min_duration_hours || 1,
-      max_hours: area.max_duration_hours || 4,
-      max_advance_days: area.advance_booking_days || 30,
+      price_per_hour: area.hourly_rate?.toString() || '',
+      capacity: area.capacity?.toString() || '10',
+      min_hours: area.min_duration_hours?.toString() || '1',
+      max_hours: area.max_duration_hours?.toString() || '4',
+      max_advance_days: area.advance_booking_days?.toString() || '30',
       requires_approval: area.requires_approval || false,
       location_id: area.location_id || '',
       is_24_hours: area.is_24_hours || false,
-      available_from: area.available_from ? area.available_from.substring(0, 5) : '08:00',
-      available_until: area.available_until ? area.available_until.substring(0, 5) : '20:00',
-      image_url: area.image_url || ''
+      available_from: area.available_from?.substring(0, 5) || '08:00',
+      available_until: area.available_until?.substring(0, 5) || '20:00',
+      image_url: area.image_url || '',
     });
-    setImagePreview(area.image_url || null);
     setShowModal(true);
   };
 
-  const handleDelete = async (area) => {
-    if (!confirm(t('areas.messages.deleteConfirm', { name: area.name }))) return;
-    
-    try {
-      const { error } = await supabase
-        .from('common_areas')
-        .delete()
-        .eq('id', area.id);
-      
-      if (error) throw error;
-      loadAreas();
-      loadStats();
-    } catch (error) {
-      console.error('Error deleting area:', error);
-      alert(t('errors.generic'));
-    }
+  const handleDelete = (area) => {
+    Alert.alert(
+      'Eliminar área',
+      `¿Estás seguro de eliminar "${area.name}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/common-areas/${area.id}`, {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              });
+
+              if (response.ok) {
+                loadAreas();
+                loadStats();
+              } else {
+                Alert.alert('Error', 'No se pudo eliminar el área');
+              }
+            } catch (error) {
+              console.error('Error deleting area:', error);
+              Alert.alert('Error', 'No se pudo eliminar el área');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleToggleActive = async (area) => {
     try {
-      const { error } = await supabase
-        .from('common_areas')
-        .update({ is_active: !area.is_active })
-        .eq('id', area.id);
-      
-      if (error) throw error;
-      loadAreas();
+      const response = await fetch(`${API_URL}/common-areas/${area.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_active: !area.is_active }),
+      });
+
+      if (response.ok) {
+        loadAreas();
+      }
     } catch (error) {
       console.error('Error toggling area:', error);
     }
@@ -327,999 +426,1163 @@ const CommonAreas = () => {
     setShowScheduleModal(true);
   };
 
-  const handleSaveSchedule = async (dayOfWeek, startTime, endTime, blockDuration) => {
-    try {
-      const existing = schedules.find(s => s.day_of_week === dayOfWeek);
-      
-      if (existing) {
-        if (!startTime || !endTime) {
-          await supabase
-            .from('area_schedules')
-            .delete()
-            .eq('id', existing.id);
-        } else {
-          await supabase
-            .from('area_schedules')
-            .update({
-              start_time: startTime,
-              end_time: endTime,
-              block_duration_minutes: blockDuration
-            })
-            .eq('id', existing.id);
-        }
-      } else if (startTime && endTime) {
-        await supabase
-          .from('area_schedules')
-          .insert([{
-            area_id: selectedArea.id,
-            day_of_week: dayOfWeek,
-            start_time: startTime,
-            end_time: endTime,
-            block_duration_minutes: blockDuration
-          }]);
-      }
-
-      await loadSchedules(selectedArea.id);
-    } catch (error) {
-      console.error('Error saving schedule:', error);
-    }
-  };
-
   const resetForm = () => {
     setEditingArea(null);
-    setImagePreview(null);
-    setForm({
-      name: '',
-      description: '',
-      category: 'other',
-      is_paid: false,
-      price_per_hour: 0,
-      capacity: 10,
-      min_hours: 1,
-      max_hours: 4,
-      max_advance_days: 30,
-      requires_approval: false,
-      location_id: user?.location_id || '',
-      is_24_hours: false,
-      available_from: '08:00',
-      available_until: '20:00',
-      image_url: ''
-    });
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setForm(getInitialForm());
   };
+
+  // ==========================================
+  // HELPERS
+  // ==========================================
 
   const getCategoryInfo = (categoryId) => {
-    return CATEGORIES.find(c => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
+    return CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
   };
 
-  const formatCurrency = (amount, currency = 'HNL') => {
-    const symbol = currency === 'HNL' ? 'L' : '$';
-    return `${symbol} ${parseFloat(amount || 0).toFixed(2)}`;
+  const formatCurrency = (amount) => {
+    return `L ${parseFloat(amount || 0).toFixed(2)}`;
   };
+
+  // ==========================================
+  // RENDER
+  // ==========================================
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContent}>
+          <Text style={styles.errorText}>No tienes permisos para ver esta página</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#111827' }}>
-            {t('areas.title')}
-          </h1>
-          <p style={{ margin: '4px 0 0', color: '#6B7280', fontSize: '14px' }}>
-            {t('areas.subtitle')}
-          </p>
-        </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 20px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Áreas Comunes</Text>
+          <Text style={styles.headerSubtitle}>Gestiona los espacios de tu comunidad</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => {
+            resetForm();
+            setShowModal(true);
           }}
+          style={styles.addButton}
         >
-          ➕ {t('areas.addNew')}
-        </button>
-      </div>
+          <Ionicons name="add" size={24} color={COLORS.white} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Stats Cards */}
-      {stats && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}>
-          <StatCard
-            icon="🏢"
-            label={t('areas.stats.totalAreas')}
-            value={stats.total_areas}
-            color="#3B82F6"
-          />
-          <StatCard
-            icon="📅"
-            label={t('areas.stats.reservationsThisMonth')}
-            value={stats.total_reservations_this_month}
-            color="#10B981"
-          />
-          <StatCard
-            icon="💰"
-            label={t('areas.stats.revenueThisMonth')}
-            value={formatCurrency(stats.revenue_this_month)}
-            color="#F59E0B"
-          />
-          <StatCard
-            icon="⏳"
-            label={t('areas.stats.pendingApprovals')}
-            value={stats.pending_approvals}
-            color="#EF4444"
-          />
-        </div>
-      )}
-
-      {/* Areas Grid */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6B7280' }}>
-          {t('app.loading')}
-        </div>
-      ) : areas.length === 0 ? (
-        <div style={{
-          textAlign: 'center',
-          padding: '60px',
-          background: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <span style={{ fontSize: '48px' }}>🏊</span>
-          <h3 style={{ margin: '16px 0 8px', color: '#111827' }}>{t('areas.noAreas')}</h3>
-          <p style={{ color: '#6B7280', marginBottom: '20px' }}>{t('areas.createFirst')}</p>
-          <button
-            onClick={() => { resetForm(); setShowModal(true); }}
-            style={{
-              padding: '10px 24px',
-              background: '#667eea',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
+      <ScrollView
+        style={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Stats */}
+        {stats && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.statsContainer}
+            contentContainerStyle={styles.statsContent}
           >
-            {t('areas.addNew')}
-          </button>
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '20px'
-        }}>
-          {areas.map(area => {
-            const cat = getCategoryInfo(area.type);
-            return (
-              <div
+            <StatCard icon="🏢" label="Total áreas" value={stats.total_areas || 0} color={COLORS.primary} />
+            <StatCard
+              icon="📅"
+              label="Reservas del mes"
+              value={stats.total_reservations_this_month || 0}
+              color={COLORS.success}
+            />
+            <StatCard
+              icon="💰"
+              label="Ingresos del mes"
+              value={formatCurrency(stats.revenue_this_month)}
+              color={COLORS.warning}
+            />
+            <StatCard
+              icon="⏳"
+              label="Pendientes"
+              value={stats.pending_approvals || 0}
+              color={COLORS.danger}
+            />
+          </ScrollView>
+        )}
+
+        {/* Areas List */}
+        {loading ? (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando áreas...</Text>
+          </View>
+        ) : areas.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>🏊</Text>
+            <Text style={styles.emptyTitle}>No hay áreas comunes</Text>
+            <Text style={styles.emptySubtitle}>Crea tu primera área para que los residentes puedan reservar</Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => {
+                resetForm();
+                setShowModal(true);
+              }}
+            >
+              <Text style={styles.emptyButtonText}>Crear área</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.areasGrid}>
+            {areas.map((area) => (
+              <AreaCard
                 key={area.id}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  overflow: 'hidden',
-                  opacity: area.is_active ? 1 : 0.6
-                }}
-              >
-                {/* Area Image */}
-                {area.image_url ? (
-                  <div style={{
-                    width: '100%',
-                    height: '160px',
-                    backgroundImage: `url(${area.image_url})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }} />
-                ) : (
-                  <div style={{
-                    width: '100%',
-                    height: '160px',
-                    background: `linear-gradient(135deg, ${cat.color}15 0%, ${cat.color}25 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <span style={{ fontSize: '64px', opacity: 0.5 }}>{cat.icon}</span>
-                  </div>
-                )}
+                area={area}
+                category={getCategoryInfo(area.type)}
+                isSuperAdmin={isSuperAdmin}
+                onEdit={() => handleEdit(area)}
+                onDelete={() => handleDelete(area)}
+                onToggle={() => handleToggleActive(area)}
+                onSchedule={() => handleManageSchedule(area)}
+                formatCurrency={formatCurrency}
+              />
+            ))}
+          </View>
+        )}
 
-                {/* Card Header */}
-                <div style={{
-                  padding: '16px',
-                  borderBottom: '1px solid #E5E7EB'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{
-                        fontSize: '24px',
-                        width: '40px',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: `${cat.color}15`,
-                        borderRadius: '10px'
-                      }}>
-                        {cat.icon}
-                      </span>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                          {area.name}
-                        </h3>
-                        <span style={{
-                          fontSize: '12px',
-                          padding: '2px 8px',
-                          borderRadius: '10px',
-                          background: cat.color,
-                          color: 'white'
-                        }}>
-                          {t(`areas.categories.${area.type}`)}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      background: area.is_active ? '#D1FAE5' : '#FEE2E2',
-                      color: area.is_active ? '#065F46' : '#DC2626',
-                      fontSize: '11px',
-                      fontWeight: '600'
-                    }}>
-                      {area.is_active ? t('common.active') : t('common.inactive')}
-                    </div>
-                  </div>
-                  {/* Mostrar ubicación para superadmin */}
-                  {permissions.isSuperAdmin && area.location && (
-                    <div style={{
-                      marginTop: '8px',
-                      fontSize: '12px',
-                      color: '#6B7280',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      📍 {area.location.name}
-                    </div>
-                  )}
-                </div>
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
-                {/* Card Body */}
-                <div style={{ padding: '16px' }}>
-                  {area.description && (
-                    <p style={{
-                      margin: '0 0 12px',
-                      fontSize: '13px',
-                      color: '#6B7280',
-                      lineHeight: '1.5'
-                    }}>
-                      {area.description}
-                    </p>
-                  )}
+      {/* Create/Edit Modal */}
+      <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowModal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{editingArea ? 'Editar área' : 'Nueva área'}</Text>
+            <TouchableOpacity onPress={handleSubmit}>
+              <Text style={styles.modalSave}>Guardar</Text>
+            </TouchableOpacity>
+          </View>
 
-                  {/* Info Badges */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-                    <InfoBadge icon="👥" text={`${area.capacity || 10} personas`} />
-                    <InfoBadge icon="⏱️" text={`${area.min_duration_hours || 1}-${area.max_duration_hours || 4}h`} />
-                    <InfoBadge icon="📆" text={`${area.advance_booking_days || 30} días`} />
-                    {(area.hourly_rate || 0) > 0 && (
-                      <InfoBadge icon="💵" text={formatCurrency(area.hourly_rate)} highlight />
-                    )}
-                    {area.requires_approval && (
-                      <InfoBadge icon="✋" text={t('areas.requiresApproval')} highlight />
-                    )}
-                  </div>
-
-                  {/* Horario */}
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#6B7280',
-                    marginBottom: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    🕐 {area.is_24_hours
-                      ? '24 horas'
-                      : `${area.available_from?.substring(0, 5)} - ${area.available_until?.substring(0, 5)}`
-                    }
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <ActionButton
-                      icon="✏️"
-                      label={t('common.edit')}
-                      onClick={() => handleEdit(area)}
-                    />
-                    <ActionButton
-                      icon="📅"
-                      label={t('areas.schedule')}
-                      onClick={() => handleManageSchedule(area)}
-                    />
-                    <ActionButton
-                      icon={area.is_active ? '⏸️' : '▶️'}
-                      label={area.is_active ? t('common.deactivate') : t('common.activate')}
-                      onClick={() => handleToggleActive(area)}
-                    />
-                    <ActionButton
-                      icon="🗑️"
-                      label={t('common.delete')}
-                      onClick={() => handleDelete(area)}
-                      danger
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Modal Crear/Editar */}
-      {showModal && (
-        <Modal
-          title={editingArea ? t('areas.editArea') : t('areas.addNew')}
-          onClose={() => { setShowModal(false); resetForm(); }}
-        >
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              {/* Imagen del área */}
-              <FormField label="📷 Imagen del área">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageSelect}
-                  style={{ display: 'none' }}
-                />
-                
-                {(imagePreview || form.image_url) ? (
-                  <div style={{ position: 'relative' }}>
-                    <img
-                      src={imagePreview || form.image_url}
-                      alt="Preview"
-                      style={{
-                        width: '100%',
-                        height: '180px',
-                        objectFit: 'cover',
-                        borderRadius: '12px'
-                      }}
-                    />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '12px',
-                      right: '12px',
-                      display: 'flex',
-                      gap: '8px'
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingImage}
-                        style={{
-                          padding: '8px 16px',
-                          background: '#14B8A6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        📷 Cambiar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={removeImage}
-                        style={{
-                          padding: '8px 12px',
-                          background: 'white',
-                          color: '#EF4444',
-                          border: 'none',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '14px'
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    {uploadingImage && (
-                      <div style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: 'rgba(0,0,0,0.5)',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '14px'
-                      }}>
-                        Subiendo imagen...
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImage}
-                    style={{
-                      width: '100%',
-                      padding: '40px 20px',
-                      border: '2px dashed #D1D5DB',
-                      borderRadius: '12px',
-                      background: '#F9FAFB',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* Image */}
+            <Text style={styles.sectionLabel}>📷 Imagen del área</Text>
+            <TouchableOpacity
+              style={styles.imagePickerContainer}
+              onPress={pickImage}
+              disabled={uploadingImage}
+            >
+              {form.image_url ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: form.image_url }} style={styles.imagePreview} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => setForm((prev) => ({ ...prev, image_url: '' }))}
                   >
-                    {uploadingImage ? (
-                      <>
-                        <span style={{ fontSize: '24px' }}>⏳</span>
-                        <span style={{ color: '#6B7280' }}>Subiendo imagen...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '32px' }}>📷</span>
-                        <span style={{ color: '#6B7280', fontWeight: '500' }}>Agregar imagen</span>
-                        <span style={{ color: '#9CA3AF', fontSize: '12px' }}>JPEG, PNG o WebP (máx. 5MB)</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </FormField>
+                    <Ionicons name="close-circle" size={28} color={COLORS.danger} />
+                  </TouchableOpacity>
+                </View>
+              ) : uploadingImage ? (
+                <View style={styles.imagePlaceholder}>
+                  <ActivityIndicator color={COLORS.primary} />
+                  <Text style={styles.imagePlaceholderText}>Subiendo imagen...</Text>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="camera" size={40} color={COLORS.gray} />
+                  <Text style={styles.imagePlaceholderText}>Agregar imagen</Text>
+                  <Text style={styles.imagePlaceholderHint}>JPG, PNG (máx. 5MB)</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-              {/* Ubicación (solo SuperAdmin) */}
-              {permissions.isSuperAdmin && (
-                <FormField label="📍 Ubicación / Comunidad" required>
-                  <select
-                    value={form.location_id}
-                    onChange={(e) => setForm({ ...form, location_id: e.target.value })}
-                    required
-                    style={inputStyle}
-                  >
-                    <option value="">-- Selecciona una ubicación --</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name} {loc.address ? `- ${loc.address}` : ''}
-                      </option>
+            {/* Location (SuperAdmin only) */}
+            {isSuperAdmin && (
+              <>
+                <Text style={styles.sectionLabel}>📍 Ubicación *</Text>
+                <View style={styles.pickerContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {locations.map((loc) => (
+                      <TouchableOpacity
+                        key={loc.id}
+                        style={[
+                          styles.locationChip,
+                          form.location_id === loc.id && styles.locationChipActive,
+                        ]}
+                        onPress={() => setForm((prev) => ({ ...prev, location_id: loc.id }))}
+                      >
+                        <Text
+                          style={[
+                            styles.locationChipText,
+                            form.location_id === loc.id && styles.locationChipTextActive,
+                          ]}
+                        >
+                          {loc.name}
+                        </Text>
+                      </TouchableOpacity>
                     ))}
-                  </select>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6B7280' }}>
-                    El área quedará disponible para los usuarios de esta comunidad
-                  </p>
-                </FormField>
+                  </ScrollView>
+                </View>
+              </>
+            )}
+
+            {/* Name */}
+            <Text style={styles.sectionLabel}>Nombre *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.name}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
+              placeholder="Ej: Piscina principal"
+              placeholderTextColor={COLORS.gray}
+            />
+
+            {/* Description */}
+            <Text style={styles.sectionLabel}>Descripción</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={form.description}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, description: text }))}
+              placeholder="Describe el área..."
+              placeholderTextColor={COLORS.gray}
+              multiline
+              numberOfLines={3}
+            />
+
+            {/* Category */}
+            <Text style={styles.sectionLabel}>Categoría *</Text>
+            <View style={styles.categoriesGrid}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryItem,
+                    form.category === cat.id && { borderColor: cat.color, backgroundColor: `${cat.color}15` },
+                  ]}
+                  onPress={() => setForm((prev) => ({ ...prev, category: cat.id }))}
+                >
+                  <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                  <Text style={styles.categoryLabel}>{cat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Capacity */}
+            <Text style={styles.sectionLabel}>👥 Capacidad (personas)</Text>
+            <TextInput
+              style={styles.input}
+              value={form.capacity}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, capacity: text }))}
+              keyboardType="number-pad"
+              placeholder="10"
+              placeholderTextColor={COLORS.gray}
+            />
+
+            {/* Is Paid */}
+            <View style={styles.switchRow}>
+              <View>
+                <Text style={styles.switchLabel}>💵 Es de pago</Text>
+                <Text style={styles.switchHint}>Cobra por hora de uso</Text>
+              </View>
+              <Switch
+                value={form.is_paid}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, is_paid: value }))}
+                trackColor={{ false: COLORS.border, true: COLORS.primary }}
+              />
+            </View>
+
+            {form.is_paid && (
+              <>
+                <Text style={styles.sectionLabel}>Precio por hora (L)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.price_per_hour}
+                  onChangeText={(text) => setForm((prev) => ({ ...prev, price_per_hour: text }))}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={COLORS.gray}
+                />
+              </>
+            )}
+
+            {/* Requires Approval */}
+            <View style={styles.switchRow}>
+              <View>
+                <Text style={styles.switchLabel}>✋ Requiere aprobación</Text>
+                <Text style={styles.switchHint}>Las reservas deben ser aprobadas por un admin</Text>
+              </View>
+              <Switch
+                value={form.requires_approval}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, requires_approval: value }))}
+                trackColor={{ false: COLORS.border, true: COLORS.primary }}
+              />
+            </View>
+
+            {/* Schedule Section */}
+            <View style={styles.scheduleSection}>
+              <Text style={styles.scheduleSectionTitle}>🕐 Horario de Disponibilidad</Text>
+
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={styles.switchLabel}>🌙 Disponible 24 horas</Text>
+                </View>
+                <Switch
+                  value={form.is_24_hours}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, is_24_hours: value }))}
+                  trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                />
+              </View>
+
+              {!form.is_24_hours && (
+                <View style={styles.timeRow}>
+                  <View style={styles.timeField}>
+                    <Text style={styles.timeLabel}>Apertura</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={form.available_from}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, available_from: text }))}
+                      placeholder="08:00"
+                      placeholderTextColor={COLORS.gray}
+                    />
+                  </View>
+                  <View style={styles.timeField}>
+                    <Text style={styles.timeLabel}>Cierre</Text>
+                    <TextInput
+                      style={styles.timeInput}
+                      value={form.available_until}
+                      onChangeText={(text) => setForm((prev) => ({ ...prev, available_until: text }))}
+                      placeholder="20:00"
+                      placeholderTextColor={COLORS.gray}
+                    />
+                  </View>
+                </View>
               )}
+            </View>
 
-              {/* Nombre */}
-              <FormField label={t('areas.form.name')} required>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder={t('areas.form.namePlaceholder')}
-                  required
-                  style={inputStyle}
-                />
-              </FormField>
+            {/* Booking Rules */}
+            <View style={styles.rulesSection}>
+              <Text style={styles.rulesSectionTitle}>📋 Reglas de Reserva</Text>
 
-              {/* Descripción */}
-              <FormField label={t('areas.form.description')}>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder={t('areas.form.descriptionPlaceholder')}
-                  rows={3}
-                  style={{ ...inputStyle, resize: 'vertical' }}
-                />
-              </FormField>
-
-              {/* Categoría */}
-              <FormField label={t('areas.form.category')} required>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setForm({ ...form, category: cat.id })}
-                      style={{
-                        padding: '12px 8px',
-                        border: form.category === cat.id ? `2px solid ${cat.color}` : '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                        background: form.category === cat.id ? `${cat.color}15` : 'white',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <span style={{ fontSize: '20px' }}>{cat.icon}</span>
-                      <span style={{ fontSize: '10px', color: '#374151' }}>
-                        {t(`areas.categories.${cat.id}`)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </FormField>
-
-              {/* Capacidad */}
-              <FormField label={t('areas.form.capacity')}>
-                <input
-                  type="number"
-                  value={form.capacity}
-                  onChange={(e) => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })}
-                  min="1"
-                  style={inputStyle}
-                />
-              </FormField>
-
-              {/* Es de pago */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <input
-                  type="checkbox"
-                  id="is_paid"
-                  checked={form.is_paid}
-                  onChange={(e) => setForm({ ...form, is_paid: e.target.checked })}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <label htmlFor="is_paid" style={{ fontSize: '14px', color: '#374151' }}>
-                  💵 {t('areas.form.isPaid')}
-                </label>
-              </div>
-
-              {/* Precio por hora (si es de pago) */}
-              {form.is_paid && (
-                <FormField label={t('areas.form.pricePerHour')}>
-                  <input
-                    type="number"
-                    value={form.price_per_hour}
-                    onChange={(e) => setForm({ ...form, price_per_hour: parseFloat(e.target.value) || 0 })}
-                    min="0"
-                    step="0.01"
-                    style={inputStyle}
+              <View style={styles.rulesRow}>
+                <View style={styles.ruleField}>
+                  <Text style={styles.ruleLabel}>Mín. horas</Text>
+                  <TextInput
+                    style={styles.ruleInput}
+                    value={form.min_hours}
+                    onChangeText={(text) => setForm((prev) => ({ ...prev, min_hours: text }))}
+                    keyboardType="number-pad"
+                    placeholder="1"
+                    placeholderTextColor={COLORS.gray}
                   />
-                </FormField>
-              )}
-
-              {/* Requiere aprobación */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <input
-                  type="checkbox"
-                  id="requires_approval"
-                  checked={form.requires_approval}
-                  onChange={(e) => setForm({ ...form, requires_approval: e.target.checked })}
-                  style={{ width: '18px', height: '18px' }}
-                />
-                <label htmlFor="requires_approval" style={{ fontSize: '14px', color: '#374151' }}>
-                  ✋ {t('areas.form.requiresApproval')}
-                </label>
-              </div>
-
-              {/* Horario de disponibilidad */}
-              <div style={{ 
-                background: '#F0F9FF', 
-                borderRadius: '8px', 
-                padding: '16px',
-                border: '1px solid #BAE6FD'
-              }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#0369A1' }}>
-                  🕐 Horario de Disponibilidad
-                </h4>
-                
-                {/* Checkbox 24 horas */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <input
-                    type="checkbox"
-                    id="is_24_hours"
-                    checked={form.is_24_hours}
-                    onChange={(e) => setForm({ ...form, is_24_hours: e.target.checked })}
-                    style={{ width: '18px', height: '18px' }}
+                </View>
+                <View style={styles.ruleField}>
+                  <Text style={styles.ruleLabel}>Máx. horas</Text>
+                  <TextInput
+                    style={styles.ruleInput}
+                    value={form.max_hours}
+                    onChangeText={(text) => setForm((prev) => ({ ...prev, max_hours: text }))}
+                    keyboardType="number-pad"
+                    placeholder="4"
+                    placeholderTextColor={COLORS.gray}
                   />
-                  <label htmlFor="is_24_hours" style={{ fontSize: '14px', color: '#374151' }}>
-                    🌙 Disponible 24 horas
-                  </label>
-                </div>
+                </View>
+                <View style={styles.ruleField}>
+                  <Text style={styles.ruleLabel}>Días anticipación</Text>
+                  <TextInput
+                    style={styles.ruleInput}
+                    value={form.max_advance_days}
+                    onChangeText={(text) => setForm((prev) => ({ ...prev, max_advance_days: text }))}
+                    keyboardType="number-pad"
+                    placeholder="30"
+                    placeholderTextColor={COLORS.gray}
+                  />
+                </View>
+              </View>
+            </View>
 
-                {/* Selectores de hora (solo si NO es 24 horas) */}
-                {!form.is_24_hours && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <FormField label="Hora de apertura">
-                      <input
-                        type="time"
-                        value={form.available_from}
-                        onChange={(e) => setForm({ ...form, available_from: e.target.value })}
-                        style={inputStyle}
-                      />
-                    </FormField>
-                    <FormField label="Hora de cierre">
-                      <input
-                        type="time"
-                        value={form.available_until}
-                        onChange={(e) => setForm({ ...form, available_until: e.target.value })}
-                        style={inputStyle}
-                      />
-                    </FormField>
-                  </div>
-                )}
-              </div>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
-              {/* Reglas de reserva */}
-              <div style={{ 
-                background: '#F9FAFB', 
-                borderRadius: '8px', 
-                padding: '16px',
-                border: '1px solid #E5E7EB'
-              }}>
-                <h4 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
-                  📋 {t('areas.form.reservationRules')}
-                </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <FormField label={t('areas.form.minHours')}>
-                    <input
-                      type="number"
-                      value={form.min_hours}
-                      onChange={(e) => setForm({ ...form, min_hours: parseInt(e.target.value) || 1 })}
-                      min="1"
-                      style={inputStyle}
-                    />
-                  </FormField>
-                  <FormField label={t('areas.form.maxHours')}>
-                    <input
-                      type="number"
-                      value={form.max_hours}
-                      onChange={(e) => setForm({ ...form, max_hours: parseInt(e.target.value) || 1 })}
-                      min="1"
-                      style={inputStyle}
-                    />
-                  </FormField>
-                  <FormField label={t('areas.form.maxAdvanceDays')}>
-                    <input
-                      type="number"
-                      value={form.max_advance_days}
-                      onChange={(e) => setForm({ ...form, max_advance_days: parseInt(e.target.value) || 1 })}
-                      min="1"
-                      style={inputStyle}
-                    />
-                  </FormField>
-                </div>
-              </div>
-            </div>
+      {/* Schedule Modal */}
+      <Modal visible={showScheduleModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+              <Text style={styles.modalCancel}>Cerrar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Horarios: {selectedArea?.name}</Text>
+            <View style={{ width: 60 }} />
+          </View>
 
-            {/* Botones */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end', 
-              gap: '12px', 
-              marginTop: '24px',
-              paddingTop: '16px',
-              borderTop: '1px solid #E5E7EB'
-            }}>
-              <button
-                type="button"
-                onClick={() => { setShowModal(false); resetForm(); }}
-                style={{
-                  padding: '10px 20px',
-                  background: '#F3F4F6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  color: '#374151'
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="submit"
-                disabled={uploadingImage}
-                style={{
-                  padding: '10px 24px',
-                  background: uploadingImage ? '#9CA3AF' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: uploadingImage ? 'not-allowed' : 'pointer',
-                  fontWeight: '500'
-                }}
-              >
-                {editingArea ? t('common.save') : t('common.create')}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.scheduleNote}>
+              Configura horarios específicos por día. Si no configuras un día, se usará el horario general del área.
+            </Text>
 
-      {/* Modal Horarios */}
-      {showScheduleModal && selectedArea && (
-        <Modal
-          title={`${t('areas.schedule')}: ${selectedArea.name}`}
-          onClose={() => { setShowScheduleModal(false); setSelectedArea(null); }}
-          wide
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {DAYS_OF_WEEK.map(day => {
-              const schedule = schedules.find(s => s.day_of_week === day.id);
+            {DAYS_OF_WEEK.map((day) => {
+              const schedule = schedules.find((s) => s.day_of_week === day.id);
               return (
                 <ScheduleRow
                   key={day.id}
                   day={day}
                   schedule={schedule}
-                  onSave={(startTime, endTime, blockDuration) => 
-                    handleSaveSchedule(day.id, startTime, endTime, blockDuration)
-                  }
-                  t={t}
+                  areaId={selectedArea?.id}
+                  token={token}
+                  onSaved={() => loadSchedules(selectedArea?.id)}
                 />
               );
             })}
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-};
 
-// ==================== COMPONENTES AUXILIARES ====================
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+// ==========================================
+// SUB COMPONENTS
+// ==========================================
 
 const StatCard = ({ icon, label, value, color }) => (
-  <div style={{
-    background: 'white',
-    borderRadius: '12px',
-    padding: '16px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      <span style={{
-        fontSize: '24px',
-        width: '44px',
-        height: '44px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `${color}15`,
-        borderRadius: '10px'
-      }}>
-        {icon}
-      </span>
-      <div>
-        <p style={{ margin: 0, fontSize: '12px', color: '#6B7280' }}>{label}</p>
-        <p style={{ margin: '4px 0 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>{value}</p>
-      </div>
-    </div>
-  </div>
+  <View style={[styles.statCard, { borderLeftColor: color }]}>
+    <Text style={styles.statIcon}>{icon}</Text>
+    <Text style={styles.statValue}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
 );
 
-const InfoBadge = ({ icon, text, highlight }) => (
-  <span style={{
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '4px 8px',
-    borderRadius: '6px',
-    background: highlight ? '#FEF3C7' : '#F3F4F6',
-    fontSize: '12px',
-    color: highlight ? '#92400E' : '#4B5563'
-  }}>
-    {icon} {text}
-  </span>
+const AreaCard = ({ area, category, isSuperAdmin, onEdit, onDelete, onToggle, onSchedule, formatCurrency }) => (
+  <View style={[styles.areaCard, !area.is_active && styles.areaCardInactive]}>
+    {/* Image */}
+    {area.image_url ? (
+      <Image source={{ uri: area.image_url }} style={styles.areaImage} />
+    ) : (
+      <View style={[styles.areaImagePlaceholder, { backgroundColor: `${category.color}20` }]}>
+        <Text style={styles.areaImageIcon}>{category.icon}</Text>
+      </View>
+    )}
+
+    {/* Content */}
+    <View style={styles.areaContent}>
+      <View style={styles.areaHeader}>
+        <View style={styles.areaHeaderLeft}>
+          <View style={[styles.areaCategoryBadge, { backgroundColor: `${category.color}20` }]}>
+            <Text style={styles.areaCategoryIcon}>{category.icon}</Text>
+          </View>
+          <View>
+            <Text style={styles.areaName}>{area.name}</Text>
+            <Text style={[styles.areaCategoryLabel, { color: category.color }]}>{category.label}</Text>
+          </View>
+        </View>
+        <View style={[styles.areaStatusBadge, area.is_active ? styles.statusActive : styles.statusInactive]}>
+          <Text style={[styles.areaStatusText, area.is_active ? styles.statusActiveText : styles.statusInactiveText]}>
+            {area.is_active ? 'Activo' : 'Inactivo'}
+          </Text>
+        </View>
+      </View>
+
+      {isSuperAdmin && area.location && (
+        <Text style={styles.areaLocation}>📍 {area.location.name}</Text>
+      )}
+
+      {area.description && <Text style={styles.areaDescription} numberOfLines={2}>{area.description}</Text>}
+
+      {/* Info Badges */}
+      <View style={styles.areaBadges}>
+        <View style={styles.areaBadge}>
+          <Text style={styles.areaBadgeText}>👥 {area.capacity || 10}</Text>
+        </View>
+        <View style={styles.areaBadge}>
+          <Text style={styles.areaBadgeText}>⏱️ {area.min_duration_hours || 1}-{area.max_duration_hours || 4}h</Text>
+        </View>
+        {(area.hourly_rate || 0) > 0 && (
+          <View style={[styles.areaBadge, styles.areaBadgeHighlight]}>
+            <Text style={[styles.areaBadgeText, styles.areaBadgeTextHighlight]}>💵 {formatCurrency(area.hourly_rate)}</Text>
+          </View>
+        )}
+        {area.requires_approval && (
+          <View style={[styles.areaBadge, styles.areaBadgeHighlight]}>
+            <Text style={[styles.areaBadgeText, styles.areaBadgeTextHighlight]}>✋ Aprobación</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Schedule Info */}
+      <Text style={styles.areaSchedule}>
+        🕐 {area.is_24_hours ? '24 horas' : `${area.available_from?.substring(0, 5)} - ${area.available_until?.substring(0, 5)}`}
+      </Text>
+
+      {/* Actions */}
+      <View style={styles.areaActions}>
+        <TouchableOpacity style={styles.areaAction} onPress={onEdit}>
+          <Text style={styles.areaActionText}>✏️ Editar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.areaAction} onPress={onSchedule}>
+          <Text style={styles.areaActionText}>📅 Horarios</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.areaAction} onPress={onToggle}>
+          <Text style={styles.areaActionText}>{area.is_active ? '⏸️' : '▶️'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.areaAction, styles.areaActionDanger]} onPress={onDelete}>
+          <Text style={styles.areaActionText}>🗑️</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
 );
 
-const ActionButton = ({ icon, label, onClick, danger }) => (
-  <button
-    onClick={onClick}
-    title={label}
-    style={{
-      flex: 1,
-      padding: '8px',
-      background: danger ? '#FEE2E2' : '#F3F4F6',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      transition: 'background 0.2s'
-    }}
-  >
-    {icon}
-  </button>
-);
-
-const Modal = ({ title, onClose, children, wide }) => (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '20px'
-  }}>
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      width: '100%',
-      maxWidth: wide ? '700px' : '500px',
-      maxHeight: '90vh',
-      overflow: 'auto'
-    }}>
-      <div style={{
-        padding: '16px 20px',
-        borderBottom: '1px solid #E5E7EB',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        background: 'white',
-        zIndex: 1
-      }}>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{title}</h2>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer',
-            color: '#6B7280',
-            lineHeight: 1
-          }}
-        >
-          ×
-        </button>
-      </div>
-      <div style={{ padding: '20px' }}>
-        {children}
-      </div>
-    </div>
-  </div>
-);
-
-const FormField = ({ label, required, children }) => (
-  <div>
-    <label style={{
-      display: 'block',
-      marginBottom: '6px',
-      fontSize: '13px',
-      fontWeight: '500',
-      color: '#374151'
-    }}>
-      {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
-    </label>
-    {children}
-  </div>
-);
-
-const ScheduleRow = ({ day, schedule, onSave, t }) => {
-  const [startTime, setStartTime] = useState(schedule?.start_time?.substring(0, 5) || '');
-  const [endTime, setEndTime] = useState(schedule?.end_time?.substring(0, 5) || '');
-  const [blockDuration, setBlockDuration] = useState(schedule?.block_duration_minutes || 60);
+const ScheduleRow = ({ day, schedule, areaId, token, onSaved }) => {
   const [isEnabled, setIsEnabled] = useState(!!schedule);
+  const [startTime, setStartTime] = useState(schedule?.start_time?.substring(0, 5) || '08:00');
+  const [endTime, setEndTime] = useState(schedule?.end_time?.substring(0, 5) || '20:00');
+  const [saving, setSaving] = useState(false);
 
-  const handleToggle = () => {
-    if (isEnabled) {
-      setStartTime('');
-      setEndTime('');
-      onSave(null, null, null);
-    }
-    setIsEnabled(!isEnabled);
-  };
+  const handleSave = async () => {
+    if (!areaId) return;
 
-  const handleSave = () => {
-    if (startTime && endTime) {
-      onSave(startTime, endTime, blockDuration);
+    try {
+      setSaving(true);
+
+      if (!isEnabled) {
+        // Delete schedule
+        if (schedule?.id) {
+          await fetch(`${API_URL}/common-areas/${areaId}/schedules/${schedule.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+      } else {
+        // Create/Update schedule
+        const payload = {
+          day_of_week: day.id,
+          start_time: startTime,
+          end_time: endTime,
+          block_duration_minutes: 60,
+        };
+
+        const url = schedule?.id
+          ? `${API_URL}/common-areas/${areaId}/schedules/${schedule.id}`
+          : `${API_URL}/common-areas/${areaId}/schedules`;
+
+        await fetch(url, {
+          method: schedule?.id ? 'PUT' : 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      onSaved?.();
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      padding: '12px',
-      background: isEnabled ? '#F0FDF4' : '#F9FAFB',
-      borderRadius: '8px',
-      border: `1px solid ${isEnabled ? '#BBF7D0' : '#E5E7EB'}`
-    }}>
-      <input
-        type="checkbox"
-        checked={isEnabled}
-        onChange={handleToggle}
-        style={{ width: '18px', height: '18px' }}
+    <View style={[styles.scheduleRow, isEnabled && styles.scheduleRowActive]}>
+      <Switch
+        value={isEnabled}
+        onValueChange={(value) => {
+          setIsEnabled(value);
+        }}
+        trackColor={{ false: COLORS.border, true: COLORS.success }}
       />
-      <span style={{ 
-        width: '100px', 
-        fontWeight: '500',
-        color: isEnabled ? '#166534' : '#6B7280'
-      }}>
-        {t(`visitors.days.${day.key}`)}
-      </span>
-      
+      <Text style={[styles.scheduleDay, isEnabled && styles.scheduleDayActive]}>{day.label}</Text>
+
       {isEnabled && (
         <>
-          <input
-            type="time"
+          <TextInput
+            style={styles.scheduleTimeInput}
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+            onChangeText={setStartTime}
+            placeholder="08:00"
           />
-          <span>-</span>
-          <input
-            type="time"
+          <Text style={styles.scheduleTimeSeparator}>-</Text>
+          <TextInput
+            style={styles.scheduleTimeInput}
             value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB' }}
+            onChangeText={setEndTime}
+            placeholder="20:00"
           />
-          <select
-            value={blockDuration}
-            onChange={(e) => setBlockDuration(parseInt(e.target.value))}
-            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #D1D5DB' }}
-          >
-            <option value={30}>30 min</option>
-            <option value={60}>1 hr</option>
-            <option value={90}>1.5 hr</option>
-            <option value={120}>2 hr</option>
-          </select>
-          <button
-            onClick={handleSave}
-            style={{
-              padding: '6px 12px',
-              background: '#10B981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            ✓
-          </button>
+          <TouchableOpacity style={styles.scheduleSaveButton} onPress={handleSave} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <Ionicons name="checkmark" size={18} color={COLORS.white} />
+            )}
+          </TouchableOpacity>
         </>
       )}
-    </div>
+    </View>
   );
 };
 
-const inputStyle = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1px solid #D1D5DB',
-  borderRadius: '8px',
-  fontSize: '14px',
-  outline: 'none',
-  transition: 'border-color 0.2s',
-  boxSizing: 'border-box'
-};
+// ==========================================
+// STYLES
+// ==========================================
 
-export default CommonAreas;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: COLORS.gray,
+    fontSize: 14,
+  },
+  errorText: {
+    color: COLORS.danger,
+    fontSize: 16,
+  },
+
+  // Stats
+  statsContainer: {
+    marginTop: 16,
+  },
+  statsContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  statCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 140,
+    borderLeftWidth: 4,
+    marginRight: 12,
+  },
+  statIcon: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.black,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 40,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.black,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  emptyButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyButtonText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // Areas Grid
+  areasGrid: {
+    padding: 16,
+    gap: 16,
+  },
+  areaCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  areaCardInactive: {
+    opacity: 0.6,
+  },
+  areaImage: {
+    width: '100%',
+    height: 160,
+  },
+  areaImagePlaceholder: {
+    width: '100%',
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  areaImageIcon: {
+    fontSize: 64,
+    opacity: 0.5,
+  },
+  areaContent: {
+    padding: 16,
+  },
+  areaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  areaHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  areaCategoryBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  areaCategoryIcon: {
+    fontSize: 20,
+  },
+  areaName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  areaCategoryLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  areaStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusActive: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusInactive: {
+    backgroundColor: '#FEE2E2',
+  },
+  areaStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusActiveText: {
+    color: '#065F46',
+  },
+  statusInactiveText: {
+    color: '#DC2626',
+  },
+  areaLocation: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginBottom: 8,
+  },
+  areaDescription: {
+    fontSize: 13,
+    color: COLORS.gray,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  areaBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  areaBadge: {
+    backgroundColor: COLORS.grayLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  areaBadgeHighlight: {
+    backgroundColor: '#FEF3C7',
+  },
+  areaBadgeText: {
+    fontSize: 12,
+    color: COLORS.grayDark,
+  },
+  areaBadgeTextHighlight: {
+    color: '#92400E',
+  },
+  areaSchedule: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginBottom: 12,
+  },
+  areaActions: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: 12,
+    marginTop: 4,
+  },
+  areaAction: {
+    flex: 1,
+    paddingVertical: 8,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  areaActionDanger: {
+    backgroundColor: '#FEE2E2',
+  },
+  areaActionText: {
+    fontSize: 12,
+  },
+
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: COLORS.gray,
+  },
+  modalSave: {
+    fontSize: 16,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.grayDark,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  input: {
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: COLORS.black,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+    marginBottom: 8,
+  },
+  locationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  locationChipActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#EEF2FF',
+  },
+  locationChipText: {
+    fontSize: 14,
+    color: COLORS.grayDark,
+  },
+  locationChipTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryItem: {
+    width: (SCREEN_WIDTH - 64) / 5,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  categoryIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  categoryLabel: {
+    fontSize: 10,
+    color: COLORS.grayDark,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  switchLabel: {
+    fontSize: 15,
+    color: COLORS.black,
+    fontWeight: '500',
+  },
+  switchHint: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  scheduleSection: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  scheduleSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0369A1',
+    marginBottom: 12,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  timeField: {
+    flex: 1,
+  },
+  timeLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginBottom: 4,
+  },
+  timeInput: {
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: COLORS.black,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  rulesSection: {
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  rulesSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.grayDark,
+    marginBottom: 12,
+  },
+  rulesRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  ruleField: {
+    flex: 1,
+  },
+  ruleLabel: {
+    fontSize: 11,
+    color: COLORS.gray,
+    marginBottom: 4,
+  },
+  ruleInput: {
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: COLORS.black,
+    textAlign: 'center',
+  },
+
+  // Image picker
+  imagePickerContainer: {
+    marginBottom: 8,
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: 140,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 14,
+    color: COLORS.gray,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  imagePlaceholderHint: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 4,
+  },
+
+  // Schedule Modal
+  scheduleNote: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 10,
+    marginBottom: 8,
+    gap: 12,
+  },
+  scheduleRowActive: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  scheduleDay: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.gray,
+  },
+  scheduleDayActive: {
+    color: '#166534',
+  },
+  scheduleTimeInput: {
+    width: 70,
+    backgroundColor: COLORS.white,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  scheduleTimeSeparator: {
+    color: COLORS.gray,
+  },
+  scheduleSaveButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: COLORS.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

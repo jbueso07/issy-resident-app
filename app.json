@@ -15,12 +15,17 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.issy.resident",
       "usesAppleSignIn": true,
+      "associatedDomains": [
+        "applinks:app.joinissy.com",
+        "applinks:joinissy.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
               "com.issy.resident",
+              "issy",
               "com.googleusercontent.apps.844659689774-9dmfp7uhgh4kj9pl7na3lfec8hdfk0pl"
             ]
           }
@@ -32,14 +37,34 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.issy.resident"
+      "package": "com.issy.resident",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.joinissy.com",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "joinissy.com",
+              "pathPrefix": "/join"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "scheme": "com.issy.resident",
     "plugins": [
       "expo-secure-store",
       "expo-web-browser",
       "expo-font",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-linking"
     ],
     "extra": {
       "eas": {

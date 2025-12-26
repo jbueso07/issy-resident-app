@@ -916,3 +916,149 @@ export const deleteUserAccount = async (password) => {
     throw error;
   }
 };
+// ==========================================
+// COMMUNITY/ORGANIZATION MANAGEMENT
+// Agregar estas funciones al final de api.js
+// ==========================================
+
+// Get organization stats
+export const getOrganizationStats = async (locationId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/${locationId}/stats`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching organization stats:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Get organization members
+export const getOrganizationMembers = async (locationId, status = 'all') => {
+  try {
+    const endpoint = status === 'all' 
+      ? `/invitations/organization/${locationId}/members`
+      : `/invitations/organization/${locationId}/members?status=${status}`;
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching organization members:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Get pending members
+export const getPendingMembers = async (locationId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/${locationId}/pending`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching pending members:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Approve member
+export const approveMember = async (membershipId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/members/${membershipId}/approve`, {
+      method: 'POST',
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error approving member:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Reject member
+export const rejectMember = async (membershipId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/members/${membershipId}/reject`, {
+      method: 'POST',
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error rejecting member:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Approve all pending members
+export const approveAllMembers = async (locationId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/${locationId}/approve-all`, {
+      method: 'POST',
+    });
+    return { success: true, data: data.data || data, count: data.count };
+  } catch (error) {
+    console.error('Error approving all members:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Update member status (activate/deactivate)
+export const updateMemberStatus = async (membershipId, isActive, deactivationReason = null) => {
+  try {
+    const data = await authFetch(`/invitations/organization/members/${membershipId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        is_active: isActive,
+        deactivation_reason: deactivationReason 
+      }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating member status:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Update member role and unit
+export const updateMemberInfo = async (membershipId, updates) => {
+  try {
+    const data = await authFetch(`/invitations/organization/members/${membershipId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating member info:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Get organization settings
+export const getOrganizationSettings = async (locationId) => {
+  try {
+    const data = await authFetch(`/invitations/organization/${locationId}/settings`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching organization settings:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Update organization settings
+export const updateOrganizationSettings = async (locationId, settings) => {
+  try {
+    const data = await authFetch(`/invitations/organization/${locationId}/settings`, {
+      method: 'PUT',
+      body: JSON.stringify({ settings }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating organization settings:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// Get all locations (for superadmin)
+export const getLocations = async () => {
+  try {
+    const data = await authFetch('/locations');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
