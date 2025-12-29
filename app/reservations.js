@@ -1,6 +1,5 @@
 // app/reservations.js
-// ISSY Resident App - Reservaciones con slots de disponibilidad
-// Sincronizado con la versión web
+// ISSY Resident App - Reservaciones (ProHome Dark Theme)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -23,7 +22,27 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../src/config/supabase';
 import { useAuth } from '../src/context/AuthContext';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  tealDark: '#4BCDC7',
+  lime: '#D4FE48',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  red: '#EF4444',
+  yellow: '#F59E0B',
+  green: '#10B981',
+  blue: '#3B82F6',
+};
 
 // Info visual por tipo de área
 const TYPE_INFO = {
@@ -60,11 +79,11 @@ const CATEGORIES = [
 
 // Estados de reserva
 const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: '#F59E0B', bgColor: '#FEF3C7' },
-  approved: { label: 'Aprobada', color: '#10B981', bgColor: '#D1FAE5' },
-  rejected: { label: 'Rechazada', color: '#EF4444', bgColor: '#FEE2E2' },
-  cancelled: { label: 'Cancelada', color: '#6B7280', bgColor: '#F3F4F6' },
-  expired: { label: 'Expirada', color: '#DC2626', bgColor: '#FEE2E2' },
+  pending: { label: 'Pendiente', color: COLORS.yellow, bgColor: 'rgba(245, 158, 11, 0.2)' },
+  approved: { label: 'Aprobada', color: COLORS.green, bgColor: 'rgba(16, 185, 129, 0.2)' },
+  rejected: { label: 'Rechazada', color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
+  cancelled: { label: 'Cancelada', color: COLORS.textMuted, bgColor: 'rgba(107, 114, 128, 0.2)' },
+  expired: { label: 'Expirada', color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
 };
 
 export default function ReservationsScreen() {
@@ -108,10 +127,7 @@ export default function ReservationsScreen() {
   const loadAreas = async () => {
     try {
       const locationId = profile?.location_id || user?.location_id;
-
-      if (!locationId) {
-        return;
-      }
+      if (!locationId) return;
 
       const { data, error } = await supabase
         .from('common_areas')
@@ -156,10 +172,18 @@ export default function ReservationsScreen() {
       });
 
       if (error) throw error;
-      setAvailability(data);
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setAvailability(data);
+      } else if (data && Array.isArray(data.slots)) {
+        setAvailability(data.slots);
+      } else {
+        setAvailability([]);
+      }
     } catch (error) {
       console.error('Error loading availability:', error);
-      setAvailability(null);
+      setAvailability([]);
     } finally {
       setLoadingAvailability(false);
     }
@@ -175,12 +199,6 @@ export default function ReservationsScreen() {
     return new Date().toISOString().split('T')[0];
   }
 
-  const getMaxDate = () => {
-    const date = new Date();
-    date.setDate(date.getDate() + (selectedArea?.advance_booking_days || 30));
-    return date.toISOString().split('T')[0];
-  };
-
   const getTypeInfo = (type) => TYPE_INFO[type] || TYPE_INFO.other;
 
   const getAreaImage = (area) => {
@@ -191,8 +209,6 @@ export default function ReservationsScreen() {
   const getAreasForCategory = (categoryTypes) => {
     return areas.filter(area => categoryTypes.includes(area.type));
   };
-
-  const isAreaPaid = (area) => area?.hourly_rate && parseFloat(area.hourly_rate) > 0;
 
   const formatTime = (time) => {
     if (!time) return '';
@@ -213,26 +229,19 @@ export default function ReservationsScreen() {
     });
   };
 
-  const isReservationActive = (reservation) => {
-    const today = getTodayDate();
-    return reservation.reservation_date >= today &&
-      (reservation.status === 'approved' || reservation.status === 'pending');
+  const formatShortDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('es-HN', {
+      day: 'numeric',
+      month: 'short'
+    });
   };
 
-  // Verificar si el usuario puede cancelar (aprobada o pendiente, y fecha no pasada)
   const canUserCancel = (reservation) => {
     const today = getTodayDate();
-
-    // Solo puede cancelar si está pendiente o aprobada
-    if (!['pending', 'approved'].includes(reservation.status)) {
-      return false;
-    }
-
-    // No puede cancelar si la fecha ya pasó
-    if (reservation.reservation_date < today) {
-      return false;
-    }
-
+    if (!['pending', 'approved'].includes(reservation.status)) return false;
+    if (reservation.reservation_date < today) return false;
     return true;
   };
 
@@ -411,100 +420,176 @@ export default function ReservationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#D4FE48" />
+          <ActivityIndicator size="large" color={COLORS.teal} />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Separate active and past reservations
+  const today = getTodayDate();
+  const activeReservations = myReservations.filter(r => 
+    r.reservation_date >= today && ['pending', 'approved'].includes(r.status)
+  );
+  const pastReservations = myReservations.filter(r => 
+    r.reservation_date < today || !['pending', 'approved'].includes(r.status)
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reservas</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
-      {/* Create Button */}
-      <View style={styles.createButtonContainer}>
-        <TouchableOpacity style={styles.createButton} onPress={handleOpenCreate}>
-          <Ionicons name="calendar" size={20} color="#000" />
-          <Text style={styles.createButtonText}>Crear Reserva</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* My Reservations */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Mis Reservas</Text>
-      </View>
-
-      <FlatList
-        data={myReservations}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4FE48" />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.teal} 
+          />
         }
-        ListEmptyComponent={() => (
+      >
+        {/* Create Button */}
+        <TouchableOpacity style={styles.createButton} onPress={handleOpenCreate}>
+          <View style={styles.createButtonIcon}>
+            <Ionicons name="calendar" size={22} color={COLORS.background} />
+          </View>
+          <View style={styles.createButtonContent}>
+            <Text style={styles.createButtonText}>Crear Reserva</Text>
+            <Text style={styles.createButtonSubtext}>Reserva áreas comunes</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.background} />
+        </TouchableOpacity>
+
+        {/* Active Reservations */}
+        {activeReservations.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Próximas Reservas</Text>
+              <Text style={styles.sectionCount}>{activeReservations.length}</Text>
+            </View>
+
+            {activeReservations.map((item) => {
+              const area = getAreaById(item.area_id);
+              const typeInfo = getTypeInfo(area?.type);
+              const status = STATUS_CONFIG[item.status];
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.reservationCard}
+                  onPress={() => handleViewDetail(item)}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: getAreaImage(area) }}
+                    style={styles.reservationImage}
+                  />
+                  <View style={styles.reservationOverlay}>
+                    <View style={styles.reservationContent}>
+                      <View style={styles.reservationHeader}>
+                        <View style={[styles.typeIcon, { backgroundColor: typeInfo.color + '30' }]}>
+                          <Ionicons name={typeInfo.icon} size={16} color={typeInfo.color} />
+                        </View>
+                        <View style={[styles.statusBadge, { backgroundColor: status.bgColor }]}>
+                          <Text style={[styles.statusText, { color: status.color }]}>
+                            {status.label}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.reservationAreaName}>{area?.name || 'Área'}</Text>
+                      <View style={styles.reservationMeta}>
+                        <Ionicons name="calendar-outline" size={14} color={COLORS.teal} />
+                        <Text style={styles.reservationDate}>{formatShortDate(item.reservation_date)}</Text>
+                        <View style={styles.metaDot} />
+                        <Ionicons name="time-outline" size={14} color={COLORS.teal} />
+                        <Text style={styles.reservationTime}>
+                          {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                        </Text>
+                      </View>
+                    </View>
+                    {canUserCancel(item) && (
+                      <TouchableOpacity 
+                        style={styles.cancelButton}
+                        onPress={() => handleCancelReservation(item)}
+                      >
+                        <Ionicons name="close-circle" size={24} color={COLORS.red} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+
+        {/* Past/Inactive Reservations */}
+        {pastReservations.length > 0 && (
+          <>
+            <View style={[styles.sectionHeader, { marginTop: scale(24) }]}>
+              <Text style={styles.sectionTitle}>Historial</Text>
+              <Text style={styles.sectionCount}>{pastReservations.length}</Text>
+            </View>
+
+            {pastReservations.slice(0, 5).map((item) => {
+              const area = getAreaById(item.area_id);
+              const status = STATUS_CONFIG[item.status];
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.historyCard}
+                  onPress={() => handleViewDetail(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.historyContent}>
+                    <Text style={styles.historyAreaName}>{area?.name || 'Área'}</Text>
+                    <Text style={styles.historyDate}>{formatDate(item.reservation_date)}</Text>
+                  </View>
+                  <View style={[styles.statusBadgeSmall, { backgroundColor: status.bgColor }]}>
+                    <Text style={[styles.statusTextSmall, { color: status.color }]}>
+                      {status.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+
+        {/* Empty State */}
+        {myReservations.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="calendar-outline" size={48} color={COLORS.teal} />
+            </View>
             <Text style={styles.emptyTitle}>No tienes reservas</Text>
             <Text style={styles.emptySubtitle}>Crea una nueva reserva para comenzar</Text>
           </View>
         )}
-        renderItem={({ item }) => {
-          const area = getAreaById(item.area_id);
 
-          return (
-            <TouchableOpacity
-              style={styles.reservationCard}
-              onPress={() => handleViewDetail(item)}
-            >
-              <Image
-                source={{ uri: getAreaImage(area) }}
-                style={styles.reservationImage}
-              />
-              <View style={styles.reservationInfo}>
-                <Text style={styles.reservationAreaName}>{area?.name || 'Área'}</Text>
-                <Text style={styles.reservationDate}>
-                  {formatDate(item.reservation_date)}
-                </Text>
-                <Text style={styles.reservationTime}>
-                  {formatTime(item.start_time)} - {formatTime(item.end_time)}
-                </Text>
-              </View>
-              <View style={styles.reservationActions}>
-                <View style={[styles.statusBadge, { backgroundColor: STATUS_CONFIG[item.status]?.bgColor || '#F3F4F6' }]}>
-                  <Text style={[styles.statusText, { color: STATUS_CONFIG[item.status]?.color || '#6B7280' }]}>
-                    {STATUS_CONFIG[item.status]?.label || item.status}
-                  </Text>
-                </View>
-                {canUserCancel(item) && (
-                  <TouchableOpacity onPress={() => handleCancelReservation(item)}>
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
+        <View style={{ height: scale(100) }} />
+      </ScrollView>
 
       {/* Create Reservation Modal */}
       <Modal visible={showCreateModal} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
-          {/* Modal Header */}
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Crear nueva reserva</Text>
+            <Text style={styles.modalTitle}>Nueva Reserva</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -522,11 +607,14 @@ export default function ReservationsScreen() {
                     style={styles.categoryButton}
                     onPress={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
                   >
-                    <Text style={styles.categoryButtonText}>{category.label}</Text>
+                    <View style={styles.categoryLeft}>
+                      <Ionicons name={category.icon} size={20} color={COLORS.teal} />
+                      <Text style={styles.categoryButtonText}>{category.label}</Text>
+                    </View>
                     <Ionicons
                       name={expandedCategory === category.id ? "chevron-down" : "chevron-forward"}
                       size={20}
-                      color="#000"
+                      color={COLORS.textMuted}
                     />
                   </TouchableOpacity>
 
@@ -552,7 +640,7 @@ export default function ReservationsScreen() {
                               </Text>
                             </View>
                             <View style={[styles.radioButton, isSelected && styles.radioButtonSelected]}>
-                              {isSelected && <Ionicons name="checkmark" size={16} color="#000" />}
+                              {isSelected && <Ionicons name="checkmark" size={16} color={COLORS.background} />}
                             </View>
                           </TouchableOpacity>
                         );
@@ -567,11 +655,7 @@ export default function ReservationsScreen() {
             {selectedArea && (
               <>
                 <Text style={styles.modalLabel}>Selecciona día</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.datesScroll}
-                >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.datesScroll}>
                   {generateDates().map(d => (
                     <TouchableOpacity
                       key={d.date}
@@ -596,172 +680,176 @@ export default function ReservationsScreen() {
             {/* Time Slots */}
             {selectedArea && selectedDate && (
               <>
-                <Text style={styles.modalLabel}>Selecciona horario disponible</Text>
+                <Text style={styles.modalLabel}>Selecciona horario</Text>
 
                 {loadingAvailability ? (
-                  <ActivityIndicator color="#D4FE48" style={{ marginVertical: 20 }} />
-                ) : !availability?.available ? (
-                  <Text style={styles.noAvailability}>
-                    {availability?.reason || 'No disponible para esta fecha'}
-                  </Text>
+                  <ActivityIndicator color={COLORS.teal} style={{ marginVertical: 20 }} />
+                ) : !availability || !Array.isArray(availability) || availability.length === 0 ? (
+                  <Text style={styles.noAvailability}>No hay horarios disponibles para esta fecha</Text>
                 ) : (
-                  <View style={styles.slotsGrid}>
-                    {availability.slots?.map((slot, idx) => {
-                      const isSelected = selectedSlots.some(
-                        s => s.start_time === slot.start_time && s.end_time === slot.end_time
-                      );
+                  <>
+                    <View style={styles.slotsGrid}>
+                      {(Array.isArray(availability) ? availability : []).map((slot, idx) => {
+                        const slotKey = `${slot.start_time}-${slot.end_time}`;
+                        const isSelected = selectedSlots.some(s => `${s.start_time}-${s.end_time}` === slotKey);
 
-                      return (
-                        <TouchableOpacity
-                          key={idx}
-                          style={[
-                            styles.slotButton,
-                            !slot.available && styles.slotUnavailable,
-                            isSelected && styles.slotSelected
-                          ]}
-                          onPress={() => handleSlotToggle(slot)}
-                          disabled={!slot.available}
-                        >
-                          <Text style={[
-                            styles.slotText,
-                            !slot.available && styles.slotTextUnavailable,
-                            isSelected && styles.slotTextSelected
-                          ]}>
-                            {formatTime(slot.start_time)}
-                          </Text>
-                          <Text style={[
-                            styles.slotTextSmall,
-                            !slot.available && styles.slotTextUnavailable,
-                            isSelected && styles.slotTextSelected
-                          ]}>
-                            {formatTime(slot.end_time)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-
-                {availability?.available && (
-                  <Text style={styles.slotHint}>Puedes seleccionar máximo 2 turnos consecutivos</Text>
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            style={[
+                              styles.slotButton,
+                              !slot.available && styles.slotUnavailable,
+                              isSelected && styles.slotSelected,
+                            ]}
+                            onPress={() => handleSlotToggle(slot)}
+                            disabled={!slot.available}
+                          >
+                            <Text style={[
+                              styles.slotText,
+                              !slot.available && styles.slotTextUnavailable,
+                              isSelected && styles.slotTextSelected,
+                            ]}>
+                              {formatTime(slot.start_time)}
+                            </Text>
+                            <Text style={[
+                              styles.slotTextSmall,
+                              isSelected && styles.slotTextSelected,
+                            ]}>
+                              {formatTime(slot.end_time)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.slotHint}>Puedes seleccionar hasta 2 turnos consecutivos</Text>
+                  </>
                 )}
               </>
             )}
 
             {/* Attendees */}
-            {selectedArea && selectedSlots.length > 0 && (
+            {selectedSlots.length > 0 && (
               <>
-                <Text style={styles.modalLabel}>Cantidad de personas</Text>
+                <Text style={styles.modalLabel}>Número de asistentes</Text>
                 <View style={styles.attendeesContainer}>
                   <TouchableOpacity
                     style={styles.attendeeButton}
                     onPress={() => setAttendees(Math.max(1, attendees - 1))}
                   >
-                    <Ionicons name="remove" size={24} color="#FFF" />
+                    <Ionicons name="remove" size={24} color={COLORS.textPrimary} />
                   </TouchableOpacity>
                   <Text style={styles.attendeesText}>{attendees}</Text>
                   <TouchableOpacity
                     style={styles.attendeeButton}
-                    onPress={() => setAttendees(Math.min(selectedArea.capacity || 20, attendees + 1))}
+                    onPress={() => setAttendees(Math.min(selectedArea?.capacity || 50, attendees + 1))}
                   >
-                    <Ionicons name="add" size={24} color="#FFF" />
+                    <Ionicons name="add" size={24} color={COLORS.textPrimary} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.capacityHint}>
-                  Capacidad máxima: {selectedArea.capacity} personas
+                  Capacidad máxima: {selectedArea?.capacity} personas
                 </Text>
               </>
             )}
 
             {/* Submit Button */}
-            {selectedArea && selectedSlots.length > 0 && (
-              <TouchableOpacity
-                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-                onPress={handleSubmitReservation}
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#000" />
-                ) : (
-                  <>
-                    <Ionicons name="arrow-forward" size={20} color="#000" />
-                    <Text style={styles.submitButtonText}>Crear Reserva</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.submitButton, (!selectedSlots.length || submitting) && styles.submitButtonDisabled]}
+              onPress={handleSubmitReservation}
+              disabled={!selectedSlots.length || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color={COLORS.background} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
+                  <Text style={styles.submitButtonText}>Confirmar Reserva</Text>
+                </>
+              )}
+            </TouchableOpacity>
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: scale(40) }} />
           </ScrollView>
         </View>
       </Modal>
 
       {/* Detail Modal */}
       <Modal visible={showDetailModal} animationType="slide" presentationStyle="pageSheet">
-        {selectedReservation && (() => {
-          const detailArea = getAreaById(selectedReservation.area_id);
-          return (
-            <View style={styles.detailModalContainer}>
-              <View style={styles.detailHeader}>
-                <Text style={styles.detailTitle}>{detailArea?.name || 'Área'}</Text>
-                <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                  <Ionicons name="close-circle" size={32} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
+        <SafeAreaView style={styles.detailModalContainer}>
+          <View style={styles.detailHeader}>
+            <TouchableOpacity onPress={() => setShowDetailModal(false)}>
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.detailTitle}>Detalle de Reserva</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-              <Image source={{ uri: getAreaImage(detailArea) }} style={styles.detailImage} />
+          {selectedReservation && (
+            <ScrollView style={styles.detailContent}>
+              {(() => {
+                const area = getAreaById(selectedReservation.area_id);
+                const status = STATUS_CONFIG[selectedReservation.status];
 
-              <View style={styles.detailContent}>
-                {/* Status Badge */}
-                <View style={[styles.detailStatusBadge, { backgroundColor: STATUS_CONFIG[selectedReservation.status]?.bgColor || '#F3F4F6' }]}>
-                  <Text style={[styles.detailStatusText, { color: STATUS_CONFIG[selectedReservation.status]?.color || '#6B7280' }]}>
-                    {STATUS_CONFIG[selectedReservation.status]?.label || selectedReservation.status}
-                  </Text>
-                </View>
+                return (
+                  <>
+                    <Image
+                      source={{ uri: getAreaImage(area) }}
+                      style={styles.detailImage}
+                    />
 
-                <View style={styles.detailRow}>
-                  <Ionicons name="calendar" size={24} color="#D4FE48" />
-                  <Text style={styles.detailText}>{formatDate(selectedReservation.reservation_date)}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="time" size={24} color="#D4FE48" />
-                  <Text style={styles.detailText}>
-                    {formatTime(selectedReservation.start_time)} - {formatTime(selectedReservation.end_time)}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Ionicons name="people" size={24} color="#D4FE48" />
-                  <Text style={styles.detailText}>{selectedReservation.attendees || 1} personas</Text>
-                </View>
+                    <View style={styles.detailBody}>
+                      <View style={[styles.detailStatusBadge, { backgroundColor: status.bgColor }]}>
+                        <Text style={[styles.detailStatusText, { color: status.color }]}>
+                          {status.label}
+                        </Text>
+                      </View>
 
-                <View style={styles.codeContainer}>
-                  <Text style={styles.codeLabel}>Código de reserva</Text>
-                  <Text style={styles.codeValue}>
-                    {selectedReservation.id.substring(0, 8).toUpperCase()}
-                  </Text>
-                </View>
+                      <Text style={styles.detailAreaName}>{area?.name || 'Área'}</Text>
 
-                {detailArea?.rules && (
-                  <View style={styles.rulesContainer}>
-                    <Text style={styles.rulesTitle}>Reglas del área:</Text>
-                    <Text style={styles.rulesText}>{detailArea.rules}</Text>
-                  </View>
-                )}
+                      <View style={styles.detailRow}>
+                        <Ionicons name="calendar" size={20} color={COLORS.teal} />
+                        <Text style={styles.detailText}>
+                          {formatDate(selectedReservation.reservation_date)}
+                        </Text>
+                      </View>
 
-                {/* Cancel Button in Detail */}
-                {canUserCancel(selectedReservation) && (
-                  <TouchableOpacity
-                    style={styles.cancelDetailButton}
-                    onPress={() => handleCancelReservation(selectedReservation)}
-                  >
-                    <Ionicons name="close-circle-outline" size={20} color="#EF4444" />
-                    <Text style={styles.cancelDetailButtonText}>Cancelar Reserva</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          );
-        })()}
+                      <View style={styles.detailRow}>
+                        <Ionicons name="time" size={20} color={COLORS.teal} />
+                        <Text style={styles.detailText}>
+                          {formatTime(selectedReservation.start_time)} - {formatTime(selectedReservation.end_time)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.detailRow}>
+                        <Ionicons name="people" size={20} color={COLORS.teal} />
+                        <Text style={styles.detailText}>
+                          {selectedReservation.attendees || 1} asistentes
+                        </Text>
+                      </View>
+
+                      {selectedReservation.confirmation_code && (
+                        <View style={styles.codeContainer}>
+                          <Text style={styles.codeLabel}>CÓDIGO DE CONFIRMACIÓN</Text>
+                          <Text style={styles.codeValue}>{selectedReservation.confirmation_code}</Text>
+                        </View>
+                      )}
+
+                      {canUserCancel(selectedReservation) && (
+                        <TouchableOpacity
+                          style={styles.cancelDetailButton}
+                          onPress={() => handleCancelReservation(selectedReservation)}
+                        >
+                          <Ionicons name="close-circle-outline" size={20} color={COLORS.red} />
+                          <Text style={styles.cancelDetailButtonText}>Cancelar Reserva</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                );
+              })()}
+            </ScrollView>
+          )}
+        </SafeAreaView>
       </Modal>
 
       {/* Success Modal */}
@@ -769,15 +857,17 @@ export default function ReservationsScreen() {
         <View style={styles.successOverlay}>
           <View style={styles.successContent}>
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={80} color="#D4FE48" />
+              <Ionicons name="checkmark-circle" size={64} color={COLORS.green} />
             </View>
-            <Text style={styles.successTitle}>¡Reserva creada!</Text>
-            <Text style={styles.successSubtitle}>Tu reserva ha sido registrada exitosamente</Text>
+            <Text style={styles.successTitle}>¡Reserva Creada!</Text>
+            <Text style={styles.successSubtitle}>
+              Tu reserva ha sido enviada y está pendiente de aprobación
+            </Text>
             <TouchableOpacity
               style={styles.successButton}
               onPress={() => setShowSuccessModal(false)}
             >
-              <Text style={styles.successButtonText}>Ver mis reservas</Text>
+              <Text style={styles.successButtonText}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -789,453 +879,570 @@ export default function ReservationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
+    color: COLORS.textSecondary,
+    marginTop: scale(12),
+    fontSize: scale(14),
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
-  createButtonContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+
+  // Content
+  scrollContent: {
+    paddingHorizontal: scale(20),
   },
+
+  // Create Button
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(24),
+  },
+  createButtonIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#D4FE48',
-    borderRadius: 50,
-    paddingVertical: 16,
-    gap: 8,
+    marginRight: scale(12),
+  },
+  createButtonContent: {
+    flex: 1,
   },
   createButtonText: {
-    fontSize: 16,
+    fontSize: scale(15),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.background,
   },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  reservationCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  reservationImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-  },
-  reservationInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  reservationAreaName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-  },
-  reservationDate: {
-    fontSize: 14,
-    color: '#374151',
-    marginTop: 2,
-  },
-  reservationTime: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  reservationActions: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
+  createButtonSubtext: {
+    fontSize: scale(12),
+    color: 'rgba(0,0,0,0.6)',
+    marginTop: scale(2),
   },
 
-  // Modal Styles
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(16),
+  },
+  sectionTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  sectionCount: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.teal,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
+  },
+
+  // Reservation Card
+  reservationCard: {
+    borderRadius: scale(16),
+    overflow: 'hidden',
+    marginBottom: scale(12),
+    height: scale(140),
+  },
+  reservationImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  reservationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: scale(16),
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  reservationContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  reservationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  typeIcon: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  statusText: {
+    fontSize: scale(11),
+    fontWeight: '600',
+  },
+  reservationAreaName: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  reservationMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reservationDate: {
+    fontSize: scale(13),
+    color: COLORS.textPrimary,
+    marginLeft: scale(4),
+  },
+  metaDot: {
+    width: scale(4),
+    height: scale(4),
+    borderRadius: scale(2),
+    backgroundColor: COLORS.textMuted,
+    marginHorizontal: scale(8),
+  },
+  reservationTime: {
+    fontSize: scale(13),
+    color: COLORS.textPrimary,
+    marginLeft: scale(4),
+  },
+  cancelButton: {
+    alignSelf: 'flex-start',
+  },
+
+  // History Card
+  historyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  historyContent: {
+    flex: 1,
+  },
+  historyAreaName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  historyDate: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  statusBadgeSmall: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+  },
+  statusTextSmall: {
+    fontSize: scale(10),
+    fontWeight: '600',
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(60),
+  },
+  emptyIconContainer: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+
+  // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: COLORS.background,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(16),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.cardBorder,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: scale(18),
     fontWeight: '700',
-    color: '#FFF',
+    color: COLORS.textPrimary,
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: scale(20),
+    paddingTop: scale(20),
   },
   modalLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 20,
-    marginBottom: 12,
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
+    marginTop: scale(16),
   },
+
+  // Categories
   categoryContainer: {
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#D4FE48',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(12),
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  categoryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
   },
   categoryButtonText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.textPrimary,
   },
   areasContainer: {
-    marginTop: 8,
+    marginTop: scale(8),
+    gap: scale(8),
   },
   areaOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(12),
+    padding: scale(12),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: COLORS.cardBorder,
   },
   areaOptionSelected: {
-    borderColor: '#D4FE48',
+    borderColor: COLORS.lime,
     backgroundColor: 'rgba(212,254,72,0.1)',
   },
   areaIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
   areaOptionInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   areaOptionName: {
-    fontSize: 15,
+    fontSize: scale(15),
     fontWeight: '500',
-    color: '#FFF',
+    color: COLORS.textPrimary,
   },
   areaOptionCapacity: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 2,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
     borderWidth: 2,
-    borderColor: '#6B7280',
+    borderColor: COLORS.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    borderColor: '#D4FE48',
-    backgroundColor: '#D4FE48',
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime,
   },
+
+  // Date Selection
   datesScroll: {
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   dateChip: {
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    marginRight: scale(10),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: COLORS.cardBorder,
   },
   dateChipSelected: {
-    backgroundColor: '#D4FE48',
-    borderColor: '#D4FE48',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   dateDayName: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
   },
   dateDayNum: {
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: '700',
-    color: '#FFF',
-    marginVertical: 2,
+    color: COLORS.textPrimary,
+    marginVertical: scale(2),
   },
   dateMonth: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
   },
   dateTextSelected: {
-    color: '#000',
+    color: COLORS.background,
   },
+
+  // Time Slots
   noAvailability: {
-    color: '#F59E0B',
+    color: COLORS.yellow,
     textAlign: 'center',
-    paddingVertical: 20,
-    fontSize: 14,
+    paddingVertical: scale(20),
+    fontSize: scale(14),
   },
   slotsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: scale(10),
   },
   slotButton: {
-    width: (width - 60) / 3,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: (SCREEN_WIDTH - 60) / 3,
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: COLORS.cardBorder,
   },
   slotUnavailable: {
     opacity: 0.3,
   },
   slotSelected: {
-    backgroundColor: '#D4FE48',
-    borderColor: '#D4FE48',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   slotText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#FFF',
+    color: COLORS.textPrimary,
   },
   slotTextSmall: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   slotTextUnavailable: {
-    color: '#6B7280',
+    color: COLORS.textMuted,
   },
   slotTextSelected: {
-    color: '#000',
+    color: COLORS.background,
   },
   slotHint: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 12,
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(12),
   },
+
+  // Attendees
   attendeesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: scale(20),
   },
   attendeeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   attendeesText: {
-    fontSize: 32,
+    fontSize: scale(32),
     fontWeight: '700',
-    color: '#FFF',
-    minWidth: 50,
+    color: COLORS.textPrimary,
+    minWidth: scale(50),
     textAlign: 'center',
   },
   capacityHint: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: COLORS.textMuted,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: scale(8),
   },
+
+  // Submit Button
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#D4FE48',
-    borderRadius: 50,
-    paddingVertical: 16,
-    marginTop: 30,
-    gap: 8,
+    backgroundColor: COLORS.lime,
+    borderRadius: scale(50),
+    paddingVertical: scale(16),
+    marginTop: scale(30),
+    gap: scale(8),
   },
   submitButtonDisabled: {
     opacity: 0.6,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.background,
   },
 
   // Detail Modal
   detailModalContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.background,
   },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(16),
   },
   detailTitle: {
-    fontSize: 20,
+    fontSize: scale(18),
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.textPrimary,
+  },
+  detailContent: {
+    flex: 1,
   },
   detailImage: {
     width: '100%',
-    height: 200,
+    height: scale(200),
   },
-  detailContent: {
-    padding: 20,
+  detailBody: {
+    padding: scale(20),
   },
   detailStatusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    marginBottom: scale(16),
   },
   detailStatusText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
+  },
+  detailAreaName: {
+    fontSize: scale(24),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(20),
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: scale(12),
+    marginBottom: scale(16),
   },
   detailText: {
-    fontSize: 16,
-    color: '#374151',
+    fontSize: scale(16),
+    color: COLORS.textSecondary,
   },
   codeContainer: {
-    backgroundColor: '#D4FE48',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: COLORS.lime,
+    borderRadius: scale(16),
+    padding: scale(20),
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: scale(20),
   },
   codeLabel: {
-    fontSize: 12,
-    color: '#000',
+    fontSize: scale(12),
+    color: COLORS.background,
     opacity: 0.6,
   },
   codeValue: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.background,
     letterSpacing: 2,
-    marginTop: 4,
-  },
-  rulesContainer: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-  },
-  rulesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  rulesText: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    marginTop: scale(4),
   },
   cancelDetailButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
+    marginTop: scale(24),
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: '#FEE2E2',
-    backgroundColor: '#FEF2F2',
-    gap: 8,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    gap: scale(8),
   },
   cancelDetailButtonText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '500',
-    color: '#EF4444',
+    color: COLORS.red,
   },
 
   // Success Modal
@@ -1244,39 +1451,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.8)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: scale(40),
   },
   successContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 40,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(24),
+    padding: scale(40),
     alignItems: 'center',
     width: '100%',
   },
   successIcon: {
-    marginBottom: 20,
+    marginBottom: scale(20),
   },
   successTitle: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.textPrimary,
   },
   successSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(8),
     textAlign: 'center',
   },
   successButton: {
-    marginTop: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    backgroundColor: '#D4FE48',
-    borderRadius: 50,
+    marginTop: scale(24),
+    paddingVertical: scale(14),
+    paddingHorizontal: scale(32),
+    backgroundColor: COLORS.lime,
+    borderRadius: scale(50),
   },
   successButtonText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.background,
   },
 });

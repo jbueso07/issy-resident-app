@@ -1,8 +1,8 @@
-// app/my-subscription.js - Mi Suscripción y Planes
+// app/my-subscription.js - Mi Suscripción - ProHome Dark Theme
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, Modal, RefreshControl
+  Alert, ActivityIndicator, Modal, RefreshControl, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,27 @@ import {
   getMySubscriptions, getVerticalPlans, startTrial,
   subscribeToPlan, cancelSubscription, getPaymentMethods
 } from '../src/services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  red: '#EF4444',
+  yellow: '#F59E0B',
+};
 
 const VERTICALS = {
   access: { name: 'Control de Acceso', icon: '🔐', color: '#7C3AED' },
@@ -78,7 +99,7 @@ export default function MySubscriptionScreen() {
       setShowPlansModal(false);
       loadData();
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert('Error', res.error || 'No se pudo activar la prueba');
     }
   };
 
@@ -116,7 +137,7 @@ export default function MySubscriptionScreen() {
       setSelectedPlan(null);
       loadData();
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert('Error', res.error || 'No se pudo procesar el pago');
     }
   };
 
@@ -157,122 +178,130 @@ export default function MySubscriptionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#6366F1" style={{ flex: 1 }} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.purple} />
+          <Text style={styles.loadingText}>Cargando suscripciones...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mis Suscripciones</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       <ScrollView
         style={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.purple} />}
+        showsVerticalScrollIndicator={false}
       >
         {/* Active Subscriptions */}
-        {subscriptions.filter(s => ['active', 'trial'].includes(s.status)).length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Suscripciones Activas</Text>
-            {subscriptions.filter(s => ['active', 'trial'].includes(s.status)).map(sub => {
-              const vertical = VERTICALS[sub.plan?.vertical] || {};
-              const daysLeft = getDaysRemaining(sub.status === 'trial' ? sub.trial_ends_at : sub.current_period_end);
+        {subscriptions.filter(s => ['active', 'trial'].includes(s.status)).map((sub) => {
+          const vertical = VERTICALS[sub.plan?.vertical] || {};
+          const daysLeft = getDaysRemaining(sub.current_period_end || sub.trial_end);
+          
+          return (
+            <View key={sub.id} style={styles.activeCard}>
+              <View style={[styles.activeHeader, { backgroundColor: vertical.color || COLORS.purple }]}>
+                <Text style={styles.activeIcon}>{vertical.icon}</Text>
+                <Text style={styles.activePlan}>{sub.plan?.name || 'Plan'}</Text>
+                <Text style={styles.activePrice}>
+                  {sub.status === 'trial' ? 'Prueba Gratuita' : `$${sub.plan?.price_monthly}/mes`}
+                </Text>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>
+                    {sub.status === 'trial' ? '🎁 TRIAL' : '✓ ACTIVO'}
+                  </Text>
+                </View>
+              </View>
               
-              return (
-                <View key={sub.id} style={styles.activeCard}>
-                  <View style={[styles.activeHeader, { backgroundColor: vertical.color }]}>
-                    <View>
-                      <Text style={styles.activeIcon}>{vertical.icon}</Text>
-                      <Text style={styles.activePlan}>{sub.plan?.name}</Text>
-                      <Text style={styles.activePrice}>${sub.plan?.price_monthly}/mes</Text>
-                    </View>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusText}>
-                        {sub.status === 'trial' ? '🎁 Trial' : '✓ Activo'}
-                      </Text>
-                    </View>
+              <View style={styles.activeBody}>
+                {sub.status === 'trial' && (
+                  <View style={styles.trialAlert}>
+                    <Ionicons name="time-outline" size={18} color={COLORS.yellow} />
+                    <Text style={styles.trialText}>
+                      {daysLeft} días restantes de prueba
+                    </Text>
                   </View>
-                  <View style={styles.activeBody}>
-                    {sub.status === 'trial' && (
-                      <View style={styles.trialAlert}>
-                        <Ionicons name="time-outline" size={18} color="#D97706" />
-                        <Text style={styles.trialText}>
-                          {daysLeft} días restantes de prueba
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.activeInfo}>
-                      <Text style={styles.infoLabel}>Próximo cobro:</Text>
-                      <Text style={styles.infoValue}>
-                        {new Date(sub.current_period_end).toLocaleDateString('es')}
-                      </Text>
-                    </View>
-                    <View style={styles.activeActions}>
-                      {sub.status === 'trial' && (
-                        <TouchableOpacity
-                          style={styles.upgradeBtn}
-                          onPress={() => handleSelectPlanForPayment(sub.plan)}
-                        >
-                          <Text style={styles.upgradeBtnText}>Activar Plan</Text>
-                        </TouchableOpacity>
-                      )}
-                      <TouchableOpacity
-                        style={styles.cancelBtn}
-                        onPress={() => handleCancelSubscription(sub)}
-                      >
-                        <Text style={styles.cancelBtnText}>Cancelar</Text>
-                      </TouchableOpacity>
-                    </View>
+                )}
+                
+                <View style={styles.activeInfo}>
+                  <View>
+                    <Text style={styles.infoLabel}>Próxima factura</Text>
+                    <Text style={styles.infoValue}>
+                      {sub.current_period_end 
+                        ? new Date(sub.current_period_end).toLocaleDateString('es', { day: 'numeric', month: 'short' })
+                        : 'N/A'
+                      }
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.infoLabel}>Método</Text>
+                    <Text style={styles.infoValue}>
+                      {paymentMethods.find(c => c.is_default)?.last_four 
+                        ? `•••• ${paymentMethods.find(c => c.is_default).last_four}`
+                        : 'Sin tarjeta'
+                      }
+                    </Text>
                   </View>
                 </View>
-              );
-            })}
-          </View>
-        )}
+                
+                <View style={styles.activeActions}>
+                  <TouchableOpacity style={styles.upgradeBtn}>
+                    <Text style={styles.upgradeBtnText}>Cambiar Plan</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancelSubscription(sub)}>
+                    <Text style={styles.cancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          );
+        })}
 
         {/* Available Services */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
-          <Text style={styles.sectionSubtitle}>Prueba gratis por 14 días cualquier servicio</Text>
+          <Text style={styles.sectionSubtitle}>Explora nuestros servicios premium</Text>
           
           {Object.entries(VERTICALS).map(([key, vertical]) => {
-            const currentSub = getVerticalSubscription(key);
-            const hasAccess = !!currentSub;
+            const activeSub = getVerticalSubscription(key);
             
             return (
-              <TouchableOpacity
-                key={key}
+              <TouchableOpacity 
+                key={key} 
                 style={styles.serviceCard}
-                onPress={() => !hasAccess && openVerticalPlans(key)}
-                disabled={hasAccess}
+                onPress={() => !activeSub && openVerticalPlans(key)}
+                disabled={!!activeSub}
               >
-                <View style={[styles.serviceIcon, { backgroundColor: vertical.color + '15' }]}>
+                <View style={[styles.serviceIcon, { backgroundColor: vertical.color + '20' }]}>
                   <Text style={styles.serviceIconText}>{vertical.icon}</Text>
                 </View>
                 <View style={styles.serviceInfo}>
                   <Text style={styles.serviceName}>{vertical.name}</Text>
                   <Text style={styles.serviceStatus}>
-                    {hasAccess 
-                      ? (currentSub.status === 'trial' ? '🎁 En prueba' : '✓ Activo')
+                    {activeSub 
+                      ? (activeSub.status === 'trial' ? 'En período de prueba' : 'Suscripción activa')
                       : 'Disponible'
                     }
                   </Text>
                 </View>
-                {!hasAccess && (
+                {activeSub ? (
+                  <View style={[styles.activeBadge]}>
+                    <Ionicons name="checkmark-circle" size={20} color={COLORS.green} />
+                  </View>
+                ) : (
                   <View style={[styles.tryBadge, { backgroundColor: vertical.color }]}>
                     <Text style={styles.tryText}>Probar</Text>
                   </View>
-                )}
-                {hasAccess && (
-                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 )}
               </TouchableOpacity>
             );
@@ -282,35 +311,41 @@ export default function MySubscriptionScreen() {
         {/* Payment Methods Link */}
         <TouchableOpacity style={styles.linkCard} onPress={() => router.push('/payment-methods')}>
           <View style={styles.linkIcon}>
-            <Ionicons name="card" size={22} color="#6366F1" />
+            <Ionicons name="card-outline" size={22} color={COLORS.purple} />
           </View>
           <View style={styles.linkInfo}>
             <Text style={styles.linkTitle}>Métodos de Pago</Text>
             <Text style={styles.linkSubtitle}>
-              {paymentMethods.length} tarjeta{paymentMethods.length !== 1 ? 's' : ''} guardada{paymentMethods.length !== 1 ? 's' : ''}
+              {paymentMethods.length > 0 
+                ? `${paymentMethods.length} tarjeta(s) guardada(s)`
+                : 'Agregar método de pago'
+              }
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <Ionicons name="chevron-forward" size={22} color={COLORS.textMuted} />
         </TouchableOpacity>
+
+        <View style={{ height: scale(100) }} />
       </ScrollView>
 
       {/* Plans Modal */}
       <Modal visible={showPlansModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {VERTICALS[selectedVertical]?.icon} {VERTICALS[selectedVertical]?.name}
               </Text>
               <TouchableOpacity onPress={() => setShowPlansModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
-              <Text style={styles.plansSubtitle}>Elige tu plan</Text>
-              
-              {getPlansForVertical().map(plan => (
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.plansSubtitle}>Elige el plan que mejor se adapte a ti</Text>
+
+              {getPlansForVertical().map((plan) => (
                 <View key={plan.id} style={styles.planCard}>
                   <View style={styles.planHeader}>
                     <Text style={styles.planName}>{plan.name}</Text>
@@ -325,33 +360,30 @@ export default function MySubscriptionScreen() {
                     <Text style={styles.planPrice}>${plan.price_monthly}</Text>
                     <Text style={styles.planPeriod}>/mes</Text>
                   </View>
-                  
-                  {plan.price_yearly > 0 && (
+                  {plan.price_yearly && (
                     <Text style={styles.yearlyPrice}>
-                      ${plan.price_yearly}/año (ahorra {Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%)
+                      o ${plan.price_yearly}/año (ahorra 2 meses)
                     </Text>
                   )}
 
-                  {plan.features && plan.features.length > 0 && (
-                    <View style={styles.featuresList}>
-                      {plan.features.slice(0, 4).map((feature, i) => (
-                        <View key={i} style={styles.featureItem}>
-                          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                          <Text style={styles.featureText}>{feature}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
+                  <View style={styles.featuresList}>
+                    {(plan.features || []).slice(0, 4).map((feature, idx) => (
+                      <View key={idx} style={styles.featureItem}>
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.green} />
+                        <Text style={styles.featureText}>{feature}</Text>
+                      </View>
+                    ))}
+                  </View>
 
                   <View style={styles.planActions}>
                     {plan.trial_days > 0 && (
                       <TouchableOpacity
-                        style={[styles.trialBtn, { backgroundColor: VERTICALS[selectedVertical]?.color }]}
+                        style={[styles.trialBtn, { backgroundColor: VERTICALS[selectedVertical]?.color || COLORS.purple }]}
                         onPress={() => handleStartTrial(plan)}
                         disabled={processing}
                       >
                         {processing ? (
-                          <ActivityIndicator color="#FFF" size="small" />
+                          <ActivityIndicator color={COLORS.textPrimary} size="small" />
                         ) : (
                           <Text style={styles.trialBtnText}>Probar Gratis</Text>
                         )}
@@ -369,6 +401,7 @@ export default function MySubscriptionScreen() {
 
               {getPlansForVertical().length === 0 && (
                 <View style={styles.noPlans}>
+                  <Ionicons name="cube-outline" size={48} color={COLORS.textMuted} />
                   <Text style={styles.noPlansText}>No hay planes disponibles</Text>
                 </View>
               )}
@@ -381,10 +414,11 @@ export default function MySubscriptionScreen() {
       <Modal visible={showPaymentModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.paymentModalContent}>
+            <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Confirmar Suscripción</Text>
               <TouchableOpacity onPress={() => { setShowPaymentModal(false); setSelectedPlan(null); }}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -421,7 +455,7 @@ export default function MySubscriptionScreen() {
                     disabled={processing || paymentMethods.length === 0}
                   >
                     {processing ? (
-                      <ActivityIndicator color="#FFF" />
+                      <ActivityIndicator color={COLORS.background} />
                     ) : (
                       <Text style={styles.payBtnText}>Pagar ${selectedPlan.price_monthly}</Text>
                     )}
@@ -441,97 +475,103 @@ export default function MySubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: scale(12), color: COLORS.textSecondary, fontSize: scale(14) },
+  
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: scale(16), paddingVertical: scale(12) },
+  backBtn: { width: scale(44), height: scale(44), borderRadius: scale(22), backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.cardBorder },
+  headerTitle: { fontSize: scale(18), fontWeight: '600', color: COLORS.textPrimary },
 
   content: { flex: 1 },
-  section: { padding: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
-  sectionSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 16 },
+  section: { padding: scale(16) },
+  sectionTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary, marginBottom: scale(4) },
+  sectionSubtitle: { fontSize: scale(14), color: COLORS.textSecondary, marginBottom: scale(16) },
 
   // Active subscription card
-  activeCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 16, backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
-  activeHeader: { padding: 20 },
-  activeIcon: { fontSize: 32, marginBottom: 8 },
-  activePlan: { fontSize: 20, fontWeight: '700', color: '#FFF' },
-  activePrice: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
-  statusBadge: { position: 'absolute', top: 16, right: 16, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  statusText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
-  activeBody: { padding: 16 },
-  trialAlert: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF3C7', padding: 12, borderRadius: 10, marginBottom: 12 },
-  trialText: { fontSize: 14, color: '#92400E', fontWeight: '500' },
-  activeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  infoLabel: { fontSize: 14, color: '#6B7280' },
-  infoValue: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
-  activeActions: { flexDirection: 'row', gap: 12 },
-  upgradeBtn: { flex: 1, backgroundColor: '#6366F1', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  upgradeBtnText: { color: '#FFF', fontWeight: '600' },
-  cancelBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB' },
-  cancelBtnText: { color: '#6B7280', fontWeight: '500' },
+  activeCard: { borderRadius: scale(16), overflow: 'hidden', margin: scale(16), backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder },
+  activeHeader: { padding: scale(20) },
+  activeIcon: { fontSize: scale(32), marginBottom: scale(8) },
+  activePlan: { fontSize: scale(20), fontWeight: '700', color: COLORS.textPrimary },
+  activePrice: { fontSize: scale(14), color: 'rgba(255,255,255,0.9)', marginTop: scale(4) },
+  statusBadge: { position: 'absolute', top: scale(16), right: scale(16), backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: scale(12), paddingVertical: scale(6), borderRadius: scale(20) },
+  statusText: { fontSize: scale(12), fontWeight: '600', color: COLORS.textPrimary },
+  activeBody: { padding: scale(16), backgroundColor: COLORS.backgroundSecondary },
+  trialAlert: { flexDirection: 'row', alignItems: 'center', gap: scale(8), backgroundColor: 'rgba(245, 158, 11, 0.15)', padding: scale(12), borderRadius: scale(10), marginBottom: scale(12) },
+  trialText: { fontSize: scale(14), color: COLORS.yellow, fontWeight: '500' },
+  activeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: scale(16) },
+  infoLabel: { fontSize: scale(14), color: COLORS.textSecondary },
+  infoValue: { fontSize: scale(14), fontWeight: '600', color: COLORS.textPrimary },
+  activeActions: { flexDirection: 'row', gap: scale(12) },
+  upgradeBtn: { flex: 1, backgroundColor: COLORS.lime, paddingVertical: scale(12), borderRadius: scale(10), alignItems: 'center' },
+  upgradeBtnText: { color: COLORS.background, fontWeight: '600' },
+  cancelBtn: { paddingVertical: scale(12), paddingHorizontal: scale(20), borderRadius: scale(10), borderWidth: 1, borderColor: COLORS.cardBorder },
+  cancelBtnText: { color: COLORS.textSecondary, fontWeight: '500' },
 
   // Service cards
-  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  serviceIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  serviceIconText: { fontSize: 24 },
-  serviceInfo: { flex: 1, marginLeft: 12 },
-  serviceName: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-  serviceStatus: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  tryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  tryText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: scale(16), borderRadius: scale(12), marginBottom: scale(10), borderWidth: 1, borderColor: COLORS.cardBorder },
+  serviceIcon: { width: scale(48), height: scale(48), borderRadius: scale(12), alignItems: 'center', justifyContent: 'center' },
+  serviceIconText: { fontSize: scale(24) },
+  serviceInfo: { flex: 1, marginLeft: scale(12) },
+  serviceName: { fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary },
+  serviceStatus: { fontSize: scale(13), color: COLORS.textSecondary, marginTop: scale(2) },
+  activeBadge: { padding: scale(4) },
+  tryBadge: { paddingHorizontal: scale(12), paddingVertical: scale(6), borderRadius: scale(16) },
+  tryText: { fontSize: scale(12), fontWeight: '600', color: COLORS.textPrimary },
 
   // Link card
-  linkCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', margin: 16, padding: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  linkIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  linkInfo: { flex: 1, marginLeft: 12 },
-  linkTitle: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-  linkSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  linkCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, margin: scale(16), padding: scale(16), borderRadius: scale(12), borderWidth: 1, borderColor: COLORS.cardBorder },
+  linkIcon: { width: scale(44), height: scale(44), borderRadius: scale(22), backgroundColor: 'rgba(99, 102, 241, 0.15)', alignItems: 'center', justifyContent: 'center' },
+  linkInfo: { flex: 1, marginLeft: scale(12) },
+  linkTitle: { fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary },
+  linkSubtitle: { fontSize: scale(13), color: COLORS.textSecondary, marginTop: scale(2) },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
-  paymentModalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  modalBody: { padding: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: COLORS.backgroundSecondary, borderTopLeftRadius: scale(24), borderTopRightRadius: scale(24), maxHeight: '85%' },
+  paymentModalContent: { backgroundColor: COLORS.backgroundSecondary, borderTopLeftRadius: scale(24), borderTopRightRadius: scale(24) },
+  modalHandle: { width: scale(40), height: scale(4), backgroundColor: COLORS.textMuted, borderRadius: scale(2), alignSelf: 'center', marginTop: scale(12) },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(20), borderBottomWidth: 1, borderBottomColor: COLORS.cardBorder },
+  modalTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
+  modalBody: { padding: scale(20) },
 
-  plansSubtitle: { fontSize: 15, color: '#6B7280', marginBottom: 16 },
+  plansSubtitle: { fontSize: scale(15), color: COLORS.textSecondary, marginBottom: scale(16) },
 
   // Plan card
-  planCard: { backgroundColor: '#F9FAFB', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' },
-  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  planName: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  trialBadge: { backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  trialBadgeText: { fontSize: 12, fontWeight: '600', color: '#059669' },
+  planCard: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(16), padding: scale(20), marginBottom: scale(16), borderWidth: 1, borderColor: COLORS.cardBorder },
+  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(12) },
+  planName: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
+  trialBadge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12) },
+  trialBadgeText: { fontSize: scale(12), fontWeight: '600', color: COLORS.green },
   planPricing: { flexDirection: 'row', alignItems: 'baseline' },
-  planPrice: { fontSize: 32, fontWeight: '700', color: '#1F2937' },
-  planPeriod: { fontSize: 16, color: '#6B7280', marginLeft: 4 },
-  yearlyPrice: { fontSize: 13, color: '#10B981', marginTop: 4 },
-  featuresList: { marginTop: 16, gap: 8 },
-  featureItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  featureText: { fontSize: 14, color: '#374151' },
-  planActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  trialBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  trialBtnText: { color: '#FFF', fontWeight: '600', fontSize: 15 },
-  subscribeBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  subscribeBtnText: { color: '#374151', fontWeight: '600', fontSize: 15 },
+  planPrice: { fontSize: scale(32), fontWeight: '700', color: COLORS.textPrimary },
+  planPeriod: { fontSize: scale(16), color: COLORS.textSecondary, marginLeft: scale(4) },
+  yearlyPrice: { fontSize: scale(13), color: COLORS.green, marginTop: scale(4) },
+  featuresList: { marginTop: scale(16), gap: scale(8) },
+  featureItem: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
+  featureText: { fontSize: scale(14), color: COLORS.textSecondary },
+  planActions: { flexDirection: 'row', gap: scale(10), marginTop: scale(16) },
+  trialBtn: { flex: 1, paddingVertical: scale(14), borderRadius: scale(10), alignItems: 'center' },
+  trialBtnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: scale(15) },
+  subscribeBtn: { flex: 1, paddingVertical: scale(14), borderRadius: scale(10), alignItems: 'center', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder },
+  subscribeBtnText: { color: COLORS.textPrimary, fontWeight: '600', fontSize: scale(15) },
 
-  noPlans: { padding: 40, alignItems: 'center' },
-  noPlansText: { fontSize: 16, color: '#6B7280' },
+  noPlans: { padding: scale(40), alignItems: 'center' },
+  noPlansText: { fontSize: scale(16), color: COLORS.textSecondary, marginTop: scale(12) },
 
   // Payment modal
-  summaryCard: { backgroundColor: '#F3F4F6', padding: 16, borderRadius: 12, marginBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  summaryPlan: { fontSize: 16, fontWeight: '600', color: '#1F2937' },
-  summaryPrice: { fontSize: 18, fontWeight: '700', color: '#6366F1' },
-  paymentTitle: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 10 },
-  selectedCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, backgroundColor: '#F9FAFB', borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 20 },
-  selectedCardText: { fontSize: 15, color: '#1F2937' },
-  changeCardText: { fontSize: 14, color: '#6366F1', fontWeight: '500' },
-  addCardBtn: { padding: 14, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: '#6366F1', alignItems: 'center', marginBottom: 20 },
-  addCardBtnText: { fontSize: 15, color: '#6366F1', fontWeight: '500' },
-  payBtn: { backgroundColor: '#6366F1', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  payBtnDisabled: { backgroundColor: '#9CA3AF' },
-  payBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  secureNote: { textAlign: 'center', fontSize: 13, color: '#9CA3AF', marginTop: 16 },
+  summaryCard: { backgroundColor: COLORS.backgroundTertiary, padding: scale(16), borderRadius: scale(12), marginBottom: scale(20), flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryPlan: { fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary },
+  summaryPrice: { fontSize: scale(18), fontWeight: '700', color: COLORS.lime },
+  paymentTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textSecondary, marginBottom: scale(10) },
+  selectedCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: scale(14), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(10), borderWidth: 1, borderColor: COLORS.cardBorder, marginBottom: scale(20) },
+  selectedCardText: { fontSize: scale(15), color: COLORS.textPrimary },
+  changeCardText: { fontSize: scale(14), color: COLORS.purple, fontWeight: '500' },
+  addCardBtn: { padding: scale(14), borderRadius: scale(10), borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.purple, alignItems: 'center', marginBottom: scale(20) },
+  addCardBtnText: { fontSize: scale(15), color: COLORS.purple, fontWeight: '500' },
+  payBtn: { backgroundColor: COLORS.lime, paddingVertical: scale(16), borderRadius: scale(12), alignItems: 'center' },
+  payBtnDisabled: { backgroundColor: COLORS.backgroundTertiary },
+  payBtnText: { color: COLORS.background, fontSize: scale(16), fontWeight: '700' },
+  secureNote: { textAlign: 'center', fontSize: scale(13), color: COLORS.textMuted, marginTop: scale(16) },
 });

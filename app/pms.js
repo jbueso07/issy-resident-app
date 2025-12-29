@@ -1,9 +1,10 @@
-// app/pms.js - Gestor de Propiedades (PMS)
+// app/pms.js - Gestor de Propiedades (PMS) - ProHome Dark Theme
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  RefreshControl, Alert, Modal, TextInput, ActivityIndicator,
-  Dimensions, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback
+  RefreshControl, Alert, TextInput, ActivityIndicator,
+  Dimensions, KeyboardAvoidingView, Platform, Keyboard, 
+  TouchableWithoutFeedback, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,13 +15,35 @@ import {
 } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  tealDark: '#4BCDC7',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  purpleLight: '#818CF8',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  red: '#EF4444',
+  yellow: '#F59E0B',
+  blue: '#3B82F6',
+};
 
 const TABS = [
-  { id: 'dashboard', label: 'Inicio', icon: '📊' },
-  { id: 'properties', label: 'Propiedades', icon: '🏠' },
-  { id: 'tenants', label: 'Inquilinos', icon: '👥' },
-  { id: 'payments', label: 'Pagos', icon: '💰' },
-  { id: 'maintenance', label: 'Mant.', icon: '🔧' },
+  { id: 'dashboard', label: 'Inicio', icon: 'grid-outline' },
+  { id: 'properties', label: 'Propiedades', icon: 'home-outline' },
+  { id: 'tenants', label: 'Inquilinos', icon: 'people-outline' },
+  { id: 'payments', label: 'Pagos', icon: 'wallet-outline' },
+  { id: 'maintenance', label: 'Mant.', icon: 'construct-outline' },
 ];
 
 export default function PMSScreen() {
@@ -49,7 +72,6 @@ export default function PMSScreen() {
     try {
       if (activeTab === 'dashboard') {
         const res = await getPMSDashboard();
-        console.log('Dashboard response:', JSON.stringify(res, null, 2));
         if (res.success) setDashboard(res.data);
       } else if (activeTab === 'properties') {
         const res = await getPMSProperties();
@@ -112,20 +134,29 @@ export default function PMSScreen() {
     }
   };
 
-  // Helper to get dashboard values with fallbacks
+  // Helper to get dashboard values
   const getDashboardValue = (field) => {
     if (!dashboard) return 0;
-    // Try different possible field names
     const mappings = {
       properties: ['properties', 'total_properties', 'totalProperties'],
-      tenants: ['tenants', 'activeTenants', 'total_tenants', 'totalTenants', 'active_tenants'],
-      income: ['monthlyIncome', 'monthly_income', 'totalPaid', 'total_paid', 'income'],
-      pending: ['pendingPayments', 'pending_payments', 'pendingCount', 'pending'],
+      tenants: ['activeTenants', 'tenants', 'total_tenants', 'totalTenants', 'active_tenants'],
+      income: ['payments.totalPaid', 'monthlyIncome', 'monthly_income', 'totalPaid', 'total_paid', 'income'],
+      pending: ['payments.pending', 'pendingPayments', 'pending_payments', 'pendingCount', 'pending'],
+      occupancy: ['occupancyRate', 'occupancy_rate'],
+      units: ['units.total', 'totalUnits', 'total_units'],
+      openTickets: ['maintenance.openTickets', 'openTickets', 'open_tickets'],
     };
     
     const possibleKeys = mappings[field] || [field];
     for (const key of possibleKeys) {
-      if (dashboard[key] !== undefined) {
+      if (key.includes('.')) {
+        const parts = key.split('.');
+        let value = dashboard;
+        for (const part of parts) {
+          value = value?.[part];
+        }
+        if (value !== undefined) return value;
+      } else if (dashboard[key] !== undefined) {
         return dashboard[key];
       }
     }
@@ -134,28 +165,30 @@ export default function PMSScreen() {
 
   // ==================== RENDER TABS ====================
   const renderTabs = () => (
-    <View style={styles.tabsWrapper}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {TABS.map(tab => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.tab, activeTab === tab.id && styles.tabActive]}
-            onPress={() => setActiveTab(tab.id)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.tabIcon}>{tab.icon}</Text>
-            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]} numberOfLines={1}>
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+    <ScrollView 
+      horizontal 
+      showsHorizontalScrollIndicator={false} 
+      style={styles.tabsScroll}
+      contentContainerStyle={styles.tabsContent}
+    >
+      {TABS.map(tab => (
+        <TouchableOpacity
+          key={tab.id}
+          style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+          onPress={() => setActiveTab(tab.id)}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={tab.icon} 
+            size={18} 
+            color={activeTab === tab.id ? COLORS.background : COLORS.textSecondary} 
+          />
+          <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
   );
 
   // ==================== DASHBOARD ====================
@@ -164,47 +197,99 @@ export default function PMSScreen() {
     const tenantsCount = getDashboardValue('tenants');
     const monthlyIncome = getDashboardValue('income');
     const pendingCount = getDashboardValue('pending');
+    const occupancyRate = getDashboardValue('occupancy');
+    const openTickets = getDashboardValue('openTickets');
 
     return (
       <View style={styles.content}>
+        {/* KPI Grid */}
         <View style={styles.kpiGrid}>
-          <View style={[styles.kpiCard, { backgroundColor: '#EBF5FF' }]}>
-            <Text style={styles.kpiIcon}>🏠</Text>
+          <View style={[styles.kpiCard, { borderLeftColor: COLORS.blue }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons name="home" size={22} color={COLORS.blue} />
+            </View>
             <Text style={styles.kpiValue}>{propertiesCount}</Text>
             <Text style={styles.kpiLabel}>Propiedades</Text>
           </View>
-          <View style={[styles.kpiCard, { backgroundColor: '#F0FDF4' }]}>
-            <Text style={styles.kpiIcon}>👥</Text>
+          
+          <View style={[styles.kpiCard, { borderLeftColor: COLORS.green }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Ionicons name="people" size={22} color={COLORS.green} />
+            </View>
             <Text style={styles.kpiValue}>{tenantsCount}</Text>
             <Text style={styles.kpiLabel}>Inquilinos</Text>
           </View>
-          <View style={[styles.kpiCard, { backgroundColor: '#FEF9C3' }]}>
-            <Text style={styles.kpiIcon}>💰</Text>
-            <Text style={styles.kpiValue}>${(monthlyIncome / 1000).toFixed(1)}k</Text>
+          
+          <View style={[styles.kpiCard, { borderLeftColor: COLORS.lime }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(212, 254, 72, 0.15)' }]}>
+              <Ionicons name="wallet" size={22} color={COLORS.lime} />
+            </View>
+            <Text style={styles.kpiValue}>L{(monthlyIncome / 1000).toFixed(1)}k</Text>
             <Text style={styles.kpiLabel}>Ingresos/Mes</Text>
           </View>
-          <View style={[styles.kpiCard, { backgroundColor: '#FEE2E2' }]}>
-            <Text style={styles.kpiIcon}>⏰</Text>
+          
+          <View style={[styles.kpiCard, { borderLeftColor: COLORS.red }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="time" size={22} color={COLORS.red} />
+            </View>
             <Text style={styles.kpiValue}>{pendingCount}</Text>
             <Text style={styles.kpiLabel}>Pendientes</Text>
           </View>
         </View>
 
+        {/* Occupancy Rate */}
+        {occupancyRate > 0 && (
+          <View style={styles.occupancyCard}>
+            <View style={styles.occupancyHeader}>
+              <Text style={styles.occupancyTitle}>Tasa de Ocupación</Text>
+              <Text style={[styles.occupancyValue, { color: occupancyRate >= 80 ? COLORS.green : COLORS.yellow }]}>
+                {occupancyRate}%
+              </Text>
+            </View>
+            <View style={styles.occupancyBarBg}>
+              <View style={[styles.occupancyBarFill, { 
+                width: `${occupancyRate}%`,
+                backgroundColor: occupancyRate >= 80 ? COLORS.green : COLORS.yellow 
+              }]} />
+            </View>
+          </View>
+        )}
+
+        {/* Quick Actions */}
         <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#6366F1' }]} onPress={() => setShowAddModal(true)}>
-            <Ionicons name="add" size={20} color="#FFF" />
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.purple }]} onPress={() => setShowAddModal(true)}>
+            <Ionicons name="add" size={24} color={COLORS.textPrimary} />
             <Text style={styles.actionText}>Propiedad</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#10B981' }]} onPress={() => setActiveTab('payments')}>
-            <Ionicons name="cash" size={20} color="#FFF" />
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.green }]} onPress={() => setActiveTab('payments')}>
+            <Ionicons name="cash" size={24} color={COLORS.textPrimary} />
             <Text style={styles.actionText}>Cobrar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]} onPress={() => setActiveTab('maintenance')}>
-            <Ionicons name="construct" size={20} color="#FFF" />
-            <Text style={styles.actionText}>Tickets</Text>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.yellow }]} onPress={() => setActiveTab('maintenance')}>
+            <Ionicons name="construct" size={24} color={COLORS.textPrimary} />
+            <Text style={styles.actionText}>Tickets ({openTickets})</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Alerts */}
+        {dashboard?.alerts && (dashboard.alerts.expiringLeases > 0 || dashboard.alerts.overduePayments > 0) && (
+          <View style={styles.alertsSection}>
+            <Text style={styles.sectionTitle}>⚠️ Alertas</Text>
+            {dashboard.alerts.expiringLeases > 0 && (
+              <View style={styles.alertCard}>
+                <Ionicons name="document-text" size={20} color={COLORS.yellow} />
+                <Text style={styles.alertText}>{dashboard.alerts.expiringLeases} contratos por vencer</Text>
+              </View>
+            )}
+            {dashboard.alerts.overduePayments > 0 && (
+              <View style={styles.alertCard}>
+                <Ionicons name="alert-circle" size={20} color={COLORS.red} />
+                <Text style={styles.alertText}>{dashboard.alerts.overduePayments} pagos vencidos</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -213,13 +298,15 @@ export default function PMSScreen() {
   const renderProperties = () => (
     <View style={styles.content}>
       <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-        <Ionicons name="add-circle" size={20} color="#FFF" />
+        <Ionicons name="add-circle" size={20} color={COLORS.textPrimary} />
         <Text style={styles.addButtonText}>Nueva Propiedad</Text>
       </TouchableOpacity>
       
       {properties.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>🏠</Text>
+          <View style={styles.emptyIconBox}>
+            <Ionicons name="home-outline" size={48} color={COLORS.textMuted} />
+          </View>
           <Text style={styles.emptyText}>Sin propiedades</Text>
           <Text style={styles.emptySubtext}>Agrega tu primera propiedad</Text>
         </View>
@@ -227,15 +314,30 @@ export default function PMSScreen() {
         properties.map(prop => (
           <View key={prop.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{prop.name}</Text>
-              <TouchableOpacity onPress={() => handleDeleteProperty(prop.id)}>
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <View style={styles.cardTitleRow}>
+                <View style={[styles.propertyTypeIcon, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+                  <Ionicons 
+                    name={prop.property_type === 'house' ? 'home' : prop.property_type === 'commercial' ? 'storefront' : 'business'} 
+                    size={20} 
+                    color={COLORS.purple} 
+                  />
+                </View>
+                <View style={styles.cardTitleContent}>
+                  <Text style={styles.cardTitle}>{prop.name}</Text>
+                  <Text style={styles.cardSubtitle}>{prop.address}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => handleDeleteProperty(prop.id)} style={styles.deleteBtn}>
+                <Ionicons name="trash-outline" size={18} color={COLORS.red} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.cardSubtitle}>{prop.address}</Text>
             <View style={styles.cardFooter}>
-              <Text style={styles.cardBadge}>{prop.type || 'Apartamento'}</Text>
-              <Text style={styles.cardMeta}>{prop.units_count || 0} unidades</Text>
+              <View style={styles.cardBadge}>
+                <Text style={styles.cardBadgeText}>
+                  {prop.property_type === 'apartment' ? '🏢 Apartamento' : prop.property_type === 'house' ? '🏠 Casa' : '🏪 Local'}
+                </Text>
+              </View>
+              <Text style={styles.cardMeta}>{prop.units_count || 0} unidades • {prop.occupied_count || 0} ocupadas</Text>
             </View>
           </View>
         ))
@@ -248,22 +350,43 @@ export default function PMSScreen() {
     <View style={styles.content}>
       {tenants.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>👥</Text>
+          <View style={styles.emptyIconBox}>
+            <Ionicons name="people-outline" size={48} color={COLORS.textMuted} />
+          </View>
           <Text style={styles.emptyText}>Sin inquilinos</Text>
+          <Text style={styles.emptySubtext}>Agrega inquilinos desde las propiedades</Text>
         </View>
       ) : (
         tenants.map(tenant => (
           <View key={tenant.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{tenant.name || tenant.email}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: tenant.status === 'active' ? '#D1FAE5' : '#FEE2E2' }]}>
-                <Text style={[styles.statusText, { color: tenant.status === 'active' ? '#059669' : '#DC2626' }]}>
-                  {tenant.status === 'active' ? 'Activo' : 'Pendiente'}
+              <View style={styles.cardTitleRow}>
+                <View style={[styles.avatarBox, { backgroundColor: tenant.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
+                  <Text style={styles.avatarText}>
+                    {(tenant.first_name?.[0] || tenant.name?.[0] || tenant.email?.[0] || '?').toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.cardTitleContent}>
+                  <Text style={styles.cardTitle}>
+                    {tenant.first_name && tenant.last_name 
+                      ? `${tenant.first_name} ${tenant.last_name}`
+                      : tenant.name || tenant.email}
+                  </Text>
+                  <Text style={styles.cardSubtitle}>{tenant.email}</Text>
+                </View>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: tenant.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
+                <Text style={[styles.statusText, { color: tenant.status === 'active' ? COLORS.green : COLORS.red }]}>
+                  {tenant.status === 'active' ? 'Activo' : 'Inactivo'}
                 </Text>
               </View>
             </View>
-            <Text style={styles.cardSubtitle}>{tenant.email}</Text>
-            <Text style={styles.cardMeta}>{tenant.property_name || tenant.unit_name || 'Sin asignar'}</Text>
+            {(tenant.property_name || tenant.unit_name) && (
+              <View style={styles.tenantLocation}>
+                <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
+                <Text style={styles.cardMeta}>{tenant.property_name || tenant.unit_name || 'Sin asignar'}</Text>
+              </View>
+            )}
           </View>
         ))
       )}
@@ -272,40 +395,64 @@ export default function PMSScreen() {
 
   // ==================== PAYMENTS ====================
   const renderPayments = () => {
-    const totalPending = payments.filter(p => p.status === 'pending').reduce((acc, p) => acc + (p.amount || p.amount_due || 0), 0);
-    const totalPaid = payments.filter(p => p.status === 'paid').reduce((acc, p) => acc + (p.amount || p.amount_paid || 0), 0);
+    const totalPending = payments.filter(p => p.status === 'pending' || p.status === 'partial').reduce((acc, p) => acc + (p.amount_due || p.amount || 0), 0);
+    const totalPaid = payments.filter(p => p.status === 'paid').reduce((acc, p) => acc + (p.amount_paid || p.amount || 0), 0);
     
     return (
       <View style={styles.content}>
+        {/* Summary Cards */}
         <View style={styles.paymentSummary}>
-          <View style={[styles.summaryCard, { backgroundColor: '#D1FAE5' }]}>
+          <View style={[styles.summaryCard, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
             <Text style={styles.summaryLabel}>Cobrado</Text>
-            <Text style={[styles.summaryValue, { color: '#059669' }]}>${totalPaid.toLocaleString()}</Text>
+            <Text style={[styles.summaryValue, { color: COLORS.green }]}>L{totalPaid.toLocaleString()}</Text>
           </View>
-          <View style={[styles.summaryCard, { backgroundColor: '#FEE2E2' }]}>
+          <View style={[styles.summaryCard, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+            <Ionicons name="time" size={24} color={COLORS.red} />
             <Text style={styles.summaryLabel}>Pendiente</Text>
-            <Text style={[styles.summaryValue, { color: '#DC2626' }]}>${totalPending.toLocaleString()}</Text>
+            <Text style={[styles.summaryValue, { color: COLORS.red }]}>L{totalPending.toLocaleString()}</Text>
           </View>
         </View>
 
         {payments.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>💰</Text>
+            <View style={styles.emptyIconBox}>
+              <Ionicons name="wallet-outline" size={48} color={COLORS.textMuted} />
+            </View>
             <Text style={styles.emptyText}>Sin pagos registrados</Text>
           </View>
         ) : (
           payments.map(payment => (
             <View key={payment.id} style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{payment.tenant_name || 'Inquilino'}</Text>
-                <Text style={styles.cardAmount}>${(payment.amount || payment.amount_due)?.toLocaleString()}</Text>
+                <View style={styles.cardTitleRow}>
+                  <View style={[styles.paymentIcon, { 
+                    backgroundColor: payment.status === 'paid' ? 'rgba(16, 185, 129, 0.15)' : 
+                                    payment.status === 'overdue' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)' 
+                  }]}>
+                    <Ionicons 
+                      name={payment.status === 'paid' ? 'checkmark-circle' : payment.status === 'overdue' ? 'alert-circle' : 'time'} 
+                      size={20} 
+                      color={payment.status === 'paid' ? COLORS.green : payment.status === 'overdue' ? COLORS.red : COLORS.yellow} 
+                    />
+                  </View>
+                  <View style={styles.cardTitleContent}>
+                    <Text style={styles.cardTitle}>{payment.tenant_name || payment.tenant?.first_name || 'Inquilino'}</Text>
+                    <Text style={styles.cardSubtitle}>{payment.description || 'Renta mensual'}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.cardAmount, { 
+                  color: payment.status === 'paid' ? COLORS.green : payment.status === 'overdue' ? COLORS.red : COLORS.yellow 
+                }]}>
+                  L{(payment.amount_due || payment.amount)?.toLocaleString()}
+                </Text>
               </View>
-              <Text style={styles.cardSubtitle}>{payment.description || 'Renta mensual'}</Text>
-              {payment.status === 'pending' && (
+              {payment.status !== 'paid' && (
                 <TouchableOpacity 
                   style={styles.payButton}
                   onPress={() => handleRecordPayment(payment.id)}
                 >
+                  <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />
                   <Text style={styles.payButtonText}>Registrar Pago</Text>
                 </TouchableOpacity>
               )}
@@ -321,26 +468,58 @@ export default function PMSScreen() {
     <View style={styles.content}>
       {maintenance.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>🔧</Text>
-          <Text style={styles.emptyText}>Sin tickets</Text>
+          <View style={styles.emptyIconBox}>
+            <Ionicons name="construct-outline" size={48} color={COLORS.textMuted} />
+          </View>
+          <Text style={styles.emptyText}>Sin tickets de mantenimiento</Text>
+          <Text style={styles.emptySubtext}>Todo está en orden</Text>
         </View>
       ) : (
         maintenance.map(ticket => (
           <View key={ticket.id} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{ticket.title}</Text>
+              <View style={styles.cardTitleRow}>
+                <View style={[styles.ticketIcon, { 
+                  backgroundColor: ticket.priority === 'high' ? 'rgba(239, 68, 68, 0.15)' : 
+                                  ticket.priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)' 
+                }]}>
+                  <Ionicons 
+                    name="construct" 
+                    size={20} 
+                    color={ticket.priority === 'high' ? COLORS.red : ticket.priority === 'medium' ? COLORS.yellow : COLORS.blue} 
+                  />
+                </View>
+                <View style={styles.cardTitleContent}>
+                  <Text style={styles.cardTitle}>{ticket.title}</Text>
+                  <Text style={styles.cardSubtitle} numberOfLines={2}>{ticket.description}</Text>
+                </View>
+              </View>
               <View style={[styles.priorityBadge, { 
-                backgroundColor: ticket.priority === 'high' ? '#FEE2E2' : ticket.priority === 'medium' ? '#FEF3C7' : '#E0E7FF'
+                backgroundColor: ticket.priority === 'high' ? 'rgba(239, 68, 68, 0.15)' : 
+                                ticket.priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)'
               }]}>
                 <Text style={[styles.priorityText, {
-                  color: ticket.priority === 'high' ? '#DC2626' : ticket.priority === 'medium' ? '#D97706' : '#4F46E5'
+                  color: ticket.priority === 'high' ? COLORS.red : ticket.priority === 'medium' ? COLORS.yellow : COLORS.blue
                 }]}>
                   {ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja'}
                 </Text>
               </View>
             </View>
-            <Text style={styles.cardSubtitle}>{ticket.description}</Text>
-            <Text style={styles.cardMeta}>Estado: {ticket.status}</Text>
+            <View style={styles.ticketFooter}>
+              <View style={[styles.statusChip, { 
+                backgroundColor: ticket.status === 'completed' ? 'rgba(16, 185, 129, 0.15)' : 
+                                ticket.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)'
+              }]}>
+                <Text style={[styles.statusChipText, {
+                  color: ticket.status === 'completed' ? COLORS.green : ticket.status === 'in_progress' ? COLORS.blue : COLORS.yellow
+                }]}>
+                  {ticket.status === 'completed' ? '✓ Completado' : ticket.status === 'in_progress' ? '⏳ En Progreso' : '🔔 Abierto'}
+                </Text>
+              </View>
+              {ticket.property?.name && (
+                <Text style={styles.cardMeta}>{ticket.property.name}</Text>
+              )}
+            </View>
           </View>
         ))
       )}
@@ -350,7 +529,12 @@ export default function PMSScreen() {
   // ==================== CONTENT ROUTER ====================
   const renderContent = () => {
     if (loading) {
-      return <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 50 }} />;
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.purple} />
+          <Text style={styles.loadingText}>Cargando...</Text>
+        </View>
+      );
     }
     switch (activeTab) {
       case 'dashboard': return renderDashboard();
@@ -368,10 +552,10 @@ export default function PMSScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Gestor de Propiedades</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Tabs */}
@@ -381,10 +565,10 @@ export default function PMSScreen() {
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#6366F1']} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.purple} />}
       >
         {renderContent()}
-        <View style={{ height: 40 }} />
+        <View style={{ height: scale(100) }} />
       </ScrollView>
 
       {/* Add Property Modal */}
@@ -404,7 +588,7 @@ export default function PMSScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Ej: Edificio Central"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={COLORS.textMuted}
                     value={newProperty.name}
                     onChangeText={(t) => setNewProperty({ ...newProperty, name: t })}
                     returnKeyType="next"
@@ -414,11 +598,10 @@ export default function PMSScreen() {
                   <TextInput
                     style={styles.input}
                     placeholder="Ej: Av. Principal #123"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={COLORS.textMuted}
                     value={newProperty.address}
                     onChangeText={(t) => setNewProperty({ ...newProperty, address: t })}
                     returnKeyType="done"
-                    onSubmitEditing={Keyboard.dismiss}
                   />
                   
                   <Text style={styles.inputLabel}>Tipo de Propiedad</Text>
@@ -437,10 +620,7 @@ export default function PMSScreen() {
                   </View>
 
                   <View style={styles.modalButtons}>
-                    <TouchableOpacity style={styles.cancelBtn} onPress={() => {
-                      Keyboard.dismiss();
-                      setShowAddModal(false);
-                    }}>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddModal(false)}>
                       <Text style={styles.cancelBtnText}>Cancelar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.saveBtn} onPress={handleAddProperty}>
@@ -460,225 +640,381 @@ export default function PMSScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#F9FAFB' 
+    backgroundColor: COLORS.background 
   },
+  
+  // Header
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    backgroundColor: '#FFF', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E5E7EB' 
+    paddingHorizontal: scale(16), 
+    paddingVertical: scale(12),
   },
   backBtn: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    backgroundColor: '#F3F4F6', 
+    width: scale(40), 
+    height: scale(40), 
+    borderRadius: scale(20), 
+    backgroundColor: COLORS.card, 
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   headerTitle: { 
-    fontSize: 18, 
+    fontSize: scale(18), 
     fontWeight: '600', 
-    color: '#1F2937' 
+    color: COLORS.textPrimary 
   },
   
   // Tabs
-  tabsWrapper: {
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    height: 56,
-  },
   tabsScroll: {
-    flex: 1,
+    maxHeight: scale(56),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.cardBorder,
   },
   tabsContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 56,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    gap: scale(8),
   },
   tab: { 
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12, 
-    paddingVertical: 8, 
-    marginRight: 8, 
-    borderRadius: 20, 
-    backgroundColor: '#F3F4F6',
-    height: 36,
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(8), 
+    borderRadius: scale(20), 
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    gap: scale(6),
   },
   tabActive: { 
-    backgroundColor: '#6366F1' 
-  },
-  tabIcon: { 
-    fontSize: 14, 
-    marginRight: 6 
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   tabLabel: { 
-    fontSize: 13, 
-    color: '#6B7280', 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
     fontWeight: '500' 
   },
   tabLabelActive: { 
-    color: '#FFF' 
+    color: COLORS.background,
+    fontWeight: '600',
   },
 
   scrollView: { 
     flex: 1 
   },
   content: { 
-    padding: 16 
+    padding: scale(16) 
+  },
+  
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: scale(60),
+  },
+  loadingText: {
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
   },
 
   // KPI Grid
   kpiGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: 12, 
-    marginBottom: 24 
+    gap: scale(12), 
+    marginBottom: scale(20) 
   },
   kpiCard: { 
     width: '47%', 
-    padding: 16, 
-    borderRadius: 16, 
-    alignItems: 'center' 
+    padding: scale(16), 
+    borderRadius: scale(16), 
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    borderLeftWidth: 3,
   },
-  kpiIcon: { 
-    fontSize: 24, 
-    marginBottom: 8 
+  kpiIconBox: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(12),
   },
   kpiValue: { 
-    fontSize: 24, 
+    fontSize: scale(24), 
     fontWeight: '700', 
-    color: '#1F2937' 
+    color: COLORS.textPrimary 
   },
   kpiLabel: { 
-    fontSize: 12, 
-    color: '#6B7280', 
-    marginTop: 4 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(4) 
   },
 
-  // Actions
-  sectionTitle: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#1F2937', 
-    marginBottom: 12 
+  // Occupancy Card
+  occupancyCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(20),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
+  occupancyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(12),
+  },
+  occupancyTitle: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  occupancyValue: {
+    fontSize: scale(20),
+    fontWeight: '700',
+  },
+  occupancyBarBg: {
+    height: scale(8),
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(4),
+    overflow: 'hidden',
+  },
+  occupancyBarFill: {
+    height: '100%',
+    borderRadius: scale(4),
+  },
+
+  // Section Title
+  sectionTitle: { 
+    fontSize: scale(16), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(12) 
+  },
+  
+  // Actions
   actionsRow: { 
     flexDirection: 'row', 
-    gap: 12 
+    gap: scale(12),
+    marginBottom: scale(20),
   },
   actionBtn: { 
     flex: 1, 
-    padding: 14, 
-    borderRadius: 12, 
-    alignItems: 'center' 
+    padding: scale(16), 
+    borderRadius: scale(16), 
+    alignItems: 'center',
+    gap: scale(6),
   },
   actionText: { 
-    color: '#FFF', 
-    fontSize: 11, 
-    fontWeight: '600', 
-    marginTop: 4 
+    color: COLORS.textPrimary, 
+    fontSize: scale(12), 
+    fontWeight: '600',
+  },
+
+  // Alerts
+  alertsSection: {
+    marginTop: scale(4),
+  },
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginBottom: scale(8),
+    gap: scale(10),
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  alertText: {
+    color: COLORS.textPrimary,
+    fontSize: scale(14),
   },
 
   // Cards
   card: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 12, 
-    padding: 16, 
-    marginBottom: 12, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 1 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 2, 
-    elevation: 1 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   cardHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 8 
+    alignItems: 'flex-start',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: scale(12),
+  },
+  cardTitleContent: {
+    flex: 1,
+    marginLeft: scale(12),
   },
   cardTitle: { 
-    fontSize: 16, 
+    fontSize: scale(16), 
     fontWeight: '600', 
-    color: '#1F2937',
-    flex: 1,
-    marginRight: 8,
+    color: COLORS.textPrimary,
   },
   cardSubtitle: { 
-    fontSize: 14, 
-    color: '#6B7280', 
-    marginBottom: 8 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(2),
   },
   cardFooter: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    marginTop: scale(12),
   },
   cardBadge: { 
-    backgroundColor: '#E0E7FF', 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12, 
-    fontSize: 12, 
-    color: '#4F46E5',
-    overflow: 'hidden',
+    backgroundColor: COLORS.backgroundTertiary, 
+    paddingHorizontal: scale(10), 
+    paddingVertical: scale(4), 
+    borderRadius: scale(8),
+  },
+  cardBadgeText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
   },
   cardMeta: { 
-    fontSize: 12, 
-    color: '#9CA3AF' 
+    fontSize: scale(12), 
+    color: COLORS.textMuted 
   },
   cardAmount: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: '#059669' 
+    fontSize: scale(18), 
+    fontWeight: '700',
   },
 
-  // Status & Priority badges
+  // Property Type Icon
+  propertyTypeIcon: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Avatar
+  avatarBox: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  tenantLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: scale(12),
+    gap: scale(4),
+  },
+
+  // Payment Icon
+  paymentIcon: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Ticket Icon
+  ticketIcon: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ticketFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: scale(12),
+  },
+
+  // Status badges
   statusBadge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12 
+    paddingHorizontal: scale(10), 
+    paddingVertical: scale(4), 
+    borderRadius: scale(8),
   },
   statusText: { 
-    fontSize: 12, 
+    fontSize: scale(12), 
     fontWeight: '600' 
   },
+  statusChip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  statusChipText: {
+    fontSize: scale(12),
+    fontWeight: '500',
+  },
   priorityBadge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12 
+    paddingHorizontal: scale(10), 
+    paddingVertical: scale(4), 
+    borderRadius: scale(8),
   },
   priorityText: { 
-    fontSize: 12, 
+    fontSize: scale(12), 
     fontWeight: '600' 
   },
 
   // Empty state
   empty: { 
     alignItems: 'center', 
-    paddingVertical: 60 
+    paddingVertical: scale(60) 
   },
-  emptyIcon: { 
-    fontSize: 48, 
-    marginBottom: 12 
+  emptyIconBox: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   emptyText: { 
-    fontSize: 16, 
+    fontSize: scale(16), 
     fontWeight: '600', 
-    color: '#6B7280' 
+    color: COLORS.textSecondary 
   },
   emptySubtext: { 
-    fontSize: 14, 
-    color: '#9CA3AF', 
-    marginTop: 4 
+    fontSize: scale(14), 
+    color: COLORS.textMuted, 
+    marginTop: scale(4) 
   },
 
   // Buttons
@@ -686,142 +1022,160 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    backgroundColor: '#6366F1', 
-    paddingVertical: 12, 
-    borderRadius: 12, 
-    marginBottom: 16, 
-    gap: 8 
+    backgroundColor: COLORS.purple, 
+    paddingVertical: scale(14), 
+    borderRadius: scale(12), 
+    marginBottom: scale(16), 
+    gap: scale(8) 
   },
   addButtonText: { 
-    color: '#FFF', 
+    color: COLORS.textPrimary, 
     fontWeight: '600', 
-    fontSize: 14 
+    fontSize: scale(14) 
   },
   payButton: { 
-    backgroundColor: '#10B981', 
-    paddingVertical: 10, 
-    borderRadius: 8, 
-    alignItems: 'center', 
-    marginTop: 8 
+    flexDirection: 'row',
+    backgroundColor: COLORS.green, 
+    paddingVertical: scale(12), 
+    borderRadius: scale(10), 
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: scale(12),
+    gap: scale(6),
   },
   payButtonText: { 
-    color: '#FFF', 
-    fontWeight: '600' 
+    color: COLORS.textPrimary, 
+    fontWeight: '600',
+    fontSize: scale(14),
   },
 
   // Payment summary
   paymentSummary: { 
     flexDirection: 'row', 
-    gap: 12, 
-    marginBottom: 16 
+    gap: scale(12), 
+    marginBottom: scale(16) 
   },
   summaryCard: { 
     flex: 1, 
-    padding: 16, 
-    borderRadius: 12, 
-    alignItems: 'center' 
+    padding: scale(16), 
+    borderRadius: scale(16), 
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: scale(4),
   },
   summaryLabel: { 
-    fontSize: 13, 
-    color: '#6B7280' 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
   },
   summaryValue: { 
-    fontSize: 20, 
-    fontWeight: '700', 
-    marginTop: 4 
+    fontSize: scale(18), 
+    fontWeight: '700',
   },
 
   // Modal
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'flex-end' 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
   },
   keyboardAvoid: {
     width: '100%',
   },
-  modalContent: { 
-    backgroundColor: '#FFF', 
-    borderTopLeftRadius: 24, 
-    borderTopRightRadius: 24, 
-    padding: 24,
-    paddingTop: 12,
+  modalContent: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+    padding: scale(24),
+    paddingTop: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    borderBottomWidth: 0,
   },
   modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
+    width: scale(40),
+    height: scale(4),
+    backgroundColor: COLORS.textMuted,
+    borderRadius: scale(2),
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   modalTitle: { 
-    fontSize: 20, 
+    fontSize: scale(20), 
     fontWeight: '700', 
-    color: '#1F2937', 
-    marginBottom: 20, 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(20), 
     textAlign: 'center' 
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
+    color: COLORS.textSecondary,
+    marginBottom: scale(6),
   },
   input: { 
-    backgroundColor: '#F3F4F6', 
-    borderRadius: 12, 
-    padding: 16, 
-    fontSize: 16, 
-    marginBottom: 16,
-    color: '#1F2937',
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(12), 
+    padding: scale(16), 
+    fontSize: scale(16), 
+    marginBottom: scale(16),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   typeSelector: { 
     flexDirection: 'row', 
-    gap: 8, 
-    marginBottom: 24 
+    gap: scale(8), 
+    marginBottom: scale(24) 
   },
   typeBtn: { 
     flex: 1, 
-    padding: 12, 
-    borderRadius: 12, 
-    backgroundColor: '#F3F4F6', 
-    alignItems: 'center' 
+    padding: scale(12), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   typeBtnActive: { 
-    backgroundColor: '#6366F1' 
+    backgroundColor: COLORS.purple,
+    borderColor: COLORS.purple,
   },
   typeText: { 
-    fontSize: 14, 
-    color: '#6B7280' 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   typeTextActive: { 
-    color: '#FFF' 
+    color: COLORS.textPrimary,
+    fontWeight: '600',
   },
   modalButtons: { 
     flexDirection: 'row', 
-    gap: 12 
+    gap: scale(12) 
   },
   cancelBtn: { 
     flex: 1, 
-    padding: 16, 
-    borderRadius: 12, 
-    backgroundColor: '#F3F4F6', 
-    alignItems: 'center' 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   cancelBtnText: { 
-    color: '#6B7280', 
+    color: COLORS.textSecondary, 
     fontWeight: '600' 
   },
   saveBtn: { 
     flex: 1, 
-    padding: 16, 
-    borderRadius: 12, 
-    backgroundColor: '#6366F1', 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.purple, 
     alignItems: 'center' 
   },
   saveBtnText: { 
-    color: '#FFF', 
+    color: COLORS.textPrimary, 
     fontWeight: '600' 
   },
 });

@@ -1,5 +1,5 @@
 // app/announcements.js
-// ISSY Resident App - Pantalla de Anuncios (Figma Design)
+// ISSY Resident App - Pantalla de Anuncios - ProHome Dark Theme
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -22,7 +22,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const IMAGE_SIZE = SCREEN_WIDTH - 90; // Modal padding considered
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+const IMAGE_SIZE = SCREEN_WIDTH - scale(80);
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  cyan: '#11DAE9',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  red: '#EF4444',
+  blue: '#3B82F6',
+};
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
@@ -128,7 +148,7 @@ export default function AnnouncementsScreen() {
     >
       {/* Gradient sidebar */}
       <LinearGradient
-        colors={['#D4FE48', '#11DAE9']}
+        colors={[COLORS.lime, COLORS.teal]}
         style={styles.gradientBar}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -140,7 +160,7 @@ export default function AnnouncementsScreen() {
             <Text style={styles.announcementTitle} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={styles.announcementPreview} numberOfLines={1}>
+            <Text style={styles.announcementPreview} numberOfLines={2}>
               {item.message}
             </Text>
             <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
@@ -150,9 +170,12 @@ export default function AnnouncementsScreen() {
             {/* Badge NUEVO/VISTO */}
             <View style={[
               styles.statusBadge,
-              { backgroundColor: item.is_read ? '#009FF5' : '#FA5967' }
+              { backgroundColor: item.is_read ? 'rgba(93, 222, 216, 0.15)' : 'rgba(212, 254, 72, 0.15)' }
             ]}>
-              <Text style={styles.statusBadgeText}>
+              <Text style={[
+                styles.statusBadgeText,
+                { color: item.is_read ? COLORS.teal : COLORS.lime }
+              ]}>
                 {item.is_read ? 'VISTO' : 'NUEVO'}
               </Text>
             </View>
@@ -162,7 +185,7 @@ export default function AnnouncementsScreen() {
               style={styles.arrowButton}
               onPress={() => handleOpenAnnouncement(item)}
             >
-              <Ionicons name="arrow-forward" size={20} color="#000" />
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -173,7 +196,7 @@ export default function AnnouncementsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconContainer}>
-        <Ionicons name="megaphone-outline" size={64} color="#D1D5DB" />
+        <Ionicons name="megaphone-outline" size={64} color={COLORS.textMuted} />
       </View>
       <Text style={styles.emptyTitle}>No hay anuncios</Text>
       <Text style={styles.emptySubtitle}>
@@ -218,7 +241,7 @@ export default function AnnouncementsScreen() {
                 key={index}
                 style={[
                   styles.dot,
-                  { backgroundColor: index === currentImageIndex ? '#D4FE48' : '#FFFFFF' }
+                  { backgroundColor: index === currentImageIndex ? COLORS.lime : COLORS.textMuted }
                 ]}
               />
             ))}
@@ -230,9 +253,9 @@ export default function AnnouncementsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#009FF5" />
+          <ActivityIndicator size="large" color={COLORS.purple} />
           <Text style={styles.loadingText}>Cargando anuncios...</Text>
         </View>
       </SafeAreaView>
@@ -247,7 +270,7 @@ export default function AnnouncementsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <View style={styles.headerTitleRow}>
@@ -260,7 +283,7 @@ export default function AnnouncementsScreen() {
           </View>
           <Text style={styles.headerSubtitle}>Centro de anuncios</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Lista de anuncios */}
@@ -273,8 +296,7 @@ export default function AnnouncementsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#009FF5']}
-            tintColor="#009FF5"
+            tintColor={COLORS.purple}
           />
         }
         ListEmptyComponent={renderEmptyState}
@@ -295,7 +317,7 @@ export default function AnnouncementsScreen() {
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}
             >
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
 
             {selectedAnnouncement && (
@@ -330,7 +352,7 @@ export default function AnnouncementsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -338,133 +360,131 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-    fontFamily: 'System',
+    marginTop: scale(12),
+    fontSize: scale(16),
+    color: COLORS.textSecondary,
   },
   
   // Header styles
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FAFAFA',
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(16),
+    backgroundColor: COLORS.background,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: scale(22),
     fontWeight: '700',
-    color: '#000000',
+    color: COLORS.textPrimary,
   },
   unreadBadge: {
-    backgroundColor: '#FA5967',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    backgroundColor: COLORS.red,
+    borderRadius: scale(10),
+    minWidth: scale(20),
+    height: scale(20),
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-    paddingHorizontal: 6,
+    marginLeft: scale(8),
+    paddingHorizontal: scale(6),
   },
   unreadBadgeText: {
-    color: '#000000',
-    fontSize: 9,
+    color: COLORS.textPrimary,
+    fontSize: scale(11),
     fontWeight: '600',
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#000000',
-    marginTop: 2,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   
   // List styles
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 100,
+    paddingHorizontal: scale(20),
+    paddingTop: scale(8),
+    paddingBottom: scale(100),
   },
   
   // Card styles
   announcementCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 13,
-    marginBottom: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    marginBottom: scale(12),
     flexDirection: 'row',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   gradientBar: {
-    width: 11,
-    borderTopLeftRadius: 13,
-    borderBottomLeftRadius: 13,
+    width: scale(6),
+    borderTopLeftRadius: scale(16),
+    borderBottomLeftRadius: scale(16),
   },
   cardContent: {
     flex: 1,
-    padding: 16,
-    paddingLeft: 12,
+    padding: scale(16),
+    paddingLeft: scale(14),
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   cardTitleSection: {
     flex: 1,
-    marginRight: 12,
+    marginRight: scale(12),
   },
   announcementTitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#000000',
-    marginBottom: 4,
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
   },
   announcementPreview: {
-    fontSize: 14,
-    color: '#707883',
-    marginBottom: 8,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginBottom: scale(8),
+    lineHeight: scale(18),
   },
   dateText: {
-    fontSize: 10,
-    color: '#009FF5',
+    fontSize: scale(12),
+    color: COLORS.teal,
   },
   cardRight: {
     alignItems: 'flex-end',
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-    marginBottom: 12,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+    marginBottom: scale(12),
   },
   statusBadgeText: {
-    color: '#000000',
-    fontSize: 9,
-    fontWeight: '600',
+    fontSize: scale(10),
+    fontWeight: '700',
     textAlign: 'center',
   },
   arrowButton: {
-    padding: 4,
+    padding: scale(4),
   },
   
   // Empty state
@@ -472,107 +492,111 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: scale(60),
   },
   emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F3F4F6',
+    width: scale(100),
+    height: scale(100),
+    borderRadius: scale(50),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: scale(40),
   },
   
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: scale(20),
   },
   modalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 13,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(20),
     width: '100%',
     maxHeight: '85%',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   modalCloseButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: scale(12),
+    right: scale(12),
     zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: COLORS.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalContent: {
-    padding: 24,
-    paddingTop: 16,
+    padding: scale(24),
+    paddingTop: scale(16),
   },
   
   // Carousel styles
   carouselContainer: {
-    marginBottom: 20,
+    marginBottom: scale(20),
     alignItems: 'center',
   },
   imageScroll: {
     width: IMAGE_SIZE,
     height: IMAGE_SIZE,
-    borderRadius: 13,
+    borderRadius: scale(16),
   },
   carouselImage: {
     width: IMAGE_SIZE,
     height: IMAGE_SIZE,
-    borderRadius: 13,
+    borderRadius: scale(16),
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -24,
-    paddingBottom: 8,
+    marginTop: scale(-20),
+    paddingBottom: scale(8),
   },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginHorizontal: 3,
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    marginHorizontal: scale(3),
   },
   
   // Modal content
   modalTitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#000000',
-    marginBottom: 12,
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
   },
   modalMessage: {
-    fontSize: 14,
-    color: '#707883',
-    lineHeight: 18,
-    marginBottom: 24,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
+    lineHeight: scale(22),
+    marginBottom: scale(24),
   },
   modalDate: {
-    fontSize: 10,
-    color: '#707883',
+    fontSize: scale(12),
+    color: COLORS.textMuted,
     textTransform: 'capitalize',
   },
 });

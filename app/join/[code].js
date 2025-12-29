@@ -1,5 +1,5 @@
 // app/join/[code].js
-// ISSY Resident App - Join Community via Deep Link
+// ISSY Resident App - Join Community via Deep Link - ProHome Dark Theme
 
 import { useState, useEffect } from 'react';
 import {
@@ -10,30 +10,40 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
 const API_URL = 'https://api.joinissy.com/api';
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#6366F1',
-  primaryLight: '#EEF2FF',
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
-  gray: '#6B7280',
-  grayLight: '#F3F4F6',
-  grayDark: '#374151',
-  white: '#FFFFFF',
-  black: '#111827',
-  background: '#F9FAFB',
-  border: '#E5E7EB',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  purpleLight: 'rgba(99, 102, 241, 0.15)',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  greenLight: 'rgba(16, 185, 129, 0.15)',
+  red: '#EF4444',
+  redLight: 'rgba(239, 68, 68, 0.15)',
+  yellow: '#F59E0B',
+  yellowLight: 'rgba(245, 158, 11, 0.15)',
+  blue: '#3B82F6',
+  blueLight: 'rgba(59, 130, 246, 0.15)',
 };
 
 export default function JoinScreen() {
@@ -85,7 +95,6 @@ export default function JoinScreen() {
 
   const acceptInvitation = async () => {
     if (!user || !token) {
-      // Guardar código y redirigir a login
       Alert.alert(
         'Iniciar sesión',
         'Necesitas iniciar sesión para aceptar la invitación',
@@ -94,7 +103,6 @@ export default function JoinScreen() {
           {
             text: 'Iniciar sesión',
             onPress: () => {
-              // Guardar código pendiente
               router.push('/login');
             },
           },
@@ -120,7 +128,6 @@ export default function JoinScreen() {
       if (data.success) {
         setSuccess(true);
         
-        // Refrescar perfil para obtener la nueva ubicación
         await refreshProfile();
         
         setTimeout(() => {
@@ -156,9 +163,9 @@ export default function JoinScreen() {
   // =====================================================
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.purple} />
           <Text style={styles.loadingText}>Verificando invitación...</Text>
         </View>
       </SafeAreaView>
@@ -170,16 +177,16 @@ export default function JoinScreen() {
   // =====================================================
   if (success) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
           <View style={styles.successIconContainer}>
-            <Ionicons name="checkmark-circle" size={80} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={80} color={COLORS.green} />
           </View>
           <Text style={styles.successTitle}>¡Te has unido exitosamente!</Text>
           <Text style={styles.successSubtitle}>
             Ahora eres parte de {invitation?.location?.name || 'la comunidad'}
           </Text>
-          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 20 }} />
+          <ActivityIndicator size="small" color={COLORS.purple} style={{ marginTop: scale(20) }} />
         </View>
       </SafeAreaView>
     );
@@ -190,10 +197,10 @@ export default function JoinScreen() {
   // =====================================================
   if (error && !invitation) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
           <View style={styles.errorIconContainer}>
-            <Ionicons name="close-circle" size={80} color={COLORS.danger} />
+            <Ionicons name="close-circle" size={80} color={COLORS.red} />
           </View>
           <Text style={styles.errorTitle}>Invitación no válida</Text>
           <Text style={styles.errorSubtitle}>{error}</Text>
@@ -217,17 +224,17 @@ export default function JoinScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="close" size={24} color={COLORS.black} />
+          <Ionicons name="close" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Invitación</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Icon */}
         <View style={styles.mainIconContainer}>
           <View style={styles.mainIcon}>
-            <Text style={{ fontSize: 48 }}>
+            <Text style={{ fontSize: scale(48) }}>
               {invitation?.type === 'rental' ? '🏠' : '🏘️'}
             </Text>
           </View>
@@ -241,11 +248,11 @@ export default function JoinScreen() {
         {/* Type Badge */}
         <View style={[
           styles.typeBadge,
-          { backgroundColor: invitation?.type === 'rental' ? '#DBEAFE' : COLORS.primaryLight }
+          { backgroundColor: invitation?.type === 'rental' ? COLORS.blueLight : COLORS.purpleLight }
         ]}>
           <Text style={[
             styles.typeBadgeText,
-            { color: invitation?.type === 'rental' ? '#1E40AF' : COLORS.primary }
+            { color: invitation?.type === 'rental' ? COLORS.blue : COLORS.purple }
           ]}>
             {invitation?.type === 'rental' ? '🏠 Invitación de Inquilino' : '🏘️ Invitación de Comunidad'}
           </Text>
@@ -296,7 +303,7 @@ export default function JoinScreen() {
         {/* Error */}
         {error && (
           <View style={styles.errorBox}>
-            <Ionicons name="warning" size={18} color={COLORS.danger} />
+            <Ionicons name="warning" size={18} color={COLORS.red} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
@@ -304,7 +311,7 @@ export default function JoinScreen() {
         {/* User status */}
         {!user && (
           <View style={styles.warningBox}>
-            <Ionicons name="information-circle" size={18} color={COLORS.warning} />
+            <Ionicons name="information-circle" size={18} color={COLORS.yellow} />
             <Text style={styles.warningText}>
               Necesitas iniciar sesión para aceptar esta invitación
             </Text>
@@ -319,10 +326,10 @@ export default function JoinScreen() {
             disabled={accepting}
           >
             {accepting ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
+              <ActivityIndicator size="small" color={COLORS.background} />
             ) : (
               <>
-                <Ionicons name="checkmark-circle" size={20} color={COLORS.white} />
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
                 <Text style={styles.primaryButtonText}>
                   {user ? 'Aceptar Invitación' : 'Iniciar sesión y aceptar'}
                 </Text>
@@ -338,7 +345,7 @@ export default function JoinScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: scale(40) }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -364,199 +371,197 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: scale(17),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   content: {
     flex: 1,
-    padding: 24,
+    padding: scale(24),
   },
   centerContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: scale(24),
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 15,
-    color: COLORS.gray,
+    marginTop: scale(16),
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
   },
   mainIconContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   mainIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
+    width: scale(100),
+    height: scale(100),
+    borderRadius: scale(24),
+    backgroundColor: COLORS.purpleLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   subtitle: {
-    fontSize: 15,
-    color: COLORS.gray,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   typeBadge: {
     alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 20,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    marginBottom: scale(20),
   },
   typeBadgeText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
   },
   detailsCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    padding: scale(20),
+    marginBottom: scale(20),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.cardBorder,
   },
   detailRowLast: {
     borderBottomWidth: 0,
   },
   detailLabel: {
-    fontSize: 14,
-    color: COLORS.gray,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
   },
   detailValue: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     flex: 1,
     textAlign: 'right',
-    marginLeft: 16,
+    marginLeft: scale(16),
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.dangerLight,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
+    gap: scale(8),
+    backgroundColor: COLORS.redLight,
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginBottom: scale(16),
   },
   errorText: {
     flex: 1,
-    fontSize: 14,
-    color: COLORS.danger,
+    fontSize: scale(14),
+    color: COLORS.red,
   },
   warningBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.warningLight,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
+    gap: scale(8),
+    backgroundColor: COLORS.yellowLight,
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginBottom: scale(16),
   },
   warningText: {
     flex: 1,
-    fontSize: 14,
-    color: '#92400E',
+    fontSize: scale(14),
+    color: COLORS.yellow,
   },
   actions: {
-    gap: 12,
+    gap: scale(12),
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    gap: scale(8),
+    backgroundColor: COLORS.lime,
+    paddingVertical: scale(16),
+    borderRadius: scale(12),
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: COLORS.white,
+    color: COLORS.background,
   },
   secondaryButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.cardBorder,
+    backgroundColor: COLORS.card,
   },
   secondaryButtonText: {
-    fontSize: 15,
+    fontSize: scale(15),
     fontWeight: '500',
-    color: COLORS.grayDark,
+    color: COLORS.textSecondary,
   },
   successIconContainer: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   successTitle: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   successSubtitle: {
-    fontSize: 15,
-    color: COLORS.gray,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
   errorIconContainer: {
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   errorTitle: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   errorSubtitle: {
-    fontSize: 15,
-    color: COLORS.gray,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
 });

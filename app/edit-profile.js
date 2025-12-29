@@ -1,8 +1,8 @@
-// app/edit-profile.js - Editar Perfil con Biometría
+// app/edit-profile.js - Editar Perfil - ProHome Dark Theme
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, ActivityIndicator, Image, Switch
+  ScrollView, Alert, ActivityIndicator, Image, Switch, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,26 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../src/context/AuthContext';
 import { updateUserProfile, changePassword } from '../src/services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  red: '#EF4444',
+};
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -26,7 +46,7 @@ export default function EditProfileScreen() {
   } = useAuth();
   
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('info'); // info, password, security
+  const [activeTab, setActiveTab] = useState('info');
   const [biometricLoading, setBiometricLoading] = useState(false);
   
   // Profile form
@@ -55,7 +75,6 @@ export default function EditProfileScreen() {
 
     if (!result.canceled) {
       setAvatar(result.assets[0].uri);
-      // TODO: Upload to server
     }
   };
 
@@ -71,7 +90,6 @@ export default function EditProfileScreen() {
 
     if (res.success) {
       Alert.alert('Éxito', 'Perfil actualizado');
-      // Compatibilidad con ambos métodos
       if (refreshUser) refreshUser();
       if (refreshProfile) refreshProfile();
       router.back();
@@ -108,18 +126,13 @@ export default function EditProfileScreen() {
     
     try {
       if (value) {
-        // Activar biometría
         const result = await enableBiometric();
         if (result.success) {
-          Alert.alert(
-            '¡Activado!', 
-            `${getBiometricLabel()} ha sido activado correctamente. La próxima vez podrás iniciar sesión más rápido.`
-          );
+          Alert.alert('¡Activado!', `${getBiometricLabel()} ha sido activado correctamente.`);
         } else {
           Alert.alert('Error', result.error || 'No se pudo activar la biometría');
         }
       } else {
-        // Desactivar biometría
         Alert.alert(
           'Desactivar ' + getBiometricLabel(),
           '¿Estás seguro de desactivar el inicio rápido?',
@@ -138,36 +151,32 @@ export default function EditProfileScreen() {
             }
           ]
         );
-        return; // Early return para el Alert de confirmación
+        return;
       }
     } catch (error) {
-      console.error('Biometric toggle error:', error);
       Alert.alert('Error', 'Ocurrió un error al cambiar la configuración');
     } finally {
-      if (value) setBiometricLoading(false); // Solo si es activación
+      if (value) setBiometricLoading(false);
     }
   };
 
   const getBiometricIcon = () => {
-    if (biometricType === 'face') {
-      return 'scan-outline';
-    } else if (biometricType === 'fingerprint') {
-      return 'finger-print-outline';
-    }
+    if (biometricType === 'face') return 'scan-outline';
+    if (biometricType === 'fingerprint') return 'finger-print-outline';
     return 'shield-checkmark-outline';
   };
 
   const biometricLabel = getBiometricLabel ? getBiometricLabel() : 'Biometría';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar Perfil</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Tabs */}
@@ -176,26 +185,26 @@ export default function EditProfileScreen() {
           style={[styles.tab, activeTab === 'info' && styles.tabActive]}
           onPress={() => setActiveTab('info')}
         >
-          <Ionicons name="person-outline" size={18} color={activeTab === 'info' ? '#6366F1' : '#6B7280'} />
+          <Ionicons name="person-outline" size={18} color={activeTab === 'info' ? COLORS.background : COLORS.textSecondary} />
           <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Info</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'password' && styles.tabActive]}
           onPress={() => setActiveTab('password')}
         >
-          <Ionicons name="lock-closed-outline" size={18} color={activeTab === 'password' ? '#6366F1' : '#6B7280'} />
+          <Ionicons name="lock-closed-outline" size={18} color={activeTab === 'password' ? COLORS.background : COLORS.textSecondary} />
           <Text style={[styles.tabText, activeTab === 'password' && styles.tabTextActive]}>Contraseña</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'security' && styles.tabActive]}
           onPress={() => setActiveTab('security')}
         >
-          <Ionicons name="shield-checkmark-outline" size={18} color={activeTab === 'security' ? '#6366F1' : '#6B7280'} />
+          <Ionicons name="shield-checkmark-outline" size={18} color={activeTab === 'security' ? COLORS.background : COLORS.textSecondary} />
           <Text style={[styles.tabText, activeTab === 'security' && styles.tabTextActive]}>Seguridad</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'info' ? (
           <View style={styles.section}>
             {/* Avatar */}
@@ -208,7 +217,7 @@ export default function EditProfileScreen() {
                 </View>
               )}
               <View style={styles.avatarEdit}>
-                <Ionicons name="camera" size={16} color="#FFF" />
+                <Ionicons name="camera" size={16} color={COLORS.background} />
               </View>
             </TouchableOpacity>
 
@@ -220,15 +229,16 @@ export default function EditProfileScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Tu nombre"
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
-            {/* Email (readonly) */}
+            {/* Email */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Correo electrónico</Text>
               <View style={[styles.input, styles.inputDisabled]}>
                 <Text style={styles.inputDisabledText}>{user?.email}</Text>
-                <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
+                <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
               </View>
             </View>
 
@@ -240,6 +250,7 @@ export default function EditProfileScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="+504 9999-9999"
+                placeholderTextColor={COLORS.textMuted}
                 keyboardType="phone-pad"
               />
             </View>
@@ -251,7 +262,7 @@ export default function EditProfileScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={COLORS.background} />
               ) : (
                 <Text style={styles.saveBtnText}>Guardar Cambios</Text>
               )}
@@ -268,10 +279,11 @@ export default function EditProfileScreen() {
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="Mínimo 6 caracteres"
+                  placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#6B7280" />
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={COLORS.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -279,13 +291,16 @@ export default function EditProfileScreen() {
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Confirmar contraseña</Text>
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Repite la contraseña"
-                secureTextEntry={!showPassword}
-              />
+              <View style={styles.passwordInput}>
+                <TextInput
+                  style={styles.passwordField}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Repite la contraseña"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry={!showPassword}
+                />
+              </View>
             </View>
 
             {/* Change Password Button */}
@@ -295,7 +310,7 @@ export default function EditProfileScreen() {
               disabled={loading || !newPassword}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={COLORS.background} />
               ) : (
                 <Text style={styles.saveBtnText}>Cambiar Contraseña</Text>
               )}
@@ -307,7 +322,7 @@ export default function EditProfileScreen() {
             {/* Biometric Section */}
             <View style={styles.securityCard}>
               <View style={styles.securityIconContainer}>
-                <Ionicons name={getBiometricIcon()} size={32} color="#6366F1" />
+                <Ionicons name={getBiometricIcon()} size={32} color={COLORS.lime} />
               </View>
               
               <Text style={styles.securityTitle}>
@@ -336,14 +351,14 @@ export default function EditProfileScreen() {
                   </View>
                   
                   {biometricLoading ? (
-                    <ActivityIndicator color="#6366F1" />
+                    <ActivityIndicator color={COLORS.lime} />
                   ) : (
                     <Switch
                       value={biometricEnabled}
                       onValueChange={handleToggleBiometric}
-                      trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
-                      thumbColor={biometricEnabled ? '#6366F1' : '#9CA3AF'}
-                      ios_backgroundColor="#D1D5DB"
+                      trackColor={{ false: COLORS.backgroundTertiary, true: 'rgba(212, 254, 72, 0.3)' }}
+                      thumbColor={biometricEnabled ? COLORS.lime : COLORS.textMuted}
+                      ios_backgroundColor={COLORS.backgroundTertiary}
                     />
                   )}
                 </View>
@@ -351,7 +366,7 @@ export default function EditProfileScreen() {
 
               {!biometricAvailable && (
                 <View style={styles.unavailableBox}>
-                  <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+                  <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
                   <Text style={styles.unavailableText}>
                     Configura Face ID o Touch ID en los ajustes de tu dispositivo para usar esta función.
                   </Text>
@@ -362,19 +377,19 @@ export default function EditProfileScreen() {
             {/* Security Info */}
             <View style={styles.securityInfoBox}>
               <View style={styles.securityInfoRow}>
-                <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                <Ionicons name="shield-checkmark" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
                   Tus datos biométricos nunca salen de tu dispositivo
                 </Text>
               </View>
               <View style={styles.securityInfoRow}>
-                <Ionicons name="lock-closed" size={20} color="#10B981" />
+                <Ionicons name="lock-closed" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
                   Las credenciales se almacenan de forma segura
                 </Text>
               </View>
               <View style={styles.securityInfoRow}>
-                <Ionicons name="key" size={20} color="#10B981" />
+                <Ionicons name="key" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
                   Siempre puedes usar tu contraseña como alternativa
                 </Text>
@@ -382,131 +397,135 @@ export default function EditProfileScreen() {
             </View>
           </View>
         )}
+        
+        <View style={{ height: scale(100) }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   
-  tabs: { flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6' },
-  tabActive: { backgroundColor: '#EEF2FF' },
-  tabText: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  tabTextActive: { color: '#6366F1' },
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: scale(16), paddingVertical: scale(12) },
+  backBtn: { width: scale(44), height: scale(44), borderRadius: scale(22), backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.cardBorder },
+  headerTitle: { fontSize: scale(18), fontWeight: '600', color: COLORS.textPrimary },
+  
+  // Tabs
+  tabs: { flexDirection: 'row', paddingHorizontal: scale(16), paddingVertical: scale(8), gap: scale(8) },
+  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(4), paddingVertical: scale(12), borderRadius: scale(12), backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.cardBorder },
+  tabActive: { backgroundColor: COLORS.lime, borderColor: COLORS.lime },
+  tabText: { fontSize: scale(12), color: COLORS.textSecondary, fontWeight: '500' },
+  tabTextActive: { color: COLORS.background, fontWeight: '600' },
 
   content: { flex: 1 },
-  section: { padding: 20 },
+  section: { padding: scale(20) },
 
-  avatarContainer: { alignSelf: 'center', marginBottom: 24 },
-  avatar: { width: 100, height: 100, borderRadius: 50 },
-  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 36, fontWeight: '700', color: '#FFF' },
-  avatarEdit: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#FFF' },
+  // Avatar
+  avatarContainer: { alignSelf: 'center', marginBottom: scale(24) },
+  avatar: { width: scale(100), height: scale(100), borderRadius: scale(50) },
+  avatarPlaceholder: { width: scale(100), height: scale(100), borderRadius: scale(50), backgroundColor: COLORS.purple, alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: scale(36), fontWeight: '700', color: COLORS.textPrimary },
+  avatarEdit: { position: 'absolute', bottom: 0, right: 0, width: scale(32), height: scale(32), borderRadius: scale(16), backgroundColor: COLORS.lime, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: COLORS.background },
 
-  inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
-  input: { backgroundColor: '#FFF', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E5E7EB' },
-  inputDisabled: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB' },
-  inputDisabledText: { fontSize: 16, color: '#6B7280' },
+  // Inputs
+  inputGroup: { marginBottom: scale(16) },
+  label: { fontSize: scale(14), fontWeight: '500', color: COLORS.textSecondary, marginBottom: scale(8) },
+  input: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(12), padding: scale(14), fontSize: scale(16), color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.cardBorder },
+  inputDisabled: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  inputDisabledText: { fontSize: scale(16), color: COLORS.textMuted },
 
-  passwordInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingRight: 14, borderWidth: 1, borderColor: '#E5E7EB' },
-  passwordField: { flex: 1, padding: 14, fontSize: 16 },
+  passwordInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(12), paddingRight: scale(14), borderWidth: 1, borderColor: COLORS.cardBorder },
+  passwordField: { flex: 1, padding: scale(14), fontSize: scale(16), color: COLORS.textPrimary },
 
-  saveBtn: { backgroundColor: '#6366F1', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
-  saveBtnDisabled: { backgroundColor: '#9CA3AF' },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  saveBtn: { backgroundColor: COLORS.lime, borderRadius: scale(12), padding: scale(16), alignItems: 'center', marginTop: scale(8) },
+  saveBtnDisabled: { backgroundColor: COLORS.backgroundTertiary },
+  saveBtnText: { color: COLORS.background, fontSize: scale(16), fontWeight: '600' },
 
-  // Security Tab Styles
+  // Security Tab
   securityCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    padding: scale(24),
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   securityIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#EEF2FF',
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
+    backgroundColor: 'rgba(212, 254, 72, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   securityTitle: {
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
   },
   securityDescription: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: scale(20),
+    marginBottom: scale(24),
   },
   toggleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingTop: 16,
+    paddingTop: scale(16),
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: COLORS.cardBorder,
   },
-  toggleInfo: {
-    flex: 1,
-  },
+  toggleInfo: { flex: 1 },
   toggleLabel: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   toggleStatus: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   unavailableBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    gap: scale(12),
     width: '100%',
   },
   unavailableText: {
     flex: 1,
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 18,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    lineHeight: scale(18),
   },
   securityInfoBox: {
-    marginTop: 24,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
+    marginTop: scale(24),
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: scale(12),
+    padding: scale(16),
+    gap: scale(12),
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   securityInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: scale(12),
   },
   securityInfoText: {
     flex: 1,
-    fontSize: 13,
-    color: '#166534',
+    fontSize: scale(13),
+    color: COLORS.green,
   },
 });

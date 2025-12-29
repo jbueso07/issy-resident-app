@@ -1,7 +1,8 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard con selector de ubicación y diseño Figma
+// ISSY Resident App - Home Dashboard ProHome Style
+// Admin carrusel horizontal, Más Servicios horizontal, Font accessibility
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,12 +15,12 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
-import MaskedView from '@react-native-masked-view/masked-view';
 import { Ionicons } from '@expo/vector-icons';
 
 // Importar iconos SVG
@@ -31,59 +32,54 @@ import {
   BuildingIcon,
   BriefcaseIcon,
   PlusIcon,
-  ArrowRightIcon,
-  LocationIcon,
 } from '../../src/components/Icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Responsive scale basado en diseño de 375px
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
-// ============ COLORES EXACTOS DE FIGMA ============
+// ============ COLORES PROHOME ============
 const COLORS = {
-  lime: '#D4FE48',
-  cyan: '#009FF5',
-  orange: '#FF8C3A',
-  purple: '#7B8CEF',
-  navy: '#1A1A2E',
-  black: '#000000',
-  white: '#FFFFFF',
-  background: '#FAFAFA',
-  gray: '#6B7280',
-  grayLight: '#F2F2F2',
-  nameGradientStart: '#0FE0ED',
-  nameGradientEnd: '#334A89',
-  b2cGradientStart: '#11D6E6',
-  b2cGradientEnd: '#D4FE48',
-  locationPill: '#130F26',
-  // Colores para Admin
-  adminRed: '#FA5967',
-  adminDark: '#1A1A2E',
-  adminTeal: '#14B8A6',
-  adminIndigo: '#6366F1',
+  bgPrimary: '#0F1A1E',
+  bgSecondary: '#152328',
+  bgCard: '#1C2E35',
+  bgCardAlt: '#243B44',
+  bgCardOff: '#1A2630',
+  
+  lime: '#AAFF00',
+  cyan: '#00E5FF',
+  teal: '#00BFA6',
+  orange: '#FF8A50',
+  purple: '#A78BFA',
+  coral: '#FF6B6B',
+  indigo: '#818CF8',
+  blue: '#60A5FA',
+  
+  textPrimary: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.7)',
+  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textDark: '#0F1A1E',
+  
+  border: 'rgba(255, 255, 255, 0.1)',
+  gradientStart: '#00BFA6',
+  gradientEnd: '#AAFF00',
 };
 
 // ============ SERVICIOS DE COMUNIDAD ============
 const COMMUNITY_SERVICES = [
   { 
     id: 'visitors', 
-    title: 'Visitantes', 
+    title: 'Accesos', 
     subtitle: 'Genera códigos QR',
     route: '/(tabs)/visits',
-    bgColor: COLORS.lime,
-    textColor: COLORS.black,
-    iconColor: COLORS.black,
+    activeColor: COLORS.teal,
     available: true,
   },
   { 
     id: 'announcements', 
     title: 'Anuncios', 
-    subtitle: 'De tus comunidades',
+    subtitle: 'De tu comunidad',
     route: '/announcements',
-    bgColor: COLORS.cyan,
-    textColor: COLORS.white,
-    iconColor: COLORS.white,
+    activeColor: COLORS.cyan,
     available: true,
   },
   { 
@@ -91,9 +87,7 @@ const COMMUNITY_SERVICES = [
     title: 'Reservaciones', 
     subtitle: 'Áreas comunes',
     route: '/reservations',
-    bgColor: COLORS.orange,
-    textColor: COLORS.white,
-    iconColor: COLORS.white,
+    activeColor: COLORS.orange,
     available: true,
   },
   { 
@@ -101,9 +95,7 @@ const COMMUNITY_SERVICES = [
     title: 'Pagos', 
     subtitle: 'Estado de cuenta',
     route: '/(tabs)/payments',
-    bgColor: COLORS.purple,
-    textColor: COLORS.white,
-    iconColor: COLORS.white,
+    activeColor: COLORS.purple,
     available: true,
   },
 ];
@@ -113,8 +105,10 @@ const B2C_SERVICES = [
   { 
     id: 'pms', 
     title: 'Gestor de Propiedades', 
-    subtitle: 'Administrar tus alquileres',
+    subtitle: 'Administrar alquileres',
     route: '/pms',
+    icon: 'business-outline',
+    color: COLORS.teal,
     available: true,
   },
   { 
@@ -122,177 +116,132 @@ const B2C_SERVICES = [
     title: 'Finanzas Personales',
     subtitle: 'Control de Gastos',
     route: '/finances',
+    icon: 'wallet-outline',
+    color: COLORS.lime,
     available: true,
+  },
+  { 
+    id: 'marketplace',
+    title: 'Marketplace',
+    subtitle: 'Compra y vende',
+    route: '/marketplace',
+    icon: 'storefront-outline',
+    color: COLORS.orange,
+    available: true,  // ← Cambiar a true
+  },
+  { 
+    id: 'services',
+    title: 'Servicios',
+    subtitle: 'Encuentra expertos',
+    route: '/services',
+    icon: 'construct-outline',
+    color: COLORS.purple,
+    available: true,  // ← Cambiar a true
   },
 ];
 
-// ============ SERVICIOS DE ADMINISTRADOR ============
+// ============ ADMIN SERVICES ============
 const ADMIN_SERVICES = [
   { 
     id: 'create-announcement', 
     title: 'Crear Anuncios', 
     subtitle: 'Publicar en tu comunidad',
     route: '/admin/announcements',
-    bgColor: COLORS.cyan,
-    textColor: COLORS.white,
-    icon: '📢',
-    available: true,
+    activeColor: COLORS.cyan,
+    icon: 'megaphone-outline',
   },
   { 
     id: 'community-management', 
     title: 'Gestión de Comunidad', 
     subtitle: 'Miembros y configuración',
     route: '/admin/community-management',
-    bgColor: '#10B981',
-    textColor: COLORS.white,
-    icon: '🏘️',
-    available: true,
+    activeColor: COLORS.teal,
+    icon: 'people-outline',
   },
   { 
     id: 'common-areas', 
     title: 'Áreas Comunes', 
-    subtitle: 'Configurar espacios y reglas',
+    subtitle: 'Configurar espacios',
     route: '/admin/common-areas',
-    bgColor: COLORS.adminTeal,
-    textColor: COLORS.white,
-    icon: '🏊',
-    available: true,
+    activeColor: COLORS.teal,
+    icon: 'fitness-outline',
   },
   { 
     id: 'reservations-admin', 
     title: 'Gestión de Reservas', 
     subtitle: 'Aprobar solicitudes',
     route: '/admin/reservations',
-    bgColor: COLORS.orange,
-    textColor: COLORS.white,
-    icon: '📅',
-    available: true,
+    activeColor: COLORS.orange,
+    icon: 'calendar-outline',
   },
   { 
     id: 'incidents', 
-    title: 'Gestión de Incidentes', 
-    subtitle: 'Atender reportes y tickets',
+    title: 'Incidentes', 
+    subtitle: 'Atender reportes',
     route: '/admin/incidents',
-    bgColor: '#EF4444',
-    textColor: COLORS.white,
-    icon: '🚨',
-    available: true,
+    activeColor: COLORS.coral,
+    icon: 'warning-outline',
   },
   { 
     id: 'payment-manager', 
     title: 'Gestor de Cobros', 
     subtitle: 'Cuotas y pagos',
     route: '/admin/payments',
-    bgColor: COLORS.purple,
-    textColor: COLORS.white,
-    icon: '💰',
-    available: true,
+    activeColor: COLORS.purple,
+    icon: 'card-outline',
   },
   { 
     id: 'expenses', 
     title: 'Gastos', 
     subtitle: 'Control de egresos',
     route: '/admin/expenses',
-    bgColor: COLORS.adminRed,
-    textColor: COLORS.white,
-    icon: '📊',
-    available: true,
+    activeColor: COLORS.coral,
+    icon: 'trending-down-outline',
   },
   { 
     id: 'users', 
     title: 'Usuarios', 
     subtitle: 'Residentes y roles',
     route: '/admin/users',
-    bgColor: COLORS.adminIndigo,
-    textColor: COLORS.white,
-    icon: '👥',
-    available: true,
+    activeColor: COLORS.indigo,
+    icon: 'person-outline',
   },
   { 
     id: 'admin-settings', 
     title: 'Configuración', 
-    subtitle: 'Guard App, usuarios, blacklist',
+    subtitle: 'Guard App, blacklist',
     route: '/admin/settings',
-    bgColor: COLORS.adminIndigo,
-    textColor: COLORS.white,
-    icon: '⚙️',
-    available: true,
+    activeColor: COLORS.indigo,
+    icon: 'settings-outline',
   },
   { 
     id: 'access-reports', 
     title: 'Control de Acceso', 
-    subtitle: 'Auditoría de visitantes',
+    subtitle: 'Auditoría visitantes',
     route: '/admin/access-reports',
-    bgColor: '#3B82F6',
-    textColor: COLORS.white,
-    icon: '📊',
-    available: true,
+    activeColor: COLORS.blue,
+    icon: 'shield-checkmark-outline',
   },
   { 
     id: 'reports', 
     title: 'Reportes', 
-    subtitle: 'Estadísticas y métricas',
+    subtitle: 'Estadísticas',
     route: '/admin/reports',
-    bgColor: COLORS.lime,
-    textColor: COLORS.black,
-    icon: '📈',
-    available: true,
+    activeColor: COLORS.lime,
+    icon: 'analytics-outline',
   },
 ];
 
 // ============ QUICK ACTIONS ============
 const QUICK_ACTIONS = [
-  { 
-    id: 'qr', 
-    label: 'Nuevo QR', 
-    route: '/(tabs)/visits',
-    iconBg: COLORS.lime,
-    iconColor: COLORS.black,
-  },
-  { 
-    id: 'reserve', 
-    label: 'Reservas', 
-    route: '/reservations',
-    iconBg: COLORS.orange,
-    iconColor: COLORS.white,
-  },
-  { 
-    id: 'announce', 
-    label: 'Anuncios', 
-    route: '/announcements',
-    iconBg: COLORS.cyan,
-    iconColor: COLORS.white,
-  },
-  { 
-    id: 'pay', 
-    label: 'Pagos', 
-    route: '/(tabs)/payments',
-    iconBg: COLORS.purple,
-    iconColor: COLORS.white,
-  },
+  { id: 'qr', label: 'Nuevo QR', route: '/(tabs)/visits' },
+  { id: 'reserve', label: 'Reservas', route: '/reservations' },
+  { id: 'announce', label: 'Anuncios', route: '/announcements' },
+  { id: 'pay', label: 'Pagos', route: '/(tabs)/payments' },
 ];
 
-// ============ COMPONENTE TEXTO CON GRADIENTE ============
-const GradientText = ({ text, style }) => {
-  return (
-    <MaskedView
-      maskElement={
-        <Text style={[style, { backgroundColor: 'transparent' }]}>{text}</Text>
-      }
-    >
-      <LinearGradient
-        colors={[COLORS.nameGradientStart, COLORS.nameGradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
-        <Text style={[style, { opacity: 0 }]}>{text}</Text>
-      </LinearGradient>
-    </MaskedView>
-  );
-};
-
-// ============ COMPONENTE DE ICONO PARA SERVICIOS ============
-const ServiceIcon = ({ serviceId, color, size = 22 }) => {
+// ============ SERVICE ICON COMPONENT ============
+const ServiceIcon = ({ serviceId, color, size = 24 }) => {
   switch (serviceId) {
     case 'visitors':
       return <StarIcon size={size} color={color} />;
@@ -307,8 +256,8 @@ const ServiceIcon = ({ serviceId, color, size = 22 }) => {
   }
 };
 
-// ============ COMPONENTE DE ICONO PARA QUICK ACTIONS ============
-const QuickActionIcon = ({ actionId, color, size = 24 }) => {
+// ============ QUICK ACTION ICON ============
+const QuickActionIcon = ({ actionId, color, size = 28 }) => {
   switch (actionId) {
     case 'qr':
       return <PlusIcon size={size} color={color} />;
@@ -323,7 +272,7 @@ const QuickActionIcon = ({ actionId, color, size = 24 }) => {
   }
 };
 
-// ============ API CALL TO SWITCH LOCATION ============
+// ============ API ============
 const API_URL = 'https://api.joinissy.com/api';
 
 const switchLocationAPI = async (token, locationId) => {
@@ -336,8 +285,7 @@ const switchLocationAPI = async (token, locationId) => {
       },
       body: JSON.stringify({ location_id: locationId }),
     });
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Error switching location:', error);
     return { success: false, error: error.message };
@@ -350,23 +298,39 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [switchingLocation, setSwitchingLocation] = useState(false);
+  
+  // Estados para toggles
+  const [activeServices, setActiveServices] = useState({
+    visitors: true,
+    announcements: true,
+    reservations: false,
+    payments: false,
+  });
+  
+  const [activeAdminServices, setActiveAdminServices] = useState({
+    'create-announcement': true,
+    'community-management': true,
+    'common-areas': true,
+    'reservations-admin': true,
+    'incidents': true,
+    'payment-manager': false,
+    'expenses': false,
+    'users': false,
+    'admin-settings': false,
+    'access-reports': false,
+    'reports': false,
+  });
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
-  
-  // Get user locations from profile
   const userLocations = profile?.user_locations || [];
   const hasMultipleLocations = userLocations.length > 1;
   const currentLocation = profile?.current_location || profile?.location || null;
-  
-  // Verificar si el usuario es admin o superadmin
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (refreshProfile) {
-      await refreshProfile();
-    }
+    if (refreshProfile) await refreshProfile();
     setRefreshing(false);
   }, [refreshProfile]);
 
@@ -376,31 +340,19 @@ export default function Home() {
   };
 
   const handleQuickAction = (action) => {
-    if (action.route) {
-      router.push(action.route);
-    }
+    if (action.route) router.push(action.route);
   };
 
-  const handleJoinCommunity = () => {
-    router.push('/join-community');
-  };
-
-  const handleAdminServicePress = (service) => {
-    if (!service.available || !service.route) return;
-    router.push(service.route);
-  };
+  const handleJoinCommunity = () => router.push('/join-community');
 
   const handleSwitchLocation = async (location) => {
     if (!location?.location_id || switchingLocation) return;
-    
     setSwitchingLocation(true);
     try {
       const result = await switchLocationAPI(token, location.location_id);
       if (result.success) {
         await refreshProfile();
         setShowLocationModal(false);
-      } else {
-        console.error('Error switching location:', result.error);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -408,23 +360,21 @@ export default function Home() {
     setSwitchingLocation(false);
   };
 
-  const getUserName = () => {
-    return profile?.name || user?.email?.split('@')[0] || 'Usuario';
+  const toggleService = (serviceId) => {
+    setActiveServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
   };
 
-  const getUserInitials = () => {
-    const name = profile?.name || user?.email || 'U';
-    return name.charAt(0).toUpperCase();
+  const toggleAdminService = (serviceId) => {
+    setActiveAdminServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
   };
 
-  const getCurrentLocationName = () => {
-    if (currentLocation?.name) return currentLocation.name;
-    if (profile?.location?.name) return profile.location.name;
-    return 'Mi ubicación';
-  };
+  const getUserName = () => profile?.name || user?.email?.split('@')[0] || 'Usuario';
+  const getUserInitials = () => (profile?.name || user?.email || 'U').charAt(0).toUpperCase();
+  const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || 'Mi Comunidad';
+  const getResidentCount = () => currentLocation?.member_count || profile?.location?.member_count || 0;
 
   // ========================================
-  // RENDER: Location Selector Modal
+  // RENDER: Location Modal
   // ========================================
   const renderLocationModal = () => (
     <Modal
@@ -436,9 +386,9 @@ export default function Home() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Cambiar ubicación</Text>
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Cambiar ubicación</Text>
             <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-              <Ionicons name="close" size={24} color={COLORS.black} />
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
           
@@ -458,19 +408,14 @@ export default function Home() {
                     styles.locationDot,
                     loc.location_id === currentLocation?.location_id && styles.locationDotActive
                   ]} />
-                  <View>
-                    <Text style={styles.locationItemName}>{loc.name}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.locationItemName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
+                      {loc.name}
+                    </Text>
                     {loc.address && (
-                      <Text style={styles.locationItemAddress} numberOfLines={1}>
+                      <Text style={styles.locationItemAddress} maxFontSizeMultiplier={1.1} numberOfLines={1}>
                         {loc.address}
                       </Text>
-                    )}
-                    {loc.role && loc.role !== 'user' && (
-                      <View style={styles.locationRoleBadge}>
-                        <Text style={styles.locationRoleText}>
-                          {loc.role === 'admin' ? 'Admin' : loc.role === 'superadmin' ? 'Super Admin' : loc.role}
-                        </Text>
-                      </View>
                     )}
                   </View>
                 </View>
@@ -484,7 +429,7 @@ export default function Home() {
           {switchingLocation && (
             <View style={styles.switchingOverlay}>
               <ActivityIndicator size="large" color={COLORS.cyan} />
-              <Text style={styles.switchingText}>Cambiando ubicación...</Text>
+              <Text style={styles.switchingText} maxFontSizeMultiplier={1.2}>Cambiando ubicación...</Text>
             </View>
           )}
         </View>
@@ -505,84 +450,59 @@ export default function Home() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
           }
         >
-          {/* Header Card */}
-          <View style={styles.headerCard}>
-            <View style={styles.headerImageContainer}>
-              <Image
-                source={require('../../assets/header-gradient.png')}
-                style={styles.headerImage}
-                resizeMode="cover"
-              />
-              <View style={styles.headerOverlay}>
-                <View style={styles.avatarContainer}>
-                  <View style={styles.avatar}>
-                    {profile?.avatar_url ? (
-                      <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
-                    ) : (
-                      <Text style={styles.avatarText}>{getUserInitials()}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
+          <View style={styles.headerSimple}>
+            <View style={styles.avatarSmall}>
+              <Text style={styles.avatarTextSmall} maxFontSizeMultiplier={1.2}>{getUserInitials()}</Text>
             </View>
-            
-            <View style={styles.greetingContainer}>
-              <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
-              <GradientText text={getUserName()} style={styles.userName} />
-            </View>
+            <Text style={styles.greeting} maxFontSizeMultiplier={1.2}>¡Hola, {getUserName()}! 👋</Text>
           </View>
 
-          {/* Join Community Card */}
           <View style={styles.joinCard}>
             <View style={styles.joinIconContainer}>
               <Text style={styles.joinIcon}>🏡</Text>
             </View>
-            <Text style={styles.joinTitle}>¿Vives en una comunidad privada?</Text>
-            <Text style={styles.joinSubtitle}>
+            <Text style={styles.joinTitle} maxFontSizeMultiplier={1.2}>¿Vives en una comunidad privada?</Text>
+            <Text style={styles.joinSubtitle} maxFontSizeMultiplier={1.2}>
               Únete para acceder al control de acceso, reservaciones y más.
             </Text>
-            <TouchableOpacity
-              style={styles.joinButton}
-              onPress={handleJoinCommunity}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.joinButtonText}>Unirme a mi comunidad</Text>
+            <TouchableOpacity style={styles.joinButton} onPress={handleJoinCommunity}>
+              <Text style={styles.joinButtonText} maxFontSizeMultiplier={1.2}>Unirme a mi comunidad</Text>
             </TouchableOpacity>
           </View>
 
-          {/* B2C Services */}
-          <Text style={styles.sectionTitle}>Mas Servicios</Text>
-          <Text style={styles.sectionSubtitle}>Soluciones personales</Text>
-          
-          <View style={styles.b2cGrid}>
+          {/* B2C Services - Horizontal Scroll */}
+          <Text style={[styles.sectionTitle, { paddingHorizontal: scale(16) }]} maxFontSizeMultiplier={1.2}>
+            Más Servicios
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalScroll}
+          >
             {B2C_SERVICES.map((service) => (
               <TouchableOpacity
                 key={service.id}
-                style={styles.b2cCard}
+                style={[styles.b2cCardHorizontal, !service.available && styles.cardDisabled]}
                 onPress={() => handleServicePress(service)}
-                activeOpacity={0.7}
+                disabled={!service.available}
               >
-                <View style={styles.b2cTopSection}>
-                  <Text style={styles.b2cTitle}>{service.title}</Text>
-                  <View style={styles.b2cIconBox}>
-                    {service.id === 'pms' ? (
-                      <BuildingIcon size={22} color={COLORS.black} />
-                    ) : (
-                      <BriefcaseIcon size={22} color={COLORS.black} />
-                    )}
-                  </View>
+                <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
+                  <Ionicons name={service.icon} size={24} color={service.color} />
                 </View>
-                <LinearGradient
-                  colors={[COLORS.b2cGradientStart, COLORS.b2cGradientEnd]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.b2cBottomSection}
-                >
-                  <Text style={styles.b2cSubtitle}>{service.subtitle}</Text>
-                </LinearGradient>
+                <Text style={styles.b2cTitleH} maxFontSizeMultiplier={1.2} numberOfLines={2}>
+                  {service.title}
+                </Text>
+                <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
+                  {service.subtitle}
+                </Text>
+                {!service.available && (
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>Pronto</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           <View style={{ height: scale(120) }} />
         </ScrollView>
@@ -602,569 +522,608 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
         }
       >
-        {/* Header Card */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerImageContainer}>
-            <Image
-              source={require('../../assets/header-gradient.png')}
-              style={styles.headerImage}
-              resizeMode="cover"
-            />
-            <View style={styles.headerOverlay}>
-              <View style={styles.headerRow}>
-                {/* Avatar */}
-                <View style={styles.avatar}>
-                  {profile?.avatar_url || profile?.profile_photo_url ? (
-                    <Image 
-                      source={{ uri: profile.avatar_url || profile.profile_photo_url }} 
-                      style={styles.avatarImage} 
-                    />
-                  ) : (
-                    <Text style={styles.avatarText}>{getUserInitials()}</Text>
-                  )}
-                </View>
-                
-                {/* Location Pill - Solo si tiene múltiples ubicaciones */}
-                {hasMultipleLocations ? (
-                  <TouchableOpacity 
-                    style={styles.locationPill}
-                    onPress={() => setShowLocationModal(true)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.locationIconCircle}>
-                      <Ionicons name="location" size={14} color={COLORS.white} />
-                    </View>
-                    <Text style={styles.locationText} numberOfLines={1}>
-                      {getCurrentLocationName()}
-                    </Text>
-                    <Ionicons name="swap-horizontal" size={15} color={COLORS.white} />
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.locationPillStatic}>
-                    <View style={styles.locationIconCircle}>
-                      <Ionicons name="location" size={14} color={COLORS.white} />
-                    </View>
-                    <Text style={styles.locationText} numberOfLines={1}>
-                      {getCurrentLocationName()}
-                    </Text>
-                  </View>
-                )}
+        {/* Location Card - Gradient */}
+        <TouchableOpacity 
+          style={styles.locationCard}
+          onPress={() => hasMultipleLocations && setShowLocationModal(true)}
+          activeOpacity={hasMultipleLocations ? 0.8 : 1}
+        >
+          <LinearGradient
+            colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.locationGradient}
+          >
+            <View style={styles.locationContent}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locationName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
+                  {getCurrentLocationName()}
+                </Text>
+                <Text style={styles.locationCount} maxFontSizeMultiplier={1.1}>
+                  {getResidentCount()} residentes activos
+                </Text>
+              </View>
+              <View style={styles.locationPinContainer}>
+                <Ionicons name="location" size={24} color={COLORS.coral} />
               </View>
             </View>
-          </View>
-          
-          {/* Greeting */}
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greetingText}>¡Hola de nuevo! 👋</Text>
-            <GradientText text={getUserName()} style={styles.userName} />
-            {isAdmin && (
-              <View style={styles.adminBadge}>
-                <Text style={styles.adminBadgeText}>
-                  {userRole === 'superadmin' ? '👑 Super Admin' : '🛡️ Administrador'}
-                </Text>
-              </View>
-            )}
-          </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
-          {/* Quick Actions */}
-          <View style={styles.quickActionsRow}>
-            {QUICK_ACTIONS.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction(action)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.quickActionBox}>
-                  <View style={[styles.quickActionIconCircle, { backgroundColor: action.iconBg }]}>
-                    <QuickActionIcon 
-                      actionId={action.id} 
-                      color={action.iconColor} 
-                      size={20} 
-                    />
-                  </View>
-                </View>
-                <Text style={styles.quickActionLabel}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Community Services */}
-        <Text style={styles.sectionTitle}>Servicios de tu comunidad</Text>
-        
-        <View style={styles.communityGrid}>
-          {COMMUNITY_SERVICES.map((service) => (
+        {/* Quick Actions */}
+        <View style={styles.quickActionsRow}>
+          {QUICK_ACTIONS.map((action, index) => (
             <TouchableOpacity
-              key={service.id}
-              style={[styles.communityCard, { backgroundColor: service.bgColor }]}
-              onPress={() => handleServicePress(service)}
-              activeOpacity={0.8}
+              key={action.id}
+              style={styles.quickActionItem}
+              onPress={() => handleQuickAction(action)}
             >
-              <View style={styles.communityIconBox}>
-                <ServiceIcon 
-                  serviceId={service.id} 
-                  color={service.iconColor} 
-                  size={22} 
-                />
-              </View>
-              
-              <View style={styles.communityContent}>
-                <Text style={[styles.communityTitle, { color: service.textColor }]}>
-                  {service.title}
-                </Text>
-                <Text style={[styles.communitySubtitle, { color: service.textColor }]}>
-                  {service.subtitle}
-                </Text>
-              </View>
-              
-              <View style={styles.communityArrow}>
-                <ArrowRightIcon size={24} color={service.textColor} />
-              </View>
+              {index === 0 ? (
+                <LinearGradient
+                  colors={[COLORS.gradientStart, COLORS.lime]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.quickActionBoxActive}
+                >
+                  <QuickActionIcon actionId={action.id} color={COLORS.textDark} size={28} />
+                </LinearGradient>
+              ) : (
+                <View style={styles.quickActionBox}>
+                  <QuickActionIcon actionId={action.id} color={COLORS.textMuted} size={24} />
+                </View>
+              )}
+              <Text style={[
+                styles.quickActionLabel,
+                index === 0 && styles.quickActionLabelActive
+              ]} maxFontSizeMultiplier={1.2}>{action.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* B2C Services */}
-        <Text style={styles.sectionTitle}>Mas Servicios</Text>
-        <Text style={styles.sectionSubtitle}>Soluciones personales</Text>
-        
-        <View style={styles.b2cGrid}>
+        {/* Services Section Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>
+            Servicios <Text style={styles.sectionCount}>({COMMUNITY_SERVICES.length})</Text>
+          </Text>
+          <TouchableOpacity>
+            <Text style={styles.sectionLink} maxFontSizeMultiplier={1.2}>Ver todos</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Community Services Grid */}
+        <View style={styles.servicesGrid}>
+          {COMMUNITY_SERVICES.map((service) => {
+            const isActive = activeServices[service.id];
+            return (
+              <TouchableOpacity
+                key={service.id}
+                style={[
+                  styles.serviceCard,
+                  isActive ? { backgroundColor: service.activeColor } : styles.serviceCardOff
+                ]}
+                onPress={() => handleServicePress(service)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.serviceHeader}>
+                  <View style={{ flex: 1 }} />
+                  <Switch
+                    value={isActive}
+                    onValueChange={() => toggleService(service.id)}
+                    trackColor={{ false: COLORS.bgCardAlt, true: 'rgba(255,255,255,0.3)' }}
+                    thumbColor={COLORS.textPrimary}
+                    style={styles.toggle}
+                  />
+                </View>
+
+                <View style={[
+                  styles.serviceIconBox,
+                  isActive ? styles.serviceIconBoxActive : styles.serviceIconBoxOff
+                ]}>
+                  <ServiceIcon 
+                    serviceId={service.id} 
+                    color={isActive ? service.activeColor : COLORS.textMuted}
+                    size={24}
+                  />
+                </View>
+
+                <Text style={[
+                  styles.serviceTitle,
+                  !isActive && styles.serviceTitleOff
+                ]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{service.title}</Text>
+                <Text style={[
+                  styles.serviceSubtitle,
+                  !isActive && styles.serviceSubtitleOff
+                ]} maxFontSizeMultiplier={1.1} numberOfLines={1}>{service.subtitle}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Más Servicios - Horizontal Scroll */}
+        <Text style={[styles.sectionTitle, { marginTop: scale(24) }]} maxFontSizeMultiplier={1.2}>
+          Más Servicios
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScroll}
+        >
           {B2C_SERVICES.map((service) => (
             <TouchableOpacity
               key={service.id}
-              style={styles.b2cCard}
+              style={[styles.b2cCardHorizontal, !service.available && styles.cardDisabled]}
               onPress={() => handleServicePress(service)}
-              activeOpacity={0.7}
+              disabled={!service.available}
             >
-              <View style={styles.b2cTopSection}>
-                <Text style={styles.b2cTitle}>{service.title}</Text>
-                <View style={styles.b2cIconBox}>
-                  {service.id === 'pms' ? (
-                    <BuildingIcon size={22} color={COLORS.black} />
-                  ) : (
-                    <BriefcaseIcon size={22} color={COLORS.black} />
-                  )}
-                </View>
+              <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
+                <Ionicons name={service.icon} size={24} color={service.color} />
               </View>
-              <LinearGradient
-                colors={[COLORS.b2cGradientStart, COLORS.b2cGradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.b2cBottomSection}
-              >
-                <Text style={styles.b2cSubtitle}>{service.subtitle}</Text>
-              </LinearGradient>
+              <Text style={styles.b2cTitleH} maxFontSizeMultiplier={1.2} numberOfLines={2}>
+                {service.title}
+              </Text>
+              <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
+                {service.subtitle}
+              </Text>
+              {!service.available && (
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>Pronto</Text>
+                </View>
+              )}
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
-        {/* ADMIN SECTION */}
+        {/* ADMIN SECTION - Horizontal Carousel */}
         {isAdmin && (
           <>
             <View style={styles.adminSectionHeader}>
-              <Text style={styles.adminSectionTitle}>Administrar</Text>
-              <View style={styles.adminSectionBadge}>
-                <Text style={styles.adminSectionBadgeText}>
+              <Text style={styles.adminSectionTitle} maxFontSizeMultiplier={1.2}>Administrar</Text>
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeText} maxFontSizeMultiplier={1}>
                   {userRole === 'superadmin' ? 'Super Admin' : 'Admin'}
                 </Text>
               </View>
             </View>
-            <Text style={styles.sectionSubtitle}>Gestiona tu comunidad</Text>
             
-            <View style={styles.adminGrid}>
-              {ADMIN_SERVICES.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={[styles.adminCard, { backgroundColor: service.bgColor }]}
-                  onPress={() => handleAdminServicePress(service)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.adminIconBox}>
-                    <Text style={styles.adminIcon}>{service.icon}</Text>
-                  </View>
-                  
-                  <View style={styles.adminContent}>
-                    <Text style={[styles.adminCardTitle, { color: service.textColor }]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.adminCarousel}
+              decelerationRate="fast"
+              snapToInterval={scale(160) + scale(12)}
+            >
+              {ADMIN_SERVICES.map((service) => {
+                const isActive = activeAdminServices[service.id];
+                return (
+                  <TouchableOpacity
+                    key={service.id}
+                    style={[
+                      styles.adminCardCarousel,
+                      isActive ? { backgroundColor: service.activeColor } : styles.adminCardOff
+                    ]}
+                    onPress={() => router.push(service.route)}
+                    activeOpacity={0.8}
+                  >
+                    {/* Toggle Header */}
+                    <View style={styles.adminCardHeader}>
+                      <View style={{ flex: 1 }} />
+                      <Switch
+                        value={isActive}
+                        onValueChange={() => toggleAdminService(service.id)}
+                        trackColor={{ false: COLORS.bgCardAlt, true: 'rgba(255,255,255,0.3)' }}
+                        thumbColor={COLORS.textPrimary}
+                        style={styles.toggleSmall}
+                      />
+                    </View>
+
+                    {/* Icon */}
+                    <View style={[
+                      styles.adminIconBox,
+                      isActive ? styles.adminIconBoxActive : styles.adminIconBoxOff
+                    ]}>
+                      <Ionicons 
+                        name={service.icon} 
+                        size={28} 
+                        color={isActive ? service.activeColor : COLORS.textMuted} 
+                      />
+                    </View>
+
+                    {/* Content */}
+                    <Text style={[
+                      styles.adminCardTitle,
+                      !isActive && styles.adminCardTitleOff
+                    ]} maxFontSizeMultiplier={1.2} numberOfLines={2}>
                       {service.title}
                     </Text>
-                    <Text style={[styles.adminCardSubtitle, { color: service.textColor }]}>
+                    <Text style={[
+                      styles.adminCardSubtitle,
+                      !isActive && styles.adminCardSubtitleOff
+                    ]} maxFontSizeMultiplier={1.1} numberOfLines={1}>
                       {service.subtitle}
                     </Text>
-                  </View>
-                  
-                  <View style={styles.adminArrow}>
-                    <ArrowRightIcon size={20} color={service.textColor} />
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </>
         )}
 
         <View style={{ height: scale(120) }} />
       </ScrollView>
 
-      {/* Location Switcher Modal */}
       {renderLocationModal()}
     </SafeAreaView>
   );
 }
 
-// ============ ESTILOS ============
+// ============ STYLES ============
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgPrimary,
   },
   scrollContent: {
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    paddingTop: scale(10),
   },
-  
-  // ============ HEADER CARD ============
-  headerCard: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: scale(12),
-    marginTop: scale(10),
-    borderRadius: scale(13),
+
+  // ============ LOCATION CARD ============
+  locationCard: {
+    borderRadius: scale(20),
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    marginHorizontal: scale(16),
+    marginBottom: scale(20),
   },
-  headerImageContainer: {
-    height: scale(121),
-    overflow: 'hidden',
+  locationGradient: {
+    padding: scale(20),
+    borderRadius: scale(20),
   },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  headerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    paddingTop: scale(20),
-    paddingHorizontal: scale(16),
-  },
-  headerRow: {
+  locationContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  avatarContainer: {
-    alignItems: 'flex-start',
-  },
-  avatar: {
-    width: scale(58),
-    height: scale(58),
-    borderRadius: scale(29),
-    backgroundColor: COLORS.white,
     alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: COLORS.white,
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
+  locationName: {
+    fontSize: scale(22),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
   },
-  avatarText: {
-    fontSize: scale(24),
-    fontWeight: '600',
-    color: COLORS.navy,
+  locationCount: {
+    fontSize: scale(13),
+    color: 'rgba(255,255,255,0.8)',
   },
-  
-  // Location Pill (Figma: 240x43, #130F26, radius 30)
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.locationPill,
-    paddingVertical: scale(10),
-    paddingLeft: scale(6),
-    paddingRight: scale(12),
-    borderRadius: scale(30),
-    maxWidth: scale(240),
-    height: scale(43),
-  },
-  locationPillStatic: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.locationPill,
-    paddingVertical: scale(10),
-    paddingLeft: scale(6),
-    paddingRight: scale(16),
-    borderRadius: scale(30),
-    maxWidth: scale(200),
-    height: scale(43),
-  },
-  locationIconCircle: {
-    width: scale(31),
-    height: scale(31),
-    borderRadius: scale(15.5),
-    backgroundColor: 'rgba(255, 255, 255, 0.13)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(8),
-  },
-  locationText: {
-    color: COLORS.grayLight,
-    fontSize: scale(14),
-    fontWeight: '400',
-    flex: 1,
-    textAlign: 'center',
-  },
-  
-  // Greeting
-  greetingContainer: {
-    paddingHorizontal: scale(17),
-    paddingTop: scale(12),
-    paddingBottom: scale(8),
-  },
-  greetingText: {
-    fontSize: scale(11),
-    fontWeight: '400',
-    color: COLORS.black,
-  },
-  userName: {
-    fontSize: scale(20),
-    fontWeight: '800',
-    marginTop: scale(4),
-  },
-  
-  // Admin Badge
-  adminBadge: {
-    marginTop: scale(6),
-    backgroundColor: COLORS.adminDark,
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
+  locationPinContainer: {
+    width: scale(44),
+    height: scale(44),
     borderRadius: scale(12),
-    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  adminBadgeText: {
-    color: COLORS.white,
-    fontSize: scale(10),
-    fontWeight: '600',
-  },
-  
+
   // ============ QUICK ACTIONS ============
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(20),
-    paddingTop: scale(8),
-    paddingBottom: scale(16),
+    marginBottom: scale(24),
+    paddingHorizontal: scale(16),
   },
   quickActionItem: {
     alignItems: 'center',
+    flex: 1,
   },
-  quickActionBox: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(13),
-    backgroundColor: COLORS.black,
+  quickActionBoxActive: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(16),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: scale(6),
-  },
-  quickActionIconCircle: {
-    width: scale(30),
-    height: scale(30),
-    borderRadius: scale(15),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontSize: scale(11),
-    fontWeight: '400',
-    color: COLORS.navy,
-    textAlign: 'center',
-  },
-  
-  // ============ SECTIONS ============
-  sectionTitle: {
-    fontSize: scale(14),
-    fontWeight: '400',
-    color: COLORS.navy,
-    paddingHorizontal: scale(21),
-    marginTop: scale(20),
-    marginBottom: scale(2),
-  },
-  sectionSubtitle: {
-    fontSize: scale(11),
-    fontWeight: '400',
-    color: COLORS.black,
-    paddingHorizontal: scale(21),
-    marginBottom: scale(12),
-  },
-  
-  // ============ COMMUNITY SERVICES ============
-  communityGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: scale(16),
-    justifyContent: 'space-between',
-    marginTop: scale(8),
-  },
-  communityCard: {
-    width: (SCREEN_WIDTH - scale(42)) / 2,
-    height: scale(113),
-    borderRadius: scale(13),
-    padding: scale(14),
-    position: 'relative',
-    marginBottom: scale(10),
-  },
-  communityIconBox: {
     marginBottom: scale(8),
   },
-  communityContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  quickActionBox: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(16),
+    backgroundColor: COLORS.bgCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  communityTitle: {
+  quickActionLabel: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    fontWeight: '500',
+  },
+  quickActionLabelActive: {
+    color: COLORS.teal,
+  },
+
+  // ============ SECTION HEADER ============
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(14),
+    paddingHorizontal: scale(16),
+  },
+  sectionTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    paddingHorizontal: scale(16),
+  },
+  sectionCount: {
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  sectionLink: {
     fontSize: scale(14),
-    fontWeight: '400',
+    color: COLORS.cyan,
+    fontWeight: '500',
   },
-  communitySubtitle: {
-    fontSize: scale(11),
-    fontWeight: '400',
-    marginTop: scale(2),
-    opacity: 0.9,
-  },
-  communityArrow: {
-    position: 'absolute',
-    bottom: scale(14),
-    right: scale(14),
-  },
-  
-  // ============ B2C SERVICES ============
-  b2cGrid: {
+
+  // ============ SERVICES GRID ============
+  servicesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: scale(16),
     justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
   },
-  b2cCard: {
-    width: (SCREEN_WIDTH - scale(42)) / 2,
-    borderRadius: scale(13),
-    overflow: 'hidden',
-    backgroundColor: COLORS.white,
+  serviceCard: {
+    width: (SCREEN_WIDTH - scale(44)) / 2,
+    borderRadius: scale(20),
+    padding: scale(14),
+    marginBottom: scale(12),
+    minHeight: scale(155),
+  },
+  serviceCardOff: {
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: scale(10),
   },
-  b2cTopSection: {
-    height: scale(93),
-    padding: scale(16),
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    backgroundColor: COLORS.white,
+  statusBadge: {
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(12),
   },
-  b2cTitle: {
-    fontSize: scale(14),
-    fontWeight: '400',
-    color: COLORS.black,
-    flex: 1,
-    paddingRight: scale(8),
+  statusBadgeActive: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  b2cIconBox: {
-    width: scale(22),
-    height: scale(22),
+  statusBadgeOff: {
+    backgroundColor: 'transparent',
   },
-  b2cBottomSection: {
-    paddingHorizontal: scale(13),
-    paddingVertical: scale(10),
+  statusText: {
+    fontSize: scale(9),
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  b2cSubtitle: {
-    fontSize: scale(11),
-    fontWeight: '400',
-    color: COLORS.black,
+  statusTextActive: {
+    color: COLORS.textPrimary,
   },
-  
-  // ============ ADMIN SECTION ============
-  adminSectionHeader: {
-    flexDirection: 'row',
+  statusTextOff: {
+    color: COLORS.textMuted,
+  },
+  toggle: {
+    transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }],
+  },
+  toggleSmall: {
+    transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }],
+  },
+  serviceIconBox: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
     alignItems: 'center',
-    paddingHorizontal: scale(21),
-    marginTop: scale(24),
+    justifyContent: 'center',
+    marginBottom: scale(10),
+  },
+  serviceIconBoxActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  serviceIconBoxOff: {
+    backgroundColor: COLORS.bgCardAlt,
+  },
+  serviceTitle: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
     marginBottom: scale(2),
   },
-  adminSectionTitle: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.adminDark,
+  serviceTitleOff: {
+    color: COLORS.textSecondary,
   },
-  adminSectionBadge: {
-    marginLeft: scale(10),
-    backgroundColor: COLORS.adminRed,
+  serviceSubtitle: {
+    fontSize: scale(11),
+    color: 'rgba(255,255,255,0.8)',
+  },
+  serviceSubtitleOff: {
+    color: COLORS.textMuted,
+  },
+
+  // ============ B2C HORIZONTAL ============
+  horizontalScroll: {
+    paddingLeft: scale(16),
+    paddingRight: scale(8),
+    paddingTop: scale(12),
+    paddingBottom: scale(4),
+  },
+  b2cCardHorizontal: {
+    width: scale(140),
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(16),
+    padding: scale(14),
+    marginRight: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minHeight: scale(140),
+  },
+  cardDisabled: {
+    opacity: 0.6,
+  },
+  b2cIconBoxH: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(12),
+  },
+  b2cTitleH: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  b2cSubtitleH: {
+    fontSize: scale(11),
+    color: COLORS.textMuted,
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: scale(10),
+    right: scale(10),
+    backgroundColor: COLORS.orange,
     paddingHorizontal: scale(8),
     paddingVertical: scale(3),
     borderRadius: scale(8),
   },
-  adminSectionBadgeText: {
-    color: COLORS.white,
+  comingSoonText: {
     fontSize: scale(9),
     fontWeight: '700',
+    color: COLORS.textPrimary,
   },
-  adminGrid: {
+
+  // ============ ADMIN SECTION ============
+  adminSectionHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: scale(24),
+    marginBottom: scale(14),
     paddingHorizontal: scale(16),
-    justifyContent: 'space-between',
   },
-  adminCard: {
-    width: (SCREEN_WIDTH - scale(42)) / 2,
-    height: scale(100),
-    borderRadius: scale(13),
-    padding: scale(12),
-    position: 'relative',
-    marginBottom: scale(10),
+  adminSectionTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  adminBadge: {
+    marginLeft: scale(10),
+    backgroundColor: COLORS.coral,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  adminBadgeText: {
+    color: COLORS.textPrimary,
+    fontSize: scale(10),
+    fontWeight: '700',
+  },
+
+  // ============ ADMIN CAROUSEL ============
+  adminCarousel: {
+    paddingLeft: scale(16),
+    paddingRight: scale(8),
+    paddingBottom: scale(4),
+  },
+  adminCardCarousel: {
+    width: scale(160),
+    borderRadius: scale(20),
+    padding: scale(14),
+    marginRight: scale(12),
+    minHeight: scale(180),
+  },
+  adminCardOff: {
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  adminCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(12),
   },
   adminIconBox: {
-    marginBottom: scale(6),
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(14),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(12),
   },
-  adminIcon: {
-    fontSize: scale(22),
+  adminIconBoxActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  adminContent: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  adminIconBoxOff: {
+    backgroundColor: COLORS.bgCardAlt,
   },
   adminCardTitle: {
-    fontSize: scale(13),
-    fontWeight: '500',
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  adminCardTitleOff: {
+    color: COLORS.textSecondary,
   },
   adminCardSubtitle: {
-    fontSize: scale(10),
-    fontWeight: '400',
-    marginTop: scale(2),
-    opacity: 0.85,
+    fontSize: scale(11),
+    color: 'rgba(255,255,255,0.8)',
   },
-  adminArrow: {
-    position: 'absolute',
-    bottom: scale(12),
-    right: scale(12),
+  adminCardSubtitleOff: {
+    color: COLORS.textMuted,
   },
-  
-  // ============ JOIN COMMUNITY ============
+
+  // ============ JOIN CARD ============
+  headerSimple: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(20),
+    paddingHorizontal: scale(16),
+  },
+  avatarSmall: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.bgCard,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  avatarTextSmall: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  greeting: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
   joinCard: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: scale(16),
-    marginTop: scale(20),
-    borderRadius: scale(16),
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(20),
     padding: scale(24),
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    marginBottom: scale(24),
+    marginHorizontal: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   joinIconContainer: {
     width: scale(70),
     height: scale(70),
     borderRadius: scale(35),
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.bgCardAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
@@ -1175,37 +1134,37 @@ const styles = StyleSheet.create({
   joinTitle: {
     fontSize: scale(16),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: scale(8),
   },
   joinSubtitle: {
     fontSize: scale(13),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: scale(20),
     lineHeight: scale(18),
   },
   joinButton: {
-    backgroundColor: COLORS.purple,
+    backgroundColor: COLORS.teal,
     paddingHorizontal: scale(28),
     paddingVertical: scale(12),
-    borderRadius: scale(10),
+    borderRadius: scale(12),
   },
   joinButtonText: {
-    color: COLORS.white,
+    color: COLORS.textPrimary,
     fontSize: scale(14),
     fontWeight: '600',
   },
 
-  // ============ LOCATION MODAL ============
+  // ============ MODAL ============
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.bgSecondary,
     borderTopLeftRadius: scale(24),
     borderTopRightRadius: scale(24),
     maxHeight: '70%',
@@ -1218,12 +1177,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(20),
     paddingVertical: scale(16),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    borderBottomColor: COLORS.border,
   },
   modalTitle: {
     fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   locationList: {
     paddingHorizontal: scale(20),
@@ -1237,10 +1196,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(12),
     borderRadius: scale(12),
     marginBottom: scale(8),
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.bgCardAlt,
   },
   locationItemActive: {
-    backgroundColor: '#E8FFF0',
+    backgroundColor: 'rgba(170,255,0,0.15)',
     borderWidth: 1,
     borderColor: COLORS.lime,
   },
@@ -1253,7 +1212,7 @@ const styles = StyleSheet.create({
     width: scale(10),
     height: scale(10),
     borderRadius: scale(5),
-    backgroundColor: COLORS.gray,
+    backgroundColor: COLORS.textMuted,
     marginRight: scale(12),
   },
   locationDotActive: {
@@ -1262,29 +1221,16 @@ const styles = StyleSheet.create({
   locationItemName: {
     fontSize: scale(15),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   locationItemAddress: {
     fontSize: scale(12),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginTop: scale(2),
-  },
-  locationRoleBadge: {
-    backgroundColor: COLORS.adminDark,
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(2),
-    borderRadius: scale(6),
-    marginTop: scale(4),
-    alignSelf: 'flex-start',
-  },
-  locationRoleText: {
-    fontSize: scale(10),
-    color: COLORS.white,
-    fontWeight: '600',
   },
   switchingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(15,26,30,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
     borderTopLeftRadius: scale(24),
@@ -1293,6 +1239,6 @@ const styles = StyleSheet.create({
   switchingText: {
     marginTop: scale(12),
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
 });

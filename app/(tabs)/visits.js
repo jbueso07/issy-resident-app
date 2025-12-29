@@ -1,5 +1,5 @@
 // app/(tabs)/visits.js
-// ISSY Resident App - Visits Screen (Diseño Figma)
+// ISSY Resident App - Visits Screen (ProHome Dark Style)
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -15,32 +15,66 @@ import {
   RefreshControl,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
-import { getMyQRCodes, generateQRCode, deleteQRCode } from '../../src/services/api';
+import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret } from '../../src/services/api';
+import CompactResidentQR from '../../src/components/CompactResidentQR';
+import AccessTabs from '../../src/components/AccessTabs';
+import MyAccessesTab from '../../src/components/MyAccessesTab';
+
+// Logo ISSY
+const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ============ COLORES PROHOME ============
+const COLORS = {
+  bgPrimary: '#0F1A1E',
+  bgSecondary: '#152328',
+  bgCard: '#1C2E35',
+  bgCardAlt: '#243B44',
+
+  lime: '#AAFF00',
+  cyan: '#00E5FF',
+  teal: '#00BFA6',
+  orange: '#FF8A50',
+  purple: '#A78BFA',
+  coral: '#FF6B6B',
+  indigo: '#818CF8',
+  blue: '#60A5FA',
+  pink: '#F472B6',
+
+  textPrimary: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.7)',
+  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textDark: '#0F1A1E',
+
+  border: 'rgba(255, 255, 255, 0.1)',
+  gradientStart: '#00BFA6',
+  gradientEnd: '#AAFF00',
+};
 
 // Tipos de QR
 const QR_TYPES = [
-  { id: 'single', label: 'Uso Único', icon: '1️⃣' },
-  { id: 'temporary', label: 'Temporal', icon: '📅' },
-  { id: 'frequent', label: 'Permanente', icon: '🔄' },
+  { id: 'single', label: 'Uso Único', icon: 'flash-outline', color: COLORS.coral },
+  { id: 'temporary', label: 'Temporal', icon: 'calendar-outline', color: COLORS.purple },
+  { id: 'frequent', label: 'Permanente', icon: 'infinite-outline', color: COLORS.lime },
 ];
 
 // Días de la semana
 const WEEKDAYS = [
   { id: 1, label: 'Lun', fullLabel: 'Lunes', backendName: 'monday', short: 'L' },
   { id: 2, label: 'Mar', fullLabel: 'Martes', backendName: 'tuesday', short: 'M' },
-  { id: 3, label: 'Mié', fullLabel: 'Miércoles', backendName: 'wednesday', short: 'X' },
+  { id: 3, label: 'Mié', fullLabel: 'Miércoles', backendName: 'wednesday', short: 'M' },
   { id: 4, label: 'Jue', fullLabel: 'Jueves', backendName: 'thursday', short: 'J' },
   { id: 5, label: 'Vie', fullLabel: 'Viernes', backendName: 'friday', short: 'V' },
   { id: 6, label: 'Sáb', fullLabel: 'Sábado', backendName: 'saturday', short: 'S' },
@@ -48,7 +82,7 @@ const WEEKDAYS = [
 ];
 
 const WEEKDAYS_MAP = {
-  'monday': 'L', 'tuesday': 'M', 'wednesday': 'X', 'thursday': 'J',
+  'monday': 'L', 'tuesday': 'M', 'wednesday': 'M', 'thursday': 'J',
   'friday': 'V', 'saturday': 'S', 'sunday': 'D'
 };
 
@@ -58,20 +92,6 @@ const DURATIONS = [
   { value: 12, label: '12 hrs' },
   { value: 24, label: '24 hrs' },
 ];
-
-// Colors
-const COLORS = {
-  background: '#FAFAFA',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#707883',
-  grayLight: '#E5E7EB',
-  lime: '#D4FE48',
-  cyan: '#11DAE9',
-  pink: '#FA5967',
-  purple: '#7B8CEF',
-  primary: '#009FF5',
-};
 
 // Helpers
 const daysToBackendFormat = (dayIds) => {
@@ -90,39 +110,44 @@ const formatTimeForBackend = (date) => {
 export default function Visits() {
   const { profile } = useAuth();
   const qrRef = useRef(null);
-  const cardRef = useRef(null); // Ref para capturar toda la tarjeta
-  
+  const cardRef = useRef(null);
+
   // Lista de QRs
   const [qrCodes, setQrCodes] = useState([]);
   const [loadingQRs, setLoadingQRs] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
   const [sharingImage, setSharingImage] = useState(false);
-  
+
+  // Resident QR TOTP
+  const [residentQRData, setResidentQRData] = useState(null);
+  const [loadingResidentQR, setLoadingResidentQR] = useState(true);
+  const [activeTab, setActiveTab] = useState("myqr");
+
   // Form states
   const [qrType, setQrType] = useState('single');
   const [visitorName, setVisitorName] = useState('');
   const [visitorPhone, setVisitorPhone] = useState('');
   const [visitorId, setVisitorId] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Single QR states
   const [visitDate, setVisitDate] = useState(new Date());
   const [visitTime, setVisitTime] = useState(new Date());
   const [duration, setDuration] = useState(6);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  
+
   // Temporary QR states
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  
+
   // Shared schedule states
   const [access247, setAccess247] = useState(false);
   const [selectedDays, setSelectedDays] = useState([1, 2, 3, 4, 5]);
@@ -130,6 +155,23 @@ export default function Visits() {
   const [startTime, setStartTime] = useState(new Date(new Date().setHours(9, 0, 0)));
   const [endTime, setEndTime] = useState(new Date(new Date().setHours(18, 0, 0)));
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+
+  useEffect(() => {
+    loadResidentQRSecret();
+  }, []);
+
+  const loadResidentQRSecret = async () => {
+    try {
+      const result = await getResidentQRSecret();
+      if (result.success) {
+        setResidentQRData(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading resident QR:", error);
+    } finally {
+      setLoadingResidentQR(false);
+    }
+  };
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
@@ -210,429 +252,446 @@ export default function Visits() {
 
     setLoading(true);
 
-    try {
-      let qrData = {
-        visitor_name: visitorName.trim(),
-        visitor_phone: visitorPhone.trim(),
-        visitor_id: visitorId.trim() || null,
-        qr_type: qrType,
-      };
+    let qrData = {
+      visitor_name: visitorName.trim(),
+      visitor_phone: visitorPhone.trim(),
+      visitor_id: visitorId.trim() || null,
+      qr_type: qrType,
+        house_number: profile?.house_number || profile?.apartment_number || null,
+      house_number: profile?.house_number || profile?.apartment_number || null,  // ✅ Agregado
+    };
 
-      if (qrType === 'single') {
-        const validFrom = new Date(visitDate);
-        validFrom.setHours(visitTime.getHours(), visitTime.getMinutes(), 0);
-        const validUntil = new Date(validFrom);
-        validUntil.setHours(validUntil.getHours() + duration);
-        qrData.valid_from = validFrom.toISOString();
-        qrData.valid_until = validUntil.toISOString();
-      } else if (qrType === 'temporary') {
-        const validFrom = new Date(startDate);
-        validFrom.setHours(0, 0, 0);
-        const validUntil = new Date(endDate);
-        validUntil.setHours(23, 59, 59);
-        qrData.valid_from = validFrom.toISOString();
-        qrData.valid_until = validUntil.toISOString();
-        qrData.is_24_7 = access247;
-        qrData.access_days = JSON.stringify(daysToBackendFormat(selectedDays));
-        qrData.access_time_start = access247 ? '00:00' : formatTimeForBackend(startTime);
-        qrData.access_time_end = access247 ? '23:59' : formatTimeForBackend(endTime);
-      } else if (qrType === 'frequent') {
-        qrData.valid_from = new Date().toISOString();
-        qrData.valid_until = new Date('2099-12-31').toISOString();
-        qrData.is_24_7 = access247;
-        qrData.access_days = JSON.stringify(daysToBackendFormat(selectedDays));
-        qrData.access_time_start = access247 ? '00:00' : formatTimeForBackend(startTime);
-        qrData.access_time_end = access247 ? '23:59' : formatTimeForBackend(endTime);
-      }
-
-      const result = await generateQRCode(qrData);
-
-      if (result.success) {
-        Alert.alert('¡Listo!', 'Código QR generado exitosamente');
-        setShowCreateModal(false);
-        resetForm();
-        loadQRCodes();
-      } else {
-        Alert.alert('Error', result.error || 'No se pudo generar el QR');
-      }
-    } catch (error) {
-      console.error('Error generating QR:', error);
-      Alert.alert('Error', 'Ocurrió un error al generar el QR');
-    } finally {
-      setLoading(false);
+    if (qrType === 'single') {
+      const validFrom = new Date(visitDate);
+      validFrom.setHours(visitTime.getHours(), visitTime.getMinutes(), 0);
+      const validUntil = new Date(validFrom);
+      validUntil.setHours(validUntil.getHours() + duration);
+      qrData.valid_from = validFrom.toISOString();
+      qrData.valid_until = validUntil.toISOString();
+    } else if (qrType === 'temporary') {
+      const validFrom = new Date(startDate);
+      validFrom.setHours(0, 0, 0);
+      const validUntil = new Date(endDate);
+      validUntil.setHours(23, 59, 59);
+      qrData.valid_from = validFrom.toISOString();
+      qrData.valid_until = validUntil.toISOString();
+      qrData.is_24_7 = access247;
+      qrData.access_days = JSON.stringify(daysToBackendFormat(selectedDays));
+      qrData.access_time_start = access247 ? '00:00' : formatTimeForBackend(startTime);
+      qrData.access_time_end = access247 ? '23:59' : formatTimeForBackend(endTime);
+    } else if (qrType === 'frequent') {
+      qrData.valid_from = new Date().toISOString();
+      qrData.valid_until = new Date('2099-12-31').toISOString();
+      qrData.is_24_7 = access247;
+      qrData.access_days = JSON.stringify(daysToBackendFormat(selectedDays));
+      qrData.access_time_start = access247 ? '00:00' : formatTimeForBackend(startTime);
+      qrData.access_time_end = access247 ? '23:59' : formatTimeForBackend(endTime);
     }
-  };
 
-  const handleDeleteQR = async (qr) => {
-    Alert.alert(
-      'Eliminar QR',
-      `¿Estás seguro de eliminar el QR de ${qr.visitor_name}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteQRCode(qr.id);
-            if (result.success) {
-              loadQRCodes();
-            } else {
-              Alert.alert('Error', 'No se pudo eliminar el QR');
-            }
-          },
+  try {
+    const result = await generateQRCode(qrData);
+
+    if (result.success) {
+      Alert.alert('¡Listo!', 'Código QR generado exitosamente');
+      setShowCreateModal(false);
+      resetForm();
+      loadQRCodes();
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo generar el QR');
+    }
+  } catch (error) {
+    console.error('Error generating QR:', error);
+    Alert.alert('Error', 'Ocurrió un error al generar el QR');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleDeleteQR = async (qr, e) => {
+  if (e) e.stopPropagation();
+
+  Alert.alert(
+    'Eliminar QR',
+    `¿Estás seguro de eliminar el QR de ${qr.visitor_name}?`,
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          const result = await deleteQRCode(qr.id);
+          if (result.success) {
+            loadQRCodes();
+          } else {
+            Alert.alert('Error', 'No se pudo eliminar el QR');
+          }
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
 
-  // Compartir QR como imagen de la tarjeta completa
-  const handleShareQRImage = async (qr) => {
-    if (!cardRef.current) {
-      Alert.alert('Error', 'No se pudo capturar la imagen. Intenta de nuevo.');
-      return;
-    }
+const handleShareQRImage = async (qr) => {
+  if (!cardRef.current) {
+    Alert.alert('Error', 'No se pudo capturar la imagen. Intenta de nuevo.');
+    return;
+  }
 
-    setSharingImage(true);
-    
-    try {
-      // Capturar la tarjeta completa como imagen
-      const uri = await captureRef(cardRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
+  setSharingImage(true);
+
+  try {
+    const uri = await captureRef(cardRef, {
+      format: 'png',
+      quality: 1,
+      result: 'tmpfile',
+    });
+
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(uri, {
+        mimeType: 'image/png',
+        dialogTitle: 'Compartir código QR - ISSY',
+        UTI: 'public.png',
       });
-      
-      // Compartir la imagen
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Compartir código QR - ISSY',
-          UTI: 'public.png',
-        });
-      } else {
-        Alert.alert('Error', 'No se puede compartir en este dispositivo');
-      }
-    } catch (error) {
-      console.error('Error sharing image:', error);
-      Alert.alert('Error', 'No se pudo compartir la imagen. Intenta de nuevo.');
-    } finally {
-      setSharingImage(false);
+    } else {
+      Alert.alert('Error', 'No se puede compartir en este dispositivo');
     }
-  };
+  } catch (error) {
+    console.error('Error sharing image:', error);
+    Alert.alert('Error', 'No se pudo compartir la imagen. Intenta de nuevo.');
+  } finally {
+    setSharingImage(false);
+  }
+};
 
-  // Formatters
-  const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('es-HN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+// Formatters
+const formatDate = (date) => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('es-HN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
 
-  const formatDateShort = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
-      day: 'numeric',
-      month: 'short',
-    });
-  };
+const formatDateShort = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-HN', {
+    day: 'numeric',
+    month: 'short',
+  });
+};
 
-  const formatTime = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleTimeString('es-HN', {
+const formatTime = (date) => {
+  if (!date) return '';
+  return new Date(date).toLocaleTimeString('es-HN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const formatTimeFromString = (timeString) => {
+  if (!timeString) return '';
+  if (timeString.includes(':')) {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'p.m.' : 'a.m.';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+  return timeString;
+};
+
+const formatValidDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-HN', {
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).replace(',', ',');
+};
+
+const getQRTypeLabel = (type) => {
+  const found = QR_TYPES.find(t => t.id === type);
+  return found?.label || type;
+};
+
+const getQRTypeConfig = (type) => {
+  const found = QR_TYPES.find(t => t.id === type);
+  if (found) {
+    return {
+      bg: found.color,
+      text: type === 'frequent' ? COLORS.textDark : COLORS.textPrimary,
+      label: found.label.toUpperCase()
+    };
+  }
+  return { bg: COLORS.bgCardAlt, text: COLORS.textPrimary, label: type.toUpperCase() };
+};
+
+const isQRActive = (qr) => {
+  if (qr.status === 'used') return false;
+  if (qr.status === 'expired') return false;
+  if (qr.valid_until && new Date(qr.valid_until) < new Date()) return false;
+  return true;
+};
+
+// Texto de validez para la lista de cards
+const getCardValidityText = (qr) => {
+  if (qr.qr_type === 'single') {
+    return `Válido: ${formatValidDate(qr.valid_until)}`;
+  } else if (qr.qr_type === 'temporary') {
+    return `Válido: ${formatDateShort(qr.valid_from)} - ${formatDateShort(qr.valid_until)}`;
+  } else if (qr.qr_type === 'frequent') {
+    return 'Válido: Permanente';
+  }
+  return '';
+};
+
+const getTimeText = (qr) => {
+  if (qr.is_24_7) return '24 Horas';
+  if (qr.access_time_start && qr.access_time_end) {
+    return `${formatTimeFromString(qr.access_time_start)} - ${formatTimeFromString(qr.access_time_end)}`;
+  }
+  if (qr.qr_type === 'single' && qr.valid_from) {
+    const date = new Date(qr.valid_from);
+    return date.toLocaleTimeString('es-HN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
     });
-  };
+  }
+  return '24 Horas';
+};
 
-  const formatTimeFromString = (timeString) => {
-    if (!timeString) return '';
-    if (timeString.includes(':')) {
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'p.m.' : 'a.m.';
-      const hour12 = hour % 12 || 12;
-      return `${hour12}:${minutes} ${ampm}`;
-    }
-    return timeString;
-  };
+// Obtener días activos como array booleano
+const getActiveDays = (qr) => {
+  if (!qr.access_days) return [true, true, true, true, true, true, true];
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
+  try {
+    const parsed = typeof qr.access_days === 'string'
+      ? JSON.parse(qr.access_days)
+      : qr.access_days;
 
-  const formatValidDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
-      day: '2-digit',
-      month: 'short',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    }).replace(',', ',');
-  };
+    const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return WEEKDAY_ORDER.map(day => parsed.includes(day));
+  } catch {
+    return [true, true, true, true, true, true, true];
+  }
+};
 
-  const getQRTypeLabel = (type) => {
-    const found = QR_TYPES.find(t => t.id === type);
-    return found?.label || type;
-  };
+const hostName = profile?.name || 'Residente ISSY';
+const communityName = profile?.current_location?.name || profile?.location?.name || 'Mi Comunidad';
+// house_number viene de current_location (que es un user_location con el campo)
+const houseNumber = profile?.current_location?.house_number || profile?.house_number || '';
 
-  const getQRTypeConfig = (type) => {
-    switch (type) {
-      case 'single': 
-        return { bg: COLORS.pink, text: COLORS.white, label: 'USO ÚNICO' };
-      case 'temporary': 
-        return { bg: COLORS.purple, text: COLORS.white, label: 'TEMPORAL' };
-      case 'frequent': 
-        return { bg: COLORS.lime, text: COLORS.black, label: 'PERMANENTE' };
-      default: 
-        return { bg: COLORS.gray, text: COLORS.white, label: type.toUpperCase() };
-    }
-  };
+// Render QR Card - Todo el card es touchable
+const renderQRCard = (qr) => {
+  const typeConfig = getQRTypeConfig(qr.qr_type);
+  const active = isQRActive(qr);
 
-  const isQRActive = (qr) => {
-    if (qr.status === 'used') return false;
-    if (qr.status === 'expired') return false;
-    if (qr.valid_until && new Date(qr.valid_until) < new Date()) return false;
-    return true;
-  };
+  return (
+    <TouchableOpacity
+      key={qr.id}
+      style={styles.qrCard}
+      onPress={() => {
+        setSelectedQR(qr);
+        setShowQRModal(true);
+      }}
+      activeOpacity={0.7}
+    >
+      <View style={styles.qrCardContent}>
+        {/* Top row with badges */}
+        <View style={styles.qrCardTopRow}>
+          <View style={[styles.typeBadge, { backgroundColor: typeConfig.bg }]}>
+            <Text style={[styles.typeBadgeText, { color: typeConfig.text }]} maxFontSizeMultiplier={1.2}>
+              {typeConfig.label}
+            </Text>
+          </View>
 
-  const getValidityText = (qr) => {
-    if (qr.qr_type === 'single') {
-      return formatDateShort(qr.valid_from);
-    } else if (qr.qr_type === 'temporary') {
-      return `${formatDateShort(qr.valid_from)} - ${formatDateShort(qr.valid_until)}`;
-    } else if (qr.qr_type === 'frequent') {
-      return 'Permanente';
-    }
-    return '';
-  };
-
-  const getTimeText = (qr) => {
-    if (qr.is_24_7) return '24 Horas';
-    if (qr.access_time_start && qr.access_time_end) {
-      return `${formatTimeFromString(qr.access_time_start)} - ${formatTimeFromString(qr.access_time_end)}`;
-    }
-    if (qr.qr_type === 'single' && qr.valid_from) {
-      const date = new Date(qr.valid_from);
-      return date.toLocaleTimeString('es-HN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    }
-    return '24 Horas';
-  };
-
-  const getDaysText = (qr) => {
-    if (qr.access_days) {
-      try {
-        const parsed = typeof qr.access_days === 'string' 
-          ? JSON.parse(qr.access_days) 
-          : qr.access_days;
-        if (parsed.length === 7) return 'L-M-X-J-V-S-D';
-        return parsed.map(d => WEEKDAYS_MAP[d] || d).join('-');
-      } catch {
-        return 'L-M-X-J-V-S-D';
-      }
-    }
-    return 'L-M-X-J-V-S-D';
-  };
-
-  const hostName = profile?.name || 'Residente ISSY';
-  const communityName = profile?.location_name || 'Mi Comunidad';
-
-  // Render QR Card
-  const renderQRCard = (qr) => {
-    const typeConfig = getQRTypeConfig(qr.qr_type);
-    const active = isQRActive(qr);
-
-    return (
-      <View key={qr.id} style={styles.qrCard}>
-        <View style={styles.qrCardContent}>
-          {/* Top row with badges */}
-          <View style={styles.qrCardTopRow}>
-            <View style={[styles.typeBadge, { backgroundColor: typeConfig.bg }]}>
-              <Text style={[styles.typeBadgeText, { color: typeConfig.text }]}>
-                {typeConfig.label}
-              </Text>
+          {active ? (
+            <LinearGradient
+              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.statusBadge}
+            >
+              <Text style={[styles.statusBadgeText, { color: COLORS.textDark }]} maxFontSizeMultiplier={1.2}>ACTIVO</Text>
+            </LinearGradient>
+          ) : (
+            <View style={[styles.statusBadge, { backgroundColor: COLORS.bgCardAlt }]}>
+              <Text style={styles.statusBadgeText} maxFontSizeMultiplier={1.2}>EXPIRADO</Text>
             </View>
-            
-            {active ? (
-              <LinearGradient
-                colors={[COLORS.lime, COLORS.cyan]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.statusBadge}
-              >
-                <Text style={styles.statusBadgeText}>ACTIVO</Text>
-              </LinearGradient>
-            ) : (
-              <View style={[styles.statusBadge, { backgroundColor: '#9CA3AF' }]}>
-                <Text style={[styles.statusBadgeText, { color: COLORS.white }]}>EXPIRADO</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Visitor info */}
-          <Text style={styles.visitorName}>{qr.visitor_name}</Text>
-          <Text style={styles.visitorPhone}>{qr.visitor_phone}</Text>
-          <Text style={styles.validDate}>Válido: {formatValidDate(qr.valid_until)}</Text>
-
-          {/* Action buttons */}
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                setSelectedQR(qr);
-                setShowQRModal(true);
-              }}
-            >
-              <Ionicons name="share-outline" size={18} color={COLORS.black} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleDeleteQR(qr)}
-            >
-              <Ionicons name="trash-outline" size={18} color={COLORS.black} />
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
 
-        {/* View QR button (invisible touch area) */}
-        <TouchableOpacity
-          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
-          onPress={() => {
-            setSelectedQR(qr);
-            setShowQRModal(true);
-          }}
-          activeOpacity={0.7}
-        />
-        
-        {/* Action buttons need to be above the touch area */}
-        <View style={styles.actionButtonsOverlay}>
+        {/* Visitor info */}
+        <Text style={styles.visitorName} maxFontSizeMultiplier={1.2}>{qr.visitor_name}</Text>
+        <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>{qr.visitor_phone}</Text>
+        <Text style={styles.validDate} maxFontSizeMultiplier={1.2}>{getCardValidityText(qr)}</Text>
+
+        {/* Action row */}
+        <View style={styles.cardActionsRow}>
+          {/* Ver QR button */}
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.viewQRButton}
             onPress={() => {
               setSelectedQR(qr);
               setShowQRModal(true);
             }}
           >
-            <Ionicons name="share-outline" size={18} color={COLORS.black} />
+            <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
+            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>Ver QR</Text>
           </TouchableOpacity>
+
+          {/* Delete button */}
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleDeleteQR(qr)}
+            style={styles.deleteButton}
+            onPress={(e) => handleDeleteQR(qr, e)}
           >
-            <Ionicons name="trash-outline" size={18} color={COLORS.black} />
+            <Ionicons name="trash-outline" size={18} color={COLORS.coral} />
           </TouchableOpacity>
         </View>
       </View>
-    );
-  };
+    </TouchableOpacity>
+  );
+};
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+return (
+  <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            colors={[COLORS.primary]} 
-            tintColor={COLORS.primary}
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.cyan]}
+            tintColor={COLORS.cyan}
           />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Visitantes</Text>
-          <Text style={styles.subtitle}>Gestiona el acceso de tus visitantes</Text>
+          <Text style={styles.title} maxFontSizeMultiplier={1.2}>Accesos</Text>
+          <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>Gestiona todos tus accesos</Text>
         </View>
 
-        {/* Create QR Button */}
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={30} color={COLORS.black} />
-          <Text style={styles.createButtonText}>Generar Código QR</Text>
-        </TouchableOpacity>
+        {/* Tabs */}
+        <AccessTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {/* QR List Section */}
-        <Text style={styles.sectionTitle}>Códigos QR ({qrCodes.length})</Text>
-
-        {loadingQRs ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-          </View>
-        ) : qrCodes.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="qr-code-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyText}>No has generado códigos QR</Text>
-            <Text style={styles.emptySubtext}>Toca el botón de arriba para crear uno</Text>
-          </View>
-        ) : (
-          qrCodes.map((qr) => renderQRCard(qr))
+        {/* Tab: Mi QR */}
+        {activeTab === 'myqr' && residentQRData && (
+          <CompactResidentQR
+            secret={residentQRData.secret}
+            userId={residentQRData.userId}
+            locationName={residentQRData.locationName}
+            houseNumber={residentQRData.houseNumber}
+            fullName={residentQRData.fullName}
+            onError={(error) => Alert.alert("Error", error)}
+          />
         )}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
 
-      {/* ============================================ */}
-      {/* CREATE QR MODAL */}
-      {/* ============================================ */}
-      <Modal
-        visible={showCreateModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCreateModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
+        {/* Tab: Visitantes */}
+        {activeTab === 'visitors' && (
+          <>
+            {/* Create QR Button */}
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={() => setShowCreateModal(true)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.createButtonGradient}
+              >
+                <Ionicons name="add-circle" size={24} color={COLORS.textDark} />
+                <Text style={styles.createButtonText} maxFontSizeMultiplier={1.2}>Crear código para visitante</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* QR List Section */}
+            <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>Códigos activos</Text>
+
+            {loadingQRs ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.cyan} />
+              </View>
+            ) : qrCodes.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconBox}>
+                  <Ionicons name="qr-code-outline" size={48} color={COLORS.textMuted} />
+                </View>
+                <Text style={styles.emptyText} maxFontSizeMultiplier={1.2}>No has generado códigos QR</Text>
+                <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>Toca el botón de arriba para crear uno</Text>
+              </View>
+            ) : (
+              qrCodes.map((qr) => renderQRCard(qr))
+            )}
+          </>
+        )}
+
+        {/* Tab: Mis Accesos */}
+        {activeTab === 'invitations' && (
+          <MyAccessesTab />
+        )}
+
+        <View style={{ height: scale(100) }} />
+      </ScrollView>
+    </SafeAreaView>
+
+    {/* ============================================ */}
+    {/* CREATE QR MODAL */}
+    {/* ============================================ */}
+    <Modal
+      visible={showCreateModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowCreateModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>Cancelar</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Generar Código QR</Text>
-            <View style={{ width: 60 }} />
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Nuevo Código QR</Text>
+            <View style={{ width: scale(60) }} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* QR Type Selector */}
-            <Text style={styles.inputLabel}>Tipo de Código QR</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Tipo de Código QR</Text>
             <View style={styles.typeSelector}>
               {QR_TYPES.map((type) => {
-                const config = getQRTypeConfig(type.id);
                 const isSelected = qrType === type.id;
                 return (
                   <TouchableOpacity
                     key={type.id}
                     style={[
-                      styles.typeButton, 
-                      isSelected && { backgroundColor: config.bg, borderColor: config.bg }
+                      styles.typeButton,
+                      isSelected && { backgroundColor: type.color, borderColor: type.color }
                     ]}
                     onPress={() => setQrType(type.id)}
                   >
+                    <Ionicons
+                      name={type.icon}
+                      size={18}
+                      color={isSelected ? (type.id === 'frequent' ? COLORS.textDark : COLORS.textPrimary) : type.color}
+                      style={{ marginRight: scale(6) }}
+                    />
                     <Text style={[
-                      styles.typeLabel, 
-                      isSelected && { color: config.text }
-                    ]}>
-                      {config.label}
+                      styles.typeLabel,
+                      isSelected && { color: type.id === 'frequent' ? COLORS.textDark : COLORS.textPrimary }
+                    ]} maxFontSizeMultiplier={1.2}>
+                      {type.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -640,50 +699,53 @@ export default function Visits() {
             </View>
 
             {/* Visitor Info */}
-            <Text style={styles.inputLabel}>Nombre del Visitante *</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Nombre del Visitante *</Text>
             <TextInput
               style={styles.input}
               placeholder="Ingresa el nombre completo"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.textMuted}
               value={visitorName}
               onChangeText={setVisitorName}
+              maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel}>Número de Teléfono *</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Número de Teléfono *</Text>
             <TextInput
               style={styles.input}
               placeholder="+504 1234-5678"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.textMuted}
               value={visitorPhone}
               onChangeText={setVisitorPhone}
               keyboardType="phone-pad"
+              maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel}>Número de Identidad (Opcional)</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Número de Identidad (Opcional)</Text>
             <TextInput
               style={styles.input}
               placeholder="Identidad o pasaporte"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={COLORS.textMuted}
               value={visitorId}
               onChangeText={setVisitorId}
+              maxFontSizeMultiplier={1.2}
             />
 
             {/* SINGLE QR OPTIONS */}
             {qrType === 'single' && (
               <>
-                <Text style={styles.inputLabel}>Fecha de Visita *</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Fecha de Visita *</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-                  <Text style={styles.dateInputText}>{formatDate(visitDate)}</Text>
-                  <Ionicons name="calendar-outline" size={20} color={COLORS.gray} />
+                  <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(visitDate)}</Text>
+                  <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel}>Hora de Inicio</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Hora de Inicio</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowTimePicker(true)}>
-                  <Text style={styles.dateInputText}>{formatTime(visitTime)}</Text>
-                  <Ionicons name="time-outline" size={20} color={COLORS.gray} />
+                  <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(visitTime)}</Text>
+                  <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel}>Duración del Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Duración del Acceso</Text>
                 <View style={styles.durationSelector}>
                   {DURATIONS.map((d) => (
                     <TouchableOpacity
@@ -691,7 +753,7 @@ export default function Visits() {
                       style={[styles.durationButton, duration === d.value && styles.durationButtonActive]}
                       onPress={() => setDuration(d.value)}
                     >
-                      <Text style={[styles.durationLabel, duration === d.value && styles.durationLabelActive]}>
+                      <Text style={[styles.durationLabel, duration === d.value && styles.durationLabelActive]} maxFontSizeMultiplier={1.2}>
                         {d.label}
                       </Text>
                     </TouchableOpacity>
@@ -703,60 +765,57 @@ export default function Visits() {
             {/* TEMPORARY QR OPTIONS */}
             {qrType === 'temporary' && (
               <>
-                <Text style={styles.inputLabel}>Rango de Fechas *</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Rango de Fechas *</Text>
                 <View style={styles.dateRangeRow}>
                   <TouchableOpacity
-                    style={[styles.dateInput, { flex: 1, marginRight: 8 }]}
+                    style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
                     onPress={() => setShowStartDatePicker(true)}
                   >
-                    <Text style={styles.dateInputText}>{formatDate(startDate)}</Text>
-                    <Ionicons name="calendar-outline" size={20} color={COLORS.gray} />
+                    <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(startDate)}</Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.dateInput, { flex: 1 }]}
                     onPress={() => setShowEndDatePicker(true)}
                   >
-                    <Text style={styles.dateInputText}>{formatDate(endDate)}</Text>
-                    <Ionicons name="calendar-outline" size={20} color={COLORS.gray} />
+                    <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(endDate)}</Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Schedule options for temporary */}
-                <Text style={styles.inputLabel}>Horario de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Horario de Acceso</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
-                    {access247 && <Text style={styles.checkmark}>✓</Text>}
+                    {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel}>Acceso 24/7</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Acceso 24/7</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
-                  <>
-                    <View style={styles.dateRangeRow}>
-                      <TouchableOpacity
-                        style={[styles.dateInput, { flex: 1, marginRight: 8 }]}
-                        onPress={() => setShowStartTimePicker(true)}
-                      >
-                        <Text style={styles.dateInputText}>{formatTime(startTime)}</Text>
-                        <Ionicons name="time-outline" size={20} color={COLORS.gray} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.dateInput, { flex: 1 }]}
-                        onPress={() => setShowEndTimePicker(true)}
-                      >
-                        <Text style={styles.dateInputText}>{formatTime(endTime)}</Text>
-                        <Ionicons name="time-outline" size={20} color={COLORS.gray} />
-                      </TouchableOpacity>
-                    </View>
-                  </>
+                  <View style={styles.dateRangeRow}>
+                    <TouchableOpacity
+                      style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
+                      onPress={() => setShowStartTimePicker(true)}
+                    >
+                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
+                      <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dateInput, { flex: 1 }]}
+                      onPress={() => setShowEndTimePicker(true)}
+                    >
+                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
+                      <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 )}
 
-                <Text style={styles.inputLabel}>Días de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Días de Acceso</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
-                    {allDays && <Text style={styles.checkmark}>✓</Text>}
+                    {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel}>Todos los días</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Todos los días</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -767,9 +826,9 @@ export default function Visits() {
                       onPress={() => toggleDay(day.id)}
                     >
                       <View style={[styles.checkbox, selectedDays.includes(day.id) && styles.checkboxChecked]}>
-                        {selectedDays.includes(day.id) && <Text style={styles.checkmark}>✓</Text>}
+                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                       </View>
-                      <Text style={styles.dayCheckboxLabel}>{day.fullLabel}</Text>
+                      <Text style={styles.dayCheckboxLabel} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -779,41 +838,39 @@ export default function Visits() {
             {/* FREQUENT/PERMANENT QR OPTIONS */}
             {qrType === 'frequent' && (
               <>
-                <Text style={styles.inputLabel}>Horario de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Horario de Acceso</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
-                    {access247 && <Text style={styles.checkmark}>✓</Text>}
+                    {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel}>Acceso 24/7</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Acceso 24/7</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
-                  <>
-                    <View style={styles.dateRangeRow}>
-                      <TouchableOpacity
-                        style={[styles.dateInput, { flex: 1, marginRight: 8 }]}
-                        onPress={() => setShowStartTimePicker(true)}
-                      >
-                        <Text style={styles.dateInputText}>{formatTime(startTime)}</Text>
-                        <Ionicons name="time-outline" size={20} color={COLORS.gray} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.dateInput, { flex: 1 }]}
-                        onPress={() => setShowEndTimePicker(true)}
-                      >
-                        <Text style={styles.dateInputText}>{formatTime(endTime)}</Text>
-                        <Ionicons name="time-outline" size={20} color={COLORS.gray} />
-                      </TouchableOpacity>
-                    </View>
-                  </>
+                  <View style={styles.dateRangeRow}>
+                    <TouchableOpacity
+                      style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
+                      onPress={() => setShowStartTimePicker(true)}
+                    >
+                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
+                      <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dateInput, { flex: 1 }]}
+                      onPress={() => setShowEndTimePicker(true)}
+                    >
+                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
+                      <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 )}
 
-                <Text style={styles.inputLabel}>Días de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Días de Acceso</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
-                    {allDays && <Text style={styles.checkmark}>✓</Text>}
+                    {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel}>Todos los días</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Todos los días</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -824,9 +881,9 @@ export default function Visits() {
                       onPress={() => toggleDay(day.id)}
                     >
                       <View style={[styles.checkbox, selectedDays.includes(day.id) && styles.checkboxChecked]}>
-                        {selectedDays.includes(day.id) && <Text style={styles.checkmark}>✓</Text>}
+                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                       </View>
-                      <Text style={styles.dayCheckboxLabel}>{day.fullLabel}</Text>
+                      <Text style={styles.dayCheckboxLabel} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -839,7 +896,7 @@ export default function Visits() {
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.generateButton, loading && styles.buttonDisabled]}
@@ -847,17 +904,17 @@ export default function Visits() {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={COLORS.textDark} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="qr-code" size={20} color={COLORS.white} style={{ marginRight: 8 }} />
-                    <Text style={styles.generateButtonText}>Generar QR</Text>
+                    <Ionicons name="qr-code" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
+                    <Text style={styles.generateButtonText} maxFontSizeMultiplier={1.2}>Generar QR</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: scale(40) }} />
           </ScrollView>
         </SafeAreaView>
 
@@ -931,439 +988,531 @@ export default function Visits() {
             }}
           />
         )}
-      </Modal>
+      </View>
+    </Modal>
 
-      {/* ============================================ */}
-      {/* VIEW QR MODAL */}
-      {/* ============================================ */}
-      <Modal
-        visible={showQRModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowQRModal(false)}
-      >
-        <View style={styles.qrModalOverlay}>
-          <ScrollView
-            contentContainerStyle={styles.qrModalScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {selectedQR && (
-              <>
-                {/* QR Card - Capturar esta vista completa */}
-                <View 
-                  ref={cardRef}
-                  style={styles.qrCardPremium}
-                  collapsable={false}
-                >
-                  {/* Header */}
-                  <LinearGradient
-                    colors={['#6366F1', '#8B5CF6']}
-                    style={styles.qrCardHeader}
-                  >
-                    <View style={styles.qrCardHeaderTop}>
-                      <View style={styles.qrCardLogoContainer}>
-                        <Text style={styles.qrCardLogoText}>ISSY</Text>
-                        <Text style={styles.qrCardLogoSubtext}>Control de Acceso</Text>
+    {/* ============================================ */}
+    {/* VIEW QR MODAL - Diseño glassmorphism claro */}
+    {/* ============================================ */}
+    <Modal
+      visible={showQRModal}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={() => setShowQRModal(false)}
+    >
+      <View style={styles.qrModalOverlay}>
+        <ScrollView
+          contentContainerStyle={styles.qrModalScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {selectedQR && (
+            <>
+              {/* QR Card - Diseño glassmorphism claro para compartir */}
+              <View
+                ref={cardRef}
+                style={styles.shareableCard}
+                collapsable={false}
+              >
+                {/* Header */}
+                <View style={styles.shareableHeader}>
+                  <Text style={styles.shareableVisitorName} maxFontSizeMultiplier={1.2}>{selectedQR.visitor_name}</Text>
+                  <Text style={styles.shareableCommunity} maxFontSizeMultiplier={1.2}>{communityName}</Text>
+                  <Text style={styles.shareableAuthorized} maxFontSizeMultiplier={1.2}>
+                    Autoriza: <Text style={styles.shareableHostName}>{hostName}</Text>
+                  </Text>
+                </View>
+
+                {/* QR Type Pills */}
+                <View style={styles.qrTypePills}>
+                  {['single', 'temporary', 'frequent'].map((type) => (
+                    <View
+                      key={type}
+                      style={[
+                        styles.qrTypePill,
+                        selectedQR.qr_type === type && styles.qrTypePillActive
+                      ]}
+                    >
+                      <Text style={[
+                        styles.qrTypePillText,
+                        selectedQR.qr_type === type && styles.qrTypePillTextActive
+                      ]} maxFontSizeMultiplier={1.2}>
+                        {getQRTypeLabel(type)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* QR Code Card */}
+                <View style={styles.qrCodeCard}>
+                  <View style={styles.qrCodeWrapper}>
+                    <QRCode
+                      value={selectedQR.qr_code || selectedQR.id}
+                      size={220}
+                      backgroundColor="white"
+                      color="#1A3D4D"
+                      getRef={(ref) => (qrRef.current = ref)}
+                    />
+                  </View>
+
+                  {/* Manual Code */}
+                  <View style={styles.manualCodeSection}>
+                    <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>CÓDIGO MANUAL</Text>
+                    <Text style={styles.manualCode} maxFontSizeMultiplier={1.2}>
+                      {(selectedQR.qr_code || selectedQR.id).substring(0, 10).toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>Mostrar al guardia</Text>
+                </View>
+
+                {/* Info Cards */}
+                {selectedQR.qr_type === 'single' ? (
+                  // QR Único: 3 cards
+                  <View style={styles.infoCardsRow}>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="time-outline" size={16} color="#1A3D4D" />
                       </View>
-                      <View style={[styles.qrCardTypeBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Text style={styles.qrCardTypeBadgeText}>
-                          {getQRTypeLabel(selectedQR.qr_type).toUpperCase()}
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>HORARIO</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
+                    </View>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                      </View>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>CASA</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                    </View>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="calendar-outline" size={16} color="#1A3D4D" />
+                      </View>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>FECHA</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
+                    </View>
+                  </View>
+                ) : (
+                  // QR Temporal/Frecuente: Días + 3 cards
+                  <>
+                    {/* Fila de días */}
+                    <View style={styles.daysRowCard}>
+                      <Text style={styles.daysRowLabel} maxFontSizeMultiplier={1.2}>DÍAS DE ACCESO</Text>
+                      <View style={styles.daysRowPills}>
+                        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => {
+                          const activeDays = getActiveDays(selectedQR);
+                          return (
+                            <View
+                              key={index}
+                              style={[
+                                styles.dayPill,
+                                activeDays[index] && styles.dayPillActive
+                              ]}
+                            >
+                              <Text style={[
+                                styles.dayPillText,
+                                activeDays[index] && styles.dayPillTextActive
+                              ]} maxFontSizeMultiplier={1.2}>{day}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    {/* 3 Info Cards */}
+                    <View style={styles.infoCardsRow}>
+                      <View style={styles.infoCard}>
+                        <View style={styles.infoCardIcon}>
+                          <Ionicons name="time-outline" size={16} color="#1A3D4D" />
+                        </View>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>HORARIO</Text>
+                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
+                      </View>
+                      <View style={styles.infoCard}>
+                        <View style={styles.infoCardIcon}>
+                          <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                        </View>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>CASA</Text>
+                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                      </View>
+                      <View style={styles.infoCard}>
+                        <View style={styles.infoCardIcon}>
+                          <Ionicons name="checkmark-circle-outline" size={16} color="#1A3D4D" />
+                        </View>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>VÁLIDO</Text>
+                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>
+                          {selectedQR.qr_type === 'frequent'
+                            ? 'Siempre'
+                            : `${formatDateShort(selectedQR.valid_from)} - ${formatDateShort(selectedQR.valid_until)}`
+                          }
                         </Text>
                       </View>
                     </View>
+                  </>
+                )}
 
-                    <Text style={styles.qrCardVisitorName}>{selectedQR.visitor_name}</Text>
-                    <Text style={styles.qrCardWelcomeText}>¡Te esperamos!</Text>
-
-                    <View style={styles.qrCardInfoGrid}>
-                      <View style={styles.qrCardInfoItem}>
-                        <Text style={styles.qrCardInfoLabel}>ANFITRIÓN</Text>
-                        <Text style={styles.qrCardInfoValue}>{hostName}</Text>
-                      </View>
-                      <View style={styles.qrCardInfoItem}>
-                        <Text style={styles.qrCardInfoLabel}>UBICACIÓN</Text>
-                        <Text style={styles.qrCardInfoValue}>{communityName}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.qrCardInfoGrid}>
-                      <View style={styles.qrCardInfoItem}>
-                        <Text style={styles.qrCardInfoLabel}>VÁLIDO</Text>
-                        <Text style={styles.qrCardInfoValue}>{getValidityText(selectedQR)}</Text>
-                      </View>
-                      <View style={styles.qrCardInfoItem}>
-                        <Text style={styles.qrCardInfoLabel}>HORARIO</Text>
-                        <Text style={styles.qrCardInfoValue}>{getTimeText(selectedQR)}</Text>
-                      </View>
-                    </View>
-
-                    {(selectedQR.qr_type === 'temporary' || selectedQR.qr_type === 'frequent') && (
-                      <View style={styles.qrCardDaysRow}>
-                        <Text style={styles.qrCardDaysLabel}>DÍAS: </Text>
-                        <Text style={styles.qrCardDaysValue}>{getDaysText(selectedQR)}</Text>
-                      </View>
-                    )}
-                  </LinearGradient>
-
-                  {/* QR Code Section */}
-                  <View style={styles.qrCardQRSection}>
-                    <View style={styles.qrCardQRContainer}>
-                      <QRCode
-                        value={selectedQR.qr_code || selectedQR.id}
-                        size={180}
-                        backgroundColor="white"
-                        getRef={(ref) => (qrRef.current = ref)}
-                      />
-                    </View>
-                    <Text style={styles.qrCardQRCode}>
-                      {(selectedQR.qr_code || selectedQR.id).substring(0, 12).toUpperCase()}
-                    </Text>
-
-                    <View style={styles.qrCardInstructionBox}>
-                      <Ionicons name="scan-outline" size={18} color="#4B5563" style={{ marginRight: 10 }} />
-                      <Text style={styles.qrCardInstructionText}>
-                        Muestra este código al guardia de seguridad
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Footer */}
-                  <LinearGradient
-                    colors={['#6366F1', '#8B5CF6']}
-                    style={styles.qrCardFooter}
-                  >
-                    <View style={styles.qrCardBrandingContainer}>
-                      <Text style={styles.qrCardPoweredBy}>Powered by</Text>
-                      <Text style={styles.qrCardBrandName}>ISSY</Text>
-                      <Text style={styles.qrCardWebsite}>joinissy.com</Text>
-                    </View>
-                  </LinearGradient>
+                {/* Footer - Logo ISSY */}
+                <View style={styles.shareableFooter}>
+                  <Text style={styles.poweredByText} maxFontSizeMultiplier={1.2}>Powered by</Text>
+                  <Image
+                    source={IssyLogoNegro}
+                    style={styles.issyLogoImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.websiteText} maxFontSizeMultiplier={1.2}>www.joinissy.com</Text>
                 </View>
+              </View>
 
-                {/* Share Button - Solo imagen */}
-                <View style={styles.shareButtonsContainer}>
-                  <TouchableOpacity
-                    style={[styles.shareButtonPrimary, { flex: 1 }]}
-                    onPress={() => handleShareQRImage(selectedQR)}
-                    disabled={sharingImage}
-                  >
-                    {sharingImage ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="share-outline" size={18} color={COLORS.white} style={{ marginRight: 8 }} />
-                        <Text style={styles.shareButtonPrimaryText}>Compartir QR</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
+              {/* Share Button */}
+              <TouchableOpacity
+                style={styles.shareButtonPrimary}
+                onPress={() => handleShareQRImage(selectedQR)}
+                disabled={sharingImage}
+              >
+                {sharingImage ? (
+                  <ActivityIndicator color={COLORS.textDark} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="share-outline" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
+                    <Text style={styles.shareButtonPrimaryText} maxFontSizeMultiplier={1.2}>Compartir QR</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-                {/* Close Button */}
-                <TouchableOpacity
-                  style={styles.closeModalButton}
-                  onPress={() => setShowQRModal(false)}
-                >
-                  <Text style={styles.closeModalButtonText}>Cerrar</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
-    </SafeAreaView>
-  );
+              {/* Close Button */}
+              <TouchableOpacity
+                style={styles.closeModalButton}
+                onPress={() => setShowQRModal(false)}
+              >
+                <Text style={styles.closeModalButtonText} maxFontSizeMultiplier={1.2}>Cerrar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </Modal>
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgPrimary,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 21,
+    paddingHorizontal: scale(16),
   },
-  
+
   // Header
   header: {
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingTop: scale(10),
+    paddingBottom: scale(16),
   },
   title: {
-    fontSize: 22,
+    fontSize: scale(28),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.black,
-    marginTop: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
   },
 
   // Create Button
   createButton: {
+    borderRadius: scale(14),
+    overflow: 'hidden',
+    marginTop: scale(8),
+  },
+  createButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
-    borderRadius: 13,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginTop: 8,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(20),
   },
   createButtonText: {
-    color: COLORS.black,
-    fontSize: 14,
-    fontWeight: '400',
-    marginLeft: 10,
+    color: COLORS.textDark,
+    fontSize: scale(15),
+    fontWeight: '600',
+    marginLeft: scale(10),
   },
 
   // Section Title
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.black,
-    marginTop: 24,
-    marginBottom: 12,
+    fontSize: scale(14),
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+    marginTop: scale(24),
+    marginBottom: scale(12),
   },
 
   // Loading
   loadingContainer: {
-    padding: 40,
+    padding: scale(40),
     alignItems: 'center',
   },
 
   // Empty State
   emptyContainer: {
     alignItems: 'center',
-    padding: 40,
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
+    padding: scale(40),
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptyIconBox: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: COLORS.bgCardAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
+    color: COLORS.textPrimary,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(8),
   },
 
   // QR Card
   qrCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    marginBottom: 12,
-    padding: 16,
-    position: 'relative',
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(16),
+    marginBottom: scale(12),
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   qrCardContent: {
-    zIndex: 1,
+    padding: scale(16),
   },
   qrCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 5,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(6),
   },
   typeBadgeText: {
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontSize: scale(10),
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 5,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(6),
   },
   statusBadgeText: {
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: COLORS.black,
+    fontSize: scale(10),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    letterSpacing: 0.5,
   },
   visitorName: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.black,
-    marginBottom: 4,
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
   },
   visitorPhone: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.gray,
-    marginBottom: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginBottom: scale(4),
   },
   validDate: {
-    fontSize: 10,
-    color: COLORS.gray,
+    fontSize: scale(12),
+    color: COLORS.textMuted,
   },
-  cardActions: {
+  cardActionsRow: {
     flexDirection: 'row',
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    gap: 8,
-    opacity: 0, // Hidden, we use the overlay
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: scale(16),
+    paddingTop: scale(12),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
-  actionButtonsOverlay: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
+  viewQRButton: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 8,
-    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.bgCardAlt,
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    marginRight: scale(10),
   },
-  actionButton: {
-    width: 32,
-    height: 32,
+  viewQRButtonText: {
+    color: COLORS.cyan,
+    fontSize: scale(14),
+    fontWeight: '600',
+    marginLeft: scale(6),
+  },
+  deleteButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(10),
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Modal
+  // Modal Container
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.bgPrimary,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(16),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
-    backgroundColor: COLORS.white,
+    borderBottomColor: COLORS.border,
   },
   modalCancel: {
-    color: COLORS.primary,
-    fontSize: 16,
+    fontSize: scale(16),
+    color: COLORS.cyan,
+    fontWeight: '500',
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   modalContent: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: scale(16),
+    paddingTop: scale(20),
   },
 
-  // Form
+  // Form Inputs
   inputLabel: {
-    fontSize: 14,
+    fontSize: scale(13),
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-    marginTop: 16,
+    color: COLORS.textSecondary,
+    marginBottom: scale(8),
+    marginTop: scale(16),
   },
   input: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(12),
+    padding: scale(16),
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: COLORS.black,
+    borderColor: COLORS.border,
   },
   dateInput: {
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(12),
+    padding: scale(16),
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   dateInputText: {
-    fontSize: 16,
-    color: COLORS.black,
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
   },
   dateRangeRow: {
     flexDirection: 'row',
   },
+
+  // Type Selector
   typeSelector: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   typeButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.grayLight,
-    borderRadius: 10,
+    justifyContent: 'center',
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bgCard,
   },
   typeLabel: {
-    fontSize: 10,
+    fontSize: scale(11),
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
+
+  // Duration Selector
   durationSelector: {
     flexDirection: 'row',
-    gap: 12,
+    gap: scale(12),
   },
   durationButton: {
     flex: 1,
+    paddingVertical: scale(14),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bgCard,
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.grayLight,
-    borderRadius: 12,
   },
   durationButtonActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '15',
+    borderColor: COLORS.cyan,
+    backgroundColor: COLORS.cyan + '20',
   },
   durationLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   durationLabelActive: {
-    color: COLORS.primary,
+    color: COLORS.cyan,
   },
+
+  // Checkboxes
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: scale(12),
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: scale(24),
+    height: scale(24),
     borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    marginRight: 12,
+    borderColor: COLORS.border,
+    borderRadius: scale(6),
+    marginRight: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.bgCard,
   },
   checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  checkmark: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: 'bold',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   checkboxLabel: {
-    fontSize: 16,
-    color: '#374151',
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
   },
   daysGrid: {
     flexDirection: 'row',
@@ -1373,257 +1522,317 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '50%',
-    paddingVertical: 8,
+    paddingVertical: scale(8),
   },
   dayCheckboxLabel: {
-    fontSize: 14,
-    color: '#374151',
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
   },
+
+  // Buttons
   buttonRow: {
     flexDirection: 'row',
-    marginTop: 24,
-    gap: 12,
+    marginTop: scale(24),
+    gap: scale(12),
   },
   cancelButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    padding: scale(16),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.bgCard,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   generateButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#10B981',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: COLORS.lime,
+    padding: scale(16),
+    borderRadius: scale(12),
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   generateButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
+    color: COLORS.textDark,
+    fontSize: scale(16),
     fontWeight: '600',
   },
 
-  // Premium QR Modal
+  // QR Modal Overlay
   qrModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
   },
   qrModalScrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
+    padding: scale(16),
+    paddingTop: scale(60),
+    paddingBottom: scale(40),
   },
-  qrCardPremium: {
-    width: SCREEN_WIDTH - 40,
-    maxWidth: 360,
-    backgroundColor: COLORS.white,
-    borderRadius: 24,
-    overflow: 'hidden',
+
+  // ============ SHAREABLE CARD - Glassmorphism claro ============
+  shareableCard: {
+    width: scale(340),
+    backgroundColor: '#E3F2EE',
+    borderRadius: scale(44),
+    padding: scale(24),
+    paddingTop: scale(28),
+    paddingBottom: scale(20),
+  },
+
+  // Header del card compartible
+  shareableHeader: {
+    alignItems: 'center',
+    marginBottom: scale(20),
+  },
+  shareableVisitorName: {
+    fontSize: scale(32),
+    fontWeight: '700',
+    color: '#1A3D4D',
+    marginBottom: scale(6),
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  shareableCommunity: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: '#3D5A6C',
+    marginBottom: scale(6),
+    textAlign: 'center',
+  },
+  shareableAuthorized: {
+    fontSize: scale(13),
+    color: '#7A9E9E',
+    fontWeight: '500',
+  },
+  shareableHostName: {
+    color: '#3D5A6C',
+    fontWeight: '600',
+  },
+
+  // Pills de tipo QR
+  qrTypePills: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: scale(8),
+    marginBottom: scale(18),
+  },
+  qrTypePill: {
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(20),
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  qrTypePillActive: {
+    backgroundColor: '#1A3D4D',
+    borderColor: 'rgba(26, 61, 77, 0.3)',
+  },
+  qrTypePillText: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: '#6B8A8A',
+  },
+  qrTypePillTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Card del QR
+  qrCodeCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderRadius: scale(26),
+    padding: scale(20),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+  },
+  qrCodeWrapper: {
+    backgroundColor: '#FFFFFF',
+    padding: scale(12),
+    borderRadius: scale(18),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  qrCardHeader: {
-    padding: 20,
-    paddingBottom: 16,
-  },
-  qrCardHeaderTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  qrCardLogoContainer: {
-    flexDirection: 'column',
-  },
-  qrCardLogoText: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.white,
-    letterSpacing: 2,
-  },
-  qrCardLogoSubtext: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  qrCardTypeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  qrCardTypeBadgeText: {
-    color: COLORS.white,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  qrCardVisitorName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.white,
-    marginBottom: 2,
-  },
-  qrCardWelcomeText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 16,
-  },
-  qrCardInfoGrid: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  qrCardInfoItem: {
-    flex: 1,
-  },
-  qrCardInfoLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 2,
-    letterSpacing: 0.5,
-  },
-  qrCardInfoValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  qrCardDaysRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-  },
-  qrCardDaysLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
-  },
-  qrCardDaysValue: {
-    fontSize: 12,
-    color: COLORS.white,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  qrCardQRSection: {
-    backgroundColor: COLORS.white,
-    padding: 20,
-    alignItems: 'center',
-  },
-  qrCardQRContainer: {
-    padding: 16,
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    shadowColor: '#6366F1',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
     elevation: 4,
+    marginBottom: scale(14),
   },
-  qrCardQRCode: {
-    marginTop: 12,
-    fontSize: 11,
-    color: '#9CA3AF',
+  manualCodeSection: {
+    width: '100%',
+    backgroundColor: 'rgba(26, 61, 77, 0.05)',
+    borderRadius: scale(10),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(14),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(26, 61, 77, 0.08)',
+    marginBottom: scale(10),
+  },
+  manualCodeLabel: {
+    fontSize: scale(10),
+    color: '#8AABAB',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  manualCode: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: '#3D5A6C',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     letterSpacing: 1,
   },
-  qrCardInstructionBox: {
+  showGuardText: {
+    fontSize: scale(13),
+    color: '#7A9E9E',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Days Row Card
+  daysRowCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: scale(14),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(14),
+    marginBottom: scale(10),
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 12,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
-  qrCardInstructionText: {
-    fontSize: 11,
-    color: '#4B5563',
+  daysRowLabel: {
+    fontSize: scale(9),
+    color: '#7A9E9E',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  daysRowPills: {
+    flexDirection: 'row',
+    gap: scale(4),
+  },
+  dayPill: {
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(6),
+    backgroundColor: '#E3EAEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayPillActive: {
+    backgroundColor: '#1A3D4D',
+  },
+  dayPillText: {
+    fontSize: scale(9),
+    fontWeight: '700',
+    color: '#A0B5B5',
+  },
+  dayPillTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // Info Cards Row
+  infoCardsRow: {
+    flexDirection: 'row',
+    gap: scale(10),
+    marginBottom: scale(20),
+  },
+  infoCard: {
     flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: scale(16),
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(8),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
-  qrCardFooter: {
-    padding: 16,
+  infoCardIcon: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(9),
+    backgroundColor: '#E8EDEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(6),
   },
-  qrCardBrandingContainer: {
+  infoCardLabel: {
+    fontSize: scale(9),
+    color: '#7A9E9E',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: scale(4),
+  },
+  infoCardValue: {
+    fontSize: scale(11),
+    fontWeight: '700',
+    color: '#1A3D4D',
+    textAlign: 'center',
+    lineHeight: scale(14),
+  },
+
+  // Footer
+  shareableFooter: {
     alignItems: 'center',
   },
-  qrCardPoweredBy: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.7)',
+  poweredByText: {
+    fontSize: scale(10),
+    color: '#9CBBBB',
+    fontWeight: '500',
+    marginBottom: scale(4),
   },
-  qrCardBrandName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.white,
-    letterSpacing: 2,
+  issyLogoImage: {
+    width: scale(80),
+    height: scale(30),
+    marginBottom: scale(4),
   },
-  qrCardWebsite: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 2,
+  websiteText: {
+    fontSize: scale(10),
+    color: '#5A7A7A',
+    fontWeight: '500',
   },
-  shareButtonsContainer: {
-    flexDirection: 'row',
-    marginTop: 20,
-    gap: 12,
-  },
+
+  // Share Button
   shareButtonPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366F1',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 12,
-    flex: 1,
-  },
-  shareButtonSecondary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#6366F1',
+    backgroundColor: COLORS.lime,
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(32),
+    borderRadius: scale(14),
+    marginTop: scale(20),
+    width: scale(300),
   },
   shareButtonPrimaryText: {
-    color: COLORS.white,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  shareButtonSecondaryText: {
-    color: '#6366F1',
-    fontSize: 15,
+    color: COLORS.textDark,
+    fontSize: scale(16),
     fontWeight: '600',
   },
   closeModalButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
+    marginTop: scale(16),
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(32),
   },
   closeModalButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
+    color: COLORS.textPrimary,
+    fontSize: scale(16),
     fontWeight: '500',
   },
 });

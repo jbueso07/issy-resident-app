@@ -1,14 +1,39 @@
-// app/join-community.js - Unirse a Comunidad
+// app/join-community.js - Unirse a Comunidad - ProHome Dark Theme
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Alert, ActivityIndicator, KeyboardAvoidingView, Platform
+  Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { verifyInvitationCode, acceptInvitationCode } from '../src/services/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  greenLight: 'rgba(16, 185, 129, 0.15)',
+  red: '#EF4444',
+  redLight: 'rgba(239, 68, 68, 0.15)',
+  yellow: '#F59E0B',
+  yellowLight: 'rgba(245, 158, 11, 0.15)',
+};
 
 export default function JoinCommunityScreen() {
   const router = useRouter();
@@ -78,14 +103,14 @@ export default function JoinCommunityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Unirse a Comunidad</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       <KeyboardAvoidingView 
@@ -94,7 +119,14 @@ export default function JoinCommunityScreen() {
       >
         {/* Illustration */}
         <View style={styles.illustration}>
-          <Text style={styles.illustrationIcon}>��️</Text>
+          <View style={styles.iconContainer}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="home" size={scale(32)} color={COLORS.teal} />
+            </View>
+            <View style={[styles.iconCircleSmall, { marginLeft: scale(-12) }]}>
+              <Ionicons name="people" size={scale(20)} color={COLORS.lime} />
+            </View>
+          </View>
         </View>
 
         <Text style={styles.title}>Ingresa tu código de invitación</Text>
@@ -113,7 +145,7 @@ export default function JoinCommunityScreen() {
               setInvitation(null);
             }}
             placeholder="Ej: ABC123"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={COLORS.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={10}
@@ -124,9 +156,9 @@ export default function JoinCommunityScreen() {
             disabled={!code.trim() || verifying}
           >
             {verifying ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={COLORS.background} size="small" />
             ) : (
-              <Ionicons name="search" size={20} color="#FFF" />
+              <Ionicons name="search" size={20} color={COLORS.background} />
             )}
           </TouchableOpacity>
         </View>
@@ -134,7 +166,7 @@ export default function JoinCommunityScreen() {
         {/* Error */}
         {error && (
           <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={18} color="#DC2626" />
+            <Ionicons name="alert-circle" size={18} color={COLORS.red} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
@@ -143,7 +175,7 @@ export default function JoinCommunityScreen() {
         {invitation && (
           <View style={styles.invitationCard}>
             <View style={styles.invitationHeader}>
-              <Ionicons name="checkmark-circle" size={24} color="#059669" />
+              <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
               <Text style={styles.invitationTitle}>Invitación Válida</Text>
             </View>
 
@@ -155,26 +187,26 @@ export default function JoinCommunityScreen() {
 
               {invitation.address && (
                 <View style={styles.infoRow}>
-                  <Ionicons name="location" size={16} color="#6B7280" />
+                  <Ionicons name="location" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.infoText}>{invitation.address}</Text>
                 </View>
               )}
 
               <View style={styles.infoRow}>
-                <Ionicons name="person" size={16} color="#6B7280" />
+                <Ionicons name="person" size={16} color={COLORS.textSecondary} />
                 <Text style={styles.infoText}>Rol: {invitation.role || 'Residente'}</Text>
               </View>
 
               {invitation.unit_number && (
                 <View style={styles.infoRow}>
-                  <Ionicons name="home" size={16} color="#6B7280" />
+                  <Ionicons name="home" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.infoText}>Unidad: {invitation.unit_number}</Text>
                 </View>
               )}
 
               {invitation.expires_at && (
                 <View style={styles.expiresInfo}>
-                  <Ionicons name="time" size={14} color="#F59E0B" />
+                  <Ionicons name="time" size={14} color={COLORS.yellow} />
                   <Text style={styles.expiresText}>
                     Expira: {new Date(invitation.expires_at).toLocaleDateString('es')}
                   </Text>
@@ -188,10 +220,10 @@ export default function JoinCommunityScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={COLORS.background} />
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={20} color="#FFF" />
+                  <Ionicons name="checkmark" size={20} color={COLORS.background} />
                   <Text style={styles.acceptBtnText}>Unirme a {invitation.location_name}</Text>
                 </>
               )}
@@ -202,11 +234,16 @@ export default function JoinCommunityScreen() {
         {/* Help Text */}
         {!invitation && (
           <View style={styles.helpSection}>
-            <Text style={styles.helpTitle}>¿No tienes código?</Text>
-            <Text style={styles.helpText}>
-              Contacta al administrador de la comunidad a la que deseas unirte. 
-              Ellos pueden generar un código o enlace de invitación desde el panel de administración.
-            </Text>
+            <View style={styles.helpIcon}>
+              <Ionicons name="help-circle" size={24} color={COLORS.yellow} />
+            </View>
+            <View style={styles.helpContent}>
+              <Text style={styles.helpTitle}>¿No tienes código?</Text>
+              <Text style={styles.helpText}>
+                Contacta al administrador de la comunidad a la que deseas unirte. 
+                Ellos pueden generar un código o enlace de invitación desde el panel de administración.
+              </Text>
+            </View>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -215,45 +252,236 @@ export default function JoinCommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937' },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+  },
+  backBtn: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
 
-  content: { flex: 1, padding: 24 },
+  content: {
+    flex: 1,
+    padding: scale(24),
+  },
 
-  illustration: { alignItems: 'center', marginBottom: 24 },
-  illustrationIcon: { fontSize: 64 },
+  illustration: {
+    alignItems: 'center',
+    marginBottom: scale(24),
+  },
+  iconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircle: {
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(18),
+    backgroundColor: 'rgba(93, 222, 216, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-10deg' }],
+  },
+  iconCircleSmall: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(14),
+    backgroundColor: 'rgba(212, 254, 72, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '10deg' }],
+  },
 
-  title: { fontSize: 22, fontWeight: '700', color: '#1F2937', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#6B7280', textAlign: 'center', marginBottom: 32, lineHeight: 22 },
+  title: {
+    fontSize: scale(22),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: scale(8),
+  },
+  subtitle: {
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: scale(32),
+    lineHeight: scale(22),
+  },
 
-  inputContainer: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  input: { flex: 1, backgroundColor: '#FFF', borderRadius: 12, padding: 16, fontSize: 18, fontWeight: '600', letterSpacing: 2, textAlign: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-  verifyBtn: { width: 56, height: 56, borderRadius: 12, backgroundColor: '#6366F1', alignItems: 'center', justifyContent: 'center' },
-  verifyBtnDisabled: { backgroundColor: '#9CA3AF' },
+  inputContainer: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginBottom: scale(16),
+  },
+  input: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(14),
+    padding: scale(16),
+    fontSize: scale(18),
+    fontWeight: '600',
+    letterSpacing: 2,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    color: COLORS.textPrimary,
+  },
+  verifyBtn: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(14),
+    backgroundColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyBtnDisabled: {
+    backgroundColor: COLORS.backgroundTertiary,
+  },
 
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEE2E2', padding: 12, borderRadius: 10, marginBottom: 16 },
-  errorText: { fontSize: 14, color: '#DC2626', flex: 1 },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.redLight,
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginBottom: scale(16),
+  },
+  errorText: {
+    fontSize: scale(14),
+    color: COLORS.red,
+    flex: 1,
+  },
 
   // Invitation Card
-  invitationCard: { backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 },
-  invitationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#D1FAE5', padding: 14 },
-  invitationTitle: { fontSize: 16, fontWeight: '600', color: '#059669' },
-  invitationBody: { padding: 16 },
-  locationInfo: { marginBottom: 16 },
-  locationName: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
-  locationType: { fontSize: 14, color: '#6B7280', marginTop: 2 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  infoText: { fontSize: 14, color: '#374151' },
-  expiresInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  expiresText: { fontSize: 13, color: '#F59E0B' },
-  acceptBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#059669', padding: 16, margin: 16, marginTop: 0, borderRadius: 12 },
-  acceptBtnDisabled: { backgroundColor: '#9CA3AF' },
-  acceptBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
+  invitationCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  invitationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.greenLight,
+    padding: scale(14),
+  },
+  invitationTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.green,
+  },
+  invitationBody: {
+    padding: scale(16),
+  },
+  locationInfo: {
+    marginBottom: scale(16),
+  },
+  locationName: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  locationType: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginBottom: scale(10),
+  },
+  infoText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  expiresInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginTop: scale(8),
+    paddingTop: scale(12),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.cardBorder,
+  },
+  expiresText: {
+    fontSize: scale(13),
+    color: COLORS.yellow,
+  },
+  acceptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.lime,
+    padding: scale(16),
+    margin: scale(16),
+    marginTop: 0,
+    borderRadius: scale(12),
+  },
+  acceptBtnDisabled: {
+    backgroundColor: COLORS.backgroundTertiary,
+  },
+  acceptBtnText: {
+    color: COLORS.background,
+    fontSize: scale(16),
+    fontWeight: '600',
+  },
 
   // Help
-  helpSection: { marginTop: 32, padding: 20, backgroundColor: '#FFF', borderRadius: 12 },
-  helpTitle: { fontSize: 15, fontWeight: '600', color: '#1F2937', marginBottom: 8 },
-  helpText: { fontSize: 14, color: '#6B7280', lineHeight: 20 },
+  helpSection: {
+    flexDirection: 'row',
+    marginTop: scale(32),
+    padding: scale(16),
+    backgroundColor: COLORS.card,
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  helpIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.yellowLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  helpContent: {
+    flex: 1,
+  },
+  helpTitle: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  helpText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    lineHeight: scale(20),
+  },
 });

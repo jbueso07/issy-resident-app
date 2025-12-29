@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { AppModal } from '../src/components';
 import {
   getFinanceDashboard,
@@ -39,7 +39,34 @@ import {
   subscribeToPlan
 } from '../src/services/api';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors - Mejorados
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  tealDark: '#4BCDC7',
+  lime: '#D4FE48',
+  purple: '#8B5CF6',
+  purpleLight: '#A78BFA',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  // Colores mejorados
+  green: '#22C55E',
+  greenBg: 'rgba(34, 197, 94, 0.12)',
+  greenBorder: 'rgba(34, 197, 94, 0.35)',
+  red: '#F43F5E',
+  redBg: 'rgba(244, 63, 94, 0.12)',
+  redBorder: 'rgba(244, 63, 94, 0.35)',
+  yellow: '#F59E0B',
+  blue: '#3B82F6',
+};
 
 export default function FinancesScreen() {
   const router = useRouter();
@@ -75,7 +102,7 @@ export default function FinancesScreen() {
   const [goalForm, setGoalForm] = useState({ name: '', target_amount: '', icon: '🎯' });
   const [contributionAmount, setContributionAmount] = useState('');
   const [invoiceForm, setInvoiceForm] = useState({ vendor_name: '', amount: '', category: '', due_date: '', description: '' });
-  const [budgetForm, setBudgetForm] = useState({ category: '', amount: '', icon: '��' });
+  const [budgetForm, setBudgetForm] = useState({ category: '', amount: '', icon: '💰' });
 
   const loadData = useCallback(async () => {
     try {
@@ -111,7 +138,6 @@ export default function FinancesScreen() {
   useEffect(() => { loadData(); }, [loadData]);
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  // Check limits before actions
   const checkLimit = (type) => {
     if (!limits) return true;
     if (limits.is_premium) return true;
@@ -233,29 +259,20 @@ export default function FinancesScreen() {
 
   const handleUpgrade = async (planName) => {
     try {
-      // Obtener métodos de pago del usuario
       const methodsRes = await getPaymentMethods();
       
       if (!methodsRes.success || !methodsRes.data || methodsRes.data.length === 0) {
-        // No tiene métodos de pago, redirigir a agregar uno
         Alert.alert(
           '💳 Método de Pago Requerido',
           'Necesitas agregar un método de pago para suscribirte al plan Premium.',
           [
             { text: 'Cancelar', style: 'cancel' },
-            { 
-              text: 'Agregar Tarjeta', 
-              onPress: () => {
-                setShowUpgradeModal(false);
-                router.push('/payment-methods');
-              }
-            }
+            { text: 'Agregar Tarjeta', onPress: () => { setShowUpgradeModal(false); router.push('/payment-methods'); }}
           ]
         );
         return;
       }
 
-      // Tiene métodos de pago, mostrar opciones
       const defaultMethod = methodsRes.data.find(m => m.is_default) || methodsRes.data[0];
       
       Alert.alert(
@@ -263,62 +280,42 @@ export default function FinancesScreen() {
         `¿Deseas suscribirte al plan ${planName} usando tu tarjeta terminada en ${defaultMethod.last_four}?`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Suscribirme', 
-            onPress: async () => {
-              try {
-                // Encontrar el plan seleccionado
-                const selectedPlan = plans.find(p => p.name === planName || p.display_name === planName);
-                if (!selectedPlan) {
-                  Alert.alert('Error', 'Plan no encontrado');
-                  return;
-                }
-
-                const result = await subscribeToPlan(selectedPlan.id, defaultMethod.id, 'monthly');
-                
-                if (result.success) {
-                  Alert.alert(
-                    '🎉 ¡Felicidades!',
-                    result.message || 'Tu suscripción ha sido activada exitosamente.',
-                    [{ text: 'OK', onPress: () => {
-                      setShowUpgradeModal(false);
-                      loadData(); // Recargar datos para reflejar el nuevo estado
-                    }}]
-                  );
-                } else {
-                  Alert.alert('Error', result.error || 'No se pudo procesar la suscripción');
-                }
-              } catch (error) {
-                Alert.alert('Error', 'Error al procesar la suscripción: ' + error.message);
-              }
-            }
-          }
+          { text: 'Suscribirme', onPress: async () => {
+            try {
+              const selectedPlan = plans.find(p => p.name === planName || p.display_name === planName);
+              if (!selectedPlan) { Alert.alert('Error', 'Plan no encontrado'); return; }
+              const result = await subscribeToPlan(selectedPlan.id, defaultMethod.id, 'monthly');
+              if (result.success) {
+                Alert.alert('🎉 ¡Felicidades!', result.message || 'Tu suscripción ha sido activada exitosamente.',
+                  [{ text: 'OK', onPress: () => { setShowUpgradeModal(false); loadData(); }}]
+                );
+              } else { Alert.alert('Error', result.error || 'No se pudo procesar la suscripción'); }
+            } catch (error) { Alert.alert('Error', 'Error al procesar la suscripción: ' + error.message); }
+          }}
         ]
       );
-    } catch (error) {
-      Alert.alert('Error', 'Error al verificar métodos de pago: ' + error.message);
-    }
+    } catch (error) { Alert.alert('Error', 'Error al verificar métodos de pago: ' + error.message); }
   };
 
   const formatCurrency = (amount) => `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 0 })}`;
   const getProgressPercentage = (current, target) => Math.min((parseFloat(current) / parseFloat(target)) * 100, 100);
   const getLevelInfo = (level) => {
-    const levels = { 1: { name: 'Principiante', color: '#9CA3AF' }, 2: { name: 'Aprendiz', color: '#10B981' }, 3: { name: 'Intermedio', color: '#3B82F6' }, 4: { name: 'Avanzado', color: '#8B5CF6' }, 5: { name: 'Experto', color: '#F59E0B' } };
+    const levels = { 1: { name: 'Principiante', color: COLORS.textMuted }, 2: { name: 'Aprendiz', color: COLORS.green }, 3: { name: 'Intermedio', color: COLORS.blue }, 4: { name: 'Avanzado', color: COLORS.purple }, 5: { name: 'Experto', color: COLORS.yellow } };
     return levels[Math.min(level, 5)] || levels[1];
   };
-  const getUrgencyColor = (urgency) => ({ overdue: '#EF4444', urgent: '#F59E0B', soon: '#3B82F6', ok: '#10B981' }[urgency] || '#6B7280');
+  const getUrgencyColor = (urgency) => ({ overdue: COLORS.red, urgent: COLORS.yellow, soon: COLORS.blue, ok: COLORS.green }[urgency] || COLORS.textMuted);
   const getUrgencyText = (urgency, days) => {
     if (urgency === 'overdue') return `Vencida hace ${Math.abs(days)} días`;
     if (urgency === 'urgent') return `Vence en ${days} días`;
     return `${days} días restantes`;
   };
-  const getBudgetStatusColor = (status) => ({ exceeded: '#EF4444', warning: '#F59E0B', ok: '#10B981' }[status] || '#6B7280');
+  const getBudgetStatusColor = (status) => ({ exceeded: COLORS.red, warning: COLORS.yellow, ok: COLORS.green }[status] || COLORS.textMuted);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8B5CF6" />
+          <ActivityIndicator size="large" color={COLORS.purple} />
           <Text style={styles.loadingText}>Cargando finanzas...</Text>
         </View>
       </SafeAreaView>
@@ -328,296 +325,376 @@ export default function FinancesScreen() {
   const stats = dashboard?.stats || { level: 1, xp: 0, current_streak: 0 };
   const levelInfo = getLevelInfo(stats.level);
   const xpProgress = (stats.xp % 100);
-  const exceededBudgets = budgets.filter(b => b.status === 'exceeded' || b.status === 'warning').length;
   const isPremium = limits?.is_premium || false;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={['#8B5CF6', '#6366F1']} style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Text style={styles.backText}>← Volver</Text></TouchableOpacity>
-            <Text style={styles.headerTitle}>Mis Finanzas</Text>
-            {isPremium ? (
-              <View style={styles.premiumBadgeHeader}><Text style={styles.premiumBadgeHeaderText}>💎 PRO</Text></View>
-            ) : (
-              <TouchableOpacity onPress={() => setShowUpgradeModal(true)} style={styles.upgradeButtonSmall}><Text style={styles.upgradeButtonSmallText}>Upgrade</Text></TouchableOpacity>
-            )}
-          </View>
-          
-          <View style={styles.statsBar}>
-            <View style={styles.statItem}><Text style={styles.statValue}>🔥 {stats.current_streak}</Text><Text style={styles.statLabel}>Racha</Text></View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}><Text style={styles.statValue}>⭐ Nv.{stats.level}</Text><Text style={styles.statLabel}>{levelInfo.name}</Text></View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}><Text style={styles.statValue}>✨ {stats.xp}</Text><Text style={styles.statLabel}>XP</Text></View>
-          </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mis Finanzas</Text>
+        {isPremium ? (
+          <View style={styles.premiumBadgeHeader}><Text style={styles.premiumBadgeHeaderText}>💎 PRO</Text></View>
+        ) : (
+          <TouchableOpacity onPress={() => setShowUpgradeModal(true)} style={styles.upgradeButtonSmall}>
+            <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
+      <ScrollView 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.purple} />} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Stats Card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>🔥</Text>
+              <Text style={styles.statValue}>{stats.current_streak}</Text>
+              <Text style={styles.statLabel}>Racha</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>⭐</Text>
+              <Text style={styles.statValue}>Nv.{stats.level}</Text>
+              <Text style={styles.statLabel}>{levelInfo.name}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>✨</Text>
+              <Text style={styles.statValue}>{stats.xp}</Text>
+              <Text style={styles.statLabel}>XP</Text>
+            </View>
+          </View>
           <View style={styles.xpContainer}>
-            <View style={styles.xpBarBg}><View style={[styles.xpBarFill, { width: `${xpProgress}%` }]} /></View>
+            <View style={styles.xpBarBg}>
+              <View style={[styles.xpBarFill, { width: `${xpProgress}%` }]} />
+            </View>
             <Text style={styles.xpText}>{stats.xp % 100}/100 XP para Nv.{stats.level + 1}</Text>
           </View>
+        </View>
 
-          <View style={styles.tabSwitcher}>
-            <TouchableOpacity style={[styles.tab, activeTab === 'dashboard' && styles.tabActive]} onPress={() => setActiveTab('dashboard')}>
-              <Text style={[styles.tabText, activeTab === 'dashboard' && styles.tabTextActive]}>💰</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'invoices' && styles.tabActive]} onPress={() => setActiveTab('invoices')}>
-              <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>🧾{!isPremium && <Text style={styles.lockIcon}>🔒</Text>}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.tab, activeTab === 'budgets' && styles.tabActive]} onPress={() => setActiveTab('budgets')}>
-              <Text style={[styles.tabText, activeTab === 'budgets' && styles.tabTextActive]}>��{!isPremium && <Text style={styles.lockIcon}>🔒</Text>}</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+        {/* Tab Switcher */}
+        <View style={styles.tabSwitcher}>
+          <TouchableOpacity style={[styles.tab, activeTab === 'dashboard' && styles.tabActive]} onPress={() => setActiveTab('dashboard')}>
+            <Text style={[styles.tabText, activeTab === 'dashboard' && styles.tabTextActive]}>💰 Dashboard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'invoices' && styles.tabActive]} onPress={() => setActiveTab('invoices')}>
+            <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>🧾 Facturas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'budgets' && styles.tabActive]} onPress={() => setActiveTab('budgets')}>
+            <Text style={[styles.tabText, activeTab === 'budgets' && styles.tabTextActive]}>📊 Presupuesto</Text>
+          </TouchableOpacity>
+        </View>
 
-        <View style={styles.content}>
-          {/* Usage Limit Banner */}
-          {!isPremium && limits && (
-            <TouchableOpacity style={styles.limitBanner} onPress={() => setShowUpgradeModal(true)}>
-              <View style={styles.limitBannerContent}>
-                <Text style={styles.limitBannerTitle}>Plan Gratuito</Text>
-                <Text style={styles.limitBannerText}>
-                  {limits.transactions.remaining > 0 
-                    ? `${limits.transactions.remaining} transacciones restantes este mes`
-                    : '¡Límite alcanzado! Upgrade para continuar'}
-                </Text>
-              </View>
-              <Text style={styles.limitBannerArrow}>💎</Text>
-            </TouchableOpacity>
-          )}
+        {/* Usage Limit Banner */}
+        {!isPremium && limits && (
+          <TouchableOpacity style={styles.limitBanner} onPress={() => setShowUpgradeModal(true)}>
+            <View style={styles.limitBannerIcon}>
+              <Ionicons name="diamond" size={20} color={COLORS.purple} />
+            </View>
+            <View style={styles.limitBannerContent}>
+              <Text style={styles.limitBannerTitle}>Plan Gratuito</Text>
+              <Text style={styles.limitBannerText}>
+                {limits.transactions?.remaining > 0 
+                  ? `${limits.transactions.remaining} transacciones restantes`
+                  : '¡Límite alcanzado! Upgrade para continuar'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.purple} />
+          </TouchableOpacity>
+        )}
 
-          {activeTab === 'dashboard' && (
-            <>
-              {tips.length > 0 && (
-                <View style={styles.tipsSection}>
-                  <Text style={styles.tipsSectionTitle}>💡 Consejos para ti</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tipsScroll}>
-                    {tips.map((tip, index) => (
-                      <TouchableOpacity key={tip.id || index} style={[styles.tipCard, tip.is_premium && styles.tipCardPremium]} onPress={() => handleTipPress(tip)}>
-                        {tip.is_premium && <View style={styles.premiumBadge}><Text style={styles.premiumBadgeText}>PRO</Text></View>}
-                        <Text style={styles.tipIcon}>{tip.icon || '��'}</Text>
-                        <Text style={styles.tipTitle} numberOfLines={2}>{tip.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-
-              {upcomingInvoices.length > 0 && (
-                <TouchableOpacity style={styles.invoiceAlert} onPress={() => setActiveTab('invoices')}>
-                  <Text style={{ fontSize: 24 }}>⚠️</Text>
-                  <View style={styles.invoiceAlertContent}>
-                    <Text style={styles.invoiceAlertTitle}>{upcomingInvoices.length} factura{upcomingInvoices.length > 1 ? 's' : ''} por vencer</Text>
-                  </View>
-                  <Text style={styles.invoiceAlertArrow}>→</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.balanceCard}>
-                <Text style={styles.balanceLabel}>Balance del mes</Text>
-                <Text style={[styles.balanceAmount, { color: (dashboard?.month?.balance || 0) >= 0 ? '#10B981' : '#EF4444' }]}>
-                  {formatCurrency(dashboard?.month?.balance || 0)}
-                </Text>
-                <View style={styles.balanceRow}>
-                  <View style={styles.balanceItem}>
-                    <Text style={styles.balanceItemIcon}>📈</Text>
-                    <Text style={styles.balanceItemLabel}>Ingresos</Text>
-                    <Text style={[styles.balanceItemValue, { color: '#10B981' }]}>{formatCurrency(dashboard?.month?.income || 0)}</Text>
-                  </View>
-                  <View style={styles.balanceDivider} />
-                  <View style={styles.balanceItem}>
-                    <Text style={styles.balanceItemIcon}>📉</Text>
-                    <Text style={styles.balanceItemLabel}>Gastos</Text>
-                    <Text style={[styles.balanceItemValue, { color: '#EF4444' }]}>{formatCurrency(dashboard?.month?.expenses || 0)}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.quickActions}>
-                <TouchableOpacity style={[styles.quickAction, { backgroundColor: '#DCFCE7' }]} onPress={() => { if (checkLimit('transaction')) { setTransactionType('income'); setShowTransactionModal(true); } }}>
-                  <Text style={styles.quickActionIcon}>💵</Text>
-                  <Text style={[styles.quickActionText, { color: '#166534' }]}>Ingreso</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.quickAction, { backgroundColor: '#FEE2E2' }]} onPress={() => { if (checkLimit('transaction')) { setTransactionType('expense'); setShowTransactionModal(true); } }}>
-                  <Text style={styles.quickActionIcon}>💸</Text>
-                  <Text style={[styles.quickActionText, { color: '#991B1B' }]}>Gasto</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.quickAction, { backgroundColor: '#EDE9FE' }]} onPress={() => { if (checkLimit('goal')) setShowGoalModal(true); }}>
-                  <Text style={styles.quickActionIcon}>🎯</Text>
-                  <Text style={[styles.quickActionText, { color: '#5B21B6' }]}>Meta</Text>
-                </TouchableOpacity>
-              </View>
-
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Tips Section */}
+            {tips.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>🎯 Mis Metas</Text>
-                  <TouchableOpacity onPress={() => { if (checkLimit('goal')) setShowGoalModal(true); }}><Text style={styles.sectionAction}>+ Nueva</Text></TouchableOpacity>
+                <Text style={styles.sectionTitle}>💡 Consejos para ti</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tipsScroll}>
+                  {tips.map((tip, index) => (
+                    <TouchableOpacity key={tip.id || index} style={[styles.tipCard, tip.is_premium && styles.tipCardPremium]} onPress={() => handleTipPress(tip)}>
+                      {tip.is_premium && <View style={styles.premiumBadge}><Text style={styles.premiumBadgeText}>PRO</Text></View>}
+                      <Text style={styles.tipIcon}>{tip.icon || '💡'}</Text>
+                      <Text style={styles.tipTitle} numberOfLines={2}>{tip.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Invoice Alert */}
+            {upcomingInvoices.length > 0 && (
+              <TouchableOpacity style={styles.invoiceAlert} onPress={() => setActiveTab('invoices')}>
+                <Text style={styles.invoiceAlertIcon}>⚠️</Text>
+                <View style={styles.invoiceAlertContent}>
+                  <Text style={styles.invoiceAlertTitle}>{upcomingInvoices.length} factura{upcomingInvoices.length > 1 ? 's' : ''} por vencer</Text>
                 </View>
-                {goals.length === 0 ? (
-                  <View style={styles.emptyState}><Text style={styles.emptyIcon}>🎯</Text><Text style={styles.emptyText}>No tienes metas aún</Text></View>
-                ) : goals.map(goal => (
-                  <TouchableOpacity key={goal.id} style={styles.goalCard} onPress={() => { setSelectedGoal(goal); setShowContributionModal(true); }}>
-                    <View style={styles.goalHeader}>
-                      <Text style={styles.goalIcon}>{goal.icon}</Text>
-                      <View style={styles.goalInfo}>
-                        <Text style={styles.goalName}>{goal.name}</Text>
-                        <Text style={styles.goalProgress}>{formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}</Text>
-                      </View>
-                      <Text style={styles.goalPercentage}>{Math.round(getProgressPercentage(goal.current_amount, goal.target_amount))}%</Text>
-                    </View>
-                    <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${getProgressPercentage(goal.current_amount, goal.target_amount)}%`, backgroundColor: '#8B5CF6' }]} /></View>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
+              </TouchableOpacity>
+            )}
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>📋 Últimas Transacciones</Text>
-                {transactions.length === 0 ? (
-                  <View style={styles.emptyState}><Text style={styles.emptyIcon}>📝</Text><Text style={styles.emptyText}>No hay transacciones</Text></View>
-                ) : transactions.slice(0, 5).map(trans => (
-                  <View key={trans.id} style={styles.transactionItem}>
-                    <View style={[styles.transactionIconBox, { backgroundColor: trans.type === 'income' ? '#DCFCE7' : '#FEE2E2' }]}>
-                      <Text>{trans.type === 'income' ? '📈' : '��'}</Text>
-                    </View>
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionCategory}>{trans.category}</Text>
-                      <Text style={styles.transactionDate}>{new Date(trans.date).toLocaleDateString('es-HN', { day: '2-digit', month: 'short' })}</Text>
-                    </View>
-                    <Text style={[styles.transactionAmount, { color: trans.type === 'income' ? '#10B981' : '#EF4444' }]}>
-                      {trans.type === 'income' ? '+' : '-'}{formatCurrency(trans.amount)}
-                    </Text>
+            {/* Balance Card */}
+            <View style={styles.balanceCard}>
+              <Text style={styles.balanceLabel}>Balance del mes</Text>
+              <Text style={[styles.balanceAmount, { color: (dashboard?.summary?.balance || dashboard?.month?.balance || 0) >= 0 ? COLORS.green : COLORS.red }]}>
+                {formatCurrency(dashboard?.summary?.balance || dashboard?.month?.balance || 0)}
+              </Text>
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceItem}>
+                  <View style={[styles.balanceItemIconBox, { backgroundColor: COLORS.greenBg }]}>
+                    <Ionicons name="trending-up" size={18} color={COLORS.green} />
                   </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {activeTab === 'invoices' && (
-            <>
-              {!isPremium && (
-                <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
-                  <Text style={styles.premiumFeatureIcon}>💎</Text>
-                  <View style={styles.premiumFeatureContent}>
-                    <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
-                    <Text style={styles.premiumFeatureText}>Gestiona tus facturas con recordatorios</Text>
-                  </View>
-                  <Text style={styles.premiumFeatureButton}>Upgrade →</Text>
-                </TouchableOpacity>
-              )}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>🧾 Facturas Pendientes</Text>
-                <TouchableOpacity onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}><Text style={styles.sectionAction}>+ Nueva</Text></TouchableOpacity>
-              </View>
-              {upcomingInvoices.length === 0 ? (
-                <View style={styles.emptyState}><Text style={styles.emptyIcon}>🧾</Text><Text style={styles.emptyText}>No tienes facturas pendientes</Text>
-                  <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}><Text style={styles.emptyButtonText}>Registrar factura</Text></TouchableOpacity>
+                  <Text style={styles.balanceItemLabel}>Ingresos</Text>
+                  <Text style={[styles.balanceItemValue, { color: COLORS.green }]}>{formatCurrency(dashboard?.summary?.income || dashboard?.month?.income || 0)}</Text>
                 </View>
-              ) : upcomingInvoices.map(invoice => (
-                <TouchableOpacity key={invoice.id} style={styles.invoiceCard} onPress={() => { setSelectedInvoice(invoice); setShowInvoiceDetailModal(true); }}>
-                  <View style={[styles.invoiceUrgencyBar, { backgroundColor: getUrgencyColor(invoice.urgency) }]} />
-                  <View style={styles.invoiceContent}>
-                    <View style={styles.invoiceHeader}>
-                      <Text style={styles.invoiceVendor}>{invoice.vendor_name}</Text>
-                      <Text style={[styles.invoiceAmount, { color: getUrgencyColor(invoice.urgency) }]}>{formatCurrency(invoice.amount)}</Text>
-                    </View>
-                    <Text style={[styles.invoiceDue, { color: getUrgencyColor(invoice.urgency) }]}>{getUrgencyText(invoice.urgency, invoice.days_until_due)}</Text>
+                <View style={styles.balanceDivider} />
+                <View style={styles.balanceItem}>
+                  <View style={[styles.balanceItemIconBox, { backgroundColor: COLORS.redBg }]}>
+                    <Ionicons name="trending-down" size={18} color={COLORS.red} />
                   </View>
-                </TouchableOpacity>
-              ))}
-            </>
-          )}
-
-          {activeTab === 'budgets' && (
-            <>
-              {!isPremium && (
-                <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
-                  <Text style={styles.premiumFeatureIcon}>💎</Text>
-                  <View style={styles.premiumFeatureContent}>
-                    <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
-                    <Text style={styles.premiumFeatureText}>Crea presupuestos y controla tus gastos</Text>
-                  </View>
-                  <Text style={styles.premiumFeatureButton}>Upgrade →</Text>
-                </TouchableOpacity>
-              )}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>📊 Mis Presupuestos</Text>
-                <TouchableOpacity onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}><Text style={styles.sectionAction}>+ Nuevo</Text></TouchableOpacity>
+                  <Text style={styles.balanceItemLabel}>Gastos</Text>
+                  <Text style={[styles.balanceItemValue, { color: COLORS.red }]}>{formatCurrency(dashboard?.summary?.expenses || dashboard?.month?.expenses || 0)}</Text>
+                </View>
               </View>
-              {budgets.length === 0 ? (
+            </View>
+
+            {/* Quick Actions - MEJORADOS */}
+            <View style={styles.quickActions}>
+              <TouchableOpacity 
+                style={styles.quickActionIncome} 
+                onPress={() => { if (checkLimit('transaction')) { setTransactionType('income'); setShowTransactionModal(true); } }}
+              >
+                <View style={styles.quickActionIconIncome}>
+                  <Ionicons name="add" size={26} color={COLORS.green} />
+                </View>
+                <Text style={styles.quickActionTextIncome}>Ingreso</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionExpense} 
+                onPress={() => { if (checkLimit('transaction')) { setTransactionType('expense'); setShowTransactionModal(true); } }}
+              >
+                <View style={styles.quickActionIconExpense}>
+                  <Ionicons name="remove" size={26} color={COLORS.red} />
+                </View>
+                <Text style={styles.quickActionTextExpense}>Gasto</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.quickActionGoal} 
+                onPress={() => { if (checkLimit('goal')) setShowGoalModal(true); }}
+              >
+                <View style={styles.quickActionIconGoal}>
+                  <Ionicons name="flag" size={24} color={COLORS.teal} />
+                </View>
+                <Text style={styles.quickActionTextGoal}>Meta</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Goals Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>🎯 Mis Metas</Text>
+                <TouchableOpacity onPress={() => { if (checkLimit('goal')) setShowGoalModal(true); }}>
+                  <Text style={styles.sectionAction}>+ Nueva</Text>
+                </TouchableOpacity>
+              </View>
+              {goals.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyIcon}>📊</Text>
-                  <Text style={styles.emptyText}>No tienes presupuestos</Text>
-                  <Text style={styles.emptySubtext}>Crea límites de gasto por categoría</Text>
-                  <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}><Text style={styles.emptyButtonText}>Crear presupuesto</Text></TouchableOpacity>
+                  <Text style={styles.emptyIcon}>🎯</Text>
+                  <Text style={styles.emptyText}>No tienes metas aún</Text>
+                  <Text style={styles.emptySubtext}>Crea una meta para empezar a ahorrar</Text>
                 </View>
-              ) : budgets.map(budget => (
-                <TouchableOpacity key={budget.id} style={styles.budgetCard} onLongPress={() => handleDeleteBudget(budget.id)}>
-                  <View style={styles.budgetHeader}>
-                    <Text style={styles.budgetIcon}>{budget.icon}</Text>
-                    <View style={styles.budgetInfo}>
-                      <Text style={styles.budgetCategory}>{budget.category}</Text>
-                      <Text style={styles.budgetAmounts}>{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</Text>
+              ) : goals.map(goal => (
+                <TouchableOpacity key={goal.id} style={styles.goalCard} onPress={() => { setSelectedGoal(goal); setShowContributionModal(true); }}>
+                  <View style={styles.goalHeader}>
+                    <Text style={styles.goalIcon}>{goal.icon}</Text>
+                    <View style={styles.goalInfo}>
+                      <Text style={styles.goalName}>{goal.name}</Text>
+                      <Text style={styles.goalProgress}>{formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}</Text>
                     </View>
-                    <View style={[styles.budgetStatus, { backgroundColor: getBudgetStatusColor(budget.status) + '20' }]}>
-                      <Text style={[styles.budgetStatusText, { color: getBudgetStatusColor(budget.status) }]}>{budget.percentage}%</Text>
-                    </View>
+                    <Text style={styles.goalPercentage}>{Math.round(getProgressPercentage(goal.current_amount, goal.target_amount))}%</Text>
                   </View>
                   <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${Math.min(budget.percentage, 100)}%`, backgroundColor: getBudgetStatusColor(budget.status) }]} />
-                  </View>
-                  <View style={styles.budgetFooter}>
-                    <Text style={styles.budgetRemaining}>
-                      {budget.remaining >= 0 ? `Disponible: ${formatCurrency(budget.remaining)}` : `Excedido: ${formatCurrency(Math.abs(budget.remaining))}`}
-                    </Text>
-                    <Text style={[styles.budgetStatusLabel, { color: getBudgetStatusColor(budget.status) }]}>
-                      {budget.status === 'exceeded' ? '⚠️ Excedido' : budget.status === 'warning' ? '⚡ Cuidado' : '✓ En control'}
-                    </Text>
+                    <View style={[styles.progressBarFill, { width: `${getProgressPercentage(goal.current_amount, goal.target_amount)}%`, backgroundColor: COLORS.teal }]} />
                   </View>
                 </TouchableOpacity>
               ))}
-              {budgets.length > 0 && <Text style={styles.budgetHint}>💡 Mantén presionado para eliminar</Text>}
-            </>
-          )}
-        </View>
+            </View>
+
+            {/* Transactions Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📋 Últimas Transacciones</Text>
+              {transactions.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>📝</Text>
+                  <Text style={styles.emptyText}>No hay transacciones</Text>
+                </View>
+              ) : transactions.slice(0, 5).map(trans => (
+                <View key={trans.id} style={styles.transactionItem}>
+                  <View style={[styles.transactionIconBox, { backgroundColor: trans.type === 'income' ? COLORS.greenBg : COLORS.redBg }]}>
+                    <Ionicons name={trans.type === 'income' ? 'trending-up' : 'trending-down'} size={18} color={trans.type === 'income' ? COLORS.green : COLORS.red} />
+                  </View>
+                  <View style={styles.transactionInfo}>
+                    <Text style={styles.transactionCategory}>{trans.category}</Text>
+                    <Text style={styles.transactionDate}>{new Date(trans.date).toLocaleDateString('es-HN', { day: '2-digit', month: 'short' })}</Text>
+                  </View>
+                  <Text style={[styles.transactionAmount, { color: trans.type === 'income' ? COLORS.green : COLORS.red }]}>
+                    {trans.type === 'income' ? '+' : '-'}{formatCurrency(trans.amount)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {activeTab === 'invoices' && (
+          <>
+            {!isPremium && (
+              <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
+                <Ionicons name="diamond" size={24} color={COLORS.yellow} />
+                <View style={styles.premiumFeatureContent}>
+                  <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
+                  <Text style={styles.premiumFeatureText}>Gestiona tus facturas con recordatorios</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🧾 Facturas Pendientes</Text>
+              <TouchableOpacity onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}>
+                <Text style={styles.sectionAction}>+ Nueva</Text>
+              </TouchableOpacity>
+            </View>
+            {upcomingInvoices.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>🧾</Text>
+                <Text style={styles.emptyText}>No tienes facturas pendientes</Text>
+                <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}>
+                  <Text style={styles.emptyButtonText}>Registrar factura</Text>
+                </TouchableOpacity>
+              </View>
+            ) : upcomingInvoices.map(invoice => (
+              <TouchableOpacity key={invoice.id} style={styles.invoiceCard} onPress={() => { setSelectedInvoice(invoice); setShowInvoiceDetailModal(true); }}>
+                <View style={[styles.invoiceUrgencyBar, { backgroundColor: getUrgencyColor(invoice.urgency) }]} />
+                <View style={styles.invoiceContent}>
+                  <View style={styles.invoiceHeader}>
+                    <Text style={styles.invoiceVendor}>{invoice.vendor_name}</Text>
+                    <Text style={[styles.invoiceAmount, { color: getUrgencyColor(invoice.urgency) }]}>{formatCurrency(invoice.amount)}</Text>
+                  </View>
+                  <Text style={[styles.invoiceDue, { color: getUrgencyColor(invoice.urgency) }]}>{getUrgencyText(invoice.urgency, invoice.days_until_due)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {activeTab === 'budgets' && (
+          <>
+            {!isPremium && (
+              <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
+                <Ionicons name="diamond" size={24} color={COLORS.yellow} />
+                <View style={styles.premiumFeatureContent}>
+                  <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
+                  <Text style={styles.premiumFeatureText}>Crea presupuestos y controla tus gastos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>📊 Mis Presupuestos</Text>
+              <TouchableOpacity onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}>
+                <Text style={styles.sectionAction}>+ Nuevo</Text>
+              </TouchableOpacity>
+            </View>
+            {budgets.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>📊</Text>
+                <Text style={styles.emptyText}>No tienes presupuestos</Text>
+                <Text style={styles.emptySubtext}>Crea límites de gasto por categoría</Text>
+                <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}>
+                  <Text style={styles.emptyButtonText}>Crear presupuesto</Text>
+                </TouchableOpacity>
+              </View>
+            ) : budgets.map(budget => (
+              <TouchableOpacity key={budget.id} style={styles.budgetCard} onLongPress={() => handleDeleteBudget(budget.id)}>
+                <View style={styles.budgetHeader}>
+                  <Text style={styles.budgetIcon}>{budget.icon}</Text>
+                  <View style={styles.budgetInfo}>
+                    <Text style={styles.budgetCategory}>{budget.category}</Text>
+                    <Text style={styles.budgetAmounts}>{formatCurrency(budget.spent)} / {formatCurrency(budget.amount)}</Text>
+                  </View>
+                  <View style={[styles.budgetStatus, { backgroundColor: getBudgetStatusColor(budget.status) + '20' }]}>
+                    <Text style={[styles.budgetStatusText, { color: getBudgetStatusColor(budget.status) }]}>{budget.percentage}%</Text>
+                  </View>
+                </View>
+                <View style={styles.progressBarBg}>
+                  <View style={[styles.progressBarFill, { width: `${Math.min(budget.percentage, 100)}%`, backgroundColor: getBudgetStatusColor(budget.status) }]} />
+                </View>
+                <View style={styles.budgetFooter}>
+                  <Text style={styles.budgetRemaining}>
+                    {budget.remaining >= 0 ? `Disponible: ${formatCurrency(budget.remaining)}` : `Excedido: ${formatCurrency(Math.abs(budget.remaining))}`}
+                  </Text>
+                  <Text style={[styles.budgetStatusLabel, { color: getBudgetStatusColor(budget.status) }]}>
+                    {budget.status === 'exceeded' ? '⚠️ Excedido' : budget.status === 'warning' ? '⚡ Cuidado' : '✓ En control'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {budgets.length > 0 && <Text style={styles.budgetHint}>💡 Mantén presionado para eliminar</Text>}
+          </>
+        )}
+
+        <View style={{ height: scale(100) }} />
       </ScrollView>
 
       {/* Transaction Modal */}
       <AppModal visible={showTransactionModal} onClose={() => setShowTransactionModal(false)}>
         <Text style={styles.modalTitle}>{transactionType === 'income' ? '💵 Nuevo Ingreso' : '💸 Nuevo Gasto'}</Text>
         <View style={styles.typeSelector}>
-          <TouchableOpacity style={[styles.typeButton, transactionType === 'income' && styles.typeButtonActive]} onPress={() => setTransactionType('income')}><Text style={[styles.typeButtonText, transactionType === 'income' && styles.typeButtonTextActive]}>Ingreso</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.typeButton, transactionType === 'expense' && styles.typeButtonActiveExpense]} onPress={() => setTransactionType('expense')}><Text style={[styles.typeButtonText, transactionType === 'expense' && styles.typeButtonTextActive]}>Gasto</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.typeButton, transactionType === 'income' && styles.typeButtonActiveIncome]} onPress={() => setTransactionType('income')}>
+            <Text style={[styles.typeButtonText, transactionType === 'income' && styles.typeButtonTextActive]}>Ingreso</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.typeButton, transactionType === 'expense' && styles.typeButtonActiveExpense]} onPress={() => setTransactionType('expense')}>
+            <Text style={[styles.typeButtonText, transactionType === 'expense' && styles.typeButtonTextActive]}>Gasto</Text>
+          </TouchableOpacity>
         </View>
-        <TextInput style={styles.input} placeholder="Monto" keyboardType="numeric" value={transactionForm.amount} onChangeText={(v) => setTransactionForm({ ...transactionForm, amount: v })} />
+        <TextInput style={styles.input} placeholder="Monto" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={transactionForm.amount} onChangeText={(v) => setTransactionForm({ ...transactionForm, amount: v })} />
         <View style={styles.categoryGrid}>
           {categories.filter(c => c.type === transactionType || c.type === 'both').map(cat => (
-            <TouchableOpacity key={cat.id} style={[styles.categoryChip, transactionForm.category === cat.name && { backgroundColor: cat.color }]} onPress={() => setTransactionForm({ ...transactionForm, category: cat.name })}>
+            <TouchableOpacity key={cat.id} style={[styles.categoryChip, transactionForm.category === cat.name && { backgroundColor: cat.color || COLORS.purple }]} onPress={() => setTransactionForm({ ...transactionForm, category: cat.name })}>
               <Text style={styles.categoryChipIcon}>{cat.icon}</Text>
               <Text style={[styles.categoryChipText, transactionForm.category === cat.name && { color: '#FFF' }]}>{cat.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TextInput style={styles.input} placeholder="Descripción (opcional)" value={transactionForm.description} onChangeText={(v) => setTransactionForm({ ...transactionForm, description: v })} />
+        <TextInput style={styles.input} placeholder="Descripción (opcional)" placeholderTextColor={COLORS.textMuted} value={transactionForm.description} onChangeText={(v) => setTransactionForm({ ...transactionForm, description: v })} />
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => setShowTransactionModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: transactionType === 'income' ? '#10B981' : '#EF4444' }]} onPress={handleCreateTransaction}><Text style={styles.saveButtonText}>Guardar</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: transactionType === 'income' ? COLORS.green : COLORS.red }]} onPress={handleCreateTransaction}><Text style={styles.saveButtonText}>Guardar</Text></TouchableOpacity>
         </View>
       </AppModal>
 
       {/* Goal Modal */}
       <AppModal visible={showGoalModal} onClose={() => setShowGoalModal(false)}>
         <Text style={styles.modalTitle}>🎯 Nueva Meta</Text>
-        <TextInput style={styles.input} placeholder="Nombre de la meta" value={goalForm.name} onChangeText={(v) => setGoalForm({ ...goalForm, name: v })} />
-        <TextInput style={styles.input} placeholder="Monto objetivo" keyboardType="numeric" value={goalForm.target_amount} onChangeText={(v) => setGoalForm({ ...goalForm, target_amount: v })} />
+        <TextInput style={styles.input} placeholder="Nombre de la meta" placeholderTextColor={COLORS.textMuted} value={goalForm.name} onChangeText={(v) => setGoalForm({ ...goalForm, name: v })} />
+        <TextInput style={styles.input} placeholder="Monto objetivo" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={goalForm.target_amount} onChangeText={(v) => setGoalForm({ ...goalForm, target_amount: v })} />
         <View style={styles.iconSelector}>
           {['🎯', '🏠', '🚗', '✈️', '💻', '📱', '🎓', '💍', '🏖️', '💰'].map(icon => (
-            <TouchableOpacity key={icon} style={[styles.iconOption, goalForm.icon === icon && styles.iconOptionActive]} onPress={() => setGoalForm({ ...goalForm, icon })}><Text style={styles.iconOptionText}>{icon}</Text></TouchableOpacity>
+            <TouchableOpacity key={icon} style={[styles.iconOption, goalForm.icon === icon && styles.iconOptionActive]} onPress={() => setGoalForm({ ...goalForm, icon })}>
+              <Text style={styles.iconOptionText}>{icon}</Text>
+            </TouchableOpacity>
           ))}
         </View>
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => setShowGoalModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#8B5CF6' }]} onPress={handleCreateGoal}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.purple }]} onPress={handleCreateGoal}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
         </View>
       </AppModal>
 
@@ -627,26 +704,26 @@ export default function FinancesScreen() {
         {selectedGoal && (
           <View style={styles.goalPreview}>
             <Text style={styles.goalPreviewText}>{formatCurrency(selectedGoal.current_amount)} / {formatCurrency(selectedGoal.target_amount)}</Text>
-            <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${getProgressPercentage(selectedGoal.current_amount, selectedGoal.target_amount)}%`, backgroundColor: '#8B5CF6' }]} /></View>
+            <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${getProgressPercentage(selectedGoal.current_amount, selectedGoal.target_amount)}%`, backgroundColor: COLORS.purple }]} /></View>
           </View>
         )}
-        <TextInput style={styles.input} placeholder="Monto a aportar" keyboardType="numeric" value={contributionAmount} onChangeText={setContributionAmount} />
+        <TextInput style={styles.input} placeholder="Monto a aportar" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={contributionAmount} onChangeText={setContributionAmount} />
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowContributionModal(false); setSelectedGoal(null); }}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#10B981' }]} onPress={handleAddContribution}><Text style={styles.saveButtonText}>Aportar</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.green }]} onPress={handleAddContribution}><Text style={styles.saveButtonText}>Aportar</Text></TouchableOpacity>
         </View>
       </AppModal>
 
       {/* Invoice Modal */}
       <AppModal visible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
         <Text style={styles.modalTitle}>🧾 Nueva Factura</Text>
-        <TextInput style={styles.input} placeholder="Proveedor / Empresa" value={invoiceForm.vendor_name} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, vendor_name: v })} />
-        <TextInput style={styles.input} placeholder="Monto" keyboardType="numeric" value={invoiceForm.amount} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, amount: v })} />
-        <TextInput style={styles.input} placeholder="Categoría (ej: Agua, Luz)" value={invoiceForm.category} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, category: v })} />
-        <TextInput style={styles.input} placeholder="Vencimiento (YYYY-MM-DD)" value={invoiceForm.due_date} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, due_date: v })} />
+        <TextInput style={styles.input} placeholder="Proveedor / Empresa" placeholderTextColor={COLORS.textMuted} value={invoiceForm.vendor_name} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, vendor_name: v })} />
+        <TextInput style={styles.input} placeholder="Monto" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={invoiceForm.amount} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, amount: v })} />
+        <TextInput style={styles.input} placeholder="Categoría (ej: Agua, Luz)" placeholderTextColor={COLORS.textMuted} value={invoiceForm.category} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, category: v })} />
+        <TextInput style={styles.input} placeholder="Vencimiento (YYYY-MM-DD)" placeholderTextColor={COLORS.textMuted} value={invoiceForm.due_date} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, due_date: v })} />
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => setShowInvoiceModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#F59E0B' }]} onPress={handleCreateInvoice}><Text style={styles.saveButtonText}>Registrar</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.yellow }]} onPress={handleCreateInvoice}><Text style={styles.saveButtonText}>Registrar</Text></TouchableOpacity>
         </View>
       </AppModal>
 
@@ -668,16 +745,18 @@ export default function FinancesScreen() {
       {/* Budget Modal */}
       <AppModal visible={showBudgetModal} onClose={() => setShowBudgetModal(false)}>
         <Text style={styles.modalTitle}>📊 Nuevo Presupuesto</Text>
-        <TextInput style={styles.input} placeholder="Categoría (ej: Alimentación)" value={budgetForm.category} onChangeText={(v) => setBudgetForm({ ...budgetForm, category: v })} />
-        <TextInput style={styles.input} placeholder="Límite mensual" keyboardType="numeric" value={budgetForm.amount} onChangeText={(v) => setBudgetForm({ ...budgetForm, amount: v })} />
+        <TextInput style={styles.input} placeholder="Categoría (ej: Alimentación)" placeholderTextColor={COLORS.textMuted} value={budgetForm.category} onChangeText={(v) => setBudgetForm({ ...budgetForm, category: v })} />
+        <TextInput style={styles.input} placeholder="Límite mensual" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={budgetForm.amount} onChangeText={(v) => setBudgetForm({ ...budgetForm, amount: v })} />
         <View style={styles.iconSelector}>
-          {['💰', '🍔', '🚗', '��', '💡', '📱', '🎮', '👕', '💊', '📚'].map(icon => (
-            <TouchableOpacity key={icon} style={[styles.iconOption, budgetForm.icon === icon && styles.iconOptionActive]} onPress={() => setBudgetForm({ ...budgetForm, icon })}><Text style={styles.iconOptionText}>{icon}</Text></TouchableOpacity>
+          {['💰', '🍔', '🚗', '🏠', '💡', '📱', '🎮', '👕', '💊', '📚'].map(icon => (
+            <TouchableOpacity key={icon} style={[styles.iconOption, budgetForm.icon === icon && styles.iconOptionActive]} onPress={() => setBudgetForm({ ...budgetForm, icon })}>
+              <Text style={styles.iconOptionText}>{icon}</Text>
+            </TouchableOpacity>
           ))}
         </View>
         <View style={styles.modalButtons}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => setShowBudgetModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#3B82F6' }]} onPress={handleCreateBudget}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.blue }]} onPress={handleCreateBudget}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
         </View>
       </AppModal>
 
@@ -698,60 +777,97 @@ export default function FinancesScreen() {
         )}
       </AppModal>
 
-      {/* Upgrade Modal - Precios dinámicos desde API */}
+      {/* Upgrade Modal - MEJORADO */}
       <AppModal visible={showUpgradeModal} onClose={() => setShowUpgradeModal(false)}>
-        <Text style={styles.upgradeModalTitle}>💎 Desbloquea Todo</Text>
-        <Text style={styles.upgradeModalSubtitle}>Obtén control total de tus finanzas</Text>
-        
-        {plans.length > 0 ? (
-          <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-            {plans.filter(p => p.name !== 'free' && parseFloat(p.price_monthly) > 0).map((plan) => (
-              <View key={plan.id || plan.name} style={styles.planCard}>
-                <View style={styles.planHeader}>
-                  <Text style={styles.planName}>{plan.display_name || plan.name}</Text>
-                  <View style={styles.planPriceContainer}>
-                    <Text style={styles.planPrice}>${parseFloat(plan.price_monthly).toFixed(2)}</Text>
-                    <Text style={styles.planPeriod}>/mes</Text>
-                  </View>
-                </View>
-                {parseFloat(plan.price_yearly) > 0 && (
-                  <Text style={styles.planYearly}>
-                    ${parseFloat(plan.price_yearly).toFixed(2)}/año (ahorra {Math.round((1 - (parseFloat(plan.price_yearly) / (parseFloat(plan.price_monthly) * 12))) * 100)}%)
-                  </Text>
-                )}
-                <View style={styles.planFeatures}>
-                  {(Array.isArray(plan.features) ? plan.features : []).map((feature, idx) => (
-                    <Text key={idx} style={styles.planFeature}>✓ {feature}</Text>
-                  ))}
-                </View>
-                <TouchableOpacity style={styles.planButton} onPress={() => handleUpgrade(plan.name)}>
-                  <Text style={styles.planButtonText}>Obtener {plan.display_name || plan.name}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        ) : (
-          <View style={styles.planCard}>
-            <View style={styles.planHeader}>
-              <Text style={styles.planName}>Premium</Text>
-              <View style={styles.planPriceContainer}>
-                <Text style={styles.planPrice}>$4.99</Text>
-                <Text style={styles.planPeriod}>/mes</Text>
-              </View>
-            </View>
-            <View style={styles.planFeatures}>
-              <Text style={styles.planFeature}>✓ Transacciones ilimitadas</Text>
-              <Text style={styles.planFeature}>✓ Metas ilimitadas</Text>
-              <Text style={styles.planFeature}>✓ Presupuestos por categoría</Text>
-              <Text style={styles.planFeature}>✓ Gestión de facturas</Text>
-              <Text style={styles.planFeature}>✓ Consejos personalizados</Text>
-              <Text style={styles.planFeature}>✓ Historial completo</Text>
-            </View>
-            <TouchableOpacity style={styles.planButton} onPress={() => handleUpgrade('premium')}>
-              <Text style={styles.planButtonText}>Obtener Premium</Text>
-            </TouchableOpacity>
+        <View style={styles.upgradeHeader}>
+          <View style={styles.upgradeDiamondIcon}>
+            <Ionicons name="diamond" size={32} color={COLORS.purple} />
           </View>
-        )}
+          <Text style={styles.upgradeModalTitle}>Desbloquea Todo</Text>
+          <Text style={styles.upgradeModalSubtitle}>Obtén control total de tus finanzas personales</Text>
+        </View>
+        
+        {/* Plan Premium */}
+        <View style={styles.planCardPremium}>
+          <View style={styles.planBadgePopular}>
+            <Text style={styles.planBadgeText}>⭐ POPULAR</Text>
+          </View>
+          <Text style={styles.planNamePremium}>Premium</Text>
+          <View style={styles.planPriceRow}>
+            <Text style={styles.planPriceCurrency}>$</Text>
+            <Text style={styles.planPriceAmount}>2.99</Text>
+            <Text style={styles.planPricePeriod}>/mes</Text>
+          </View>
+          <Text style={styles.planYearlyPrice}>$29.99/año (ahorra 16%)</Text>
+          
+          <View style={styles.planFeaturesList}>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconGreen}><Ionicons name="infinite" size={14} color={COLORS.green} /></View>
+              <Text style={styles.planFeatureText}>Transacciones ilimitadas</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconGreen}><Ionicons name="flag" size={14} color={COLORS.green} /></View>
+              <Text style={styles.planFeatureText}>Metas de ahorro ilimitadas</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconGreen}><Ionicons name="pie-chart" size={14} color={COLORS.green} /></View>
+              <Text style={styles.planFeatureText}>Presupuestos por categoría</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconGreen}><Ionicons name="document-text" size={14} color={COLORS.green} /></View>
+              <Text style={styles.planFeatureText}>Gestión de facturas</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconGreen}><Ionicons name="bulb" size={14} color={COLORS.green} /></View>
+              <Text style={styles.planFeatureText}>Consejos personalizados</Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity style={styles.planButtonPremium} onPress={() => handleUpgrade('Premium')}>
+            <Text style={styles.planButtonText}>Obtener Premium</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Plan Pro */}
+        <View style={styles.planCardPro}>
+          <View style={styles.planBadgeBestValue}>
+            <Text style={styles.planBadgeText}>💎 MEJOR VALOR</Text>
+          </View>
+          <Text style={styles.planNamePro}>Pro</Text>
+          <View style={styles.planPriceRow}>
+            <Text style={styles.planPriceCurrency}>$</Text>
+            <Text style={styles.planPriceAmount}>4.99</Text>
+            <Text style={styles.planPricePeriod}>/mes</Text>
+          </View>
+          <Text style={styles.planYearlyPrice}>$49.99/año (ahorra 17%)</Text>
+          
+          <View style={styles.planFeaturesList}>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconTeal}><Ionicons name="checkmark-circle" size={14} color={COLORS.teal} /></View>
+              <Text style={styles.planFeatureText}>Todo de Premium incluido</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconTeal}><Ionicons name="analytics" size={14} color={COLORS.teal} /></View>
+              <Text style={styles.planFeatureText}>Reportes avanzados</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconTeal}><Ionicons name="cloud-download" size={14} color={COLORS.teal} /></View>
+              <Text style={styles.planFeatureText}>Exportar a Excel/PDF</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconTeal}><Ionicons name="notifications" size={14} color={COLORS.teal} /></View>
+              <Text style={styles.planFeatureText}>Alertas inteligentes</Text>
+            </View>
+            <View style={styles.planFeatureRow}>
+              <View style={styles.planFeatureIconTeal}><Ionicons name="shield-checkmark" size={14} color={COLORS.teal} /></View>
+              <Text style={styles.planFeatureText}>Soporte prioritario</Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity style={styles.planButtonPro} onPress={() => handleUpgrade('Pro')}>
+            <Text style={styles.planButtonTextPro}>Obtener Pro</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.skipButton} onPress={() => setShowUpgradeModal(false)}>
           <Text style={styles.skipButtonText}>Quizás después</Text>
@@ -762,176 +878,1031 @@ export default function FinancesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: '#6B7280', fontSize: 16 },
-  header: { paddingTop: 10, paddingBottom: 16, paddingHorizontal: 20, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  backButton: { padding: 8 },
-  backText: { color: '#FFF', fontSize: 16 },
-  headerTitle: { color: '#FFF', fontSize: 20, fontWeight: '700' },
-  premiumBadgeHeader: { backgroundColor: '#FCD34D', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  premiumBadgeHeaderText: { color: '#92400E', fontSize: 12, fontWeight: '700' },
-  upgradeButtonSmall: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  upgradeButtonSmallText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
-  statsBar: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 16, padding: 12, marginBottom: 12 },
-  statItem: { alignItems: 'center' },
-  statValue: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.3)' },
-  xpContainer: { alignItems: 'center', marginBottom: 12 },
-  xpBarBg: { width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 3, overflow: 'hidden' },
-  xpBarFill: { height: '100%', backgroundColor: '#FCD34D', borderRadius: 3 },
-  xpText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, marginTop: 4 },
-  tabSwitcher: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
-  tabActive: { backgroundColor: '#FFF' },
-  tabText: { fontSize: 20 },
-  tabTextActive: {},
-  lockIcon: { fontSize: 12 },
-  content: { padding: 20 },
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  loadingText: { 
+    marginTop: scale(12), 
+    color: COLORS.textSecondary, 
+    fontSize: scale(16) 
+  },
+  
+  // Header
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+  },
+  backButton: { 
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(20), 
+    fontWeight: '700' 
+  },
+  premiumBadgeHeader: { 
+    backgroundColor: COLORS.lime, 
+    paddingHorizontal: scale(12), 
+    paddingVertical: scale(6), 
+    borderRadius: scale(12) 
+  },
+  premiumBadgeHeaderText: { 
+    color: COLORS.background, 
+    fontSize: scale(12), 
+    fontWeight: '700' 
+  },
+  upgradeButtonSmall: { 
+    backgroundColor: COLORS.purple, 
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(8), 
+    borderRadius: scale(12) 
+  },
+  upgradeButtonSmallText: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(12), 
+    fontWeight: '600' 
+  },
+  
+  scrollContent: {
+    paddingHorizontal: scale(20),
+  },
+  
+  // Stats Card
+  statsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: scale(20),
+    padding: scale(20),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  statsRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-around',
+    marginBottom: scale(16),
+  },
+  statItem: { 
+    alignItems: 'center',
+    flex: 1,
+  },
+  statEmoji: {
+    fontSize: scale(24),
+    marginBottom: scale(4),
+  },
+  statValue: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(18), 
+    fontWeight: '700' 
+  },
+  statLabel: { 
+    color: COLORS.textSecondary, 
+    fontSize: scale(12), 
+    marginTop: scale(2) 
+  },
+  statDivider: { 
+    width: 1, 
+    backgroundColor: COLORS.cardBorder,
+  },
+  xpContainer: { 
+    alignItems: 'center' 
+  },
+  xpBarBg: { 
+    width: '100%', 
+    height: scale(8), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(4), 
+    overflow: 'hidden' 
+  },
+  xpBarFill: { 
+    height: '100%', 
+    backgroundColor: COLORS.lime, 
+    borderRadius: scale(4) 
+  },
+  xpText: { 
+    color: COLORS.textSecondary, 
+    fontSize: scale(12), 
+    marginTop: scale(8) 
+  },
+  
+  // Tab Switcher
+  tabSwitcher: { 
+    flexDirection: 'row', 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(4),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  tab: { 
+    flex: 1, 
+    paddingVertical: scale(12), 
+    alignItems: 'center', 
+    borderRadius: scale(12) 
+  },
+  tabActive: { 
+    backgroundColor: COLORS.purple 
+  },
+  tabText: { 
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  tabTextActive: {
+    color: COLORS.textPrimary,
+  },
   
   // Limit Banner
-  limitBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EDE9FE', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#8B5CF6' },
-  limitBannerContent: { flex: 1 },
-  limitBannerTitle: { fontSize: 14, fontWeight: '700', color: '#5B21B6' },
-  limitBannerText: { fontSize: 12, color: '#7C3AED' },
-  limitBannerArrow: { fontSize: 24 },
+  limitBanner: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(139, 92, 246, 0.15)', 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(16), 
+    borderWidth: 1, 
+    borderColor: 'rgba(139, 92, 246, 0.3)' 
+  },
+  limitBannerIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  limitBannerContent: { 
+    flex: 1 
+  },
+  limitBannerTitle: { 
+    fontSize: scale(14), 
+    fontWeight: '700', 
+    color: COLORS.purple 
+  },
+  limitBannerText: { 
+    fontSize: scale(12), 
+    color: COLORS.purpleLight,
+    marginTop: scale(2),
+  },
+  
+  // Section
+  section: {
+    marginBottom: scale(20),
+  },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: scale(12) 
+  },
+  sectionTitle: { 
+    fontSize: scale(18), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary 
+  },
+  sectionAction: { 
+    color: COLORS.teal, 
+    fontSize: scale(14), 
+    fontWeight: '600' 
+  },
+  
+  // Tips
+  tipsScroll: { 
+    marginHorizontal: scale(-20), 
+    paddingHorizontal: scale(20) 
+  },
+  tipCard: { 
+    width: scale(140), 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(14), 
+    marginRight: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  tipCardPremium: { 
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+    borderColor: 'rgba(245, 158, 11, 0.3)' 
+  },
+  premiumBadge: { 
+    position: 'absolute', 
+    top: scale(8), 
+    right: scale(8), 
+    backgroundColor: COLORS.yellow, 
+    paddingHorizontal: scale(6), 
+    paddingVertical: scale(2), 
+    borderRadius: scale(4) 
+  },
+  premiumBadgeText: { 
+    color: COLORS.background, 
+    fontSize: scale(9), 
+    fontWeight: '700' 
+  },
+  tipIcon: { 
+    fontSize: scale(28), 
+    marginBottom: scale(6) 
+  },
+  tipTitle: { 
+    fontSize: scale(13), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  
+  // Invoice Alert
+  invoiceAlert: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  invoiceAlertIcon: {
+    fontSize: scale(24),
+    marginRight: scale(12),
+  },
+  invoiceAlertContent: { 
+    flex: 1,
+  },
+  invoiceAlertTitle: { 
+    fontSize: scale(15), 
+    fontWeight: '600', 
+    color: COLORS.yellow 
+  },
+  
+  // Balance Card
+  balanceCard: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(20), 
+    padding: scale(24), 
+    alignItems: 'center', 
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  balanceLabel: { 
+    color: COLORS.textSecondary, 
+    fontSize: scale(14), 
+    marginBottom: scale(8) 
+  },
+  balanceAmount: { 
+    fontSize: scale(36), 
+    fontWeight: '700', 
+    marginBottom: scale(20) 
+  },
+  balanceRow: { 
+    flexDirection: 'row', 
+    width: '100%' 
+  },
+  balanceItem: { 
+    flex: 1, 
+    alignItems: 'center' 
+  },
+  balanceItemIconBox: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+  },
+  balanceDivider: { 
+    width: 1, 
+    backgroundColor: COLORS.cardBorder 
+  },
+  balanceItemLabel: { 
+    color: COLORS.textSecondary, 
+    fontSize: scale(12), 
+    marginBottom: scale(4) 
+  },
+  balanceItemValue: { 
+    fontSize: scale(16), 
+    fontWeight: '600' 
+  },
+  
+  // Quick Actions - MEJORADOS
+  quickActions: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: scale(20),
+    gap: scale(10),
+  },
+  quickActionIncome: { 
+    flex: 1, 
+    alignItems: 'center', 
+    paddingVertical: scale(16), 
+    paddingHorizontal: scale(8),
+    borderRadius: scale(16),
+    backgroundColor: COLORS.greenBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.greenBorder,
+  },
+  quickActionExpense: { 
+    flex: 1, 
+    alignItems: 'center', 
+    paddingVertical: scale(16), 
+    paddingHorizontal: scale(8),
+    borderRadius: scale(16),
+    backgroundColor: COLORS.redBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.redBorder,
+  },
+  quickActionGoal: { 
+    flex: 1, 
+    alignItems: 'center', 
+    paddingVertical: scale(16), 
+    paddingHorizontal: scale(8),
+    borderRadius: scale(16),
+    backgroundColor: 'rgba(93, 222, 216, 0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(93, 222, 216, 0.35)',
+  },
+  quickActionIconIncome: {
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+  },
+  quickActionIconExpense: {
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(244, 63, 94, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+  },
+  quickActionIconGoal: {
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(93, 222, 216, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+  },
+  quickActionTextIncome: { 
+    fontSize: scale(13), 
+    fontWeight: '600',
+    color: COLORS.green,
+  },
+  quickActionTextExpense: { 
+    fontSize: scale(13), 
+    fontWeight: '600',
+    color: COLORS.red,
+  },
+  quickActionTextGoal: { 
+    fontSize: scale(13), 
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
+  
+  // Empty State
+  emptyState: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(32), 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  emptyIcon: { 
+    fontSize: scale(48), 
+    marginBottom: scale(12) 
+  },
+  emptyText: { 
+    color: COLORS.textSecondary, 
+    fontSize: scale(16), 
+    marginBottom: scale(8) 
+  },
+  emptySubtext: { 
+    color: COLORS.textMuted, 
+    fontSize: scale(13), 
+    marginBottom: scale(16),
+    textAlign: 'center',
+  },
+  emptyButton: { 
+    backgroundColor: COLORS.teal, 
+    paddingHorizontal: scale(24), 
+    paddingVertical: scale(12), 
+    borderRadius: scale(12) 
+  },
+  emptyButtonText: { 
+    color: COLORS.background, 
+    fontWeight: '600' 
+  },
+  
+  // Goal Card
+  goalCard: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  goalHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: scale(12) 
+  },
+  goalIcon: { 
+    fontSize: scale(32), 
+    marginRight: scale(12) 
+  },
+  goalInfo: { 
+    flex: 1 
+  },
+  goalName: { 
+    fontSize: scale(16), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(2) 
+  },
+  goalProgress: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary 
+  },
+  goalPercentage: { 
+    fontSize: scale(18), 
+    fontWeight: '700', 
+    color: COLORS.purple 
+  },
+  progressBarBg: { 
+    height: scale(8), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(4), 
+    overflow: 'hidden' 
+  },
+  progressBarFill: { 
+    height: '100%', 
+    borderRadius: scale(4) 
+  },
+  
+  // Transaction Item
+  transactionItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(12), 
+    padding: scale(12), 
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  transactionIconBox: { 
+    width: scale(40), 
+    height: scale(40), 
+    borderRadius: scale(12), 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: scale(12) 
+  },
+  transactionInfo: { 
+    flex: 1 
+  },
+  transactionCategory: { 
+    fontSize: scale(15), 
+    fontWeight: '500', 
+    color: COLORS.textPrimary 
+  },
+  transactionDate: { 
+    fontSize: scale(12), 
+    color: COLORS.textMuted 
+  },
+  transactionAmount: { 
+    fontSize: scale(16), 
+    fontWeight: '600' 
+  },
   
   // Premium Feature Banner
-  premiumFeatureBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'linear-gradient(135deg, #FEF3C7, #FDE68A)', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F59E0B' },
-  premiumFeatureIcon: { fontSize: 28, marginRight: 12 },
-  premiumFeatureContent: { flex: 1 },
-  premiumFeatureTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
-  premiumFeatureText: { fontSize: 12, color: '#B45309' },
-  premiumFeatureButton: { color: '#92400E', fontWeight: '700' },
+  premiumFeatureBanner: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(16), 
+    borderWidth: 1, 
+    borderColor: 'rgba(245, 158, 11, 0.3)' 
+  },
+  premiumFeatureContent: { 
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  premiumFeatureTitle: { 
+    fontSize: scale(14), 
+    fontWeight: '700', 
+    color: COLORS.yellow 
+  },
+  premiumFeatureText: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary 
+  },
   
-  invoiceAlert: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', borderRadius: 16, padding: 16, marginBottom: 16 },
-  invoiceAlertContent: { flex: 1, marginLeft: 12 },
-  invoiceAlertTitle: { fontSize: 15, fontWeight: '600', color: '#92400E' },
-  invoiceAlertArrow: { fontSize: 20, color: '#92400E' },
-  balanceCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
-  balanceLabel: { color: '#6B7280', fontSize: 14, marginBottom: 8 },
-  balanceAmount: { fontSize: 36, fontWeight: '700', marginBottom: 20 },
-  balanceRow: { flexDirection: 'row', width: '100%' },
-  balanceItem: { flex: 1, alignItems: 'center' },
-  balanceDivider: { width: 1, backgroundColor: '#E5E7EB' },
-  balanceItemIcon: { fontSize: 24, marginBottom: 4 },
-  balanceItemLabel: { color: '#6B7280', fontSize: 12, marginBottom: 4 },
-  balanceItemValue: { fontSize: 16, fontWeight: '600' },
-  quickActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  quickAction: { flex: 1, alignItems: 'center', padding: 14, borderRadius: 16, marginHorizontal: 4 },
-  quickActionIcon: { fontSize: 26, marginBottom: 6 },
-  quickActionText: { fontSize: 13, fontWeight: '600' },
-  section: { marginBottom: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  sectionAction: { color: '#8B5CF6', fontSize: 14, fontWeight: '600' },
-  emptyState: { backgroundColor: '#FFF', borderRadius: 16, padding: 32, alignItems: 'center' },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: '#6B7280', fontSize: 16, marginBottom: 8 },
-  emptySubtext: { color: '#9CA3AF', fontSize: 13, marginBottom: 16 },
-  emptyButton: { backgroundColor: '#8B5CF6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  emptyButtonText: { color: '#FFF', fontWeight: '600' },
-  tipsSection: { marginBottom: 16 },
-  tipsSectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  tipsScroll: { marginHorizontal: -20, paddingHorizontal: 20 },
-  tipCard: { width: 140, backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginRight: 12 },
-  tipCardPremium: { backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B' },
-  premiumBadge: { position: 'absolute', top: 8, right: 8, backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  premiumBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '700' },
-  tipIcon: { fontSize: 28, marginBottom: 6 },
-  tipTitle: { fontSize: 13, fontWeight: '600', color: '#111827' },
-  goalCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12 },
-  goalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  goalIcon: { fontSize: 32, marginRight: 12 },
-  goalInfo: { flex: 1 },
-  goalName: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 2 },
-  goalProgress: { fontSize: 13, color: '#6B7280' },
-  goalPercentage: { fontSize: 18, fontWeight: '700', color: '#8B5CF6' },
-  progressBarBg: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: 4 },
-  transactionItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, padding: 12, marginBottom: 8 },
-  transactionIconBox: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  transactionInfo: { flex: 1 },
-  transactionCategory: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  transactionDate: { fontSize: 12, color: '#9CA3AF' },
-  transactionAmount: { fontSize: 16, fontWeight: '600' },
-  invoiceCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
-  invoiceUrgencyBar: { width: 4 },
-  invoiceContent: { flex: 1, padding: 16 },
-  invoiceHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  invoiceVendor: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  invoiceAmount: { fontSize: 18, fontWeight: '700' },
-  invoiceDue: { fontSize: 13, fontWeight: '500' },
-  invoiceDetailStatus: { padding: 12, borderRadius: 12, marginBottom: 16, alignItems: 'center' },
-  invoiceDetailStatusText: { fontSize: 14, fontWeight: '600' },
-  invoiceDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  invoiceDetailLabel: { fontSize: 14, color: '#6B7280' },
-  invoiceDetailValue: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  payButton: { backgroundColor: '#10B981', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20 },
-  payButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  budgetCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12 },
-  budgetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  budgetIcon: { fontSize: 32, marginRight: 12 },
-  budgetInfo: { flex: 1 },
-  budgetCategory: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 2 },
-  budgetAmounts: { fontSize: 13, color: '#6B7280' },
-  budgetStatus: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  budgetStatusText: { fontSize: 14, fontWeight: '700' },
-  budgetFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  budgetRemaining: { fontSize: 13, color: '#6B7280' },
-  budgetStatusLabel: { fontSize: 13, fontWeight: '600' },
-  budgetHint: { textAlign: 'center', color: '#9CA3AF', fontSize: 12, marginTop: 8 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 20, textAlign: 'center' },
-  typeSelector: { flexDirection: 'row', marginBottom: 16 },
-  typeButton: { flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#F3F4F6', marginHorizontal: 4, alignItems: 'center' },
-  typeButtonActive: { backgroundColor: '#DCFCE7' },
-  typeButtonActiveExpense: { backgroundColor: '#FEE2E2' },
-  typeButtonText: { fontWeight: '600', color: '#6B7280' },
-  typeButtonTextActive: { color: '#111827' },
-  input: { backgroundColor: '#F3F4F6', borderRadius: 12, padding: 16, fontSize: 16, marginBottom: 12 },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 12, marginRight: 8, marginBottom: 8 },
-  categoryChipIcon: { marginRight: 6 },
-  categoryChipText: { fontSize: 13, color: '#374151' },
-  iconSelector: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 16 },
-  iconOption: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', margin: 4 },
-  iconOptionActive: { backgroundColor: '#EDE9FE', borderWidth: 2, borderColor: '#8B5CF6' },
-  iconOptionText: { fontSize: 22 },
-  goalPreview: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, marginBottom: 16 },
-  goalPreviewText: { textAlign: 'center', color: '#374151', marginBottom: 12 },
-  modalButtons: { flexDirection: 'row', marginTop: 8 },
-  cancelButton: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#F3F4F6', marginRight: 8, alignItems: 'center' },
-  cancelButtonText: { color: '#6B7280', fontWeight: '600' },
-  saveButton: { flex: 1, padding: 16, borderRadius: 12, marginLeft: 8, alignItems: 'center' },
-  saveButtonText: { color: '#FFF', fontWeight: '600' },
-  tipModalIcon: { fontSize: 56, textAlign: 'center', marginBottom: 12 },
-  tipModalTitle: { fontSize: 18, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 12 },
-  tipModalContent: { fontSize: 15, color: '#374151', lineHeight: 22, textAlign: 'center', marginBottom: 16 },
-  tipModalQuestion: { fontSize: 14, fontWeight: '600', color: '#6B7280', textAlign: 'center', marginBottom: 12 },
-  tipModalFeedback: { flexDirection: 'row', justifyContent: 'center', marginBottom: 12 },
-  feedbackButton: { paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, marginHorizontal: 6 },
-  feedbackButtonYes: { backgroundColor: '#DCFCE7' },
-  feedbackButtonNo: { backgroundColor: '#FEE2E2' },
-  feedbackButtonText: { fontSize: 15, fontWeight: '600' },
-  dismissButton: { alignItems: 'center', padding: 12 },
-  dismissButtonText: { color: '#9CA3AF', fontSize: 14 },
+  // Invoice Card
+  invoiceCard: { 
+    flexDirection: 'row', 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    marginBottom: scale(12), 
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  invoiceUrgencyBar: { 
+    width: scale(4) 
+  },
+  invoiceContent: { 
+    flex: 1, 
+    padding: scale(16) 
+  },
+  invoiceHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: scale(4) 
+  },
+  invoiceVendor: { 
+    fontSize: scale(16), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  invoiceAmount: { 
+    fontSize: scale(18), 
+    fontWeight: '700' 
+  },
+  invoiceDue: { 
+    fontSize: scale(13), 
+    fontWeight: '500' 
+  },
+  invoiceDetailStatus: { 
+    padding: scale(12), 
+    borderRadius: scale(12), 
+    marginBottom: scale(16), 
+    alignItems: 'center' 
+  },
+  invoiceDetailStatusText: { 
+    fontSize: scale(14), 
+    fontWeight: '600' 
+  },
+  invoiceDetailRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingVertical: scale(12), 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.cardBorder 
+  },
+  invoiceDetailLabel: { 
+    fontSize: scale(14), 
+    color: COLORS.textSecondary 
+  },
+  invoiceDetailValue: { 
+    fontSize: scale(14), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  payButton: { 
+    backgroundColor: COLORS.green, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    alignItems: 'center', 
+    marginTop: scale(20) 
+  },
+  payButtonText: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(16), 
+    fontWeight: '700' 
+  },
   
-  // Upgrade Modal
-  upgradeModalTitle: { fontSize: 28, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 8 },
-  upgradeModalSubtitle: { fontSize: 16, color: '#6B7280', textAlign: 'center', marginBottom: 24 },
-  planCard: { backgroundColor: '#F9FAFB', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 2, borderColor: '#8B5CF6' },
-  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  planName: { fontSize: 20, fontWeight: '700', color: '#8B5CF6' },
-  planPriceContainer: { flexDirection: 'row', alignItems: 'baseline' },
-  planPrice: { fontSize: 28, fontWeight: '700', color: '#111827' },
-  planPeriod: { fontSize: 14, color: '#6B7280' },
-  planYearly: { fontSize: 12, color: '#10B981', marginBottom: 12, marginTop: -8 },
-  planFeatures: { marginBottom: 16 },
-  planFeature: { fontSize: 14, color: '#374151', marginBottom: 8 },
-  planButton: { backgroundColor: '#8B5CF6', padding: 16, borderRadius: 12, alignItems: 'center' },
-  planButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  skipButton: { alignItems: 'center', padding: 12 },
-  skipButtonText: { color: '#9CA3AF', fontSize: 14 },
+  // Budget Card
+  budgetCard: { 
+    backgroundColor: COLORS.card, 
+    borderRadius: scale(16), 
+    padding: scale(16), 
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  budgetHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: scale(12) 
+  },
+  budgetIcon: { 
+    fontSize: scale(32), 
+    marginRight: scale(12) 
+  },
+  budgetInfo: { 
+    flex: 1 
+  },
+  budgetCategory: { 
+    fontSize: scale(16), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(2) 
+  },
+  budgetAmounts: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary 
+  },
+  budgetStatus: { 
+    paddingHorizontal: scale(12), 
+    paddingVertical: scale(6), 
+    borderRadius: scale(12) 
+  },
+  budgetStatusText: { 
+    fontSize: scale(14), 
+    fontWeight: '700' 
+  },
+  budgetFooter: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginTop: scale(12) 
+  },
+  budgetRemaining: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary 
+  },
+  budgetStatusLabel: { 
+    fontSize: scale(13), 
+    fontWeight: '600' 
+  },
+  budgetHint: { 
+    textAlign: 'center', 
+    color: COLORS.textMuted, 
+    fontSize: scale(12), 
+    marginTop: scale(8) 
+  },
+  
+  // Modal Styles
+  modalTitle: { 
+    fontSize: scale(20), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(20), 
+    textAlign: 'center' 
+  },
+  typeSelector: { 
+    flexDirection: 'row', 
+    marginBottom: scale(16),
+    gap: scale(8),
+  },
+  typeButton: { 
+    flex: 1, 
+    padding: scale(12), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    alignItems: 'center' 
+  },
+  typeButtonActiveIncome: { 
+    backgroundColor: 'rgba(34, 197, 94, 0.2)' 
+  },
+  typeButtonActiveExpense: { 
+    backgroundColor: 'rgba(244, 63, 94, 0.2)' 
+  },
+  typeButtonText: { 
+    fontWeight: '600', 
+    color: COLORS.textSecondary 
+  },
+  typeButtonTextActive: { 
+    color: COLORS.textPrimary 
+  },
+  input: { 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(12), 
+    padding: scale(16), 
+    fontSize: scale(16), 
+    marginBottom: scale(12),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  categoryGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginBottom: scale(12),
+    gap: scale(8),
+  },
+  categoryChip: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(20), 
+    paddingVertical: scale(8), 
+    paddingHorizontal: scale(12),
+  },
+  categoryChipIcon: { 
+    marginRight: scale(6) 
+  },
+  categoryChipText: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary 
+  },
+  iconSelector: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    justifyContent: 'center', 
+    marginBottom: scale(16),
+    gap: scale(8),
+  },
+  iconOption: { 
+    width: scale(48), 
+    height: scale(48), 
+    borderRadius: scale(24), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  iconOptionActive: { 
+    backgroundColor: 'rgba(93, 222, 216, 0.2)', 
+    borderWidth: 2, 
+    borderColor: COLORS.teal 
+  },
+  iconOptionText: { 
+    fontSize: scale(22) 
+  },
+  goalPreview: { 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(12), 
+    padding: scale(16), 
+    marginBottom: scale(16) 
+  },
+  goalPreviewText: { 
+    textAlign: 'center', 
+    color: COLORS.textSecondary, 
+    marginBottom: scale(12) 
+  },
+  modalButtons: { 
+    flexDirection: 'row', 
+    marginTop: scale(8),
+    gap: scale(8),
+  },
+  cancelButton: { 
+    flex: 1, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    alignItems: 'center' 
+  },
+  cancelButtonText: { 
+    color: COLORS.textSecondary, 
+    fontWeight: '600' 
+  },
+  saveButton: { 
+    flex: 1, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    alignItems: 'center' 
+  },
+  saveButtonText: { 
+    color: COLORS.textPrimary, 
+    fontWeight: '600' 
+  },
+  
+  // Tip Modal
+  tipModalIcon: { 
+    fontSize: scale(56), 
+    textAlign: 'center', 
+    marginBottom: scale(12) 
+  },
+  tipModalTitle: { 
+    fontSize: scale(18), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary, 
+    textAlign: 'center', 
+    marginBottom: scale(12) 
+  },
+  tipModalContent: { 
+    fontSize: scale(15), 
+    color: COLORS.textSecondary, 
+    lineHeight: scale(22), 
+    textAlign: 'center', 
+    marginBottom: scale(16) 
+  },
+  tipModalQuestion: { 
+    fontSize: scale(14), 
+    fontWeight: '600', 
+    color: COLORS.textMuted, 
+    textAlign: 'center', 
+    marginBottom: scale(12) 
+  },
+  tipModalFeedback: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    marginBottom: scale(12),
+    gap: scale(12),
+  },
+  feedbackButton: { 
+    paddingHorizontal: scale(28), 
+    paddingVertical: scale(12), 
+    borderRadius: scale(12),
+  },
+  feedbackButtonYes: { 
+    backgroundColor: 'rgba(34, 197, 94, 0.2)' 
+  },
+  feedbackButtonNo: { 
+    backgroundColor: 'rgba(244, 63, 94, 0.2)' 
+  },
+  feedbackButtonText: { 
+    fontSize: scale(15), 
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  dismissButton: { 
+    alignItems: 'center', 
+    padding: scale(12) 
+  },
+  dismissButtonText: { 
+    color: COLORS.textMuted, 
+    fontSize: scale(14) 
+  },
+  
+  // Upgrade Modal - MEJORADO
+  upgradeHeader: {
+    alignItems: 'center',
+    marginBottom: scale(20),
+  },
+  upgradeDiamondIcon: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+  },
+  upgradeModalTitle: { 
+    fontSize: scale(26), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary, 
+    textAlign: 'center', 
+  },
+  upgradeModalSubtitle: { 
+    fontSize: scale(14), 
+    color: COLORS.textSecondary, 
+    textAlign: 'center', 
+    marginTop: scale(8),
+  },
+  planCardPremium: { 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(20), 
+    padding: scale(20), 
+    marginBottom: scale(16), 
+    borderWidth: 2, 
+    borderColor: COLORS.green,
+    position: 'relative',
+  },
+  planCardPro: { 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(20), 
+    padding: scale(20), 
+    marginBottom: scale(16), 
+    borderWidth: 2, 
+    borderColor: COLORS.teal,
+    position: 'relative',
+  },
+  planBadgePopular: {
+    position: 'absolute',
+    top: scale(-10),
+    right: scale(16),
+    backgroundColor: COLORS.green,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  planBadgeBestValue: {
+    position: 'absolute',
+    top: scale(-10),
+    right: scale(16),
+    backgroundColor: COLORS.teal,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  planBadgeText: {
+    color: COLORS.background,
+    fontSize: scale(10),
+    fontWeight: '700',
+  },
+  planNamePremium: { 
+    fontSize: scale(22), 
+    fontWeight: '700', 
+    color: COLORS.green,
+    marginBottom: scale(8),
+    marginTop: scale(4),
+  },
+  planNamePro: { 
+    fontSize: scale(22), 
+    fontWeight: '700', 
+    color: COLORS.teal,
+    marginBottom: scale(8),
+    marginTop: scale(4),
+  },
+  planPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: scale(4),
+  },
+  planPriceCurrency: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  planPriceAmount: {
+    fontSize: scale(36),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  planPricePeriod: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginLeft: scale(4),
+  },
+  planYearlyPrice: { 
+    fontSize: scale(12), 
+    color: COLORS.lime, 
+    marginBottom: scale(16),
+  },
+  planFeaturesList: {
+    marginBottom: scale(16),
+  },
+  planFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(10),
+  },
+  planFeatureIconGreen: {
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  planFeatureIconTeal: {
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    backgroundColor: 'rgba(93, 222, 216, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  planFeatureText: { 
+    fontSize: scale(14), 
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  planButtonPremium: { 
+    backgroundColor: COLORS.green, 
+    padding: scale(16), 
+    borderRadius: scale(14), 
+    alignItems: 'center' 
+  },
+  planButtonPro: { 
+    backgroundColor: COLORS.teal, 
+    padding: scale(16), 
+    borderRadius: scale(14), 
+    alignItems: 'center' 
+  },
+  planButtonTextPro: { 
+    color: COLORS.background, 
+    fontSize: scale(16), 
+    fontWeight: '700' 
+  },
+  planButtonText: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(16), 
+    fontWeight: '700' 
+  },
+  skipButton: { 
+    alignItems: 'center', 
+    padding: scale(12) 
+  },
+  skipButtonText: { 
+    color: COLORS.textMuted, 
+    fontSize: scale(14) 
+  },
 });

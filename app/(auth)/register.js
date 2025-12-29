@@ -1,6 +1,5 @@
 // app/(auth)/register.js
-// ISSY Resident App - Register Screen
-
+// ISSY Resident App - Register Screen - ProHome Dark Theme
 import { useState } from 'react';
 import {
   View,
@@ -14,11 +13,30 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  Dimensions,
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  lime: '#D4FE48',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+};
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -29,6 +47,8 @@ export default function Register() {
   const [invitationCode, setInvitationCode] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signUp, verifyInvitation } = useAuth();
   const router = useRouter();
 
@@ -78,7 +98,6 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Si tiene código de invitación, verificarlo primero
       let invitationData = null;
       if (invitationCode.trim()) {
         const invResult = await verifyInvitation(invitationCode.trim().toUpperCase());
@@ -90,7 +109,6 @@ export default function Register() {
         invitationData = invResult.data;
       }
 
-      // Registrar usuario
       const result = await signUp({
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -103,12 +121,10 @@ export default function Register() {
         const user = result.data?.user;
         
         if (user?.location_id || invitationData) {
-          // Tiene ubicación, ir al home
           Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido creada exitosamente', [
             { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
           ]);
         } else {
-          // Sin ubicación, ir a unirse a comunidad
           Alert.alert('¡Cuenta creada!', 'Ahora únete a tu comunidad', [
             { text: 'OK', onPress: () => router.replace('/join-community') }
           ]);
@@ -124,7 +140,7 @@ export default function Register() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -132,16 +148,20 @@ export default function Register() {
         <ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
           <View style={styles.header}>
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity style={styles.backButton}>
-                <Text style={styles.backButtonText}>← Volver</Text>
-              </TouchableOpacity>
-            </Link>
-            <Text style={styles.title}>Crear Cuenta</Text>
-            <Text style={styles.subtitle}>Únete a ISSY</Text>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>Crear Cuenta</Text>
+              <Text style={styles.subtitle}>Únete a ISSY</Text>
+            </View>
           </View>
 
           {/* Form */}
@@ -151,10 +171,11 @@ export default function Register() {
               <TextInput
                 style={styles.input}
                 placeholder="Juan Pérez"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.textMuted}
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
+                editable={!loading}
               />
             </View>
 
@@ -163,12 +184,13 @@ export default function Register() {
               <TextInput
                 style={styles.input}
                 placeholder="tu@email.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!loading}
               />
             </View>
 
@@ -177,55 +199,83 @@ export default function Register() {
               <TextInput
                 style={styles.input}
                 placeholder="+504 9999-9999"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.textMuted}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+                editable={!loading}
               />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Contraseña *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Mínimo 6 caracteres"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Mínimo 6 caracteres"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={20} 
+                    color={COLORS.textMuted} 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Confirmar contraseña *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Repite tu contraseña"
-                placeholderTextColor="#9CA3AF"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Repite tu contraseña"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Ionicons 
+                    name={showConfirmPassword ? 'eye-off' : 'eye'} 
+                    size={20} 
+                    color={COLORS.textMuted} 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Invitation Code */}
             <View style={styles.invitationContainer}>
               <Text style={styles.invitationLabel}>¿Tienes un código de invitación?</Text>
               <TextInput
-                style={[styles.input, styles.invitationInput]}
+                style={styles.invitationInput}
                 placeholder="Ej: ABC123"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={COLORS.textMuted}
                 value={invitationCode}
                 onChangeText={(text) => setInvitationCode(text.toUpperCase())}
                 autoCapitalize="characters"
                 maxLength={20}
+                editable={!loading}
               />
               <Text style={styles.invitationHint}>
                 Si tu administrador te dio un código, ingrésalo aquí
               </Text>
             </View>
 
-            {/* Terms and Conditions Checkbox */}
+            {/* Terms Checkbox */}
             <TouchableOpacity 
               style={styles.termsContainer}
               onPress={() => setAcceptedTerms(!acceptedTerms)}
@@ -233,7 +283,7 @@ export default function Register() {
             >
               <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
                 {acceptedTerms && (
-                  <Ionicons name="checkmark" size={16} color="#FFF" />
+                  <Ionicons name="checkmark" size={16} color={COLORS.background} />
                 )}
               </View>
               <Text style={styles.termsText}>
@@ -255,7 +305,7 @@ export default function Register() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={COLORS.background} />
               ) : (
                 <Text style={styles.buttonText}>Crear Cuenta</Text>
               )}
@@ -264,10 +314,10 @@ export default function Register() {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿Ya tienes cuenta?</Text>
+            <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity>
-                <Text style={styles.footerLink}> Inicia Sesión</Text>
+                <Text style={styles.footerLink}>Inicia Sesión</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -280,140 +330,175 @@ export default function Register() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 40,
+    paddingHorizontal: scale(32),
+    paddingBottom: scale(40),
   },
   header: {
-    marginBottom: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: scale(16),
+    marginBottom: scale(16),
   },
   backButton: {
-    marginBottom: 16,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
-  backButtonText: {
-    color: '#6366F1',
-    fontSize: 16,
+  headerText: {
+    marginLeft: scale(16),
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontSize: scale(26),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   form: {
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: scale(18),
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.backgroundTertiary,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#1F2937',
+    borderColor: COLORS.cardBorder,
+    borderRadius: scale(14),
+    height: scale(52),
+    paddingHorizontal: scale(16),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    borderRadius: scale(14),
+    height: scale(52),
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: scale(16),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+  },
+  eyeButton: {
+    paddingHorizontal: scale(14),
+    height: '100%',
+    justifyContent: 'center',
   },
   invitationContainer: {
-    marginTop: 8,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
+    marginTop: scale(8),
+    marginBottom: scale(20),
+    padding: scale(16),
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: scale(14),
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
   },
   invitationLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#4F46E5',
-    marginBottom: 12,
+    color: COLORS.purple,
+    marginBottom: scale(12),
   },
   invitationInput: {
-    backgroundColor: '#fff',
-    borderColor: '#C7D2FE',
+    backgroundColor: COLORS.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    borderRadius: scale(12),
+    height: scale(48),
+    paddingHorizontal: scale(16),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
   },
   invitationHint: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 8,
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(8),
   },
   termsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 24,
-    paddingHorizontal: 4,
+    marginBottom: scale(24),
+    paddingHorizontal: scale(4),
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(6),
     borderWidth: 2,
-    borderColor: '#D1D5DB',
-    marginRight: 12,
+    borderColor: COLORS.cardBorder,
+    marginRight: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.backgroundTertiary,
   },
   checkboxChecked: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   termsText: {
     flex: 1,
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 20,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    lineHeight: scale(20),
   },
   termsLink: {
-    color: '#6366F1',
+    color: COLORS.teal,
     fontWeight: '600',
   },
   button: {
-    backgroundColor: '#6366F1',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.lime,
+    borderRadius: scale(14),
+    height: scale(54),
     alignItems: 'center',
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    justifyContent: 'center',
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: COLORS.background,
+    fontSize: scale(16),
     fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: scale(32),
   },
   footerText: {
-    color: '#6B7280',
-    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontSize: scale(15),
   },
   footerLink: {
-    color: '#6366F1',
-    fontSize: 14,
+    color: COLORS.teal,
+    fontSize: scale(15),
     fontWeight: '600',
   },
 });

@@ -1,5 +1,5 @@
 // app/(tabs)/payments.js
-// ISSY Resident App - Payments Screen (Diseño Figma)
+// ISSY Resident App - Payments Screen - ProHome Dark Theme
 
 import { useState, useEffect, useCallback } from 'react';
 import { 
@@ -11,33 +11,45 @@ import {
   ActivityIndicator, 
   RefreshControl,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { getMyPayments } from '../../src/services/api';
 
-// Colors from Figma
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
 const COLORS = {
-  background: '#FAFAFA',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#707883',
-  grayLight: '#F2F2F2',
-  purple: '#7B8CEF',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  teal: '#5DDED8',
+  tealDark: '#4BCDC7',
   lime: '#D4FE48',
-  cyan: '#11DAE9',
-  navy: '#130F26',
-  primary: '#009FF5',
+  purple: '#6366F1',
+  purpleLight: '#818CF8',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  green: '#10B981',
+  red: '#EF4444',
+  yellow: '#F59E0B',
+  blue: '#3B82F6',
 };
 
 export default function Payments() {
+  const router = useRouter();
   const { profile } = useAuth();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('pending'); // pending, history, card
+  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     loadPayments();
@@ -63,7 +75,7 @@ export default function Payments() {
   }, []);
 
   const formatCurrency = (amount) => {
-    return `L.${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateString) => {
@@ -71,7 +83,7 @@ export default function Payments() {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-HN', { 
       day: 'numeric', 
-      month: 'long',
+      month: 'short',
       year: 'numeric' 
     });
   };
@@ -82,6 +94,10 @@ export default function Payments() {
 
   const handlePaySingle = (payment) => {
     Alert.alert('Pagar', `Pagar ${formatCurrency(payment.amount || payment.rent_amount)}`);
+  };
+
+  const handleGoToMethods = () => {
+    router.push('/payment-methods');
   };
 
   // Filter payments by status
@@ -105,9 +121,9 @@ export default function Payments() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.purple} />
           <Text style={styles.loadingText}>Cargando pagos...</Text>
         </View>
       </SafeAreaView>
@@ -124,91 +140,125 @@ export default function Payments() {
           <RefreshControl 
             refreshing={refreshing} 
             onRefresh={onRefresh} 
-            colors={[COLORS.primary]} 
-            tintColor={COLORS.primary}
+            tintColor={COLORS.purple}
           />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Mis Pagos</Text>
-          <Text style={styles.subtitle}>Pagos de mi comunidad</Text>
+          <View>
+            <Text style={styles.title}>Mis Pagos</Text>
+            <Text style={styles.subtitle}>Gestiona tus pagos de comunidad</Text>
+          </View>
+          <TouchableOpacity style={styles.methodsBtn} onPress={handleGoToMethods}>
+            <Ionicons name="card-outline" size={22} color={COLORS.textPrimary} />
+          </TouchableOpacity>
         </View>
 
         {/* Balance Card */}
         <View style={styles.balanceCard}>
-          <View style={styles.balanceLeft}>
-            <Text style={styles.balanceLabel}>Saldo Total</Text>
-            <Text style={styles.balanceAmount}>{formatCurrency(totalPending)}</Text>
+          <View style={styles.balanceDecoration}>
+            <View style={[styles.decoCircle, styles.decoCircle1]} />
+            <View style={[styles.decoCircle, styles.decoCircle2]} />
           </View>
-          
-          {totalPending > 0 && (
-            <TouchableOpacity 
-              style={styles.payAllButton}
-              onPress={handlePayAll}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.payAllButtonText}>Pagar Todo</Text>
-              <View style={styles.payAllArrow}>
-                <Ionicons name="arrow-forward" size={18} color={COLORS.lime} />
-              </View>
-            </TouchableOpacity>
-          )}
+          <View style={styles.balanceContent}>
+            <View style={styles.balanceLeft}>
+              <Text style={styles.balanceLabel}>Saldo Pendiente</Text>
+              <Text style={styles.balanceAmount}>{formatCurrency(totalPending)}</Text>
+              <Text style={styles.balanceCount}>
+                {pendingPayments.length} {pendingPayments.length === 1 ? 'pago pendiente' : 'pagos pendientes'}
+              </Text>
+            </View>
+            
+            {totalPending > 0 && (
+              <TouchableOpacity 
+                style={styles.payAllButton}
+                onPress={handlePayAll}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.payAllButtonText}>Pagar</Text>
+                <View style={styles.payAllArrow}>
+                  <Ionicons name="arrow-forward" size={16} color={COLORS.background} />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
           <TouchableOpacity 
-            style={styles.tab}
+            style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
             onPress={() => setActiveTab('pending')}
           >
-            <Text style={[
-              styles.tabText, 
-              activeTab === 'pending' && styles.tabTextActive
-            ]}>
+            <Ionicons 
+              name="time-outline" 
+              size={18} 
+              color={activeTab === 'pending' ? COLORS.background : COLORS.textSecondary} 
+            />
+            <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
               Pendientes
             </Text>
+            {pendingPayments.length > 0 && (
+              <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgeActive]}>
+                <Text style={[styles.tabBadgeText, activeTab === 'pending' && styles.tabBadgeTextActive]}>
+                  {pendingPayments.length}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.tab}
+            style={[styles.tab, activeTab === 'history' && styles.tabActive]}
             onPress={() => setActiveTab('history')}
           >
-            <Text style={[
-              styles.tabText, 
-              activeTab === 'history' && styles.tabTextActive
-            ]}>
+            <Ionicons 
+              name="checkmark-done-outline" 
+              size={18} 
+              color={activeTab === 'history' ? COLORS.background : COLORS.textSecondary} 
+            />
+            <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
               Historial
             </Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.tab}
+            style={[styles.tab, activeTab === 'card' && styles.tabActive]}
             onPress={() => setActiveTab('card')}
           >
-            <Text style={[
-              styles.tabText, 
-              activeTab === 'card' && styles.tabTextActive
-            ]}>
-              Tarjeta
+            <Ionicons 
+              name="card-outline" 
+              size={18} 
+              color={activeTab === 'card' ? COLORS.background : COLORS.textSecondary} 
+            />
+            <Text style={[styles.tabText, activeTab === 'card' && styles.tabTextActive]}>
+              Tarjetas
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Payment Cards */}
+        {/* Content */}
         {activeTab === 'card' ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="card-outline" size={48} color="#D1D5DB" />
+            <View style={styles.emptyIconBox}>
+              <Ionicons name="card-outline" size={48} color={COLORS.textMuted} />
+            </View>
             <Text style={styles.emptyTitle}>Métodos de Pago</Text>
-            <Text style={styles.emptyText}>Próximamente podrás agregar tus tarjetas</Text>
+            <Text style={styles.emptyText}>Agrega tus tarjetas para pagar más rápido</Text>
+            <TouchableOpacity style={styles.emptyButton} onPress={handleGoToMethods}>
+              <Ionicons name="add" size={20} color={COLORS.textPrimary} />
+              <Text style={styles.emptyButtonText}>Agregar Tarjeta</Text>
+            </TouchableOpacity>
           </View>
         ) : currentPayments.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons 
-              name={activeTab === 'pending' ? 'checkmark-circle-outline' : 'receipt-outline'} 
-              size={48} 
-              color="#D1D5DB" 
-            />
+            <View style={styles.emptyIconBox}>
+              <Ionicons 
+                name={activeTab === 'pending' ? 'checkmark-circle-outline' : 'receipt-outline'} 
+                size={48} 
+                color={COLORS.textMuted} 
+              />
+            </View>
             <Text style={styles.emptyTitle}>
               {activeTab === 'pending' ? '¡Todo al día!' : 'Sin historial'}
             </Text>
@@ -219,58 +269,74 @@ export default function Payments() {
             </Text>
           </View>
         ) : (
-          currentPayments.map((payment) => (
-            <View key={payment.id} style={styles.paymentCard}>
-              {/* Gradient Bar */}
-              <LinearGradient
-                colors={[COLORS.lime, COLORS.cyan]}
-                style={styles.gradientBar}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              />
-              
-              {/* Payment Content */}
-              <View style={styles.paymentContent}>
-                <View style={styles.paymentInfo}>
-                  <Text style={styles.paymentTitle}>
-                    {payment.charge_type || payment.description || 'Cuota de Mantenimiento'}
-                  </Text>
-                  <Text style={styles.paymentAmount}>
-                    {formatCurrency(payment.amount || payment.rent_amount)}
-                  </Text>
-                  <Text style={styles.paymentDescription} numberOfLines={2}>
-                    Descripción: {payment.description || `Cuota de mes a mes mes de ${payment.period_month}/${payment.period_year}`}
-                  </Text>
-                  <Text style={styles.paymentDueDate}>
-                    Vence: {formatDate(payment.due_date)}
-                  </Text>
-                </View>
+          <View style={styles.paymentsList}>
+            {currentPayments.map((payment) => (
+              <View key={payment.id} style={styles.paymentCard}>
+                {/* Status Indicator */}
+                <View style={[styles.statusBar, { 
+                  backgroundColor: payment.status === 'paid' ? COLORS.green : 
+                                  payment.status === 'overdue' ? COLORS.red : COLORS.yellow 
+                }]} />
                 
-                {/* Pay Button - Only show for pending */}
-                {activeTab === 'pending' && (
-                  <TouchableOpacity 
-                    style={styles.payButton}
-                    onPress={() => handlePaySingle(payment)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.payButtonText}>Pagar</Text>
-                    <Ionicons name="arrow-forward" size={16} color={COLORS.black} />
-                  </TouchableOpacity>
-                )}
-                
-                {/* Paid Badge - Only show for history */}
-                {activeTab === 'history' && (
-                  <View style={styles.paidBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                    <Text style={styles.paidBadgeText}>Pagado</Text>
+                {/* Payment Content */}
+                <View style={styles.paymentContent}>
+                  <View style={styles.paymentTop}>
+                    <View style={styles.paymentInfo}>
+                      <View style={[styles.paymentIconBox, {
+                        backgroundColor: payment.status === 'paid' ? 'rgba(16, 185, 129, 0.15)' :
+                                        payment.status === 'overdue' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)'
+                      }]}>
+                        <Ionicons 
+                          name={payment.status === 'paid' ? 'checkmark-circle' : 
+                                payment.status === 'overdue' ? 'alert-circle' : 'time'} 
+                          size={22} 
+                          color={payment.status === 'paid' ? COLORS.green : 
+                                payment.status === 'overdue' ? COLORS.red : COLORS.yellow}
+                        />
+                      </View>
+                      <View style={styles.paymentDetails}>
+                        <Text style={styles.paymentTitle}>
+                          {payment.charge_type || payment.description || 'Cuota de Mantenimiento'}
+                        </Text>
+                        <Text style={styles.paymentDueDate}>
+                          {payment.status === 'paid' ? 'Pagado: ' : 'Vence: '}{formatDate(payment.due_date || payment.payment_date)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.paymentAmount, {
+                      color: payment.status === 'paid' ? COLORS.green : 
+                            payment.status === 'overdue' ? COLORS.red : COLORS.textPrimary
+                    }]}>
+                      {formatCurrency(payment.amount || payment.rent_amount)}
+                    </Text>
                   </View>
-                )}
+                  
+                  {/* Pay Button - Only show for pending */}
+                  {activeTab === 'pending' && (
+                    <TouchableOpacity 
+                      style={styles.payButton}
+                      onPress={() => handlePaySingle(payment)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.payButtonText}>Pagar Ahora</Text>
+                      <Ionicons name="arrow-forward" size={16} color={COLORS.background} />
+                    </TouchableOpacity>
+                  )}
+                  
+                  {/* Paid Badge - Only show for history */}
+                  {activeTab === 'history' && (
+                    <View style={styles.paidBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
+                      <Text style={styles.paidBadgeText}>Pagado</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            </View>
-          ))
+            ))}
+          </View>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: scale(100) }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -285,7 +351,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 21,
+    paddingHorizontal: scale(20),
   },
   loadingContainer: {
     flex: 1,
@@ -293,69 +359,116 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    color: COLORS.gray,
-    fontSize: 14,
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
   },
 
   // Header
   header: {
-    paddingTop: 20,
-    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: scale(16),
+    paddingBottom: scale(12),
   },
   title: {
-    fontSize: 22,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.black,
-    marginTop: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
+  },
+  methodsBtn: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
 
   // Balance Card
   balanceCard: {
     backgroundColor: COLORS.purple,
-    borderRadius: 13,
-    padding: 20,
+    borderRadius: scale(20),
+    padding: scale(20),
+    marginTop: scale(8),
+    overflow: 'hidden',
+  },
+  balanceDecoration: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  decoCircle: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  decoCircle1: {
+    width: scale(150),
+    height: scale(150),
+    top: scale(-50),
+    right: scale(-30),
+  },
+  decoCircle2: {
+    width: scale(100),
+    height: scale(100),
+    bottom: scale(-40),
+    left: scale(-20),
+  },
+  balanceContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    zIndex: 1,
   },
   balanceLeft: {
     flex: 1,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: COLORS.black,
+    fontSize: scale(13),
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   balanceAmount: {
-    fontSize: 22,
+    fontSize: scale(28),
     fontWeight: '700',
-    color: COLORS.black,
-    marginTop: 4,
+    color: COLORS.textPrimary,
+    marginTop: scale(4),
+  },
+  balanceCount: {
+    fontSize: scale(12),
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: scale(4),
   },
   payAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.navy,
-    paddingVertical: 12,
-    paddingLeft: 20,
-    paddingRight: 8,
-    borderRadius: 30,
+    backgroundColor: COLORS.lime,
+    paddingVertical: scale(12),
+    paddingLeft: scale(20),
+    paddingRight: scale(6),
+    borderRadius: scale(30),
+    gap: scale(8),
   },
   payAllButtonText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    marginRight: 8,
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.background,
   },
   payAllArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'transparent',
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -363,119 +476,191 @@ const styles = StyleSheet.create({
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    marginTop: 20,
-    padding: 4,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    marginTop: scale(20),
+    padding: scale(4),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    gap: scale(6),
+  },
+  tabActive: {
+    backgroundColor: COLORS.lime,
   },
   tabText: {
-    fontSize: 14,
-    color: COLORS.black,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   tabTextActive: {
-    color: COLORS.purple,
-    fontWeight: '500',
+    color: COLORS.background,
+    fontWeight: '600',
+  },
+  tabBadge: {
+    backgroundColor: COLORS.red,
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(10),
+    minWidth: scale(20),
+    alignItems: 'center',
+  },
+  tabBadgeActive: {
+    backgroundColor: COLORS.background,
+  },
+  tabBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  tabBadgeTextActive: {
+    color: COLORS.lime,
   },
 
   // Empty State
   emptyCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    padding: 40,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(20),
+    padding: scale(40),
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: scale(20),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  emptyIconBox: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: COLORS.backgroundTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
-    marginTop: 16,
+    color: COLORS.textPrimary,
   },
   emptyText: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginTop: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
     textAlign: 'center',
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.purple,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(20),
+    borderRadius: scale(12),
+    marginTop: scale(20),
+    gap: scale(8),
+  },
+  emptyButtonText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+
+  // Payments List
+  paymentsList: {
+    marginTop: scale(16),
   },
 
   // Payment Card
   paymentCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    marginTop: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    marginBottom: scale(12),
     flexDirection: 'row',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
-  gradientBar: {
-    width: 11,
+  statusBar: {
+    width: scale(4),
   },
   paymentContent: {
     flex: 1,
-    padding: 16,
-    paddingLeft: 12,
+    padding: scale(16),
+  },
+  paymentTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   paymentInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     flex: 1,
-    marginRight: 12,
+    marginRight: scale(12),
+  },
+  paymentIconBox: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  paymentDetails: {
+    flex: 1,
   },
   paymentTitle: {
-    fontSize: 14,
-    color: COLORS.black,
-  },
-  paymentAmount: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginTop: 4,
-  },
-  paymentDescription: {
-    fontSize: 10,
-    color: COLORS.gray,
-    marginTop: 4,
-    lineHeight: 14,
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
   },
   paymentDueDate: {
-    fontSize: 10,
-    color: COLORS.gray,
-    marginTop: 8,
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
+  },
+  paymentAmount: {
+    fontSize: scale(18),
+    fontWeight: '700',
   },
 
   // Pay Button
   payButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.lime,
-    paddingVertical: 12,
-    paddingLeft: 16,
-    paddingRight: 12,
-    borderRadius: 30,
-    gap: 8,
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    marginTop: scale(12),
+    gap: scale(8),
   },
   payButtonText: {
-    fontSize: 14,
-    color: COLORS.black,
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.background,
   },
 
   // Paid Badge
   paidBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingVertical: scale(6),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(20),
+    marginTop: scale(12),
+    gap: scale(4),
   },
   paidBadgeText: {
-    fontSize: 12,
-    color: '#059669',
+    fontSize: scale(12),
+    color: COLORS.green,
     fontWeight: '500',
   },
 });

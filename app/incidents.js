@@ -1,5 +1,5 @@
 // app/incidents.js
-// ISSY Resident App - Incidents Screen
+// ISSY Resident App - Incidents Screen (ProHome Dark Theme)
 
 import { useState, useCallback } from 'react';
 import {
@@ -16,7 +16,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../src/context/AuthContext';
 import { getIncidents } from '../src/services/api';
 import IncidentFormModal from '../src/components/IncidentFormModal';
@@ -24,29 +23,47 @@ import IncidentFormModal from '../src/components/IncidentFormModal';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+// ProHome Dark Theme Colors
 const COLORS = {
+  // Backgrounds
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  
+  // Cards
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  cardHover: 'rgba(255, 255, 255, 0.08)',
+  
+  // Accent colors
+  teal: '#5DDED8',
+  tealDark: '#4BCDC7',
   lime: '#D4FE48',
+  
+  // Text
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  
+  // Status colors
   cyan: '#009FF5',
-  cyanLight: '#11D6E6',
-  black: '#000000',
-  white: '#FFFFFF',
-  background: '#FAFAFA',
-  gray: '#707883',
-  grayLight: '#F2F2F2',
   red: '#FA5967',
+  yellow: '#F59E0B',
+  green: '#10B981',
+  gray: '#6B7280',
 };
 
 const STATUS_CONFIG = {
-  reported: { label: 'REPORTADO', bg: COLORS.cyan, color: COLORS.white },
-  in_progress: { label: 'EN PROCESO', bg: COLORS.lime, color: COLORS.black },
-  resolved: { label: 'RESUELTO', bg: COLORS.cyanLight, color: COLORS.black },
-  closed: { label: 'CERRADO', bg: COLORS.gray, color: COLORS.white },
+  reported: { label: 'REPORTADO', bg: COLORS.cyan, color: '#FFFFFF' },
+  in_progress: { label: 'EN PROCESO', bg: COLORS.yellow, color: '#000000' },
+  resolved: { label: 'RESUELTO', bg: COLORS.green, color: '#FFFFFF' },
+  closed: { label: 'CERRADO', bg: COLORS.gray, color: '#FFFFFF' },
 };
 
 const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: COLORS.cyanLight },
+  low: { label: 'Baja', color: COLORS.teal },
   medium: { label: 'Media', color: COLORS.cyan },
-  high: { label: 'Alta', color: COLORS.lime },
+  high: { label: 'Alta', color: COLORS.yellow },
   critical: { label: 'Crítica', color: COLORS.red },
 };
 
@@ -57,7 +74,7 @@ export default function IncidentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, my_incidents
+  const [filter, setFilter] = useState('all');
 
   const loadIncidents = async (showLoader = true) => {
     try {
@@ -105,6 +122,7 @@ export default function IncidentsScreen() {
 
   const renderIncidentCard = (incident) => {
     const status = STATUS_CONFIG[incident.status] || STATUS_CONFIG.reported;
+    const severity = SEVERITY_CONFIG[incident.severity];
     
     return (
       <TouchableOpacity
@@ -113,11 +131,8 @@ export default function IncidentsScreen() {
         onPress={() => router.push(`/incident-detail?id=${incident.id}`)}
         activeOpacity={0.7}
       >
-        {/* Left gradient bar */}
-        <LinearGradient
-          colors={[COLORS.lime, COLORS.cyanLight]}
-          style={styles.gradientBar}
-        />
+        {/* Left accent bar */}
+        <View style={[styles.accentBar, { backgroundColor: severity?.color || COLORS.teal }]} />
         
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -131,7 +146,18 @@ export default function IncidentsScreen() {
             </View>
           </View>
           
-          <Text style={styles.incidentDate}>{formatDate(incident.created_at)}</Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={12} color={COLORS.teal} />
+            <Text style={styles.incidentDate}>{formatDate(incident.created_at)}</Text>
+            {severity && (
+              <>
+                <View style={styles.metaDot} />
+                <Text style={[styles.severityText, { color: severity.color }]}>
+                  {severity.label}
+                </Text>
+              </>
+            )}
+          </View>
           
           {incident.description && (
             <Text style={styles.incidentDescription} numberOfLines={2}>
@@ -141,7 +167,7 @@ export default function IncidentsScreen() {
         </View>
         
         <View style={styles.cardArrow}>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
         </View>
       </TouchableOpacity>
     );
@@ -149,7 +175,9 @@ export default function IncidentsScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="alert-circle-outline" size={64} color={COLORS.gray} />
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.teal} />
+      </View>
       <Text style={styles.emptyTitle}>No hay incidentes</Text>
       <Text style={styles.emptySubtitle}>
         {filter === 'my_incidents' 
@@ -164,7 +192,7 @@ export default function IncidentsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Incidentes</Text>
         <View style={styles.headerRight} />
@@ -174,7 +202,12 @@ export default function IncidentsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.teal}
+            colors={[COLORS.teal]} 
+          />
         }
       >
         {/* Subtitle */}
@@ -187,9 +220,13 @@ export default function IncidentsScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.createButtonIcon}>
-            <Ionicons name="add" size={24} color={COLORS.black} />
+            <Ionicons name="add" size={22} color={COLORS.background} />
           </View>
-          <Text style={styles.createButtonText}>Generar Incidente</Text>
+          <View style={styles.createButtonContent}>
+            <Text style={styles.createButtonText}>Generar Incidente</Text>
+            <Text style={styles.createButtonSubtext}>Reporta un problema o situación</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.background} />
         </TouchableOpacity>
 
         {/* Filter Tabs */}
@@ -212,10 +249,18 @@ export default function IncidentsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Section Header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {filter === 'my_incidents' ? 'Mis Incidentes' : 'Incidentes Recientes'}
+          </Text>
+          <Text style={styles.sectionCount}>{incidents.length}</Text>
+        </View>
+
         {/* Incidents List */}
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color={COLORS.cyan} />
+            <ActivityIndicator size="large" color={COLORS.teal} />
             <Text style={styles.loaderText}>Cargando incidentes...</Text>
           </View>
         ) : incidents.length === 0 ? (
@@ -244,36 +289,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
     paddingVertical: scale(12),
-    backgroundColor: COLORS.background,
   },
   backButton: {
     width: scale(40),
     height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: scale(22),
+    fontSize: scale(20),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   headerRight: {
     width: scale(40),
   },
+  
+  // Content
   scrollContent: {
-    paddingHorizontal: scale(21),
+    paddingHorizontal: scale(20),
   },
   subtitle: {
     fontSize: scale(14),
-    fontWeight: '400',
-    color: COLORS.black,
-    marginBottom: scale(16),
+    color: COLORS.textSecondary,
+    marginBottom: scale(20),
   },
   
   // Create Button
@@ -281,48 +330,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.lime,
-    borderRadius: scale(13),
-    paddingVertical: scale(16),
-    paddingHorizontal: scale(20),
-    marginBottom: scale(20),
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(24),
   },
   createButtonIcon: {
-    width: scale(30),
-    height: scale(30),
-    borderRadius: scale(15),
-    backgroundColor: COLORS.white,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(0,0,0,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(12),
   },
+  createButtonContent: {
+    flex: 1,
+  },
   createButtonText: {
-    fontSize: scale(14),
-    fontWeight: '400',
-    color: COLORS.black,
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+  createButtonSubtext: {
+    fontSize: scale(12),
+    color: 'rgba(0,0,0,0.6)',
+    marginTop: scale(2),
   },
 
   // Filter Tabs
   filterRow: {
     flexDirection: 'row',
-    marginBottom: scale(16),
+    marginBottom: scale(20),
     gap: scale(10),
   },
   filterTab: {
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.white,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(10),
+    borderRadius: scale(25),
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
   filterTabActive: {
-    backgroundColor: COLORS.black,
+    backgroundColor: COLORS.teal,
+    borderColor: COLORS.teal,
   },
   filterText: {
     fontSize: scale(13),
-    fontWeight: '500',
-    color: COLORS.gray,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   filterTextActive: {
-    color: COLORS.white,
+    color: COLORS.background,
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(16),
+  },
+  sectionTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  sectionCount: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.teal,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(10),
   },
 
   // Incidents List
@@ -331,56 +412,72 @@ const styles = StyleSheet.create({
   },
   incidentCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    borderRadius: scale(13),
+    backgroundColor: COLORS.card,
+    borderRadius: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
     overflow: 'hidden',
     minHeight: scale(100),
   },
-  gradientBar: {
-    width: scale(11),
+  accentBar: {
+    width: scale(4),
   },
   cardContent: {
     flex: 1,
-    padding: scale(14),
+    padding: scale(16),
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: scale(4),
+    marginBottom: scale(8),
   },
   incidentTitle: {
-    fontSize: scale(14),
-    fontWeight: '400',
-    color: COLORS.black,
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
     flex: 1,
     marginRight: scale(10),
   },
   statusBadge: {
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
-    borderRadius: scale(5),
+    borderRadius: scale(6),
   },
   statusText: {
     fontSize: scale(9),
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(8),
   },
   incidentDate: {
-    fontSize: scale(10),
-    fontWeight: '400',
-    color: COLORS.cyan,
-    marginBottom: scale(6),
+    fontSize: scale(12),
+    color: COLORS.teal,
+    marginLeft: scale(4),
+  },
+  metaDot: {
+    width: scale(3),
+    height: scale(3),
+    borderRadius: scale(1.5),
+    backgroundColor: COLORS.textMuted,
+    marginHorizontal: scale(8),
+  },
+  severityText: {
+    fontSize: scale(12),
+    fontWeight: '500',
   },
   incidentDescription: {
-    fontSize: scale(12),
-    fontWeight: '400',
-    color: COLORS.gray,
-    lineHeight: scale(16),
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    lineHeight: scale(18),
   },
   cardArrow: {
     justifyContent: 'center',
-    paddingRight: scale(10),
+    paddingRight: scale(12),
   },
 
   // Empty State
@@ -389,18 +486,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: scale(60),
   },
+  emptyIconContainer: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+  },
   emptyTitle: {
     fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
-    marginTop: scale(16),
+    color: COLORS.textPrimary,
     marginBottom: scale(8),
   },
   emptySubtitle: {
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: scale(20),
+    paddingHorizontal: scale(20),
   },
 
   // Loader
@@ -411,7 +517,7 @@ const styles = StyleSheet.create({
   },
   loaderText: {
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginTop: scale(12),
   },
 });
