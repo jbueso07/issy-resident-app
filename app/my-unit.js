@@ -94,7 +94,7 @@ export default function MyUnitScreen() {
     }
   };
 
-  const activeOrg = organizations.find(o => o.is_active);
+  const activeOrg = organizations.find(o => o.is_active) || organizations.find(o => o.deactivation_reason) || organizations[0];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -151,10 +151,27 @@ export default function MyUnitScreen() {
                       <Text style={styles.activeName}>{activeOrg.location?.name}</Text>
                       <Text style={styles.activeAddress}>{activeOrg.location?.address || 'Sin dirección'}</Text>
                     </View>
-                    <View style={styles.activeBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
-                      <Text style={styles.activeBadgeText}>Activo</Text>
+                    {activeOrg.deactivation_reason ? (
+                      <View style={[styles.activeBadge, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                        <Ionicons name="alert-circle" size={16} color={COLORS.red} />
+                        <Text style={[styles.activeBadgeText, { color: COLORS.red }]}>Suspendido</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.activeBadge}>
+                        {activeOrg.deactivation_reason && (
+                    <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: scale(12), borderRadius: scale(8), marginTop: scale(12) }}>
+                      <Text style={{ color: COLORS.red, fontSize: scale(13), textAlign: 'center' }}>
+                        ⚠️ {activeOrg.deactivation_reason}
+                      </Text>
+                      <Text style={{ color: COLORS.textSecondary, fontSize: scale(11), textAlign: 'center', marginTop: scale(4) }}>
+                        Contacta a administración para más información
+                      </Text>
                     </View>
+                  )}
+                        <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
+                        <Text style={styles.activeBadgeText}>Activo</Text>
+                      </View>
+                    )}
                   </View>
                   
                   <View style={styles.activeDetails}>
@@ -189,10 +206,10 @@ export default function MyUnitScreen() {
             )}
 
             {/* Otras Organizaciones */}
-            {organizations.filter(o => !o.is_active).length > 0 && (
+            {organizations.filter(o => !o.is_active && o !== activeOrg).length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Otras Comunidades</Text>
-                {organizations.filter(o => !o.is_active).map((org) => (
+                {organizations.filter(o => !o.is_active && o !== activeOrg).map((org) => (
                   <TouchableOpacity
                     key={org.location?.id}
                     style={styles.orgCard}
