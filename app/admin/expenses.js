@@ -1,5 +1,5 @@
 // app/admin/expenses.js
-// ISSY Resident App - Admin: Control de Gastos
+// ISSY Resident App - Admin: Control de Gastos (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -13,33 +13,45 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#EF4444',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
   success: '#10B981',
   warning: '#F59E0B',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const EXPENSE_CATEGORIES = [
-  { value: 'maintenance', label: '🔧 Mantenimiento', color: '#F59E0B' },
-  { value: 'utilities', label: '💡 Servicios', color: '#3B82F6' },
-  { value: 'security', label: '🔐 Seguridad', color: '#8B5CF6' },
-  { value: 'cleaning', label: '🧹 Limpieza', color: '#10B981' },
-  { value: 'administration', label: '📋 Administración', color: '#6B7280' },
-  { value: 'other', label: '📦 Otros', color: '#EC4899' },
+  { value: 'maintenance', label: 'Mantenimiento', icon: 'construct', color: COLORS.warning },
+  { value: 'utilities', label: 'Servicios', icon: 'bulb', color: COLORS.blue },
+  { value: 'security', label: 'Seguridad', icon: 'shield-checkmark', color: COLORS.purple },
+  { value: 'cleaning', label: 'Limpieza', icon: 'sparkles', color: COLORS.success },
+  { value: 'administration', label: 'Administración', icon: 'document-text', color: COLORS.textSecondary },
+  { value: 'other', label: 'Otros', icon: 'cube', color: COLORS.pink },
 ];
 
 export default function AdminExpenses() {
@@ -87,7 +99,6 @@ export default function AdminExpenses() {
     try {
       const headers = await getAuthHeaders();
       
-      // Fetch expenses
       const expensesRes = await fetch(`${API_URL}/api/expenses`, { headers });
       const expensesData = await expensesRes.json();
       if (expensesData.success || Array.isArray(expensesData)) {
@@ -95,22 +106,19 @@ export default function AdminExpenses() {
         setExpenses(Array.isArray(list) ? list : []);
       }
       
-      // Fetch stats
       const statsRes = await fetch(`${API_URL}/api/expenses/stats`, { headers });
       const statsData = await statsRes.json();
-      if (statsData.success || statsData.data) {
+      if (statsData.success !== false) {
         setStats(statsData.data || statsData);
       }
 
-      // Fetch balance
-      const balanceRes = await fetch(`${API_URL}/api/expenses/balance`, { headers });
+      const balanceRes = await fetch(`${API_URL}/api/admin/payments/balance`, { headers });
       const balanceData = await balanceRes.json();
-      if (balanceData.success || balanceData.data) {
+      if (balanceData.success !== false) {
         setBalance(balanceData.data || balanceData);
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
-      Alert.alert('Error', 'No se pudieron cargar los gastos');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -147,38 +155,47 @@ export default function AdminExpenses() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.description.trim() || !formData.amount) {
-      Alert.alert('Error', 'Descripción y monto son requeridos');
+    if (!formData.description.trim()) {
+      Alert.alert('Error', 'Ingresa una descripción');
+      return;
+    }
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      Alert.alert('Error', 'Ingresa un monto válido');
       return;
     }
 
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
+      const payload = {
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        category: formData.category,
+        date: formData.date || new Date().toISOString().split('T')[0],
+        notes: formData.notes,
+      };
+
       const url = editingExpense 
         ? `${API_URL}/api/expenses/${editingExpense.id}`
         : `${API_URL}/api/expenses`;
-      
+
       const response = await fetch(url, {
         method: editingExpense ? 'PUT' : 'POST',
         headers,
-        body: JSON.stringify({
-          ...formData,
-          amount: parseFloat(formData.amount),
-          location_id: profile?.location_id,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      
+      if (response.ok && data.success !== false) {
         Alert.alert('Éxito', editingExpense ? 'Gasto actualizado' : 'Gasto registrado');
         setShowModal(false);
         fetchData();
       } else {
-        const data = await response.json();
         Alert.alert('Error', data.error || 'No se pudo guardar');
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar el gasto');
+      Alert.alert('Error', 'No se pudo guardar');
     } finally {
       setSaving(false);
     }
@@ -229,9 +246,9 @@ export default function AdminExpenses() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando gastos...</Text>
         </View>
       </SafeAreaView>
@@ -243,13 +260,14 @@ export default function AdminExpenses() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>📊 Gastos</Text>
+          <Text style={styles.headerTitle}>Gastos</Text>
+          <Text style={styles.headerSubtitle}>Control financiero</Text>
         </View>
         <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ Nuevo</Text>
+          <Ionicons name="add" size={22} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
@@ -257,7 +275,11 @@ export default function AdminExpenses() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
       >
         {/* Balance Card */}
@@ -266,20 +288,27 @@ export default function AdminExpenses() {
             <Text style={styles.balanceLabel}>Balance del Mes</Text>
             <Text style={[
               styles.balanceValue,
-              { color: (balance.balance || balance.net || 0) >= 0 ? COLORS.success : COLORS.primary }
+              { color: (balance.balance || balance.net || 0) >= 0 ? COLORS.success : COLORS.danger }
             ]}>
               {formatCurrency(balance.balance || balance.net || 0)}
             </Text>
             <View style={styles.balanceDetails}>
               <View style={styles.balanceItem}>
+                <View style={styles.balanceItemIcon}>
+                  <Ionicons name="trending-up" size={16} color={COLORS.success} />
+                </View>
                 <Text style={styles.balanceItemLabel}>Ingresos</Text>
                 <Text style={[styles.balanceItemValue, { color: COLORS.success }]}>
                   +{formatCurrency(balance.income || balance.total_income || 0)}
                 </Text>
               </View>
+              <View style={styles.balanceDivider} />
               <View style={styles.balanceItem}>
+                <View style={styles.balanceItemIcon}>
+                  <Ionicons name="trending-down" size={16} color={COLORS.danger} />
+                </View>
                 <Text style={styles.balanceItemLabel}>Gastos</Text>
-                <Text style={[styles.balanceItemValue, { color: COLORS.primary }]}>
+                <Text style={[styles.balanceItemValue, { color: COLORS.danger }]}>
                   -{formatCurrency(balance.expenses || balance.total_expenses || 0)}
                 </Text>
               </View>
@@ -288,11 +317,14 @@ export default function AdminExpenses() {
         )}
 
         {/* Expenses List */}
-        <Text style={styles.sectionTitle}>Gastos Recientes</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Gastos Recientes</Text>
+          <Text style={styles.sectionCount}>{expenses.length} registros</Text>
+        </View>
         
         {expenses.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>📊</Text>
+            <Ionicons name="receipt-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>No hay gastos</Text>
             <Text style={styles.emptySubtitle}>Registra tu primer gasto</Text>
           </View>
@@ -305,11 +337,19 @@ export default function AdminExpenses() {
                 style={styles.expenseCard}
                 onPress={() => handleEdit(expense)}
                 onLongPress={() => handleDelete(expense)}
+                activeOpacity={0.7}
               >
-                <View style={[styles.categoryDot, { backgroundColor: categoryInfo.color }]} />
+                <View style={[styles.categoryIcon, { backgroundColor: categoryInfo.color + '20' }]}>
+                  <Ionicons name={categoryInfo.icon} size={20} color={categoryInfo.color} />
+                </View>
                 <View style={styles.expenseInfo}>
                   <Text style={styles.expenseDescription}>{expense.description}</Text>
-                  <Text style={styles.expenseCategory}>{categoryInfo.label}</Text>
+                  <View style={styles.expenseMeta}>
+                    <Ionicons name={categoryInfo.icon} size={12} color={categoryInfo.color} />
+                    <Text style={[styles.expenseCategory, { color: categoryInfo.color }]}>
+                      {categoryInfo.label}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.expenseRight}>
                   <Text style={styles.expenseAmount}>-{formatCurrency(expense.amount)}</Text>
@@ -330,7 +370,7 @@ export default function AdminExpenses() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -340,7 +380,7 @@ export default function AdminExpenses() {
             </Text>
             <TouchableOpacity onPress={handleSubmit} disabled={saving}>
               {saving ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
                 <Text style={styles.modalSave}>Guardar</Text>
               )}
@@ -355,7 +395,7 @@ export default function AdminExpenses() {
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
                 placeholder="Ej: Reparación de bomba"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
@@ -366,7 +406,7 @@ export default function AdminExpenses() {
                 value={formData.amount}
                 onChangeText={(text) => setFormData({ ...formData, amount: text })}
                 placeholder="0.00"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -374,26 +414,34 @@ export default function AdminExpenses() {
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Categoría</Text>
               <View style={styles.categoriesGrid}>
-                {EXPENSE_CATEGORIES.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.value}
-                    style={[
-                      styles.categoryButton,
-                      formData.category === cat.value && { 
-                        backgroundColor: cat.color + '20',
-                        borderColor: cat.color 
-                      }
-                    ]}
-                    onPress={() => setFormData({ ...formData, category: cat.value })}
-                  >
-                    <Text style={[
-                      styles.categoryButtonText,
-                      formData.category === cat.value && { color: cat.color }
-                    ]}>
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {EXPENSE_CATEGORIES.map((cat) => {
+                  const isSelected = formData.category === cat.value;
+                  return (
+                    <TouchableOpacity
+                      key={cat.value}
+                      style={[
+                        styles.categoryButton,
+                        isSelected && { 
+                          backgroundColor: cat.color + '20',
+                          borderColor: cat.color 
+                        }
+                      ]}
+                      onPress={() => setFormData({ ...formData, category: cat.value })}
+                    >
+                      <Ionicons 
+                        name={cat.icon} 
+                        size={18} 
+                        color={isSelected ? cat.color : COLORS.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.categoryButtonText,
+                        isSelected && { color: cat.color }
+                      ]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
@@ -404,18 +452,18 @@ export default function AdminExpenses() {
                 value={formData.date}
                 onChangeText={(text) => setFormData({ ...formData, date: text })}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Notas</Text>
               <TextInput
-                style={[styles.formInput, { height: 80 }]}
+                style={[styles.formInput, styles.textArea]}
                 value={formData.notes}
                 onChangeText={(text) => setFormData({ ...formData, notes: text })}
                 placeholder="Notas adicionales..."
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
                 multiline
                 textAlignVertical="top"
               />
@@ -430,48 +478,279 @@ export default function AdminExpenses() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  addButton: { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  addButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '600' },
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
-  balanceCard: { backgroundColor: COLORS.white, borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'center' },
-  balanceLabel: { fontSize: 14, color: COLORS.gray, marginBottom: 4 },
-  balanceValue: { fontSize: 32, fontWeight: '700' },
-  balanceDetails: { flexDirection: 'row', marginTop: 16, width: '100%' },
-  balanceItem: { flex: 1, alignItems: 'center' },
-  balanceItemLabel: { fontSize: 12, color: COLORS.gray },
-  balanceItemValue: { fontSize: 16, fontWeight: '600', marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.navy, marginBottom: 12 },
-  emptyContainer: { alignItems: 'center', paddingVertical: 40 },
-  emptyIcon: { fontSize: 60, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy, marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: COLORS.gray },
-  expenseCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
-  categoryDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
-  expenseInfo: { flex: 1 },
-  expenseDescription: { fontSize: 15, fontWeight: '500', color: COLORS.navy },
-  expenseCategory: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  expenseRight: { alignItems: 'flex-end' },
-  expenseAmount: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
-  expenseDate: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  modalContainer: { flex: 1, backgroundColor: COLORS.white },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  modalCancel: { fontSize: 16, color: COLORS.gray },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.navy },
-  modalSave: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: 16 },
-  formGroup: { marginBottom: 20 },
-  formLabel: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 8 },
-  formInput: { backgroundColor: COLORS.grayLighter, borderWidth: 1, borderColor: COLORS.grayLight, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: COLORS.navy },
-  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  categoryButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: COLORS.grayLight, backgroundColor: COLORS.white },
-  categoryButtonText: { fontSize: 13, color: COLORS.gray },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
+  },
+  
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+  },
+  backButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  addButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: scale(16),
+  },
+  
+  // Balance Card
+  balanceCard: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(20),
+    marginBottom: scale(20),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  balanceLabel: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginBottom: scale(4),
+  },
+  balanceValue: {
+    fontSize: scale(32),
+    fontWeight: '700',
+  },
+  balanceDetails: {
+    flexDirection: 'row',
+    marginTop: scale(16),
+    width: '100%',
+  },
+  balanceItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  balanceItemIcon: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: COLORS.backgroundTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(4),
+  },
+  balanceItemLabel: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  balanceItemValue: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    marginTop: scale(4),
+  },
+  balanceDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: COLORS.border,
+  },
+  
+  // Section
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(12),
+  },
+  sectionTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  sectionCount: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+  },
+  
+  // Empty State
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: scale(40),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+  
+  // Expense Card
+  expenseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(14),
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  categoryIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  expenseInfo: {
+    flex: 1,
+  },
+  expenseDescription: {
+    fontSize: scale(15),
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+  },
+  expenseMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    marginTop: scale(4),
+  },
+  expenseCategory: {
+    fontSize: scale(12),
+  },
+  expenseRight: {
+    alignItems: 'flex-end',
+  },
+  expenseAmount: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.danger,
+  },
+  expenseDate: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(2),
+  },
+  
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalCancel: {
+    fontSize: scale(16),
+    color: COLORS.textSecondary,
+  },
+  modalTitle: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  modalSave: {
+    fontSize: scale(16),
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: scale(16),
+  },
+  
+  // Form
+  formGroup: {
+    marginBottom: scale(20),
+  },
+  formLabel: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+  },
+  formInput: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(12),
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
+  },
+  textArea: {
+    height: scale(80),
+    textAlignVertical: 'top',
+  },
+  
+  // Categories
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  categoryButtonText: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+  },
 });

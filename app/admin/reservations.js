@@ -1,6 +1,5 @@
 // app/admin/reservations.js
-// ISSY Resident App - Admin Panel para Gestión de Reservas
-// Aprobar/Rechazar solicitudes pendientes
+// ISSY Resident App - Admin Panel para Gestión de Reservas (ProHome Dark Theme)
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -13,7 +12,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
-  Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,11 +20,31 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../src/config/supabase';
 import { useAuth } from '../../src/context/AuthContext';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#6366F1',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
+};
+
 const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: '#F59E0B', bgColor: '#FEF3C7', icon: 'time' },
-  approved: { label: 'Aprobada', color: '#10B981', bgColor: '#D1FAE5', icon: 'checkmark-circle' },
-  rejected: { label: 'Rechazada', color: '#EF4444', bgColor: '#FEE2E2', icon: 'close-circle' },
-  cancelled: { label: 'Cancelada', color: '#6B7280', bgColor: '#F3F4F6', icon: 'ban' },
+  pending: { label: 'Pendiente', color: COLORS.warning, bgColor: COLORS.warning + '20', icon: 'time' },
+  approved: { label: 'Aprobada', color: COLORS.success, bgColor: COLORS.success + '20', icon: 'checkmark-circle' },
+  rejected: { label: 'Rechazada', color: COLORS.danger, bgColor: COLORS.danger + '20', icon: 'close-circle' },
+  cancelled: { label: 'Cancelada', color: COLORS.textMuted, bgColor: COLORS.backgroundTertiary, icon: 'ban' },
 };
 
 const TYPE_INFO = {
@@ -44,7 +63,7 @@ export default function AdminReservationsScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
   
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'all'
+  const [activeTab, setActiveTab] = useState('pending');
   const [reservations, setReservations] = useState([]);
   const [areas, setAreas] = useState([]);
   const [users, setUsers] = useState([]);
@@ -52,7 +71,6 @@ export default function AdminReservationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(null);
   
-  // Detail modal
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -106,8 +124,7 @@ export default function AdminReservationsScreen() {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, phone, profile_photo_url')
-        .eq('location_id', locationId);
+        .select('id, name, email, phone');
 
       if (error) throw error;
       setUsers(data || []);
@@ -119,82 +136,48 @@ export default function AdminReservationsScreen() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, [locationId]);
+  }, []);
 
-  // Helpers
-  const getAreaById = (areaId) => areas.find(a => a.id === areaId);
-  const getUserById = (userId) => users.find(u => u.id === userId);
+  const getAreaById = (id) => areas.find(a => a.id === id);
+  const getUserById = (id) => users.find(u => u.id === id);
   const getTypeInfo = (type) => TYPE_INFO[type] || TYPE_INFO.other;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('es-HN', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const formatTime = (time) => {
-    if (!time) return '';
-    const [hours, minutes] = time.split(':');
-    const h = parseInt(hours);
-    const ampm = h >= 12 ? 'p.m.' : 'a.m.';
-    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    return `${hour}:${minutes || '00'} ${ampm}`;
-  };
-
-  const formatDateTime = (dateStr) => {
-    if (!dateStr) return '';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-HN', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
-  // Actions
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    return timeStr.substring(0, 5);
+  };
+
   const handleApprove = async (reservation) => {
-    Alert.alert(
-      'Aprobar Reserva',
-      '¿Confirmas aprobar esta reserva?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Aprobar',
-          onPress: async () => {
-            setProcessing(reservation.id);
-            try {
-              const { error } = await supabase
-                .from('area_reservations')
-                .update({
-                  status: 'approved',
-                  approved_at: new Date().toISOString(),
-                  approved_by: profile?.id || user?.id
-                })
-                .eq('id', reservation.id);
+    setProcessing(reservation.id);
+    try {
+      const { error } = await supabase
+        .from('area_reservations')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: profile?.id || user?.id
+        })
+        .eq('id', reservation.id);
 
-              if (error) throw error;
-              
-              Alert.alert('¡Listo!', 'Reserva aprobada');
-              loadReservations();
-              setShowDetailModal(false);
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo aprobar la reserva');
-            } finally {
-              setProcessing(null);
-            }
-          }
-        }
-      ]
-    );
+      if (error) throw error;
+      
+      Alert.alert('Listo', 'Reserva aprobada');
+      loadReservations();
+      setShowDetailModal(false);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo aprobar la reserva');
+    } finally {
+      setProcessing(null);
+    }
   };
 
-  const handleReject = async (reservation) => {
+  const handleReject = (reservation) => {
     Alert.alert(
       'Rechazar Reserva',
       '¿Estás seguro de rechazar esta reserva?',
@@ -236,7 +219,6 @@ export default function AdminReservationsScreen() {
     setShowDetailModal(true);
   };
 
-  // Filter reservations based on tab
   const filteredReservations = activeTab === 'pending'
     ? reservations.filter(r => r.status === 'pending')
     : reservations;
@@ -245,9 +227,9 @@ export default function AdminReservationsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#D4FE48" />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando reservas...</Text>
         </View>
       </SafeAreaView>
@@ -259,29 +241,29 @@ export default function AdminReservationsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Gestión de Reservas</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Stats */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}>
-          <Ionicons name="time" size={24} color="#F59E0B" />
-          <Text style={styles.statNumber}>{pendingCount}</Text>
+        <View style={styles.statCard}>
+          <Ionicons name="time" size={24} color={COLORS.warning} />
+          <Text style={[styles.statNumber, { color: COLORS.warning }]}>{pendingCount}</Text>
           <Text style={styles.statLabel}>Pendientes</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#D1FAE5' }]}>
-          <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-          <Text style={styles.statNumber}>
+        <View style={styles.statCard}>
+          <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
+          <Text style={[styles.statNumber, { color: COLORS.success }]}>
             {reservations.filter(r => r.status === 'approved').length}
           </Text>
           <Text style={styles.statLabel}>Aprobadas</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#FEE2E2' }]}>
-          <Ionicons name="close-circle" size={24} color="#EF4444" />
-          <Text style={styles.statNumber}>
+        <View style={styles.statCard}>
+          <Ionicons name="close-circle" size={24} color={COLORS.danger} />
+          <Text style={[styles.statNumber, { color: COLORS.danger }]}>
             {reservations.filter(r => r.status === 'rejected').length}
           </Text>
           <Text style={styles.statLabel}>Rechazadas</Text>
@@ -294,6 +276,11 @@ export default function AdminReservationsScreen() {
           style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
           onPress={() => setActiveTab('pending')}
         >
+          <Ionicons 
+            name="hourglass" 
+            size={16} 
+            color={activeTab === 'pending' ? COLORS.background : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
             Pendientes
           </Text>
@@ -307,6 +294,11 @@ export default function AdminReservationsScreen() {
           style={[styles.tab, activeTab === 'all' && styles.activeTab]}
           onPress={() => setActiveTab('all')}
         >
+          <Ionicons 
+            name="list" 
+            size={16} 
+            color={activeTab === 'all' ? COLORS.background : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
             Todas
           </Text>
@@ -319,11 +311,15 @@ export default function AdminReservationsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#D4FE48" />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.lime} 
+          />
         }
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+            <Ionicons name="calendar-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>
               {activeTab === 'pending' ? 'No hay solicitudes pendientes' : 'No hay reservas'}
             </Text>
@@ -344,16 +340,18 @@ export default function AdminReservationsScreen() {
             <TouchableOpacity 
               style={styles.reservationCard}
               onPress={() => handleViewDetail(item)}
+              activeOpacity={0.7}
             >
               <View style={styles.cardHeader}>
-                <View style={[styles.areaIcon, { backgroundColor: typeInfo.color + '20' }]}>
+                <View style={[styles.areaIcon, { backgroundColor: typeInfo.color + '30' }]}>
                   <Ionicons name={typeInfo.icon} size={24} color={typeInfo.color} />
                 </View>
                 <View style={styles.cardHeaderInfo}>
                   <Text style={styles.areaName}>{area?.name || 'Área'}</Text>
-                  <Text style={styles.userName}>
-                    <Ionicons name="person" size={12} color="#6B7280" /> {reqUser?.name || 'Usuario'}
-                  </Text>
+                  <View style={styles.userRow}>
+                    <Ionicons name="person" size={12} color={COLORS.textSecondary} />
+                    <Text style={styles.userName}>{reqUser?.name || 'Usuario'}</Text>
+                  </View>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
                   <Ionicons name={statusConfig.icon} size={14} color={statusConfig.color} />
@@ -365,17 +363,17 @@ export default function AdminReservationsScreen() {
 
               <View style={styles.cardBody}>
                 <View style={styles.infoRow}>
-                  <Ionicons name="calendar" size={16} color="#6B7280" />
+                  <Ionicons name="calendar" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.infoText}>{formatDate(item.reservation_date)}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Ionicons name="time" size={16} color="#6B7280" />
+                  <Ionicons name="time" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.infoText}>
                     {formatTime(item.start_time)} - {formatTime(item.end_time)}
                   </Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Ionicons name="people" size={16} color="#6B7280" />
+                  <Ionicons name="people" size={16} color={COLORS.textSecondary} />
                   <Text style={styles.infoText}>{item.attendees || 1} personas</Text>
                 </View>
               </View>
@@ -387,7 +385,7 @@ export default function AdminReservationsScreen() {
                     onPress={() => handleReject(item)}
                     disabled={processing === item.id}
                   >
-                    <Ionicons name="close" size={20} color="#EF4444" />
+                    <Ionicons name="close" size={20} color={COLORS.danger} />
                     <Text style={styles.rejectButtonText}>Rechazar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -396,10 +394,10 @@ export default function AdminReservationsScreen() {
                     disabled={processing === item.id}
                   >
                     {processing === item.id ? (
-                      <ActivityIndicator color="#000" size="small" />
+                      <ActivityIndicator color={COLORS.background} size="small" />
                     ) : (
                       <>
-                        <Ionicons name="checkmark" size={20} color="#000" />
+                        <Ionicons name="checkmark" size={20} color={COLORS.background} />
                         <Text style={styles.approveButtonText}>Aprobar</Text>
                       </>
                     )}
@@ -419,10 +417,10 @@ export default function AdminReservationsScreen() {
           const statusConfig = STATUS_CONFIG[selectedReservation.status] || STATUS_CONFIG.pending;
 
           return (
-            <SafeAreaView style={styles.modalContainer}>
+            <SafeAreaView style={styles.modalContainer} edges={['top']}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={() => setShowDetailModal(false)}>
-                  <Ionicons name="close" size={28} color="#000" />
+                  <Ionicons name="close" size={28} color={COLORS.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Detalle de Reserva</Text>
                 <View style={{ width: 28 }} />
@@ -479,7 +477,7 @@ export default function AdminReservationsScreen() {
                 {/* Rules */}
                 {detailArea?.rules && (
                   <View style={styles.rulesCard}>
-                    <Ionicons name="information-circle" size={20} color="#3B82F6" />
+                    <Ionicons name="information-circle" size={20} color={COLORS.teal} />
                     <Text style={styles.rulesText}>{detailArea.rules}</Text>
                   </View>
                 )}
@@ -492,7 +490,7 @@ export default function AdminReservationsScreen() {
                       onPress={() => handleReject(selectedReservation)}
                       disabled={processing === selectedReservation.id}
                     >
-                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                      <Ionicons name="close-circle" size={24} color={COLORS.danger} />
                       <Text style={styles.modalRejectText}>Rechazar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -501,10 +499,10 @@ export default function AdminReservationsScreen() {
                       disabled={processing === selectedReservation.id}
                     >
                       {processing === selectedReservation.id ? (
-                        <ActivityIndicator color="#000" />
+                        <ActivityIndicator color={COLORS.background} size="small" />
                       ) : (
                         <>
-                          <Ionicons name="checkmark-circle" size={24} color="#000" />
+                          <Ionicons name="checkmark-circle" size={24} color={COLORS.background} />
                           <Text style={styles.modalApproveText}>Aprobar</Text>
                         </>
                       )}
@@ -515,10 +513,7 @@ export default function AdminReservationsScreen() {
                 {/* Metadata */}
                 <View style={styles.metadataCard}>
                   <Text style={styles.metadataText}>
-                    Código: {selectedReservation.id.substring(0, 8).toUpperCase()}
-                  </Text>
-                  <Text style={styles.metadataText}>
-                    Creada: {formatDateTime(selectedReservation.created_at)}
+                    Creado: {new Date(selectedReservation.created_at).toLocaleString('es-HN')}
                   </Text>
                 </View>
               </View>
@@ -533,332 +528,348 @@ export default function AdminReservationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
+    marginTop: scale(12),
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFF',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
   },
   
   // Stats
   statsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    gap: scale(10),
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: '#1F2937',
-    marginTop: 4,
+    color: COLORS.textPrimary,
+    marginTop: scale(4),
   },
   statLabel: {
-    fontSize: 11,
-    color: '#6B7280',
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 8,
+    paddingHorizontal: scale(16),
+    gap: scale(10),
+    marginBottom: scale(8),
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#E5E7EB',
-    gap: 6,
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: scale(6),
   },
   activeTab: {
-    backgroundColor: '#D4FE48',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
-    color: '#6B7280',
+    color: COLORS.textSecondary,
   },
   activeTabText: {
-    color: '#000',
+    color: COLORS.background,
+    fontWeight: '600',
   },
   tabBadge: {
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: COLORS.danger,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    marginLeft: scale(4),
   },
   tabBadgeText: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
-    color: '#FFF',
+    color: COLORS.textPrimary,
   },
   
   // List
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
+    padding: scale(16),
+    paddingBottom: scale(100),
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: scale(60),
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: '600',
-    color: '#374151',
-    marginTop: 16,
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: scale(40),
   },
   
   // Reservation Card
   reservationCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   areaIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardHeaderInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   areaName: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    marginTop: scale(2),
   },
   userName: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(8),
+    gap: scale(4),
   },
   statusText: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '500',
   },
   cardBody: {
-    gap: 6,
-    paddingBottom: 12,
+    gap: scale(8),
+    paddingBottom: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.border,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: scale(8),
   },
   infoText: {
-    fontSize: 14,
-    color: '#374151',
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: scale(12),
+    marginTop: scale(12),
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    gap: scale(6),
   },
   rejectButton: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: COLORS.danger + '20',
   },
   rejectButtonText: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
-    color: '#EF4444',
+    color: COLORS.danger,
   },
   approveButton: {
-    backgroundColor: '#D4FE48',
+    backgroundColor: COLORS.lime,
   },
   approveButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#000',
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.background,
   },
   
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.background,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.border,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.textPrimary,
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: scale(16),
   },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 16,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    gap: scale(8),
+    marginBottom: scale(16),
   },
   statusBannerText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
   },
   sectionCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   sectionTitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginBottom: scale(4),
   },
   sectionValue: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   sectionSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
   rulesCard: {
     flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-    marginBottom: 12,
+    backgroundColor: COLORS.teal + '15',
+    borderRadius: scale(12),
+    padding: scale(12),
+    gap: scale(8),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.teal + '30',
   },
   rulesText: {
     flex: 1,
-    fontSize: 13,
-    color: '#1E40AF',
+    fontSize: scale(13),
+    color: COLORS.teal,
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
+    gap: scale(12),
+    marginTop: scale(20),
   },
   modalButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    gap: scale(8),
   },
   modalRejectButton: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: COLORS.danger + '20',
   },
   modalRejectText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#EF4444',
+    color: COLORS.danger,
   },
   modalApproveButton: {
-    backgroundColor: '#D4FE48',
+    backgroundColor: COLORS.lime,
   },
   modalApproveText: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.background,
   },
   metadataCard: {
     marginTop: 'auto',
-    paddingTop: 16,
+    paddingTop: scale(16),
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: COLORS.border,
   },
   metadataText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: scale(12),
+    color: COLORS.textMuted,
     textAlign: 'center',
   },
 });

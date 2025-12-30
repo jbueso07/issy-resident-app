@@ -1,6 +1,5 @@
 // app/admin/payments.js
-// ISSY Resident App - Admin: Gestor de Cobros
-// v2 - Con selector de usuario y payment_type
+// ISSY Resident App - Admin: Gestor de Cobros (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,40 +13,49 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#8B5CF6',
-  danger: '#EF4444',
-  warning: '#F59E0B',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
   success: '#10B981',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const PAYMENT_STATUS = {
-  pending: { label: 'Pendiente', color: COLORS.warning, icon: '⏳' },
-  paid: { label: 'Pagado', color: COLORS.success, icon: '✅' },
-  overdue: { label: 'Vencido', color: COLORS.danger, icon: '🚨' },
-  cancelled: { label: 'Cancelado', color: COLORS.gray, icon: '❌' },
+  pending: { label: 'Pendiente', color: COLORS.warning, icon: 'time' },
+  paid: { label: 'Pagado', color: COLORS.success, icon: 'checkmark-circle' },
+  overdue: { label: 'Vencido', color: COLORS.danger, icon: 'alert-circle' },
+  cancelled: { label: 'Cancelado', color: COLORS.textMuted, icon: 'close-circle' },
 };
 
 const PAYMENT_TYPES = [
-  { value: 'maintenance', label: 'Cuota de Mantenimiento', icon: '🏠' },
-  { value: 'extraordinary', label: 'Cuota Extraordinaria', icon: '⚡' },
-  { value: 'fine', label: 'Multa', icon: '⚠️' },
-  { value: 'service', label: 'Servicio', icon: '🔧' },
-  { value: 'other', label: 'Otro', icon: '📝' },
+  { value: 'maintenance', label: 'Mantenimiento', icon: 'home' },
+  { value: 'extraordinary', label: 'Extraordinaria', icon: 'flash' },
+  { value: 'fine', label: 'Multa', icon: 'warning' },
+  { value: 'service', label: 'Servicio', icon: 'construct' },
+  { value: 'other', label: 'Otro', icon: 'document-text' },
 ];
 
 export default function AdminPayments() {
@@ -62,7 +70,6 @@ export default function AdminPayments() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // Lista de usuarios para selector
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
@@ -70,7 +77,7 @@ export default function AdminPayments() {
   
   const [formData, setFormData] = useState({
     user_id: '',
-    user_name: '', // Para mostrar en UI
+    user_name: '',
     payment_type: 'maintenance',
     concept: '',
     amount: '',
@@ -80,7 +87,6 @@ export default function AdminPayments() {
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
 
-  // Fecha de vencimiento por defecto (fin de mes)
   function getDefaultDueDate() {
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -99,57 +105,35 @@ export default function AdminPayments() {
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
     return {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
     };
   };
 
   const fetchData = async () => {
     try {
       const headers = await getAuthHeaders();
+      const statusParam = filter !== 'all' ? `?status=${filter}` : '';
       
-      // Fetch payments
-      const filterParam = filter !== 'all' ? `?status=${filter}` : '';
-      const paymentsRes = await fetch(`${API_URL}/api/payments${filterParam}`, { headers });
+      const [paymentsRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/payments${statusParam}`, { headers }),
+        fetch(`${API_URL}/api/admin/payments/stats`, { headers }),
+      ]);
+
       const paymentsData = await paymentsRes.json();
-      
-      if (paymentsData.success || Array.isArray(paymentsData)) {
-        const list = paymentsData.data || paymentsData.payments || paymentsData;
-        setPayments(Array.isArray(list) ? list : []);
-      }
-      
-      // Fetch stats
-      const statsRes = await fetch(`${API_URL}/api/payments/stats`, { headers });
       const statsData = await statsRes.json();
-      if (statsData.success || statsData.data) {
+
+      if (paymentsData.success !== false) {
+        setPayments(paymentsData.data || paymentsData || []);
+      }
+      if (statsData.success !== false) {
         setStats(statsData.data || statsData);
       }
     } catch (error) {
       console.error('Error fetching payments:', error);
-      Alert.alert('Error', 'No se pudieron cargar los cobros');
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    if (users.length > 0) return; // Ya cargados
-    
-    setLoadingUsers(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/users?limit=500`, { headers });
-      const data = await response.json();
-      
-      if (data.success || Array.isArray(data)) {
-        const userList = data.data || data.users || data;
-        setUsers(Array.isArray(userList) ? userList : []);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoadingUsers(false);
     }
   };
 
@@ -158,47 +142,28 @@ export default function AdminPayments() {
     fetchData();
   }, [filter]);
 
-  const handleMarkPaid = async (payment) => {
-    Alert.alert(
-      'Marcar como Pagado',
-      `¿Confirmar pago de ${formatCurrency(payment.amount)}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            try {
-              const headers = await getAuthHeaders();
-              const response = await fetch(
-                `${API_URL}/api/payments/${payment.id}/mark-paid`,
-                { method: 'POST', headers }
-              );
-              if (response.ok) {
-                Alert.alert('Éxito', 'Pago registrado');
-                fetchData();
-              } else {
-                Alert.alert('Error', 'No se pudo registrar el pago');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo registrar el pago');
-            }
-          }
-        }
-      ]
-    );
-  };
+  const fetchUsers = async () => {
+    if (users.length > 0) {
+      setShowUserPicker(true);
+      return;
+    }
 
-  const handleCreate = () => {
-    setFormData({
-      user_id: '',
-      user_name: '',
-      payment_type: 'maintenance',
-      concept: '',
-      amount: '',
-      due_date: getDefaultDueDate(),
-    });
-    fetchUsers();
-    setShowModal(true);
+    setLoadingUsers(true);
+    setShowUserPicker(true);
+
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/admin/users`, { headers });
+      const data = await response.json();
+
+      if (data.success !== false) {
+        setUsers(data.data || data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
   };
 
   const handleSelectUser = (selectedUser) => {
@@ -211,8 +176,50 @@ export default function AdminPayments() {
     setUserSearch('');
   };
 
+  const handleCreate = () => {
+    setFormData({
+      user_id: '',
+      user_name: '',
+      payment_type: 'maintenance',
+      concept: '',
+      amount: '',
+      due_date: getDefaultDueDate(),
+    });
+    setShowModal(true);
+  };
+
+  const handleMarkPaid = async (payment) => {
+    Alert.alert(
+      'Confirmar Pago',
+      `¿Marcar como pagado?\n${payment.concept || 'Cobro'} - L ${payment.amount}`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const response = await fetch(`${API_URL}/api/admin/payments/${payment.id}/mark-paid`, {
+                method: 'PUT',
+                headers,
+              });
+
+              if (response.ok) {
+                Alert.alert('Éxito', 'Pago registrado');
+                fetchData();
+              } else {
+                Alert.alert('Error', 'No se pudo actualizar');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo actualizar');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSubmit = async () => {
-    // Validaciones
     if (!formData.user_id) {
       Alert.alert('Error', 'Selecciona un residente');
       return;
@@ -221,31 +228,20 @@ export default function AdminPayments() {
       Alert.alert('Error', 'Ingresa un monto válido');
       return;
     }
-    if (!formData.due_date) {
-      Alert.alert('Error', 'Selecciona una fecha de vencimiento');
-      return;
-    }
 
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
-      
-      // Construir concepto si está vacío
-      const paymentTypeLabel = PAYMENT_TYPES.find(t => t.value === formData.payment_type)?.label || formData.payment_type;
-      const concept = formData.concept.trim() || paymentTypeLabel;
-      
       const payload = {
         user_id: formData.user_id,
-        amount: parseFloat(formData.amount),
         payment_type: formData.payment_type,
-        concept: concept,
+        concept: formData.concept || PAYMENT_TYPES.find(t => t.value === formData.payment_type)?.label,
+        amount: parseFloat(formData.amount),
         due_date: formData.due_date,
-        location_id: profile?.location_id,
+        status: 'pending',
       };
 
-      console.log('Creating payment:', payload);
-
-      const response = await fetch(`${API_URL}/api/payments`, {
+      const response = await fetch(`${API_URL}/api/admin/payments`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
@@ -285,7 +281,10 @@ export default function AdminPayments() {
     return PAYMENT_TYPES.find(t => t.value === type)?.label || type;
   };
 
-  // Filtrar usuarios por búsqueda
+  const getPaymentTypeIcon = (type) => {
+    return PAYMENT_TYPES.find(t => t.value === type)?.icon || 'document-text';
+  };
+
   const filteredUsers = users.filter(u => {
     const searchLower = userSearch.toLowerCase();
     const name = (u.full_name || u.name || '').toLowerCase();
@@ -296,9 +295,9 @@ export default function AdminPayments() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando cobros...</Text>
         </View>
       </SafeAreaView>
@@ -310,13 +309,14 @@ export default function AdminPayments() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>💰 Cobros</Text>
+          <Text style={styles.headerTitle}>Cobros</Text>
+          <Text style={styles.headerSubtitle}>Gestión de pagos</Text>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
-          <Text style={styles.addButtonText}>+ Nuevo</Text>
+          <Ionicons name="add" size={22} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
@@ -324,46 +324,75 @@ export default function AdminPayments() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.lime}
+          />
         }
       >
         {/* Stats Cards */}
         {stats && (
           <View style={styles.statsContainer}>
-            <View style={[styles.statCard, { backgroundColor: COLORS.success + '15' }]}>
-              <Text style={styles.statValue}>{formatCurrency(stats.total_collected || stats.totalCollected || 0)}</Text>
+            <View style={styles.statCard}>
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+              <Text style={[styles.statValue, { color: COLORS.success }]}>
+                {formatCurrency(stats.total_collected || stats.totalCollected || 0)}
+              </Text>
               <Text style={styles.statLabel}>Recaudado</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: COLORS.warning + '15' }]}>
-              <Text style={styles.statValue}>{formatCurrency(stats.total_pending || stats.totalPending || 0)}</Text>
+            <View style={styles.statCard}>
+              <Ionicons name="time" size={22} color={COLORS.warning} />
+              <Text style={[styles.statValue, { color: COLORS.warning }]}>
+                {formatCurrency(stats.total_pending || stats.totalPending || 0)}
+              </Text>
               <Text style={styles.statLabel}>Pendiente</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: COLORS.danger + '15' }]}>
-              <Text style={styles.statValue}>{formatCurrency(stats.total_overdue || stats.totalOverdue || 0)}</Text>
+            <View style={styles.statCard}>
+              <Ionicons name="alert-circle" size={22} color={COLORS.danger} />
+              <Text style={[styles.statValue, { color: COLORS.danger }]}>
+                {formatCurrency(stats.total_overdue || stats.totalOverdue || 0)}
+              </Text>
               <Text style={styles.statLabel}>Vencido</Text>
             </View>
           </View>
         )}
 
         {/* Filters */}
-        <View style={styles.filters}>
-          {['all', 'pending', 'paid', 'overdue'].map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterButton, filter === f && styles.filterButtonActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                {f === 'all' ? 'Todos' : PAYMENT_STATUS[f]?.label || f}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersScroll}
+          contentContainerStyle={styles.filters}
+        >
+          {['all', 'pending', 'paid', 'overdue'].map((f) => {
+            const isActive = filter === f;
+            const statusInfo = PAYMENT_STATUS[f];
+            return (
+              <TouchableOpacity
+                key={f}
+                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+                onPress={() => setFilter(f)}
+              >
+                {f !== 'all' && (
+                  <Ionicons 
+                    name={statusInfo?.icon || 'list'} 
+                    size={14} 
+                    color={isActive ? COLORS.background : COLORS.textSecondary} 
+                  />
+                )}
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {f === 'all' ? 'Todos' : statusInfo?.label || f}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* Payments List */}
         {payments.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>💰</Text>
+            <Ionicons name="cash-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>No hay cobros</Text>
             <Text style={styles.emptySubtitle}>Crea tu primer cobro</Text>
           </View>
@@ -373,6 +402,13 @@ export default function AdminPayments() {
             return (
               <View key={payment.id} style={styles.paymentCard}>
                 <View style={styles.cardHeader}>
+                  <View style={styles.cardIconContainer}>
+                    <Ionicons 
+                      name={getPaymentTypeIcon(payment.payment_type)} 
+                      size={20} 
+                      color={COLORS.teal} 
+                    />
+                  </View>
                   <View style={styles.cardHeaderLeft}>
                     <Text style={styles.paymentConcept}>
                       {payment.concept || getPaymentTypeLabel(payment.payment_type)}
@@ -386,21 +422,26 @@ export default function AdminPayments() {
                 
                 <View style={styles.cardFooter}>
                   <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
+                    <Ionicons name={statusInfo.icon} size={14} color={statusInfo.color} />
                     <Text style={[styles.statusText, { color: statusInfo.color }]}>
-                      {statusInfo.icon} {statusInfo.label}
+                      {statusInfo.label}
                     </Text>
                   </View>
-                  <Text style={styles.dueDate}>Vence: {formatDate(payment.due_date)}</Text>
+                  <View style={styles.dueDateContainer}>
+                    <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+                    <Text style={styles.dueDate}>{formatDate(payment.due_date)}</Text>
+                  </View>
                 </View>
 
-                {payment.status === 'pending' || payment.status === 'overdue' ? (
+                {(payment.status === 'pending' || payment.status === 'overdue') && (
                   <TouchableOpacity
                     style={styles.markPaidButton}
                     onPress={() => handleMarkPaid(payment)}
                   >
-                    <Text style={styles.markPaidText}>✅ Marcar como Pagado</Text>
+                    <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                    <Text style={styles.markPaidText}>Marcar como Pagado</Text>
                   </TouchableOpacity>
-                ) : null}
+                )}
               </View>
             );
           })
@@ -416,7 +457,7 @@ export default function AdminPayments() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -424,7 +465,7 @@ export default function AdminPayments() {
             <Text style={styles.modalTitle}>Nuevo Cobro</Text>
             <TouchableOpacity onPress={handleSubmit} disabled={saving}>
               {saving ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
+                <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
                 <Text style={styles.modalSave}>Crear</Text>
               )}
@@ -437,12 +478,12 @@ export default function AdminPayments() {
               <Text style={styles.formLabel}>Residente *</Text>
               <TouchableOpacity
                 style={styles.selectorButton}
-                onPress={() => setShowUserPicker(true)}
+                onPress={fetchUsers}
               >
                 <Text style={formData.user_name ? styles.selectorText : styles.selectorPlaceholder}>
                   {formData.user_name || 'Seleccionar residente...'}
                 </Text>
-                <Text style={styles.selectorArrow}>▼</Text>
+                <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -450,28 +491,29 @@ export default function AdminPayments() {
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Tipo de Cobro</Text>
               <View style={styles.typeGrid}>
-                {PAYMENT_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type.value}
-                    style={[
-                      styles.typeButton,
-                      formData.payment_type === type.value && styles.typeButtonActive
-                    ]}
-                    onPress={() => setFormData({ ...formData, payment_type: type.value })}
-                  >
-                    <Text style={styles.typeIcon}>{type.icon}</Text>
-                    <Text style={[
-                      styles.typeLabel,
-                      formData.payment_type === type.value && styles.typeLabelActive
-                    ]}>
-                      {type.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {PAYMENT_TYPES.map((type) => {
+                  const isSelected = formData.payment_type === type.value;
+                  return (
+                    <TouchableOpacity
+                      key={type.value}
+                      style={[styles.typeButton, isSelected && styles.typeButtonActive]}
+                      onPress={() => setFormData({ ...formData, payment_type: type.value })}
+                    >
+                      <Ionicons 
+                        name={type.icon} 
+                        size={24} 
+                        color={isSelected ? COLORS.lime : COLORS.textSecondary} 
+                      />
+                      <Text style={[styles.typeLabel, isSelected && styles.typeLabelActive]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
-            {/* Concepto (opcional) */}
+            {/* Concepto */}
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Descripción (opcional)</Text>
               <TextInput
@@ -479,7 +521,7 @@ export default function AdminPayments() {
                 value={formData.concept}
                 onChangeText={(text) => setFormData({ ...formData, concept: text })}
                 placeholder="Ej: Cuota Diciembre 2025"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
@@ -491,7 +533,7 @@ export default function AdminPayments() {
                 value={formData.amount}
                 onChangeText={(text) => setFormData({ ...formData, amount: text.replace(/[^0-9.]/g, '') })}
                 placeholder="0.00"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -504,7 +546,7 @@ export default function AdminPayments() {
                 value={formData.due_date}
                 onChangeText={(text) => setFormData({ ...formData, due_date: text })}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
               />
               <Text style={styles.formHint}>Formato: 2025-12-31</Text>
             </View>
@@ -521,7 +563,7 @@ export default function AdminPayments() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowUserPicker(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowUserPicker(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -532,18 +574,19 @@ export default function AdminPayments() {
 
           {/* Búsqueda */}
           <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               value={userSearch}
               onChangeText={setUserSearch}
               placeholder="Buscar por nombre, email o unidad..."
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
             />
           </View>
 
           {loadingUsers ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ActivityIndicator size="large" color={COLORS.lime} />
               <Text style={styles.loadingText}>Cargando residentes...</Text>
             </View>
           ) : (
@@ -572,7 +615,7 @@ export default function AdminPayments() {
                         {u.unit_number || u.unit ? `Unidad ${u.unit_number || u.unit}` : u.email}
                       </Text>
                     </View>
-                    <Text style={styles.userSelectIcon}>→</Text>
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))
               )}
@@ -586,95 +629,397 @@ export default function AdminPayments() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
+  },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  addButton: { backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  addButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '600' },
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
-  statsContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  statCard: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
-  statValue: { fontSize: 14, fontWeight: '700', color: COLORS.navy },
-  statLabel: { fontSize: 11, color: COLORS.gray, marginTop: 2 },
-  filters: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  filterButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.grayLight },
-  filterButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  filterText: { fontSize: 13, color: COLORS.gray },
-  filterTextActive: { color: COLORS.white },
-  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon: { fontSize: 60, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy, marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: COLORS.gray },
-  paymentCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, marginBottom: 12 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  cardHeaderLeft: { flex: 1 },
-  paymentConcept: { fontSize: 16, fontWeight: '600', color: COLORS.navy },
-  paymentUser: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  paymentAmount: { fontSize: 18, fontWeight: '700', color: COLORS.navy },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  statusText: { fontSize: 12, fontWeight: '500' },
-  dueDate: { fontSize: 12, color: COLORS.gray },
-  markPaidButton: { backgroundColor: COLORS.success + '15', padding: 12, borderRadius: 8, marginTop: 12, alignItems: 'center' },
-  markPaidText: { color: COLORS.success, fontWeight: '600' },
-  // Modal
-  modalContainer: { flex: 1, backgroundColor: COLORS.white },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  modalCancel: { fontSize: 16, color: COLORS.gray },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.navy },
-  modalSave: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: 16 },
-  // Form
-  formGroup: { marginBottom: 20 },
-  formLabel: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 8 },
-  formInput: { backgroundColor: COLORS.grayLighter, borderWidth: 1, borderColor: COLORS.grayLight, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: COLORS.navy },
-  formHint: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
-  // Selector
-  selectorButton: { backgroundColor: COLORS.grayLighter, borderWidth: 1, borderColor: COLORS.grayLight, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  selectorText: { fontSize: 16, color: COLORS.navy },
-  selectorPlaceholder: { fontSize: 16, color: COLORS.gray },
-  selectorArrow: { fontSize: 12, color: COLORS.gray },
-  // Type Grid
-  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeButton: { 
-    width: '48%',
-    backgroundColor: COLORS.grayLighter, 
-    borderWidth: 2, 
-    borderColor: COLORS.grayLight, 
-    borderRadius: 10, 
-    padding: 12, 
+  backButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
   },
-  typeButtonActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '10' },
-  typeIcon: { fontSize: 24, marginBottom: 4 },
-  typeLabel: { fontSize: 12, color: COLORS.gray, textAlign: 'center' },
-  typeLabelActive: { color: COLORS.primary, fontWeight: '600' },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  addButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: scale(16),
+  },
+  
+  // Stats
+  statsContainer: {
+    flexDirection: 'row',
+    gap: scale(10),
+    marginBottom: scale(16),
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: scale(12),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statValue: {
+    fontSize: scale(13),
+    fontWeight: '700',
+    marginTop: scale(4),
+  },
+  statLabel: {
+    fontSize: scale(10),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  
+  // Filters
+  filtersScroll: {
+    marginBottom: scale(16),
+    marginHorizontal: scale(-16),
+  },
+  filters: {
+    flexDirection: 'row',
+    gap: scale(8),
+    paddingHorizontal: scale(16),
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: scale(6),
+  },
+  filterButtonActive: {
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
+  },
+  filterText: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  filterTextActive: {
+    color: COLORS.background,
+  },
+  
+  // Empty State
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: scale(60),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+  
+  // Payment Card
+  paymentCard: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(12),
+  },
+  cardIconContainer: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.teal + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  cardHeaderLeft: {
+    flex: 1,
+  },
+  paymentConcept: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  paymentUser: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  paymentAmount: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(5),
+    borderRadius: scale(8),
+    gap: scale(4),
+  },
+  statusText: {
+    fontSize: scale(12),
+    fontWeight: '500',
+  },
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+  },
+  dueDate: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  markPaidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.success + '15',
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginTop: scale(12),
+    gap: scale(6),
+  },
+  markPaidText: {
+    color: COLORS.success,
+    fontWeight: '600',
+    fontSize: scale(14),
+  },
+  
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalCancel: {
+    fontSize: scale(16),
+    color: COLORS.textSecondary,
+  },
+  modalTitle: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  modalSave: {
+    fontSize: scale(16),
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: scale(16),
+  },
+  
+  // Form
+  formGroup: {
+    marginBottom: scale(20),
+  },
+  formLabel: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+  },
+  formInput: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(12),
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
+  },
+  formHint: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+  
+  // Selector
+  selectorButton: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(14),
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectorText: {
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
+  },
+  selectorPlaceholder: {
+    fontSize: scale(16),
+    color: COLORS.textMuted,
+  },
+  
+  // Type Grid
+  typeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
+  typeButton: {
+    width: '48%',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: scale(10),
+    padding: scale(12),
+    alignItems: 'center',
+    marginBottom: scale(4),
+  },
+  typeButtonActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '15',
+  },
+  typeLabel: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: scale(4),
+  },
+  typeLabelActive: {
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  
   // Search
-  searchContainer: { padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  searchInput: { backgroundColor: COLORS.grayLighter, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: COLORS.navy },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(16),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: scale(28),
+    zIndex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(12),
+    fontSize: scale(16),
+    color: COLORS.textPrimary,
+  },
+  
   // User List
-  userList: { flex: 1 },
-  userItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  userAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary + '20', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  userAvatarText: { fontSize: 18, fontWeight: '600', color: COLORS.primary },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: '500', color: COLORS.navy },
-  userDetail: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  userSelectIcon: { fontSize: 18, color: COLORS.gray },
+  userList: {
+    flex: 1,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  userAvatar: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.teal + '30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: scale(12),
+  },
+  userAvatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: scale(16),
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+  },
+  userDetail: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
 });

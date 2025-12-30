@@ -1,5 +1,5 @@
 // app/admin/announcements.js
-// ISSY Resident App - Admin: Gestión de Anuncios (Diseño Figma)
+// ISSY Resident App - Admin: Gestión de Anuncios (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -23,33 +23,36 @@ import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
 const IMAGE_SIZE = SCREEN_WIDTH - 90;
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
-// Colores
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#009FF5',
-  danger: '#EF4444',
-  warning: '#F59E0B',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  cyan: '#00E5FF',
+  purple: '#6366F1',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
   success: '#10B981',
-  purple: '#8B5CF6',
-  navy: '#1A1A2E',
-  black: '#000000',
-  white: '#FFFFFF',
-  background: '#FAFAFA',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
-  pink: '#FA5967',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 // Tipos de anuncios
 const ANNOUNCEMENT_TYPES = [
-  { value: 'info', label: '📢 Información', color: COLORS.primary },
+  { value: 'info', label: '📢 Información', color: COLORS.teal },
   { value: 'warning', label: '⚠️ Advertencia', color: COLORS.warning },
   { value: 'alert', label: '🚨 Alerta', color: COLORS.danger },
   { value: 'maintenance', label: '🔧 Mantenimiento', color: COLORS.purple },
@@ -59,7 +62,7 @@ const ANNOUNCEMENT_TYPES = [
 // Prioridades
 const PRIORITIES = [
   { value: 'low', label: 'Baja', color: COLORS.success },
-  { value: 'normal', label: 'Normal', color: COLORS.primary },
+  { value: 'normal', label: 'Normal', color: COLORS.teal },
   { value: 'medium', label: 'Media', color: COLORS.warning },
   { value: 'high', label: 'Alta', color: COLORS.danger },
   { value: 'urgent', label: 'Urgente', color: '#DC2626' },
@@ -98,154 +101,94 @@ export default function AdminAnnouncements() {
   
   const [formData, setFormData] = useState({
     title: '',
-    message: '',
+    content: '',
     type: 'info',
     priority: 'normal',
     target_audience: 'all',
-    send_push: true,
+    is_pinned: false,
+    is_active: true,
   });
 
-  const userRole = profile?.role || user?.role || 'user';
-  const isAdmin = ['admin', 'superadmin'].includes(userRole);
-
   useEffect(() => {
-    if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos para acceder a esta sección');
-      router.back();
-      return;
-    }
     fetchAnnouncements();
   }, []);
 
   const getAuthHeaders = async () => {
-    const authToken = await AsyncStorage.getItem('token');
-    if (!authToken) {
-      throw new Error('No hay sesión activa');
-    }
+    const token = await AsyncStorage.getItem('token');
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
+      'Authorization': `Bearer ${token}`,
     };
-  };
-
-  const handleSessionExpired = () => {
-    Alert.alert(
-      'Sesión Expirada',
-      'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            signOut();
-            router.replace('/(auth)/login');
-          }
-        }
-      ]
-    );
   };
 
   const fetchAnnouncements = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/announcements`, { headers });
-      
-      if (response.status === 401) {
-        handleSessionExpired();
-        return;
-      }
-      
+      const response = await fetch(`${API_URL}/api/announcements/admin`, { headers });
       const data = await response.json();
       
-      if (data.success || Array.isArray(data)) {
-        const announcementsList = data.data || data.announcements || data;
-        setAnnouncements(Array.isArray(announcementsList) ? announcementsList : []);
+      if (data.success) {
+        setAnnouncements(data.data || []);
       }
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      if (error.message === 'No hay sesión activa') {
-        handleSessionExpired();
-      } else {
-        Alert.alert('Error', 'No se pudieron cargar los anuncios');
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = () => {
     setRefreshing(true);
     fetchAnnouncements();
-  }, []);
+  };
 
-  const handleCreate = () => {
+  const openCreateModal = () => {
     setEditingAnnouncement(null);
-    setSelectedImages([]);
-    setExistingImages([]);
     setFormData({
       title: '',
-      message: '',
+      content: '',
       type: 'info',
       priority: 'normal',
       target_audience: 'all',
-      send_push: true,
+      is_pinned: false,
+      is_active: true,
     });
+    setSelectedImages([]);
+    setExistingImages([]);
     setShowModal(true);
   };
 
-  const handleEdit = (announcement) => {
+  const openEditModal = (announcement) => {
     setEditingAnnouncement(announcement);
-    setSelectedImages([]);
-    setExistingImages(announcement.images || []);
     setFormData({
-      title: announcement.title,
-      message: announcement.message,
+      title: announcement.title || '',
+      content: announcement.content || '',
       type: announcement.type || 'info',
       priority: announcement.priority || 'normal',
       target_audience: announcement.target_audience || 'all',
-      send_push: announcement.send_push !== false,
+      is_pinned: announcement.is_pinned || false,
+      is_active: announcement.is_active !== false,
     });
+    setSelectedImages([]);
+    setExistingImages(announcement.images || []);
     setShowDetailModal(false);
     setShowModal(true);
   };
 
-  const handleOpenDetail = (announcement) => {
-    setSelectedAnnouncement(announcement);
-    setCurrentImageIndex(0);
-    setShowDetailModal(true);
-  };
-
-  // Image picker
   const pickImages = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir imágenes');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        selectionLimit: 10 - selectedImages.length - existingImages.length,
-      });
-
-      if (!result.canceled && result.assets) {
-        const newImages = result.assets.map(asset => ({
-          uri: asset.uri,
-          type: 'image/jpeg',
-          name: asset.fileName || `image_${Date.now()}.jpg`,
-        }));
-        setSelectedImages([...selectedImages, ...newImages]);
-      }
-    } catch (error) {
-      console.error('Error picking images:', error);
-      Alert.alert('Error', 'No se pudieron seleccionar las imágenes');
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setSelectedImages([...selectedImages, ...result.assets]);
     }
   };
 
-  const removeSelectedImage = (index) => {
+  const removeNewImage = (index) => {
     setSelectedImages(selectedImages.filter((_, i) => i !== index));
   };
 
@@ -255,70 +198,54 @@ export default function AdminAnnouncements() {
 
   const uploadImages = async () => {
     if (selectedImages.length === 0) return [];
-
+    
     setUploading(true);
+    const uploadedUrls = [];
+    
     try {
-      const authToken = await AsyncStorage.getItem('token');
-      if (!authToken) {
-        throw new Error('No hay sesión activa');
-      }
-      
-      const uploadFormData = new FormData();
-
-      selectedImages.forEach((image) => {
-        uploadFormData.append('images', {
+      for (const image of selectedImages) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', {
           uri: image.uri,
-          type: image.type,
-          name: image.name,
+          type: 'image/jpeg',
+          name: `announcement_${Date.now()}.jpg`,
         });
-      });
-
-      const response = await fetch(`${API_URL}/api/announcements/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        body: uploadFormData,
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        return data.data.urls || [];
-      } else if (response.status === 401) {
-        handleSessionExpired();
-        throw new Error('Sesión expirada');
-      } else {
-        throw new Error(data.message || 'Error uploading images');
+        
+        const token = await AsyncStorage.getItem('token');
+        const response = await fetch(`${API_URL}/api/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formDataUpload,
+        });
+        
+        const data = await response.json();
+        if (data.success && data.url) {
+          uploadedUrls.push(data.url);
+        }
       }
     } catch (error) {
       console.error('Error uploading images:', error);
-      throw error;
     } finally {
       setUploading(false);
     }
+    
+    return uploadedUrls;
   };
 
-  const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      Alert.alert('Error', 'El título es requerido');
+  const handleSave = async () => {
+    if (!formData.title.trim() || !formData.content.trim()) {
+      Alert.alert('Error', 'Título y contenido son requeridos');
       return;
     }
-    if (!formData.message.trim()) {
-      Alert.alert('Error', 'El mensaje es requerido');
-      return;
-    }
-
+    
     setSaving(true);
+    
     try {
-      let uploadedUrls = [];
-      if (selectedImages.length > 0) {
-        uploadedUrls = await uploadImages();
-      }
-
-      const allImages = [...existingImages, ...uploadedUrls];
-
+      const newImageUrls = await uploadImages();
+      const allImages = [...existingImages, ...newImageUrls];
+      
       const headers = await getAuthHeaders();
       const url = editingAnnouncement 
         ? `${API_URL}/api/announcements/${editingAnnouncement.id}`
@@ -330,34 +257,21 @@ export default function AdminAnnouncements() {
         body: JSON.stringify({
           ...formData,
           images: allImages,
-          location_id: profile?.location_id,
         }),
       });
-
+      
       const data = await response.json();
-
-      if (response.status === 401) {
-        handleSessionExpired();
-        return;
-      }
-
-      if (response.ok) {
-        Alert.alert(
-          'Éxito', 
-          editingAnnouncement ? 'Anuncio actualizado' : 'Anuncio creado'
-        );
+      
+      if (data.success) {
+        Alert.alert('Éxito', editingAnnouncement ? 'Anuncio actualizado' : 'Anuncio creado');
         setShowModal(false);
         fetchAnnouncements();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo guardar el anuncio');
+        Alert.alert('Error', data.error || 'No se pudo guardar');
       }
     } catch (error) {
-      console.error('Error saving announcement:', error);
-      if (error.message === 'No hay sesión activa' || error.message === 'Sesión expirada') {
-        handleSessionExpired();
-      } else {
-        Alert.alert('Error', 'No se pudo guardar el anuncio');
-      }
+      console.error('Error saving:', error);
+      Alert.alert('Error', 'No se pudo guardar el anuncio');
     } finally {
       setSaving(false);
     }
@@ -369,36 +283,29 @@ export default function AdminAnnouncements() {
       `¿Estás seguro de eliminar "${announcement.title}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Eliminar', 
+        {
+          text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
-              const response = await fetch(
-                `${API_URL}/api/announcements/${announcement.id}`,
-                { method: 'DELETE', headers }
-              );
-
-              if (response.status === 401) {
-                handleSessionExpired();
-                return;
-              }
+              const response = await fetch(`${API_URL}/api/announcements/${announcement.id}`, {
+                method: 'DELETE',
+                headers,
+              });
               
-              if (response.ok) {
+              const data = await response.json();
+              
+              if (data.success) {
                 Alert.alert('Éxito', 'Anuncio eliminado');
                 setShowDetailModal(false);
                 fetchAnnouncements();
               } else {
-                const data = await response.json();
-                Alert.alert('Error', data.error || 'No se pudo eliminar');
-              }
-            } catch (error) {
-              if (error.message === 'No hay sesión activa' || error.message === 'Sesión expirada') {
-                handleSessionExpired();
-              } else {
                 Alert.alert('Error', 'No se pudo eliminar el anuncio');
               }
+            } catch (error) {
+              console.error('Error deleting:', error);
+              Alert.alert('Error', 'No se pudo eliminar el anuncio');
             }
           }
         },
@@ -485,7 +392,7 @@ export default function AdminAnnouncements() {
                 key={index}
                 style={[
                   styles.dot,
-                  { backgroundColor: index === currentImageIndex ? '#D4FE48' : '#FFFFFF' }
+                  { backgroundColor: index === currentImageIndex ? COLORS.lime : COLORS.textMuted }
                 ]}
               />
             ))}
@@ -496,87 +403,352 @@ export default function AdminAnnouncements() {
   };
 
   const renderAnnouncement = ({ item }) => {
-    const isNew = !item.is_read;
+    const typeConfig = ANNOUNCEMENT_TYPES.find(t => t.value === item.type) || ANNOUNCEMENT_TYPES[0];
+    const priorityConfig = PRIORITIES.find(p => p.value === item.priority) || PRIORITIES[1];
     
     return (
-      <TouchableOpacity
+      <TouchableOpacity 
         style={styles.announcementCard}
-        onPress={() => handleOpenDetail(item)}
+        onPress={() => {
+          setSelectedAnnouncement(item);
+          setCurrentImageIndex(0);
+          setShowDetailModal(true);
+        }}
         activeOpacity={0.7}
       >
-        <LinearGradient
-          colors={['#D4FE48', '#11DAE9']}
-          style={styles.gradientBar}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        />
-        
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleSection}>
-              <Text style={styles.announcementTitle} numberOfLines={1}>
-                {item.title}
-              </Text>
-              <Text style={styles.announcementPreview} numberOfLines={1}>
-                {item.message}
-              </Text>
-              <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
-            </View>
-            
-            <View style={styles.cardRight}>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: isNew ? COLORS.pink : COLORS.primary }
-              ]}>
-                <Text style={styles.statusBadgeText}>
-                  {isNew ? 'NUEVO' : 'VISTO'}
-                </Text>
-              </View>
-              
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={styles.iconButton}
-                  onPress={() => handleDelete(item)}
-                >
-                  <Ionicons name="trash-outline" size={18} color={COLORS.gray} />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.iconButton}
-                  onPress={() => handleOpenDetail(item)}
-                >
-                  <Ionicons name="arrow-forward" size={18} color={COLORS.black} />
-                </TouchableOpacity>
-              </View>
-            </View>
+        <View style={styles.cardHeader}>
+          <View style={[styles.typeBadge, { backgroundColor: typeConfig.color + '20' }]}>
+            <Text style={[styles.typeBadgeText, { color: typeConfig.color }]}>
+              {typeConfig.label}
+            </Text>
           </View>
+          <View style={styles.cardMeta}>
+            {item.is_pinned && (
+              <Ionicons name="pin" size={14} color={COLORS.lime} />
+            )}
+            {!item.is_active && (
+              <View style={styles.inactiveBadge}>
+                <Text style={styles.inactiveBadgeText}>Inactivo</Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.cardContent} numberOfLines={2}>{item.content}</Text>
+        
+        {item.images?.length > 0 && (
+          <View style={styles.imageIndicator}>
+            <Ionicons name="images-outline" size={14} color={COLORS.textSecondary} />
+            <Text style={styles.imageCount}>{item.images.length} imagen{item.images.length > 1 ? 'es' : ''}</Text>
+          </View>
+        )}
+        
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardDate}>{formatDate(item.created_at)}</Text>
+          <View style={[styles.priorityDot, { backgroundColor: priorityConfig.color }]} />
         </View>
       </TouchableOpacity>
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIconContainer}>
-        <Ionicons name="megaphone-outline" size={64} color="#D1D5DB" />
-      </View>
-      <Text style={styles.emptyTitle}>No hay anuncios</Text>
-      <Text style={styles.emptySubtitle}>
-        Crea tu primer anuncio para informar a tu comunidad
-      </Text>
-      <TouchableOpacity style={styles.emptyButton} onPress={handleCreate}>
-        <Text style={styles.emptyButtonText}>Crear Anuncio</Text>
-      </TouchableOpacity>
-    </View>
+  const renderFormModal = () => (
+    <Modal
+      visible={showModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowModal(false)}
+    >
+      <SafeAreaView style={styles.formModalContainer} edges={['top']}>
+        <View style={styles.formModalHeader}>
+          <TouchableOpacity onPress={() => setShowModal(false)}>
+            <Text style={styles.formModalCancel}>Cancelar</Text>
+          </TouchableOpacity>
+          <Text style={styles.formModalTitle}>
+            {editingAnnouncement ? 'Editar Anuncio' : 'Nuevo Anuncio'}
+          </Text>
+          <TouchableOpacity onPress={handleSave} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator size="small" color={COLORS.lime} />
+            ) : (
+              <Text style={styles.formModalSave}>Guardar</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+        
+        <ScrollView style={styles.formModalContent} showsVerticalScrollIndicator={false}>
+          {/* Título */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Título *</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="Título del anuncio"
+              placeholderTextColor={COLORS.textMuted}
+              value={formData.title}
+              onChangeText={(text) => setFormData({...formData, title: text})}
+            />
+          </View>
+          
+          {/* Contenido */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Contenido *</Text>
+            <TextInput
+              style={[styles.formInput, styles.formTextarea]}
+              placeholder="Escribe el contenido del anuncio..."
+              placeholderTextColor={COLORS.textMuted}
+              value={formData.content}
+              onChangeText={(text) => setFormData({...formData, content: text})}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+          
+          {/* Tipo */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Tipo</Text>
+            <View style={styles.optionsRow}>
+              {ANNOUNCEMENT_TYPES.map(type => (
+                <TouchableOpacity
+                  key={type.value}
+                  style={[
+                    styles.optionButton,
+                    formData.type === type.value && { backgroundColor: type.color + '30', borderColor: type.color }
+                  ]}
+                  onPress={() => setFormData({...formData, type: type.value})}
+                >
+                  <Text style={[
+                    styles.optionButtonText,
+                    formData.type === type.value && { color: type.color }
+                  ]}>
+                    {type.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          
+          {/* Prioridad */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Prioridad</Text>
+            <View style={styles.optionsRow}>
+              {PRIORITIES.map(priority => (
+                <TouchableOpacity
+                  key={priority.value}
+                  style={[
+                    styles.optionButton,
+                    formData.priority === priority.value && { backgroundColor: priority.color + '30', borderColor: priority.color }
+                  ]}
+                  onPress={() => setFormData({...formData, priority: priority.value})}
+                >
+                  <Text style={[
+                    styles.optionButtonText,
+                    formData.priority === priority.value && { color: priority.color }
+                  ]}>
+                    {priority.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          
+          {/* Audiencia */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Audiencia</Text>
+            <View style={styles.optionsRow}>
+              {TARGET_AUDIENCES.map(audience => (
+                <TouchableOpacity
+                  key={audience.value}
+                  style={[
+                    styles.optionButton,
+                    formData.target_audience === audience.value && styles.optionButtonSelected
+                  ]}
+                  onPress={() => setFormData({...formData, target_audience: audience.value})}
+                >
+                  <Text style={[
+                    styles.optionButtonText,
+                    formData.target_audience === audience.value && styles.optionButtonTextSelected
+                  ]}>
+                    {audience.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          
+          {/* Imágenes */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Imágenes</Text>
+            
+            {(existingImages.length > 0 || selectedImages.length > 0) && (
+              <View style={styles.imagesContainer}>
+                {existingImages.map((url, index) => (
+                  <View key={`existing-${index}`} style={styles.imageWrapper}>
+                    <Image source={{ uri: url }} style={styles.imagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeExistingImage(index)}
+                    >
+                      <Ionicons name="close-circle" size={24} color={COLORS.danger} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {selectedImages.map((image, index) => (
+                  <View key={`new-${index}`} style={styles.imageWrapper}>
+                    <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeNewImage(index)}
+                    >
+                      <Ionicons name="close-circle" size={24} color={COLORS.danger} />
+                    </TouchableOpacity>
+                    <View style={styles.newImageBadge}>
+                      <Text style={styles.newImageBadgeText}>NUEVO</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            <TouchableOpacity style={styles.addImageButton} onPress={pickImages}>
+              <Ionicons name="camera-outline" size={20} color={COLORS.lime} />
+              <Text style={styles.addImageText}>Agregar Imágenes</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Opciones */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Opciones</Text>
+            
+            <TouchableOpacity 
+              style={styles.toggleRow}
+              onPress={() => setFormData({...formData, is_pinned: !formData.is_pinned})}
+            >
+              <View style={styles.toggleInfo}>
+                <Ionicons name="pin" size={18} color={formData.is_pinned ? COLORS.lime : COLORS.textMuted} />
+                <Text style={styles.toggleLabel}>Fijar anuncio</Text>
+              </View>
+              <View style={[styles.toggleSwitch, formData.is_pinned && styles.toggleSwitchActive]}>
+                <View style={[styles.toggleKnob, formData.is_pinned && styles.toggleKnobActive]} />
+              </View>
+            </TouchableOpacity>
+            
+            <View style={{ height: 10 }} />
+            
+            <TouchableOpacity 
+              style={styles.toggleRow}
+              onPress={() => setFormData({...formData, is_active: !formData.is_active})}
+            >
+              <View style={styles.toggleInfo}>
+                <Ionicons name="eye" size={18} color={formData.is_active ? COLORS.success : COLORS.textMuted} />
+                <Text style={styles.toggleLabel}>Anuncio activo</Text>
+              </View>
+              <View style={[styles.toggleSwitch, formData.is_active && styles.toggleSwitchActive]}>
+                <View style={[styles.toggleKnob, formData.is_active && styles.toggleKnobActive]} />
+              </View>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
+
+  const renderDetailModal = () => {
+    if (!selectedAnnouncement) return null;
+    
+    const typeConfig = ANNOUNCEMENT_TYPES.find(t => t.value === selectedAnnouncement.type) || ANNOUNCEMENT_TYPES[0];
+    const priorityConfig = PRIORITIES.find(p => p.value === selectedAnnouncement.priority) || PRIORITIES[1];
+    const audienceConfig = TARGET_AUDIENCES.find(a => a.value === selectedAnnouncement.target_audience) || TARGET_AUDIENCES[0];
+    
+    return (
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <SafeAreaView style={styles.detailModalContainer} edges={['top']}>
+          <View style={styles.detailModalHeader}>
+            <TouchableOpacity onPress={() => setShowDetailModal(false)} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.detailModalTitle}>Detalle</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          
+          <ScrollView style={styles.detailContent} showsVerticalScrollIndicator={false}>
+            {renderImageCarousel()}
+            
+            <View style={styles.detailBody}>
+              <View style={styles.detailBadges}>
+                <View style={[styles.typeBadge, { backgroundColor: typeConfig.color + '20' }]}>
+                  <Text style={[styles.typeBadgeText, { color: typeConfig.color }]}>
+                    {typeConfig.label}
+                  </Text>
+                </View>
+                <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.color + '20' }]}>
+                  <Text style={[styles.priorityBadgeText, { color: priorityConfig.color }]}>
+                    {priorityConfig.label}
+                  </Text>
+                </View>
+                {selectedAnnouncement.is_pinned && (
+                  <View style={styles.pinnedBadge}>
+                    <Ionicons name="pin" size={12} color={COLORS.lime} />
+                    <Text style={styles.pinnedBadgeText}>Fijado</Text>
+                  </View>
+                )}
+              </View>
+              
+              <Text style={styles.detailTitle}>{selectedAnnouncement.title}</Text>
+              <Text style={styles.detailContentText}>{selectedAnnouncement.content}</Text>
+              
+              <View style={styles.detailMeta}>
+                <View style={styles.metaItem}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+                  <Text style={styles.metaText}>{formatFullDate(selectedAnnouncement.created_at)}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Ionicons name="people-outline" size={16} color={COLORS.textMuted} />
+                  <Text style={styles.metaText}>{audienceConfig.label}</Text>
+                </View>
+                {!selectedAnnouncement.is_active && (
+                  <View style={styles.metaItem}>
+                    <Ionicons name="eye-off-outline" size={16} color={COLORS.warning} />
+                    <Text style={[styles.metaText, { color: COLORS.warning }]}>Inactivo</Text>
+                  </View>
+                )}
+              </View>
+              
+              {/* Admin Actions */}
+              <View style={styles.adminActions}>
+                <TouchableOpacity 
+                  style={styles.editDetailButton}
+                  onPress={() => openEditModal(selectedAnnouncement)}
+                >
+                  <Ionicons name="pencil" size={18} color={COLORS.teal} />
+                  <Text style={styles.editDetailButtonText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.deleteDetailButton}
+                  onPress={() => handleDelete(selectedAnnouncement)}
+                >
+                  <Ionicons name="trash" size={18} color={COLORS.danger} />
+                  <Text style={styles.deleteDetailButtonText}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    );
+  };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Cargando anuncios...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.lime} />
+      </View>
     );
   }
 
@@ -584,321 +756,66 @@ export default function AdminAnnouncements() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>Anuncios</Text>
-            {announcements.length > 0 && (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{announcements.length}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.headerSubtitle}>Gestión de anuncios</Text>
-        </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
-          <Ionicons name="add" size={24} color={COLORS.white} />
+        <Text style={styles.headerTitle}>Anuncios</Text>
+        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
-
-      {/* Lista de anuncios */}
+      
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{announcements.length}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: COLORS.success }]}>
+            {announcements.filter(a => a.is_active).length}
+          </Text>
+          <Text style={styles.statLabel}>Activos</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNumber, { color: COLORS.lime }]}>
+            {announcements.filter(a => a.is_pinned).length}
+          </Text>
+          <Text style={styles.statLabel}>Fijados</Text>
+        </View>
+      </View>
+      
+      {/* Create Button */}
+      <TouchableOpacity style={styles.createButton} onPress={openCreateModal}>
+        <Ionicons name="add-circle" size={20} color={COLORS.background} />
+        <Text style={styles.createButtonText}>Crear Anuncio</Text>
+      </TouchableOpacity>
+      
+      {/* List */}
       <FlatList
         data={announcements}
         renderItem={renderAnnouncement}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+            tintColor={COLORS.lime}
           />
         }
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="megaphone-outline" size={48} color={COLORS.textMuted} />
+            <Text style={styles.emptyText}>No hay anuncios</Text>
+            <Text style={styles.emptySubtext}>Crea el primer anuncio para tu comunidad</Text>
+          </View>
+        }
       />
-
-      {/* Botón flotante de crear */}
-      <TouchableOpacity style={styles.fab} onPress={handleCreate}>
-        <LinearGradient
-          colors={['#D4FE48', '#11DAE9']}
-          style={styles.fabGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Ionicons name="add" size={28} color={COLORS.black} />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Modal de detalle */}
-      <Modal
-        visible={showDetailModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDetailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.detailModalContainer}>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowDetailModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
-
-            {selectedAnnouncement && (
-              <ScrollView 
-                style={styles.detailModalContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {renderImageCarousel()}
-
-                <Text style={styles.detailTitle}>{selectedAnnouncement.title}</Text>
-                <Text style={styles.detailMessage}>{selectedAnnouncement.message}</Text>
-                <Text style={styles.detailDate}>
-                  {formatFullDate(selectedAnnouncement.created_at)}
-                </Text>
-
-                {/* Admin actions */}
-                <View style={styles.adminActions}>
-                  <TouchableOpacity 
-                    style={styles.editDetailButton}
-                    onPress={() => handleEdit(selectedAnnouncement)}
-                  >
-                    <Ionicons name="pencil" size={18} color={COLORS.primary} />
-                    <Text style={styles.editDetailButtonText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.deleteDetailButton}
-                    onPress={() => handleDelete(selectedAnnouncement)}
-                  >
-                    <Ionicons name="trash" size={18} color={COLORS.danger} />
-                    <Text style={styles.deleteDetailButtonText}>Eliminar</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de Crear/Editar */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <SafeAreaView style={styles.formModalContainer}>
-          <View style={styles.formModalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.formModalCancel}>Cancelar</Text>
-            </TouchableOpacity>
-            <Text style={styles.formModalTitle}>
-              {editingAnnouncement ? 'Editar Anuncio' : 'Nuevo Anuncio'}
-            </Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={saving || uploading}>
-              {saving || uploading ? (
-                <ActivityIndicator size="small" color={COLORS.primary} />
-              ) : (
-                <Text style={styles.formModalSave}>Guardar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.formModalContent}>
-            {/* Título */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Título *</Text>
-              <TextInput
-                style={styles.formInput}
-                value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Ej: Fiesta de fin de año"
-                placeholderTextColor={COLORS.gray}
-              />
-            </View>
-
-            {/* Mensaje */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Mensaje *</Text>
-              <TextInput
-                style={[styles.formInput, styles.formTextarea]}
-                value={formData.message}
-                onChangeText={(text) => setFormData({ ...formData, message: text })}
-                placeholder="Escribe el contenido del anuncio..."
-                placeholderTextColor={COLORS.gray}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* Imágenes */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Imágenes (máx. 10)</Text>
-              
-              {existingImages.length > 0 && (
-                <View style={styles.imagesContainer}>
-                  {existingImages.map((uri, index) => (
-                    <View key={`existing-${index}`} style={styles.imageWrapper}>
-                      <Image source={{ uri }} style={styles.imagePreview} />
-                      <TouchableOpacity 
-                        style={styles.removeImageButton}
-                        onPress={() => removeExistingImage(index)}
-                      >
-                        <Ionicons name="close-circle" size={24} color={COLORS.danger} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {selectedImages.length > 0 && (
-                <View style={styles.imagesContainer}>
-                  {selectedImages.map((image, index) => (
-                    <View key={`selected-${index}`} style={styles.imageWrapper}>
-                      <Image source={{ uri: image.uri }} style={styles.imagePreview} />
-                      <TouchableOpacity 
-                        style={styles.removeImageButton}
-                        onPress={() => removeSelectedImage(index)}
-                      >
-                        <Ionicons name="close-circle" size={24} color={COLORS.danger} />
-                      </TouchableOpacity>
-                      <View style={styles.newImageBadge}>
-                        <Text style={styles.newImageBadgeText}>Nueva</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {(existingImages.length + selectedImages.length) < 10 && (
-                <TouchableOpacity style={styles.addImageButton} onPress={pickImages}>
-                  <Ionicons name="camera" size={24} color={COLORS.primary} />
-                  <Text style={styles.addImageText}>Agregar Imágenes</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Tipo */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Tipo</Text>
-              <View style={styles.optionsRow}>
-                {ANNOUNCEMENT_TYPES.map((type) => (
-                  <TouchableOpacity
-                    key={type.value}
-                    style={[
-                      styles.optionButton,
-                      formData.type === type.value && { 
-                        backgroundColor: type.color + '20',
-                        borderColor: type.color,
-                      }
-                    ]}
-                    onPress={() => setFormData({ ...formData, type: type.value })}
-                  >
-                    <Text style={[
-                      styles.optionButtonText,
-                      formData.type === type.value && { color: type.color }
-                    ]}>
-                      {type.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Prioridad */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Prioridad</Text>
-              <View style={styles.optionsRow}>
-                {PRIORITIES.map((priority) => (
-                  <TouchableOpacity
-                    key={priority.value}
-                    style={[
-                      styles.optionButton,
-                      formData.priority === priority.value && { 
-                        backgroundColor: priority.color + '20',
-                        borderColor: priority.color,
-                      }
-                    ]}
-                    onPress={() => setFormData({ ...formData, priority: priority.value })}
-                  >
-                    <Text style={[
-                      styles.optionButtonText,
-                      formData.priority === priority.value && { color: priority.color }
-                    ]}>
-                      {priority.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Audiencia */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Dirigido a</Text>
-              <View style={styles.optionsRow}>
-                {TARGET_AUDIENCES.map((audience) => (
-                  <TouchableOpacity
-                    key={audience.value}
-                    style={[
-                      styles.optionButton,
-                      formData.target_audience === audience.value && { 
-                        backgroundColor: COLORS.primary + '20',
-                        borderColor: COLORS.primary,
-                      }
-                    ]}
-                    onPress={() => setFormData({ ...formData, target_audience: audience.value })}
-                  >
-                    <Text style={[
-                      styles.optionButtonText,
-                      formData.target_audience === audience.value && { color: COLORS.primary }
-                    ]}>
-                      {audience.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Notificaciones Push */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Notificaciones</Text>
-              <TouchableOpacity 
-                style={styles.toggleRow}
-                onPress={() => setFormData({ ...formData, send_push: !formData.send_push })}
-              >
-                <View style={styles.toggleInfo}>
-                  <Ionicons 
-                    name="notifications" 
-                    size={20} 
-                    color={formData.send_push ? COLORS.primary : COLORS.gray} 
-                  />
-                  <Text style={styles.toggleLabel}>Enviar notificación push</Text>
-                </View>
-                <View style={[
-                  styles.toggleSwitch,
-                  formData.send_push && styles.toggleSwitchActive
-                ]}>
-                  <View style={[
-                    styles.toggleKnob,
-                    formData.send_push && styles.toggleKnobActive
-                  ]} />
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ height: 100 }} />
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+      
+      {renderFormModal()}
+      {renderDetailModal()}
     </SafeAreaView>
   );
 }
@@ -912,427 +829,291 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: COLORS.gray,
+    backgroundColor: COLORS.background,
   },
   
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: COLORS.background,
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerTitleContainer: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: scale(18),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
-  countBadge: {
-    backgroundColor: COLORS.pink,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+  refreshButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-    paddingHorizontal: 6,
   },
-  countBadgeText: {
-    color: COLORS.black,
-    fontSize: 11,
+  
+  // Stats
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: scale(16),
+    gap: scale(12),
+    marginBottom: scale(16),
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(12),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statNumber: {
+    fontSize: scale(24),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  statLabel: {
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  
+  // Create Button
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.lime,
+    marginHorizontal: scale(16),
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    marginBottom: scale(16),
+  },
+  createButtonText: {
+    fontSize: scale(15),
     fontWeight: '600',
+    color: COLORS.background,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.black,
-    marginTop: 2,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
+  
   // List
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 100,
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(100),
   },
-
-  // Card
+  
+  // Announcement Card
   announcementCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    marginBottom: 12,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  gradientBar: {
-    width: 11,
-    borderTopLeftRadius: 13,
-    borderBottomLeftRadius: 13,
-  },
-  cardContent: {
-    flex: 1,
-    padding: 16,
-    paddingLeft: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: scale(10),
   },
-  cardTitleSection: {
-    flex: 1,
-    marginRight: 12,
+  typeBadge: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
   },
-  announcementTitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.black,
-    marginBottom: 4,
-  },
-  announcementPreview: {
-    fontSize: 14,
-    color: '#707883',
-    marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 10,
-    color: COLORS.primary,
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-    marginBottom: 8,
-  },
-  statusBadgeText: {
-    color: COLORS.black,
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 4,
-  },
-
-  // Empty state
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  emptyButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
+  typeBadgeText: {
+    fontSize: scale(11),
     fontWeight: '600',
   },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 90,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  fabGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Detail Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  detailModalContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 13,
-    width: '100%',
-    maxHeight: '85%',
-    overflow: 'hidden',
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    zIndex: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailModalContent: {
-    padding: 24,
-    paddingTop: 16,
-  },
-
-  // Carousel
-  carouselContainer: {
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  imageScroll: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: 13,
-  },
-  carouselImage: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: 13,
-  },
-  dotsContainer: {
+  cardMeta: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -24,
-    paddingBottom: 8,
+    gap: scale(8),
   },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginHorizontal: 3,
+  inactiveBadge: {
+    backgroundColor: COLORS.warning + '20',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
   },
-
-  // Detail content
-  detailTitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: COLORS.black,
-    marginBottom: 12,
+  inactiveBadgeText: {
+    fontSize: scale(10),
+    color: COLORS.warning,
+    fontWeight: '500',
   },
-  detailMessage: {
-    fontSize: 14,
-    color: '#707883',
-    lineHeight: 18,
-    marginBottom: 24,
+  cardTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(6),
   },
-  detailDate: {
-    fontSize: 10,
-    color: '#707883',
-    textTransform: 'capitalize',
-    marginBottom: 20,
+  cardContent: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    lineHeight: scale(18),
   },
-
-  // Admin actions in detail modal
-  adminActions: {
+  imageIndicator: {
     flexDirection: 'row',
-    gap: 12,
-    paddingTop: 16,
+    alignItems: 'center',
+    gap: scale(4),
+    marginTop: scale(10),
+  },
+  imageCount: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: scale(12),
+    paddingTop: scale(12),
     borderTopWidth: 1,
-    borderTopColor: COLORS.grayLight,
+    borderTopColor: COLORS.border,
   },
-  editDetailButton: {
-    flex: 1,
-    flexDirection: 'row',
+  cardDate: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+  },
+  priorityDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+  },
+  
+  // Empty
+  emptyContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: COLORS.primary + '15',
+    paddingVertical: scale(60),
   },
-  editDetailButtonText: {
-    color: COLORS.primary,
-    fontSize: 14,
+  emptyText: {
+    fontSize: scale(16),
     fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
   },
-  deleteDetailButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: COLORS.danger + '15',
+  emptySubtext: {
+    fontSize: scale(13),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
   },
-  deleteDetailButtonText: {
-    color: COLORS.danger,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
+  
   // Form Modal
   formModalContainer: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   formModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    borderBottomColor: COLORS.border,
   },
   formModalCancel: {
-    fontSize: 16,
-    color: COLORS.gray,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
   },
   formModalTitle: {
-    fontSize: 17,
+    fontSize: scale(17),
     fontWeight: '600',
-    color: COLORS.navy,
+    color: COLORS.textPrimary,
   },
   formModalSave: {
-    fontSize: 16,
-    color: COLORS.primary,
+    fontSize: scale(15),
+    color: COLORS.lime,
     fontWeight: '600',
   },
   formModalContent: {
     flex: 1,
-    padding: 16,
+    padding: scale(16),
   },
-
+  
   // Form
   formGroup: {
-    marginBottom: 20,
+    marginBottom: scale(20),
   },
   formLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: COLORS.navy,
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
   },
   formInput: {
-    backgroundColor: COLORS.grayLighter,
+    backgroundColor: COLORS.backgroundSecondary,
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: COLORS.navy,
+    borderColor: COLORS.border,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(12),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
   },
   formTextarea: {
-    height: 120,
-    paddingTop: 12,
+    height: scale(120),
+    paddingTop: scale(12),
+    textAlignVertical: 'top',
   },
   optionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: scale(8),
   },
   optionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+    borderRadius: scale(8),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  optionButtonSelected: {
+    backgroundColor: COLORS.lime + '30',
+    borderColor: COLORS.lime,
   },
   optionButtonText: {
-    fontSize: 13,
-    color: COLORS.gray,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
   },
-
+  optionButtonTextSelected: {
+    color: COLORS.lime,
+  },
+  
   // Images
   imagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 12,
+    gap: scale(10),
+    marginBottom: scale(12),
   },
   imageWrapper: {
     position: 'relative',
   },
   imagePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: COLORS.grayLight,
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(8),
+    backgroundColor: COLORS.backgroundTertiary,
   },
   removeImageButton: {
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderRadius: 12,
   },
   newImageBadge: {
@@ -1340,71 +1121,225 @@ const styles = StyleSheet.create({
     bottom: 4,
     left: 4,
     backgroundColor: COLORS.success,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
   },
   newImageBadgeText: {
-    fontSize: 8,
-    color: COLORS.white,
+    fontSize: scale(8),
+    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   addImageButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 16,
+    gap: scale(8),
+    padding: scale(16),
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.lime,
     borderStyle: 'dashed',
-    borderRadius: 10,
-    backgroundColor: COLORS.primary + '10',
+    borderRadius: scale(10),
+    backgroundColor: COLORS.lime + '10',
   },
   addImageText: {
-    fontSize: 14,
-    color: COLORS.primary,
+    fontSize: scale(14),
+    color: COLORS.lime,
     fontWeight: '500',
   },
-
+  
   // Toggle
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 10,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(14),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
+    borderColor: COLORS.border,
   },
   toggleInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: scale(10),
   },
   toggleLabel: {
-    fontSize: 14,
-    color: COLORS.navy,
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
   },
   toggleSwitch: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.grayLight,
+    width: scale(50),
+    height: scale(28),
+    borderRadius: scale(14),
+    backgroundColor: COLORS.backgroundTertiary,
     padding: 2,
   },
   toggleSwitchActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.lime,
   },
   toggleKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.white,
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.textPrimary,
   },
   toggleKnobActive: {
     transform: [{ translateX: 22 }],
+  },
+  
+  // Detail Modal
+  detailModalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  detailModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  closeButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailModalTitle: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailBody: {
+    padding: scale(16),
+  },
+  detailBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+    marginBottom: scale(16),
+  },
+  priorityBadge: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  priorityBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '600',
+  },
+  pinnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+    backgroundColor: COLORS.lime + '20',
+  },
+  pinnedBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '600',
+    color: COLORS.lime,
+  },
+  detailTitle: {
+    fontSize: scale(22),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
+  },
+  detailContentText: {
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
+    lineHeight: scale(22),
+    marginBottom: scale(20),
+  },
+  detailMeta: {
+    gap: scale(10),
+    paddingTop: scale(16),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+  },
+  metaText: {
+    fontSize: scale(13),
+    color: COLORS.textMuted,
+  },
+  adminActions: {
+    flexDirection: 'row',
+    gap: scale(12),
+    paddingTop: scale(20),
+    marginTop: scale(20),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  editDetailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.teal + '20',
+  },
+  editDetailButtonText: {
+    color: COLORS.teal,
+    fontSize: scale(14),
+    fontWeight: '600',
+  },
+  deleteDetailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.danger + '20',
+  },
+  deleteDetailButtonText: {
+    color: COLORS.danger,
+    fontSize: scale(14),
+    fontWeight: '600',
+  },
+  
+  // Carousel
+  carouselContainer: {
+    position: 'relative',
+  },
+  imageScroll: {
+    width: SCREEN_WIDTH,
+  },
+  carouselImage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE * 0.6,
+    marginHorizontal: 45,
+    borderRadius: scale(12),
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: scale(6),
+    marginTop: scale(12),
+  },
+  dot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
   },
 });

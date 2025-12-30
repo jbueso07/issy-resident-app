@@ -1,5 +1,5 @@
 // app/admin/incidents.js
-// ISSY Admin - Gestión de Incidentes
+// ISSY Admin - Gestión de Incidentes (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -26,30 +26,36 @@ import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  background: '#F9FAFB',
-  white: '#FFFFFF',
-  black: '#111827',
-  gray: '#6B7280',
-  grayLight: '#F3F4F6',
-  grayBorder: '#E5E7EB',
-  primary: '#009FF5',
-  primaryLight: '#EEF2FF',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
   lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#6366F1',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const STATUS_CONFIG = {
-  reported: { label: 'Reportado', color: '#F59E0B', bg: '#FEF3C7', icon: 'alert-circle' },
-  in_progress: { label: 'En Proceso', color: '#3B82F6', bg: '#DBEAFE', icon: 'time' },
-  resolved: { label: 'Resuelto', color: '#10B981', bg: '#D1FAE5', icon: 'checkmark-circle' },
-  closed: { label: 'Cerrado', color: '#6B7280', bg: '#F3F4F6', icon: 'lock-closed' },
+  reported: { label: 'Reportado', color: COLORS.warning, bg: COLORS.warning + '20', icon: 'alert-circle' },
+  in_progress: { label: 'En Proceso', color: COLORS.blue, bg: COLORS.blue + '20', icon: 'time' },
+  resolved: { label: 'Resuelto', color: COLORS.success, bg: COLORS.success + '20', icon: 'checkmark-circle' },
+  closed: { label: 'Cerrado', color: COLORS.textMuted, bg: COLORS.backgroundTertiary, icon: 'lock-closed' },
 };
 
 const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: '#10B981', bg: '#D1FAE5' },
-  medium: { label: 'Media', color: '#F59E0B', bg: '#FEF3C7' },
-  high: { label: 'Alta', color: '#EF4444', bg: '#FEE2E2' },
-  critical: { label: 'Crítica', color: '#DC2626', bg: '#FEE2E2' },
+  low: { label: 'Baja', color: COLORS.success, bg: COLORS.success + '20' },
+  medium: { label: 'Media', color: COLORS.warning, bg: COLORS.warning + '20' },
+  high: { label: 'Alta', color: COLORS.danger, bg: COLORS.danger + '20' },
+  critical: { label: 'Crítica', color: '#DC2626', bg: '#DC262620' },
 };
 
 const TYPE_LABELS = {
@@ -98,21 +104,28 @@ export default function AdminIncidents() {
     fetchIncidents();
   };
 
+  const filteredIncidents = filterStatus === 'all'
+    ? incidents
+    : incidents.filter(i => i.status === filterStatus);
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-HN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
   const openIncidentDetail = async (incident) => {
-    setLoadingDetail(true);
     setDetailModalVisible(true);
-    
+    setLoadingDetail(true);
     try {
       const result = await getIncidentById(incident.id);
       if (result.success) {
-        setSelectedIncident(result.data.incident || result.data);
+        setSelectedIncident(result.data);
       } else {
-        Alert.alert('Error', 'No se pudieron cargar los detalles');
-        setDetailModalVisible(false);
+        setSelectedIncident(incident);
       }
     } catch (error) {
-      console.error('Error:', error);
-      setDetailModalVisible(false);
+      setSelectedIncident(incident);
     } finally {
       setLoadingDetail(false);
     }
@@ -121,18 +134,13 @@ export default function AdminIncidents() {
   const handleStatusChange = async (newStatus) => {
     if (!selectedIncident || submitting) return;
     
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       const result = await updateIncidentStatus(selectedIncident.id, newStatus);
-      
       if (result.success) {
-        setSelectedIncident(prev => ({ ...prev, status: newStatus }));
-        setIncidents(prev =>
-          prev.map(inc =>
-            inc.id === selectedIncident.id ? { ...inc, status: newStatus } : inc
-          )
-        );
-        Alert.alert('Éxito', 'Estado actualizado correctamente');
+        setSelectedIncident({ ...selectedIncident, status: newStatus });
+        fetchIncidents();
+        Alert.alert('Éxito', 'Estado actualizado');
       } else {
         Alert.alert('Error', result.error || 'No se pudo actualizar');
       }
@@ -146,16 +154,15 @@ export default function AdminIncidents() {
   const handleAddComment = async () => {
     if (!commentText.trim() || !selectedIncident || submitting) return;
 
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       const result = await addIncidentComment(selectedIncident.id, commentText.trim());
-      
       if (result.success) {
-        const newComment = result.data.comment || result.data;
-        setSelectedIncident(prev => ({
-          ...prev,
-          comments: [...(prev.comments || []), newComment]
-        }));
+        const newComment = result.data;
+        setSelectedIncident({
+          ...selectedIncident,
+          comments: [...(selectedIncident.comments || []), newComment]
+        });
         setCommentText('');
       } else {
         Alert.alert('Error', 'No se pudo agregar el comentario');
@@ -167,21 +174,18 @@ export default function AdminIncidents() {
     }
   };
 
-  const filteredIncidents = filterStatus === 'all' 
-    ? incidents 
-    : incidents.filter(inc => inc.status === filterStatus);
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.lime} />
+          <Text style={styles.loadingText}>Cargando incidentes...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('es-HN', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const renderStatusFilter = () => (
+  const renderFilters = () => (
     <ScrollView 
       horizontal 
       showsHorizontalScrollIndicator={false}
@@ -189,10 +193,21 @@ export default function AdminIncidents() {
       contentContainerStyle={styles.filterContainer}
     >
       <TouchableOpacity
-        style={[styles.filterChip, filterStatus === 'all' && styles.filterChipActive]}
+        style={[
+          styles.filterChip,
+          filterStatus === 'all' && styles.filterChipActive
+        ]}
         onPress={() => setFilterStatus('all')}
       >
-        <Text style={[styles.filterText, filterStatus === 'all' && styles.filterTextActive]}>
+        <Ionicons 
+          name="list" 
+          size={14} 
+          color={filterStatus === 'all' ? COLORS.background : COLORS.textSecondary} 
+        />
+        <Text style={[
+          styles.filterText,
+          filterStatus === 'all' && styles.filterTextActive
+        ]}>
           Todos ({incidents.length})
         </Text>
       </TouchableOpacity>
@@ -210,8 +225,7 @@ export default function AdminIncidents() {
             <Ionicons 
               name={config.icon} 
               size={14} 
-              color={filterStatus === key ? config.color : COLORS.gray} 
-              style={{ marginRight: 4 }}
+              color={filterStatus === key ? config.color : COLORS.textSecondary} 
             />
             <Text style={[
               styles.filterText,
@@ -257,11 +271,11 @@ export default function AdminIncidents() {
 
         <View style={styles.cardFooter}>
           <View style={styles.cardMeta}>
-            <Ionicons name="person-outline" size={14} color={COLORS.gray} />
+            <Ionicons name="person-outline" size={14} color={COLORS.textSecondary} />
             <Text style={styles.cardMetaText}>{item.reporter_name || 'Usuario'}</Text>
           </View>
           <View style={styles.cardMeta}>
-            <Ionicons name="time-outline" size={14} color={COLORS.gray} />
+            <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
             <Text style={styles.cardMetaText}>{formatDate(item.created_at)}</Text>
           </View>
           <View style={[styles.severityBadge, { backgroundColor: severity.bg }]}>
@@ -284,13 +298,13 @@ export default function AdminIncidents() {
         animationType="slide"
         onRequestClose={() => setDetailModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity 
               onPress={() => setDetailModalVisible(false)}
               style={styles.closeButton}
             >
-              <Ionicons name="close" size={24} color={COLORS.black} />
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Detalle del Incidente</Text>
             <View style={{ width: scale(40) }} />
@@ -298,7 +312,7 @@ export default function AdminIncidents() {
 
           {loadingDetail ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
+              <ActivityIndicator size="large" color={COLORS.lime} />
             </View>
           ) : selectedIncident ? (
             <KeyboardAvoidingView 
@@ -327,7 +341,7 @@ export default function AdminIncidents() {
                 <Text style={styles.sectionLabel}>Reportado por</Text>
                 <View style={styles.reporterInfo}>
                   <View style={styles.reporterAvatar}>
-                    <Ionicons name="person" size={20} color={COLORS.gray} />
+                    <Ionicons name="person" size={20} color={COLORS.textSecondary} />
                   </View>
                   <View>
                     <Text style={styles.reporterName}>{selectedIncident.reporter_name || 'Usuario'}</Text>
@@ -347,117 +361,138 @@ export default function AdminIncidents() {
                       onPress={() => handleStatusChange(key)}
                       disabled={submitting || selectedIncident.status === key}
                     >
-                      <Ionicons name={config.icon} size={16} color={selectedIncident.status === key ? config.color : COLORS.gray} />
+                      <Ionicons name={config.icon} size={16} color={selectedIncident.status === key ? config.color : COLORS.textSecondary} />
                       <Text style={[
                         styles.statusButtonText,
                         selectedIncident.status === key && { color: config.color }
-                      ]}>{config.label}</Text>
+                      ]}>
+                        {config.label}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                <Text style={styles.sectionLabel}>
-                  Comentarios ({selectedIncident.comments?.length || 0})
-                </Text>
-                
-                {selectedIncident.comments && selectedIncident.comments.length > 0 ? (
+                <Text style={styles.sectionLabel}>Comentarios ({selectedIncident.comments?.length || 0})</Text>
+                {selectedIncident.comments?.length > 0 ? (
                   selectedIncident.comments.map((comment, index) => (
                     <View key={comment.id || index} style={styles.commentCard}>
                       <View style={styles.commentHeader}>
                         <View style={styles.commentAvatar}>
-                          <Ionicons name="person" size={14} color={COLORS.white} />
+                          <Text style={styles.commentAvatarText}>
+                            {(comment.user_name || 'A').charAt(0).toUpperCase()}
+                          </Text>
                         </View>
                         <View style={styles.commentMeta}>
-                          <Text style={styles.commentAuthor}>{comment.user?.name || 'Usuario'}</Text>
+                          <Text style={styles.commentAuthor}>{comment.user_name || 'Admin'}</Text>
                           <Text style={styles.commentDate}>{formatDate(comment.created_at)}</Text>
                         </View>
                       </View>
-                      <Text style={styles.commentText}>{comment.comment}</Text>
+                      <Text style={styles.commentText}>{comment.content || comment.text}</Text>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noComments}>No hay comentarios aún</Text>
+                  <Text style={styles.noComments}>Sin comentarios</Text>
                 )}
-
+                
                 <View style={{ height: scale(100) }} />
               </ScrollView>
 
+              {/* Comment Input */}
               <View style={styles.addCommentContainer}>
                 <TextInput
                   style={styles.commentInput}
                   placeholder="Agregar comentario..."
-                  placeholderTextColor={COLORS.gray}
+                  placeholderTextColor={COLORS.textMuted}
                   value={commentText}
                   onChangeText={setCommentText}
                   multiline
                 />
                 <TouchableOpacity
-                  style={[styles.sendButton, (!commentText.trim() || submitting) && styles.sendButtonDisabled]}
+                  style={[styles.sendButton, !commentText.trim() && styles.sendButtonDisabled]}
                   onPress={handleAddComment}
                   disabled={!commentText.trim() || submitting}
                 >
                   {submitting ? (
-                    <ActivityIndicator size="small" color={COLORS.white} />
+                    <ActivityIndicator size="small" color={COLORS.textPrimary} />
                   ) : (
-                    <Ionicons name="send" size={20} color={COLORS.white} />
+                    <Ionicons name="send" size={20} color={COLORS.background} />
                   )}
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
           ) : null}
-        </View>
+        </SafeAreaView>
       </Modal>
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.black} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestión de Incidentes</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Gestión de Incidentes</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={22} color={COLORS.primary} />
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Incidentes</Text>
+          <Text style={styles.headerSubtitle}>{incidents.length} reportes</Text>
+        </View>
+        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+          <Ionicons name="refresh" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
 
-      {renderStatusFilter()}
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Ionicons name="alert-circle" size={22} color={COLORS.warning} />
+          <Text style={[styles.statNumber, { color: COLORS.warning }]}>
+            {incidents.filter(i => i.status === 'reported').length}
+          </Text>
+          <Text style={styles.statLabel}>Reportados</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="time" size={22} color={COLORS.blue} />
+          <Text style={[styles.statNumber, { color: COLORS.blue }]}>
+            {incidents.filter(i => i.status === 'in_progress').length}
+          </Text>
+          <Text style={styles.statLabel}>En Proceso</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+          <Text style={[styles.statNumber, { color: COLORS.success }]}>
+            {incidents.filter(i => i.status === 'resolved').length}
+          </Text>
+          <Text style={styles.statLabel}>Resueltos</Text>
+        </View>
+      </View>
 
+      {/* Filters */}
+      {renderFilters()}
+
+      {/* Incidents List */}
       <FlatList
         data={filteredIncidents}
+        keyExtractor={(item) => item.id?.toString()}
         renderItem={renderIncidentCard}
-        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
-        ListEmptyComponent={
+        ListEmptyComponent={() => (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={64} color={COLORS.grayBorder} />
+            <Ionicons name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>Sin incidentes</Text>
-            <Text style={styles.emptySubtitle}>No hay incidentes para mostrar</Text>
+            <Text style={styles.emptySubtitle}>No hay incidentes {filterStatus !== 'all' ? 'con este estado' : ''}</Text>
           </View>
-        }
+        )}
       />
 
+      {/* Detail Modal */}
       {renderDetailModal()}
     </SafeAreaView>
   );
@@ -468,42 +503,86 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayBorder,
-  },
-  backButton: {
-    width: scale(40),
-    height: scale(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: scale(17),
-    fontWeight: '600',
-    color: COLORS.black,
-  },
-  refreshButton: {
-    width: scale(40),
-    height: scale(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: scale(12),
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+  },
+  backButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  refreshButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Stats
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    gap: scale(10),
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statNumber: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    marginTop: scale(4),
+  },
+  statLabel: {
+    fontSize: scale(10),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+
+  // Filters
   filterScroll: {
-    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayBorder,
+    borderBottomColor: COLORS.border,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -517,35 +596,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(12),
     paddingVertical: scale(8),
     borderRadius: scale(20),
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.backgroundSecondary,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: COLORS.border,
+    gap: scale(6),
   },
   filterChipActive: {
-    backgroundColor: COLORS.black,
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   filterText: {
     fontSize: scale(13),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   filterTextActive: {
-    color: COLORS.white,
+    color: COLORS.background,
   },
+
+  // List
   listContent: {
     padding: scale(16),
     paddingBottom: scale(100),
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
     padding: scale(16),
     marginBottom: scale(12),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -573,11 +653,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: scale(15),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   cardReference: {
     fontSize: scale(11),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginTop: scale(2),
   },
   statusBadge: {
@@ -591,7 +671,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginBottom: scale(12),
     lineHeight: scale(20),
   },
@@ -608,7 +688,7 @@ const styles = StyleSheet.create({
   },
   cardMetaText: {
     fontSize: scale(12),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
   severityBadge: {
     paddingHorizontal: scale(8),
@@ -620,6 +700,8 @@ const styles = StyleSheet.create({
     fontSize: scale(10),
     fontWeight: '600',
   },
+
+  // Empty State
   emptyState: {
     alignItems: 'center',
     paddingVertical: scale(60),
@@ -627,14 +709,16 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textSecondary,
     marginTop: scale(16),
   },
   emptySubtitle: {
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textMuted,
     marginTop: scale(4),
   },
+
+  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -644,11 +728,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
-    paddingTop: Platform.OS === 'ios' ? scale(60) : scale(16),
-    paddingBottom: scale(12),
-    backgroundColor: COLORS.white,
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayBorder,
+    borderBottomColor: COLORS.border,
   },
   closeButton: {
     width: scale(40),
@@ -659,7 +741,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: scale(17),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   detailScroll: {
     flex: 1,
@@ -669,14 +751,14 @@ const styles = StyleSheet.create({
   },
   referenceNumber: {
     fontSize: scale(12),
-    color: COLORS.primary,
+    color: COLORS.teal,
     fontWeight: '600',
     marginBottom: scale(4),
   },
   detailTitle: {
     fontSize: scale(20),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     marginBottom: scale(12),
   },
   badgeRow: {
@@ -709,7 +791,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: scale(12),
     fontWeight: '600',
-    color: COLORS.gray,
+    color: COLORS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: scale(20),
@@ -717,7 +799,7 @@ const styles = StyleSheet.create({
   },
   detailDescription: {
     fontSize: scale(15),
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     lineHeight: scale(22),
   },
   reporterInfo: {
@@ -728,7 +810,7 @@ const styles = StyleSheet.create({
     width: scale(40),
     height: scale(40),
     borderRadius: scale(20),
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(12),
@@ -736,11 +818,11 @@ const styles = StyleSheet.create({
   reporterName: {
     fontSize: scale(15),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   reporterDate: {
     fontSize: scale(13),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginTop: scale(2),
   },
   statusButtons: {
@@ -755,22 +837,22 @@ const styles = StyleSheet.create({
     paddingVertical: scale(10),
     borderRadius: scale(8),
     borderWidth: 1,
-    borderColor: COLORS.grayBorder,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
     gap: scale(6),
   },
   statusButtonText: {
     fontSize: scale(13),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   commentCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(10),
     padding: scale(12),
     marginBottom: scale(8),
     borderWidth: 1,
-    borderColor: COLORS.grayBorder,
+    borderColor: COLORS.border,
   },
   commentHeader: {
     flexDirection: 'row',
@@ -781,10 +863,15 @@ const styles = StyleSheet.create({
     width: scale(28),
     height: scale(28),
     borderRadius: scale(14),
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.teal + '30',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(10),
+  },
+  commentAvatarText: {
+    fontSize: scale(12),
+    fontWeight: '600',
+    color: COLORS.teal,
   },
   commentMeta: {
     flex: 1,
@@ -792,51 +879,51 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: scale(13),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   commentDate: {
     fontSize: scale(11),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
   commentText: {
     fontSize: scale(14),
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     lineHeight: scale(20),
   },
   noComments: {
     textAlign: 'center',
-    color: COLORS.gray,
+    color: COLORS.textMuted,
     paddingVertical: scale(20),
     fontSize: scale(14),
   },
   addCommentContainer: {
     flexDirection: 'row',
     padding: scale(12),
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.backgroundSecondary,
     borderTopWidth: 1,
-    borderTopColor: COLORS.grayBorder,
+    borderTopColor: COLORS.border,
     gap: scale(8),
     paddingBottom: Platform.OS === 'ios' ? scale(34) : scale(12),
   },
   commentInput: {
     flex: 1,
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.backgroundTertiary,
     borderRadius: scale(20),
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
     fontSize: scale(15),
     maxHeight: scale(80),
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   sendButton: {
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.lime,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#D1D5DB',
+    backgroundColor: COLORS.backgroundTertiary,
   },
 });

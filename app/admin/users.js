@@ -1,5 +1,6 @@
 // app/admin/users.js
-// ISSY Resident App - Admin: Gestión de Usuarios e Invitaciones
+// ISSY Resident App - Admin: Gestión de Usuarios e Invitaciones (ProHome Dark Theme)
+// Usando endpoints correctos de /api/invitations/organization
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -15,45 +16,64 @@ import {
   RefreshControl,
   Share,
   Clipboard,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+const API_URL = 'https://api.joinissy.com/api';
+
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#6366F1',
-  danger: '#EF4444',
-  warning: '#F59E0B',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
   success: '#10B981',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const ROLES = {
-  resident: { label: '🏠 Residente', color: COLORS.success },
-  guard: { label: '🔐 Guardia', color: '#3B82F6' },
-  admin: { label: '🛡️ Admin', color: '#8B5CF6' },
-  superadmin: { label: '👑 Super Admin', color: '#DC2626' },
+  resident: { label: 'Residente', icon: 'home', color: COLORS.success },
+  guard: { label: 'Guardia', icon: 'shield-checkmark', color: COLORS.blue },
+  admin: { label: 'Admin', icon: 'settings', color: COLORS.purple },
+  superadmin: { label: 'Super Admin', icon: 'star', color: COLORS.danger },
+  host: { label: 'Anfitrión', icon: 'person', color: COLORS.teal },
+  tenant: { label: 'Inquilino', icon: 'key', color: COLORS.pink },
+  owner: { label: 'Propietario', icon: 'business', color: COLORS.lime },
 };
 
 const INVITE_ROLES = {
-  resident: { label: '🏠 Residente', color: COLORS.success },
-  guard: { label: '🔐 Guardia', color: '#3B82F6' },
-  admin: { label: '🛡️ Administrador', color: '#8B5CF6' },
+  resident: { label: 'Residente', icon: 'home', color: COLORS.success },
+  guard: { label: 'Guardia', icon: 'shield-checkmark', color: COLORS.blue },
+  admin: { label: 'Administrador', icon: 'settings', color: COLORS.purple },
 };
 
 export default function AdminUsers() {
-  const { user, profile } = useAuth();
+  const { user, profile, isSuperAdmin } = useAuth();
   const router = useRouter();
   
-  // Users state
+  // Location state
+  const [locations, setLocations] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [switchingLocation, setSwitchingLocation] = useState(false);
+  
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -62,14 +82,11 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   
-  // Invitations state
   const [invitations, setInvitations] = useState([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showInvitationsModal, setShowInvitationsModal] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'invitations'
+  const [activeTab, setActiveTab] = useState('users');
   
-  // New invitation form
   const [inviteForm, setInviteForm] = useState({
     role: 'resident',
     unit_number: '',
@@ -81,7 +98,7 @@ export default function AdminUsers() {
   const userRole = profile?.role || user?.role || 'user';
   const userLocationId = profile?.location_id || user?.location_id;
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
-  const isSuperAdmin = userRole === 'superadmin';
+  const isSuperAdminUser = userRole === 'superadmin' || (typeof isSuperAdmin === 'function' && isSuperAdmin());
 
   useEffect(() => {
     if (!isAdmin) {
@@ -89,8 +106,19 @@ export default function AdminUsers() {
       router.back();
       return;
     }
-    fetchData();
+    
+    if (isSuperAdminUser) {
+      fetchLocations();
+    } else {
+      setSelectedLocationId(userLocationId);
+    }
   }, []);
+
+  useEffect(() => {
+    if (selectedLocationId) {
+      fetchData();
+    }
+  }, [selectedLocationId]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -100,71 +128,115 @@ export default function AdminUsers() {
     };
   };
 
+  const fetchLocations = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/locations`, { headers });
+      const data = await res.json();
+      
+      if (data.success || Array.isArray(data)) {
+        const list = data.data || data;
+        setLocations(list);
+        if (list.length > 0 && !selectedLocationId) {
+          setSelectedLocationId(list[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      // Fallback to user's location
+      if (userLocationId) {
+        setSelectedLocationId(userLocationId);
+      }
+    } finally {
+      if (!selectedLocationId && !isSuperAdminUser) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSwitchLocation = (location) => {
+    setSelectedLocationId(location.id);
+    setShowLocationPicker(false);
+    // Data will be refetched by useEffect when selectedLocationId changes
+  };
+
   const fetchData = async () => {
+    if (!selectedLocationId) return;
+    
     try {
       const headers = await getAuthHeaders();
       
-      // Fetch users
-      const usersRes = await fetch(`${API_URL}/api/users`, { headers });
-      const usersData = await usersRes.json();
-      if (usersData.success || Array.isArray(usersData)) {
-        const list = usersData.data || usersData.users || usersData;
-        setUsers(Array.isArray(list) ? list : []);
+      // Fetch members using the correct endpoint (same as community-management.js)
+      const membersRes = await fetch(
+        `${API_URL}/invitations/organization/${selectedLocationId}/members`,
+        { headers }
+      );
+      const membersData = await membersRes.json();
+      
+      if (membersData.success) {
+        // Transform member data to match expected format
+        const transformedUsers = (membersData.data || []).map(member => ({
+          id: member.id,
+          user_id: member.user_id,
+          name: member.user?.name || member.user?.full_name || 'Sin nombre',
+          full_name: member.user?.full_name || member.user?.name,
+          email: member.user?.email || '',
+          phone: member.user?.phone || '',
+          role: member.role || 'resident',
+          unit_number: member.unit_number,
+          is_active: member.is_active !== false,
+          created_at: member.created_at,
+          membership_id: member.id, // Keep reference to membership for actions
+        }));
+        setUsers(transformedUsers);
+      } else {
+        setUsers([]);
       }
       
       // Fetch stats
-      const statsRes = await fetch(`${API_URL}/api/users/stats`, { headers });
+      const statsRes = await fetch(
+        `${API_URL}/invitations/organization/${selectedLocationId}/stats`,
+        { headers }
+      );
       const statsData = await statsRes.json();
-      if (statsData.success || statsData.data) {
-        setStats(statsData.data || statsData);
+      if (statsData.success) {
+        setStats(statsData.data);
       }
-
-      // Fetch invitations
-      await fetchInvitations(headers);
+      
+      // Fetch pending invitations
+      const invitationsRes = await fetch(
+        `${API_URL}/invitations/organization/${selectedLocationId}/pending`,
+        { headers }
+      );
+      const invitationsData = await invitationsRes.json();
+      if (invitationsData.success) {
+        setInvitations(invitationsData.data || []);
+      }
+      
     } catch (error) {
       console.error('Error fetching data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const fetchInvitations = async (headers) => {
-    try {
-      if (!headers) {
-        headers = await getAuthHeaders();
-      }
-      const invRes = await fetch(
-        `${API_URL}/api/invitations/organization?location_id=${userLocationId}`, 
-        { headers }
-      );
-      const invData = await invRes.json();
-      if (invData.success && invData.data) {
-        setInvitations(invData.data);
-      }
-    } catch (error) {
-      console.error('Error fetching invitations:', error);
-    }
-  };
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, []);
+  }, [selectedLocationId]);
 
   const handleUserPress = (usr) => {
     setSelectedUser(usr);
     setShowModal(true);
   };
 
-  const handleToggleStatus = async () => {
-    if (!selectedUser) return;
+  const handleChangeRole = async (newRole) => {
+    if (!selectedUser || !selectedUser.membership_id) return;
     
-    const action = selectedUser.is_active ? 'desactivar' : 'activar';
     Alert.alert(
-      `${action.charAt(0).toUpperCase() + action.slice(1)} Usuario`,
-      `¿${action} a ${selectedUser.name || selectedUser.full_name}?`,
+      'Cambiar Rol',
+      `¿Cambiar rol de ${selectedUser.name || selectedUser.full_name} a ${ROLES[newRole]?.label || newRole}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -173,18 +245,23 @@ export default function AdminUsers() {
             try {
               const headers = await getAuthHeaders();
               const response = await fetch(
-                `${API_URL}/api/users/${selectedUser.id}/toggle`,
-                { method: 'PUT', headers }
+                `${API_URL}/invitations/organization/members/${selectedUser.membership_id}`,
+                {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({ role: newRole }),
+                }
               );
+              
               if (response.ok) {
-                Alert.alert('Éxito', `Usuario ${action}do`);
-                setShowModal(false);
+                Alert.alert('Éxito', 'Rol actualizado');
+                setSelectedUser({ ...selectedUser, role: newRole });
                 fetchData();
               } else {
-                Alert.alert('Error', `No se pudo ${action}`);
+                Alert.alert('Error', 'No se pudo actualizar el rol');
               }
             } catch (error) {
-              Alert.alert('Error', `No se pudo ${action}`);
+              Alert.alert('Error', 'No se pudo actualizar el rol');
             }
           }
         }
@@ -192,90 +269,84 @@ export default function AdminUsers() {
     );
   };
 
-  const handleChangeRole = async (newRole) => {
-    if (!selectedUser || !isSuperAdmin) return;
+  const handleToggleStatus = async () => {
+    if (!selectedUser || !selectedUser.membership_id) return;
     
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        `${API_URL}/api/users/${selectedUser.id}`,
+    const newStatus = !selectedUser.is_active;
+    Alert.alert(
+      newStatus ? 'Activar Usuario' : 'Desactivar Usuario',
+      `¿${newStatus ? 'Activar' : 'Desactivar'} a ${selectedUser.name || selectedUser.full_name}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
         {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify({ role: newRole }),
+          text: 'Confirmar',
+          style: newStatus ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const response = await fetch(
+                `${API_URL}/invitations/organization/members/${selectedUser.membership_id}`,
+                {
+                  method: 'PUT',
+                  headers,
+                  body: JSON.stringify({ is_active: newStatus }),
+                }
+              );
+              
+              if (response.ok) {
+                Alert.alert('Éxito', `Usuario ${newStatus ? 'activado' : 'desactivado'}`);
+                setSelectedUser({ ...selectedUser, is_active: newStatus });
+                fetchData();
+              } else {
+                Alert.alert('Error', 'No se pudo actualizar el estado');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo actualizar el estado');
+            }
+          }
         }
-      );
-      if (response.ok) {
-        Alert.alert('Éxito', 'Rol actualizado');
-        setShowModal(false);
-        fetchData();
-      } else {
-        Alert.alert('Error', 'No se pudo cambiar el rol');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo cambiar el rol');
-    }
+      ]
+    );
   };
 
-  // ==========================================
-  // INVITATION FUNCTIONS
-  // ==========================================
-
   const handleCreateInvitation = async () => {
-    if (!userLocationId) {
-      Alert.alert('Error', 'No se encontró la ubicación');
-      return;
-    }
-
     setInviteLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/invitations/organization`, {
+      const response = await fetch(`${API_URL}/organization-invitations`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          location_id: userLocationId,
           role: inviteForm.role,
           unit_number: inviteForm.unit_number || null,
           expected_name: inviteForm.expected_name || null,
           expected_email: inviteForm.expected_email || null,
           expected_phone: inviteForm.expected_phone || null,
-          max_uses: 1,
-          expires_days: 7,
+          location_id: selectedLocationId,
         }),
       });
 
       const data = await response.json();
 
-      if (data.success && data.data) {
-        setShowInviteModal(false);
-        resetInviteForm();
-        
-        // Show share options
+      if (response.ok && data.success !== false) {
         Alert.alert(
-          '✅ Invitación Creada',
-          `Código: ${data.data.code}\n\n¿Qué deseas hacer?`,
+          'Invitación Creada',
+          `Código: ${data.data?.code || data.code}\n\nComparte este código con el usuario.`,
           [
-            { text: 'Cerrar', style: 'cancel', onPress: () => fetchInvitations() },
-            { 
-              text: 'Copiar Link', 
-              onPress: () => {
-                Clipboard.setString(data.data.invitation_link);
-                Alert.alert('✅ Copiado', 'Link copiado al portapapeles');
-                fetchInvitations();
-              }
+            {
+              text: 'Compartir',
+              onPress: () => handleShareInvitation(data.data || data),
             },
-            { 
-              text: 'Compartir', 
-              onPress: () => handleShareInvitation(data.data) 
-            },
+            { text: 'OK' }
           ]
         );
+        setShowInviteModal(false);
+        resetInviteForm();
+        fetchData();
       } else {
         Alert.alert('Error', data.error || 'No se pudo crear la invitación');
       }
     } catch (error) {
-      console.error('Error creating invitation:', error);
       Alert.alert('Error', 'No se pudo crear la invitación');
     } finally {
       setInviteLoading(false);
@@ -284,17 +355,9 @@ export default function AdminUsers() {
 
   const handleShareInvitation = async (invitation) => {
     try {
-      const roleLabel = INVITE_ROLES[invitation.role]?.label || invitation.role;
-      const message = `🏠 ISSY - Invitación a ${invitation.location_name || 'la comunidad'}\n\n` +
-        `Has sido invitado como ${roleLabel}.\n\n` +
-        `📱 Descarga la app ISSY y usa este link para unirte:\n${invitation.invitation_link}\n\n` +
-        `Código: ${invitation.code}`;
-      
       await Share.share({
-        message,
-        title: 'Invitación ISSY',
+        message: `¡Te han invitado a ISSY!\n\nUsa este código para registrarte: ${invitation.code}\n\nO usa este link: ${invitation.invitation_link || `https://app.joinissy.com/invite/${invitation.code}`}`,
       });
-      fetchInvitations();
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -307,21 +370,16 @@ export default function AdminUsers() {
       [
         { text: 'No', style: 'cancel' },
         {
-          text: 'Sí, Cancelar',
+          text: 'Sí, cancelar',
           style: 'destructive',
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
-              const response = await fetch(
-                `${API_URL}/api/invitations/organization/${invitationId}`,
-                { method: 'DELETE', headers }
-              );
-              if (response.ok) {
-                Alert.alert('✅ Invitación cancelada');
-                fetchInvitations();
-              } else {
-                Alert.alert('Error', 'No se pudo cancelar');
-              }
+              await fetch(`${API_URL}/organization-invitations/${invitationId}`, {
+                method: 'DELETE',
+                headers,
+              });
+              fetchData();
             } catch (error) {
               Alert.alert('Error', 'No se pudo cancelar');
             }
@@ -341,22 +399,24 @@ export default function AdminUsers() {
     });
   };
 
-  const filteredUsers = users.filter(u => {
-    const name = (u.name || u.full_name || '').toLowerCase();
-    const email = (u.email || '').toLowerCase();
+  const filteredUsers = users.filter(usr => {
+    if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
-    return name.includes(search) || email.includes(search);
+    const name = (usr.name || usr.full_name || '').toLowerCase();
+    const email = (usr.email || '').toLowerCase();
+    const unit = (usr.unit_number || '').toLowerCase();
+    return name.includes(search) || email.includes(search) || unit.includes(search);
   });
 
-  const pendingInvitations = invitations.filter(inv => inv.status === 'pending');
+  const currentLocation = locations.find(l => l.id === selectedLocationId);
 
   const getRoleInfo = (role) => ROLES[role] || ROLES.resident;
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       </SafeAreaView>
@@ -368,17 +428,33 @@ export default function AdminUsers() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>👥 Usuarios</Text>
-          <Text style={styles.headerSubtitle}>{users.length} usuarios</Text>
+          <Text style={styles.headerTitle}>Usuarios</Text>
+          {/* Location Selector */}
+          {isSuperAdminUser && locations.length > 1 ? (
+            <TouchableOpacity 
+              style={styles.locationSelector}
+              onPress={() => setShowLocationPicker(true)}
+            >
+              <Ionicons name="location" size={14} color={COLORS.teal} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {currentLocation?.name || 'Seleccionar'}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.headerSubtitle}>
+              {currentLocation?.name || `${users.length} registrados`}
+            </Text>
+          )}
         </View>
         <TouchableOpacity 
           onPress={() => setShowInviteModal(true)} 
           style={styles.inviteButton}
         >
-          <Text style={styles.inviteButtonText}>➕</Text>
+          <Ionicons name="person-add" size={20} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
@@ -388,16 +464,26 @@ export default function AdminUsers() {
           style={[styles.tab, activeTab === 'users' && styles.tabActive]}
           onPress={() => setActiveTab('users')}
         >
+          <Ionicons 
+            name="people" 
+            size={16} 
+            color={activeTab === 'users' ? COLORS.background : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'users' && styles.tabTextActive]}>
-            👥 Usuarios ({users.length})
+            Usuarios ({users.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'invitations' && styles.tabActive]}
           onPress={() => setActiveTab('invitations')}
         >
+          <Ionicons 
+            name="mail" 
+            size={16} 
+            color={activeTab === 'invitations' ? COLORS.background : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'invitations' && styles.tabTextActive]}>
-            ✉️ Invitaciones ({pendingInvitations.length})
+            Invitaciones ({invitations.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -405,12 +491,13 @@ export default function AdminUsers() {
       {/* Search (only for users tab) */}
       {activeTab === 'users' && (
         <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             value={searchTerm}
             onChangeText={setSearchTerm}
-            placeholder="🔍 Buscar por nombre o email..."
-            placeholderTextColor={COLORS.gray}
+            placeholder="Buscar por nombre, email o unidad..."
+            placeholderTextColor={COLORS.textMuted}
           />
         </View>
       )}
@@ -419,7 +506,11 @@ export default function AdminUsers() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
       >
         {activeTab === 'users' ? (
@@ -428,26 +519,32 @@ export default function AdminUsers() {
             {stats && (
               <View style={styles.statsContainer}>
                 <View style={styles.statCard}>
-                  <Text style={styles.statValue}>{stats.total || stats.totalUsers || users.length}</Text>
+                  <Ionicons name="people" size={20} color={COLORS.teal} />
+                  <Text style={[styles.statValue, { color: COLORS.teal }]}>
+                    {stats.totalMembers || stats.total || users.length}
+                  </Text>
                   <Text style={styles.statLabel}>Total</Text>
                 </View>
                 <View style={styles.statCard}>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                   <Text style={[styles.statValue, { color: COLORS.success }]}>
-                    {stats.active || stats.activeUsers || 0}
+                    {stats.activeMembers || stats.active || 0}
                   </Text>
                   <Text style={styles.statLabel}>Activos</Text>
                 </View>
                 <View style={styles.statCard}>
-                  <Text style={[styles.statValue, { color: COLORS.warning }]}>
-                    {stats.byRole?.guard || 0}
+                  <Ionicons name="home" size={20} color={COLORS.purple} />
+                  <Text style={[styles.statValue, { color: COLORS.purple }]}>
+                    {stats.totalHouseholds || stats.units || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Guardias</Text>
+                  <Text style={styles.statLabel}>Unidades</Text>
                 </View>
                 <View style={styles.statCard}>
-                  <Text style={[styles.statValue, { color: COLORS.primary }]}>
-                    {stats.byRole?.admin || 0}
+                  <Ionicons name="time" size={20} color={COLORS.warning} />
+                  <Text style={[styles.statValue, { color: COLORS.warning }]}>
+                    {stats.pendingInvitations || invitations.length || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Admins</Text>
+                  <Text style={styles.statLabel}>Pendientes</Text>
                 </View>
               </View>
             )}
@@ -455,13 +552,17 @@ export default function AdminUsers() {
             {/* Users List */}
             {filteredUsers.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>👥</Text>
+                <Ionicons name="people-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>No hay usuarios</Text>
+                <Text style={styles.emptySubtitle}>
+                  {currentLocation ? `en ${currentLocation.name}` : ''}
+                </Text>
                 <TouchableOpacity 
                   style={styles.emptyButton}
                   onPress={() => setShowInviteModal(true)}
                 >
-                  <Text style={styles.emptyButtonText}>➕ Invitar Usuario</Text>
+                  <Ionicons name="person-add" size={18} color={COLORS.background} />
+                  <Text style={styles.emptyButtonText}>Invitar Usuario</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -472,9 +573,10 @@ export default function AdminUsers() {
                     key={usr.id}
                     style={styles.userCard}
                     onPress={() => handleUserPress(usr)}
+                    activeOpacity={0.7}
                   >
-                    <View style={styles.userAvatar}>
-                      <Text style={styles.userAvatarText}>
+                    <View style={[styles.userAvatar, { backgroundColor: roleInfo.color + '30' }]}>
+                      <Text style={[styles.userAvatarText, { color: roleInfo.color }]}>
                         {(usr.name || usr.full_name || 'U')[0].toUpperCase()}
                       </Text>
                     </View>
@@ -483,18 +585,22 @@ export default function AdminUsers() {
                       <Text style={styles.userEmail}>{usr.email}</Text>
                       <View style={styles.userMeta}>
                         <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '20' }]}>
+                          <Ionicons name={roleInfo.icon} size={12} color={roleInfo.color} />
                           <Text style={[styles.roleBadgeText, { color: roleInfo.color }]}>
                             {roleInfo.label}
                           </Text>
                         </View>
                         {usr.unit_number && (
-                          <Text style={styles.unitText}>🏠 {usr.unit_number}</Text>
+                          <View style={styles.unitBadge}>
+                            <Ionicons name="home" size={12} color={COLORS.textSecondary} />
+                            <Text style={styles.unitText}>{usr.unit_number}</Text>
+                          </View>
                         )}
                       </View>
                     </View>
                     <View style={[
                       styles.statusDot,
-                      { backgroundColor: usr.is_active !== false ? COLORS.success : COLORS.gray }
+                      { backgroundColor: usr.is_active ? COLORS.success : COLORS.textMuted }
                     ]} />
                   </TouchableOpacity>
                 );
@@ -504,53 +610,71 @@ export default function AdminUsers() {
         ) : (
           <>
             {/* Invitations List */}
-            {pendingInvitations.length === 0 ? (
+            {invitations.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>✉️</Text>
+                <Ionicons name="mail-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>No hay invitaciones pendientes</Text>
                 <TouchableOpacity 
                   style={styles.emptyButton}
                   onPress={() => setShowInviteModal(true)}
                 >
-                  <Text style={styles.emptyButtonText}>➕ Crear Invitación</Text>
+                  <Ionicons name="add" size={18} color={COLORS.background} />
+                  <Text style={styles.emptyButtonText}>Crear Invitación</Text>
                 </TouchableOpacity>
               </View>
             ) : (
-              pendingInvitations.map((inv) => {
+              invitations.map((inv) => {
                 const roleInfo = INVITE_ROLES[inv.role] || INVITE_ROLES.resident;
-                const expiresDate = new Date(inv.expires_at);
-                const isExpired = expiresDate < new Date();
+                const expiresDate = inv.expires_at ? new Date(inv.expires_at) : null;
+                const isExpired = expiresDate && expiresDate < new Date();
                 
                 return (
                   <View key={inv.id} style={styles.invitationCard}>
                     <View style={styles.invitationHeader}>
                       <View style={[styles.roleBadge, { backgroundColor: roleInfo.color + '20' }]}>
+                        <Ionicons name={roleInfo.icon} size={12} color={roleInfo.color} />
                         <Text style={[styles.roleBadgeText, { color: roleInfo.color }]}>
                           {roleInfo.label}
                         </Text>
                       </View>
                       {isExpired ? (
                         <View style={[styles.statusBadge, { backgroundColor: COLORS.danger + '20' }]}>
+                          <Ionicons name="close-circle" size={12} color={COLORS.danger} />
                           <Text style={[styles.statusBadgeText, { color: COLORS.danger }]}>Expirada</Text>
                         </View>
                       ) : (
                         <View style={[styles.statusBadge, { backgroundColor: COLORS.success + '20' }]}>
+                          <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
                           <Text style={[styles.statusBadgeText, { color: COLORS.success }]}>Activa</Text>
                         </View>
                       )}
                     </View>
                     
                     <View style={styles.invitationDetails}>
-                      <Text style={styles.invitationCode}>📋 {inv.code}</Text>
+                      <View style={styles.codeContainer}>
+                        <Ionicons name="key" size={16} color={COLORS.teal} />
+                        <Text style={styles.invitationCode}>{inv.code}</Text>
+                      </View>
                       {inv.expected_name && (
-                        <Text style={styles.invitationInfo}>👤 {inv.expected_name}</Text>
+                        <View style={styles.invitationInfoRow}>
+                          <Ionicons name="person" size={14} color={COLORS.textSecondary} />
+                          <Text style={styles.invitationInfo}>{inv.expected_name}</Text>
+                        </View>
                       )}
                       {inv.unit_number && (
-                        <Text style={styles.invitationInfo}>🏠 Unidad: {inv.unit_number}</Text>
+                        <View style={styles.invitationInfoRow}>
+                          <Ionicons name="home" size={14} color={COLORS.textSecondary} />
+                          <Text style={styles.invitationInfo}>Unidad: {inv.unit_number}</Text>
+                        </View>
                       )}
-                      <Text style={styles.invitationExpires}>
-                        ⏰ Expira: {expiresDate.toLocaleDateString()}
-                      </Text>
+                      {expiresDate && (
+                        <View style={styles.invitationInfoRow}>
+                          <Ionicons name="time" size={14} color={COLORS.textMuted} />
+                          <Text style={styles.invitationExpires}>
+                            Expira: {expiresDate.toLocaleDateString()}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     <View style={styles.invitationActions}>
@@ -558,22 +682,24 @@ export default function AdminUsers() {
                         style={styles.shareButton}
                         onPress={() => handleShareInvitation(inv)}
                       >
-                        <Text style={styles.shareButtonText}>📤 Compartir</Text>
+                        <Ionicons name="share-social" size={16} color={COLORS.teal} />
+                        <Text style={styles.shareButtonText}>Compartir</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.copyButton}
                         onPress={() => {
-                          Clipboard.setString(inv.invitation_link);
-                          Alert.alert('✅ Copiado', 'Link copiado al portapapeles');
+                          Clipboard.setString(inv.invitation_link || inv.code);
+                          Alert.alert('Copiado', 'Código copiado al portapapeles');
                         }}
                       >
-                        <Text style={styles.copyButtonText}>📋 Copiar</Text>
+                        <Ionicons name="copy" size={16} color={COLORS.textSecondary} />
+                        <Text style={styles.copyButtonText}>Copiar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.cancelButton}
                         onPress={() => handleCancelInvitation(inv.id)}
                       >
-                        <Text style={styles.cancelButtonText}>✕</Text>
+                        <Ionicons name="close" size={18} color={COLORS.danger} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -586,6 +712,56 @@ export default function AdminUsers() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
+              <Text style={styles.modalCancel}>Cerrar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Seleccionar Comunidad</Text>
+            <View style={{ width: 50 }} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {locations.map((loc) => {
+              const isActive = loc.id === selectedLocationId;
+              return (
+                <TouchableOpacity
+                  key={loc.id}
+                  style={[styles.locationItem, isActive && styles.locationItemActive]}
+                  onPress={() => handleSwitchLocation(loc)}
+                >
+                  <View style={[styles.locationIcon, isActive && styles.locationIconActive]}>
+                    <Ionicons 
+                      name="business" 
+                      size={24} 
+                      color={isActive ? COLORS.lime : COLORS.textSecondary} 
+                    />
+                  </View>
+                  <View style={styles.locationInfo}>
+                    <Text style={[styles.locationName, isActive && styles.locationNameActive]}>
+                      {loc.name}
+                    </Text>
+                    {loc.address && (
+                      <Text style={styles.locationAddress}>{loc.address}</Text>
+                    )}
+                  </View>
+                  {isActive && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
       {/* User Detail Modal */}
       <Modal
         visible={showModal}
@@ -593,7 +769,7 @@ export default function AdminUsers() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
               <Text style={styles.modalCancel}>Cerrar</Text>
@@ -605,8 +781,8 @@ export default function AdminUsers() {
           {selectedUser && (
             <ScrollView style={styles.modalContent}>
               <View style={styles.userDetailHeader}>
-                <View style={styles.userDetailAvatar}>
-                  <Text style={styles.userDetailAvatarText}>
+                <View style={[styles.userDetailAvatar, { backgroundColor: getRoleInfo(selectedUser.role).color + '30' }]}>
+                  <Text style={[styles.userDetailAvatarText, { color: getRoleInfo(selectedUser.role).color }]}>
                     {(selectedUser.name || selectedUser.full_name || 'U')[0].toUpperCase()}
                   </Text>
                 </View>
@@ -628,25 +804,40 @@ export default function AdminUsers() {
 
               <View style={styles.detailSection}>
                 <Text style={styles.detailLabel}>Rol Actual</Text>
-                <Text style={styles.detailValue}>{getRoleInfo(selectedUser.role).label}</Text>
+                <View style={[styles.roleBadge, { backgroundColor: getRoleInfo(selectedUser.role).color + '20' }]}>
+                  <Ionicons name={getRoleInfo(selectedUser.role).icon} size={14} color={getRoleInfo(selectedUser.role).color} />
+                  <Text style={[styles.roleBadgeText, { color: getRoleInfo(selectedUser.role).color }]}>
+                    {getRoleInfo(selectedUser.role).label}
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.detailSection}>
                 <Text style={styles.detailLabel}>Estado</Text>
-                <Text style={[
-                  styles.detailValue,
-                  { color: selectedUser.is_active !== false ? COLORS.success : COLORS.danger }
+                <View style={[
+                  styles.statusBadge,
+                  { backgroundColor: selectedUser.is_active ? COLORS.success + '20' : COLORS.danger + '20' }
                 ]}>
-                  {selectedUser.is_active !== false ? '✅ Activo' : '❌ Inactivo'}
-                </Text>
+                  <Ionicons 
+                    name={selectedUser.is_active ? 'checkmark-circle' : 'close-circle'} 
+                    size={14} 
+                    color={selectedUser.is_active ? COLORS.success : COLORS.danger} 
+                  />
+                  <Text style={[
+                    styles.statusBadgeText,
+                    { color: selectedUser.is_active ? COLORS.success : COLORS.danger }
+                  ]}>
+                    {selectedUser.is_active ? 'Activo' : 'Inactivo'}
+                  </Text>
+                </View>
               </View>
 
               {/* Cambiar Rol (solo superadmin) */}
-              {isSuperAdmin && selectedUser.id !== user?.id && (
+              {isSuperAdminUser && selectedUser.user_id !== user?.id && (
                 <View style={styles.roleSection}>
                   <Text style={styles.roleSectionTitle}>Cambiar Rol</Text>
                   <View style={styles.roleButtons}>
-                    {Object.entries(ROLES).map(([key, info]) => (
+                    {Object.entries(ROLES).filter(([key]) => !['superadmin'].includes(key)).map(([key, info]) => (
                       <TouchableOpacity
                         key={key}
                         style={[
@@ -658,6 +849,11 @@ export default function AdminUsers() {
                         ]}
                         onPress={() => handleChangeRole(key)}
                       >
+                        <Ionicons 
+                          name={info.icon} 
+                          size={16} 
+                          color={selectedUser.role === key ? info.color : COLORS.textSecondary} 
+                        />
                         <Text style={[
                           styles.roleButtonText,
                           selectedUser.role === key && { color: info.color }
@@ -671,19 +867,24 @@ export default function AdminUsers() {
               )}
 
               {/* Activar/Desactivar */}
-              {selectedUser.id !== user?.id && (
+              {selectedUser.user_id !== user?.id && (
                 <TouchableOpacity
                   style={[
                     styles.toggleButton,
-                    { backgroundColor: selectedUser.is_active !== false ? COLORS.danger + '15' : COLORS.success + '15' }
+                    { backgroundColor: selectedUser.is_active ? COLORS.danger + '15' : COLORS.success + '15' }
                   ]}
                   onPress={handleToggleStatus}
                 >
+                  <Ionicons 
+                    name={selectedUser.is_active ? 'close-circle' : 'checkmark-circle'} 
+                    size={20} 
+                    color={selectedUser.is_active ? COLORS.danger : COLORS.success} 
+                  />
                   <Text style={[
                     styles.toggleButtonText,
-                    { color: selectedUser.is_active !== false ? COLORS.danger : COLORS.success }
+                    { color: selectedUser.is_active ? COLORS.danger : COLORS.success }
                   ]}>
-                    {selectedUser.is_active !== false ? '❌ Desactivar Usuario' : '✅ Activar Usuario'}
+                    {selectedUser.is_active ? 'Desactivar Usuario' : 'Activar Usuario'}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -701,7 +902,7 @@ export default function AdminUsers() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowInviteModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => {
               setShowInviteModal(false);
@@ -714,13 +915,25 @@ export default function AdminUsers() {
               onPress={handleCreateInvitation}
               disabled={inviteLoading}
             >
-              <Text style={[styles.modalSave, inviteLoading && { opacity: 0.5 }]}>
-                {inviteLoading ? '...' : 'Crear'}
-              </Text>
+              {inviteLoading ? (
+                <ActivityIndicator size="small" color={COLORS.lime} />
+              ) : (
+                <Text style={styles.modalSave}>Crear</Text>
+              )}
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
+            {/* Location indicator */}
+            {currentLocation && (
+              <View style={styles.inviteLocationBanner}>
+                <Ionicons name="location" size={16} color={COLORS.teal} />
+                <Text style={styles.inviteLocationText}>
+                  Invitando a: {currentLocation.name}
+                </Text>
+              </View>
+            )}
+
             {/* Role Selection */}
             <Text style={styles.inputLabel}>Rol *</Text>
             <View style={styles.roleSelector}>
@@ -736,6 +949,11 @@ export default function AdminUsers() {
                   ]}
                   onPress={() => setInviteForm({...inviteForm, role: key})}
                 >
+                  <Ionicons 
+                    name={info.icon} 
+                    size={20} 
+                    color={inviteForm.role === key ? info.color : COLORS.textSecondary} 
+                  />
                   <Text style={[
                     styles.roleSelectorText,
                     inviteForm.role === key && { color: info.color, fontWeight: '600' }
@@ -753,7 +971,7 @@ export default function AdminUsers() {
               value={inviteForm.unit_number}
               onChangeText={(text) => setInviteForm({...inviteForm, unit_number: text})}
               placeholder="Ej: A-101, Casa 5"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
             />
 
             {/* Expected Name */}
@@ -763,7 +981,7 @@ export default function AdminUsers() {
               value={inviteForm.expected_name}
               onChangeText={(text) => setInviteForm({...inviteForm, expected_name: text})}
               placeholder="Nombre del invitado"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
             />
 
             {/* Expected Email */}
@@ -773,7 +991,7 @@ export default function AdminUsers() {
               value={inviteForm.expected_email}
               onChangeText={(text) => setInviteForm({...inviteForm, expected_email: text})}
               placeholder="email@ejemplo.com"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
             />
@@ -785,13 +1003,14 @@ export default function AdminUsers() {
               value={inviteForm.expected_phone}
               onChangeText={(text) => setInviteForm({...inviteForm, expected_phone: text})}
               placeholder="+504 9999-9999"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="phone-pad"
             />
 
             <View style={styles.inviteNote}>
+              <Ionicons name="information-circle" size={20} color={COLORS.teal} />
               <Text style={styles.inviteNoteText}>
-                📝 Se generará un código único que podrás compartir. La invitación expira en 7 días.
+                Se generará un código único que podrás compartir. La invitación expira en 7 días.
               </Text>
             </View>
 
@@ -804,261 +1023,593 @@ export default function AdminUsers() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
+  },
   
   // Header
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    backgroundColor: COLORS.white, 
-    borderBottomWidth: 1, 
-    borderBottomColor: COLORS.grayLight 
-  },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  headerSubtitle: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  inviteButton: { 
-    width: 40, 
-    height: 40, 
-    justifyContent: 'center', 
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary + '15',
-    borderRadius: 20,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
-  inviteButtonText: { fontSize: 20 },
+  backButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  locationSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+    marginTop: scale(4),
+    gap: scale(4),
+    alignSelf: 'flex-start',
+  },
+  locationText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    maxWidth: scale(150),
+  },
+  inviteButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingHorizontal: scale(16),
+    gap: scale(10),
+    marginBottom: scale(8),
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: COLORS.grayLighter,
+    flexDirection: 'row',
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(6),
   },
   tabActive: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   tabText: {
-    fontSize: 13,
-    color: COLORS.gray,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   tabTextActive: {
-    color: COLORS.primary,
+    color: COLORS.background,
     fontWeight: '600',
   },
 
   // Search
-  searchContainer: { padding: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: COLORS.white },
-  searchInput: { backgroundColor: COLORS.grayLighter, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, color: COLORS.navy },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: scale(28),
+    zIndex: 1,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(40),
+    paddingVertical: scale(12),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   
   // Content
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: scale(16),
+  },
   
   // Stats
-  statsContainer: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: COLORS.white, padding: 12, borderRadius: 10, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '700', color: COLORS.navy },
-  statLabel: { fontSize: 11, color: COLORS.gray, marginTop: 2 },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: scale(8),
+    marginBottom: scale(16),
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundSecondary,
+    padding: scale(12),
+    borderRadius: scale(10),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statValue: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    marginTop: scale(4),
+  },
+  statLabel: {
+    fontSize: scale(10),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
   
   // Empty
-  emptyContainer: { alignItems: 'center', paddingVertical: 40 },
-  emptyIcon: { fontSize: 60, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy, marginBottom: 16 },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: scale(40),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+    marginBottom: scale(16),
+  },
   emptyButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    gap: scale(8),
   },
   emptyButtonText: {
-    color: COLORS.white,
+    color: COLORS.background,
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: scale(15),
   },
   
   // User Card
-  userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
-  userAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary + '20', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  userAvatarText: { fontSize: 18, fontWeight: '600', color: COLORS.primary },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  userEmail: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  userMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  roleBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  roleBadgeText: { fontSize: 11, fontWeight: '500' },
-  unitText: { fontSize: 12, color: COLORS.gray },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(14),
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  userAvatar: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  userAvatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  userEmail: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  userMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginTop: scale(6),
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
+    gap: scale(4),
+  },
+  roleBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '500',
+  },
+  unitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+  },
+  unitText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  statusDot: {
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+  },
 
   // Invitation Card
   invitationCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   invitationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(4),
   },
   statusBadgeText: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
   },
   invitationDetails: {
-    marginBottom: 12,
+    marginBottom: scale(12),
+  },
+  codeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginBottom: scale(8),
   },
   invitationCode: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '700',
-    color: COLORS.navy,
-    marginBottom: 6,
+    color: COLORS.textPrimary,
+  },
+  invitationInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginBottom: scale(4),
   },
   invitationInfo: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginBottom: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
   },
   invitationExpires: {
-    fontSize: 12,
-    color: COLORS.gray,
-    marginTop: 4,
+    fontSize: scale(12),
+    color: COLORS.textMuted,
   },
   invitationActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   shareButton: {
     flex: 1,
-    backgroundColor: COLORS.primary + '15',
-    paddingVertical: 10,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.teal + '15',
+    paddingVertical: scale(10),
+    borderRadius: scale(8),
+    gap: scale(6),
   },
   shareButtonText: {
-    color: COLORS.primary,
+    color: COLORS.teal,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: scale(13),
   },
   copyButton: {
     flex: 1,
-    backgroundColor: COLORS.grayLighter,
-    paddingVertical: 10,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.backgroundTertiary,
+    paddingVertical: scale(10),
+    borderRadius: scale(8),
+    gap: scale(6),
   },
   copyButtonText: {
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: scale(13),
   },
   cancelButton: {
-    width: 40,
+    width: scale(40),
     backgroundColor: COLORS.danger + '15',
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: scale(10),
+    borderRadius: scale(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButtonText: {
-    color: COLORS.danger,
-    fontWeight: '700',
-    fontSize: 16,
-  },
   
   // Modal
-  modalContainer: { flex: 1, backgroundColor: COLORS.white },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  modalCancel: { fontSize: 16, color: COLORS.gray },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.navy },
-  modalSave: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: 16 },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalCancel: {
+    fontSize: scale(16),
+    color: COLORS.textSecondary,
+  },
+  modalTitle: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  modalSave: {
+    fontSize: scale(16),
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: scale(16),
+  },
   
+  // Location Picker
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  locationItemActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '10',
+  },
+  locationIcon: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  locationIconActive: {
+    backgroundColor: COLORS.lime + '20',
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  locationNameActive: {
+    color: COLORS.lime,
+  },
+  locationAddress: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+
   // User Detail
-  userDetailHeader: { alignItems: 'center', marginBottom: 24 },
-  userDetailAvatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primary + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  userDetailAvatarText: { fontSize: 32, fontWeight: '600', color: COLORS.primary },
-  userDetailName: { fontSize: 20, fontWeight: '700', color: COLORS.navy },
-  userDetailEmail: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
-  detailSection: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  detailLabel: { fontSize: 14, color: COLORS.gray },
-  detailValue: { fontSize: 14, fontWeight: '500', color: COLORS.navy },
-  roleSection: { marginTop: 24 },
-  roleSectionTitle: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 12 },
-  roleButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  roleButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: COLORS.grayLight, backgroundColor: COLORS.white },
-  roleButtonText: { fontSize: 13, color: COLORS.gray },
-  toggleButton: { marginTop: 24, padding: 16, borderRadius: 12, alignItems: 'center' },
-  toggleButtonText: { fontSize: 15, fontWeight: '600' },
+  userDetailHeader: {
+    alignItems: 'center',
+    marginBottom: scale(24),
+  },
+  userDetailAvatar: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(40),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(12),
+  },
+  userDetailAvatarText: {
+    fontSize: scale(32),
+    fontWeight: '600',
+  },
+  userDetailName: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  userDetailEmail: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
+  },
+  detailSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: scale(14),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  detailLabel: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  detailValue: {
+    fontSize: scale(14),
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+  },
+  roleSection: {
+    marginTop: scale(24),
+  },
+  roleSectionTitle: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
+  roleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    gap: scale(6),
+  },
+  roleButtonText: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: scale(24),
+    padding: scale(16),
+    borderRadius: scale(12),
+    gap: scale(8),
+  },
+  toggleButtonText: {
+    fontSize: scale(15),
+    fontWeight: '600',
+  },
 
   // Invite Form
+  inviteLocationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.teal + '15',
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginBottom: scale(16),
+    gap: scale(8),
+  },
+  inviteLocationText: {
+    fontSize: scale(14),
+    color: COLORS.teal,
+    fontWeight: '500',
+  },
   inputLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: COLORS.navy,
-    marginBottom: 8,
-    marginTop: 16,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+    marginTop: scale(16),
   },
   input: {
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: COLORS.navy,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
+    borderColor: COLORS.border,
   },
   roleSelector: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   roleSelectorItem: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(10),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
+    gap: scale(4),
   },
   roleSelectorText: {
-    fontSize: 12,
-    color: COLORS.gray,
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
   },
   inviteNote: {
-    backgroundColor: COLORS.primary + '10',
-    padding: 16,
-    borderRadius: 10,
-    marginTop: 24,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.teal + '15',
+    padding: scale(16),
+    borderRadius: scale(10),
+    marginTop: scale(24),
+    gap: scale(10),
   },
   inviteNoteText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    lineHeight: 20,
+    flex: 1,
+    fontSize: scale(13),
+    color: COLORS.teal,
+    lineHeight: scale(20),
   },
 });

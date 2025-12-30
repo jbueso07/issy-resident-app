@@ -1,5 +1,5 @@
 // app/admin/settings.js
-// ISSY Resident App - Admin: Configuraciones
+// ISSY Resident App - Admin: Configuraciones (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,40 +14,51 @@ import {
   ActivityIndicator,
   RefreshControl,
   Switch,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#6366F1',
-  danger: '#EF4444',
-  warning: '#F59E0B',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
   success: '#10B981',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const TABS = [
-  { id: 'guard', label: '🔐 Guard App' },
-  { id: 'location', label: '⚙️ Ubicación' },
-  { id: 'users', label: '👥 Usuarios' },
-  { id: 'blacklist', label: '🚫 Lista Negra' },
+  { id: 'guard', label: 'Guard App', icon: 'shield-checkmark' },
+  { id: 'location', label: 'Ubicación', icon: 'settings' },
+  { id: 'users', label: 'Usuarios', icon: 'people' },
+  { id: 'blacklist', label: 'Lista Negra', icon: 'ban' },
 ];
 
 const SUSPENSION_REASONS = [
-  { value: 'unpaid', label: '💰 Falta de Pago' },
-  { value: 'moved_out', label: '🏠 Ya no reside' },
-  { value: 'rule_violation', label: '⚠️ Violación de Reglas' },
-  { value: 'admin_suspended', label: '🛡️ Suspensión Admin' },
-  { value: 'other', label: '📝 Otra Razón' },
+  { value: 'unpaid', label: 'Falta de Pago', icon: 'card' },
+  { value: 'moved_out', label: 'Ya no reside', icon: 'home' },
+  { value: 'rule_violation', label: 'Violación de Reglas', icon: 'warning' },
+  { value: 'admin_suspended', label: 'Suspensión Admin', icon: 'shield' },
+  { value: 'other', label: 'Otra Razón', icon: 'document-text' },
 ];
 
 export default function AdminSettings() {
@@ -98,7 +109,7 @@ export default function AdminSettings() {
       return;
     }
     loadData();
-  }, [activeTab]);
+  }, []);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -109,51 +120,90 @@ export default function AdminSettings() {
   };
 
   const loadData = async () => {
-    if (!locationId) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
     try {
       const headers = await getAuthHeaders();
 
-      if (activeTab === 'guard') {
-        const res = await fetch(`${API_URL}/api/admin/settings/guard-app/${locationId}`, { headers });
-        const data = await res.json();
-        setGuardSettings(data);
-      } else if (activeTab === 'location') {
-        const res = await fetch(`${API_URL}/api/admin/settings/location/${locationId}`, { headers });
-        const data = await res.json();
-        setLocationSettings(data);
-      } else if (activeTab === 'users') {
-        const res = await fetch(`${API_URL}/api/admin/users/payment-status?location_id=${locationId}`, { headers });
-        const data = await res.json();
-        setUsersPaymentStatus(Array.isArray(data) ? data : []);
+      // Load guard settings
+      const guardRes = await fetch(`${API_URL}/api/admin/guard-settings/${locationId}`, { headers });
+      if (guardRes.ok) {
+        const guardData = await guardRes.json();
+        setGuardSettings(guardData.data || guardData);
+      } else {
+        setGuardSettings(getDefaultGuardSettings());
+      }
 
-        const overdueRes = await fetch(`${API_URL}/api/admin/payments/overdue?location_id=${locationId}`, { headers });
-        const overdueData = await overdueRes.json();
-        setOverdueUsers(Array.isArray(overdueData) ? overdueData : []);
-      } else if (activeTab === 'blacklist') {
-        const res = await fetch(`${API_URL}/api/admin/blacklist?location_id=${locationId}`, { headers });
-        const data = await res.json();
-        setBlacklist(Array.isArray(data) ? data : []);
+      // Load location settings
+      const locationRes = await fetch(`${API_URL}/api/admin/location-settings/${locationId}`, { headers });
+      if (locationRes.ok) {
+        const locationData = await locationRes.json();
+        setLocationSettings(locationData.data || locationData);
+      } else {
+        setLocationSettings(getDefaultLocationSettings());
+      }
+
+      // Load users with payment status
+      const usersRes = await fetch(`${API_URL}/api/admin/users/payment-status?location_id=${locationId}`, { headers });
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        const users = usersData.data || usersData || [];
+        setUsersPaymentStatus(users);
+        setOverdueUsers(users.filter(u => u.overdue_payments > 0));
+      }
+
+      // Load blacklist
+      const blacklistRes = await fetch(`${API_URL}/api/admin/blacklist?location_id=${locationId}`, { headers });
+      if (blacklistRes.ok) {
+        const blacklistData = await blacklistRes.json();
+        setBlacklist(blacklistData.data || blacklistData || []);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      console.error('Error loading settings:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  const getDefaultGuardSettings = () => ({
+    can_scan_qr: true,
+    can_manual_entry: true,
+    can_view_visitor_history: true,
+    can_view_resident_directory: true,
+    can_call_residents: true,
+    can_register_incidents: true,
+    can_upload_photos: true,
+    can_register_vehicles: true,
+    can_approve_visitors: true,
+    can_deny_visitors: true,
+    auto_approve_preregistered: true,
+    alert_on_blacklisted: true,
+    alert_on_expired_qr: true,
+    alert_on_suspended_resident: true,
+    panic_button_enabled: true,
+    camera_mode: 'phone',
+  });
+
+  const getDefaultLocationSettings = () => ({
+    auto_suspend_on_overdue: false,
+    overdue_days_before_suspend: 30,
+    overdue_payments_threshold: 2,
+    send_payment_reminders: true,
+    allow_visitor_preregistration: true,
+    max_active_qr_per_user: 5,
+    default_qr_validity_hours: 24,
+    require_visitor_id: false,
+    enable_announcements: true,
+    enable_emergency_alerts: true,
+    enable_amenity_reservations: true,
+    max_reservations_per_week: 3,
+  });
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
-  }, [activeTab]);
+  }, []);
 
-  // Guard Settings handlers
+  // Guard settings handlers
   const handleGuardSettingChange = (key, value) => {
     setGuardSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -162,7 +212,7 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/api/admin/settings/guard-app/${locationId}`, {
+      const res = await fetch(`${API_URL}/api/admin/guard-settings/${locationId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(guardSettings),
@@ -179,7 +229,7 @@ export default function AdminSettings() {
     }
   };
 
-  // Location Settings handlers
+  // Location settings handlers
   const handleLocationSettingChange = (key, value) => {
     setLocationSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -188,7 +238,7 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/api/admin/settings/location/${locationId}`, {
+      const res = await fetch(`${API_URL}/api/admin/location-settings/${locationId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(locationSettings),
@@ -214,7 +264,10 @@ export default function AdminSettings() {
       const res = await fetch(`${API_URL}/api/admin/users/${selectedUser.id}/suspend`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(suspendForm),
+        body: JSON.stringify({
+          reason: suspendForm.reason,
+          message: suspendForm.message,
+        }),
       });
 
       if (res.ok) {
@@ -244,9 +297,7 @@ export default function AdminSettings() {
               const res = await fetch(`${API_URL}/api/admin/users/${userId}/reactivate`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ notes: 'Reactivado desde app móvil' }),
               });
-
               if (res.ok) {
                 Alert.alert('Éxito', 'Usuario reactivado');
                 loadData();
@@ -262,45 +313,50 @@ export default function AdminSettings() {
     );
   };
 
-  const viewSuspensionHistory = async (userId) => {
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/api/admin/users/${userId}/suspension-history`, { headers });
-      const data = await res.json();
-      setSuspensionHistory(Array.isArray(data) ? data : []);
-      setShowHistoryModal(true);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo cargar historial');
-    }
-  };
-
   const runAutoSuspension = async () => {
     Alert.alert(
-      'Suspensión Automática',
-      '¿Ejecutar suspensión automática por pagos vencidos?',
+      'Suspender Usuarios',
+      `¿Suspender ${overdueUsers.length} usuarios con pagos vencidos?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Ejecutar',
+          text: 'Suspender',
           style: 'destructive',
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
-              const res = await fetch(`${API_URL}/api/admin/payments/auto-suspend`, {
+              const res = await fetch(`${API_URL}/api/admin/users/auto-suspend`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ locationId }),
+                body: JSON.stringify({ location_id: locationId }),
               });
-              const data = await res.json();
-              Alert.alert('Completado', `Usuarios suspendidos: ${data.suspended_count || 0}`);
-              loadData();
+              if (res.ok) {
+                Alert.alert('Éxito', 'Usuarios suspendidos');
+                loadData();
+              } else {
+                Alert.alert('Error', 'No se pudo completar');
+              }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo ejecutar');
+              Alert.alert('Error', 'No se pudo completar');
             }
           }
         }
       ]
     );
+  };
+
+  const viewSuspensionHistory = async (userId) => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/suspension-history`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setSuspensionHistory(data.data || data || []);
+        setShowHistoryModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading history:', error);
+    }
   };
 
   // Blacklist handlers
@@ -361,8 +417,11 @@ export default function AdminSettings() {
   };
 
   // Toggle component
-  const SettingToggle = ({ label, description, value, onChange }) => (
+  const SettingToggle = ({ label, description, value, onChange, icon }) => (
     <View style={styles.settingRow}>
+      <View style={styles.settingIconContainer}>
+        <Ionicons name={icon || 'toggle'} size={20} color={COLORS.teal} />
+      </View>
       <View style={styles.settingInfo}>
         <Text style={styles.settingLabel}>{label}</Text>
         {description && <Text style={styles.settingDescription}>{description}</Text>}
@@ -370,15 +429,19 @@ export default function AdminSettings() {
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: COLORS.grayLight, true: COLORS.primary + '50' }}
-        thumbColor={value ? COLORS.primary : COLORS.gray}
+        trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.lime + '50' }}
+        thumbColor={value ? COLORS.lime : COLORS.textMuted}
+        ios_backgroundColor={COLORS.backgroundTertiary}
       />
     </View>
   );
 
   // Number input component
-  const SettingNumber = ({ label, description, value, onChange }) => (
+  const SettingNumber = ({ label, description, value, onChange, icon }) => (
     <View style={styles.settingRow}>
+      <View style={styles.settingIconContainer}>
+        <Ionicons name={icon || 'options'} size={20} color={COLORS.teal} />
+      </View>
       <View style={styles.settingInfo}>
         <Text style={styles.settingLabel}>{label}</Text>
         {description && <Text style={styles.settingDescription}>{description}</Text>}
@@ -388,15 +451,16 @@ export default function AdminSettings() {
         value={String(value || 0)}
         onChangeText={(text) => onChange(parseInt(text) || 0)}
         keyboardType="number-pad"
+        placeholderTextColor={COLORS.textMuted}
       />
     </View>
   );
 
   if (loading && !guardSettings && !locationSettings) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       </SafeAreaView>
@@ -408,13 +472,13 @@ export default function AdminSettings() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>⚙️ Configuración</Text>
+          <Text style={styles.headerTitle}>Configuración</Text>
           <Text style={styles.headerSubtitle}>Administración</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Tabs */}
@@ -430,6 +494,11 @@ export default function AdminSettings() {
             style={[styles.tab, activeTab === tab.id && styles.tabActive]}
             onPress={() => setActiveTab(tab.id)}
           >
+            <Ionicons 
+              name={tab.icon} 
+              size={16} 
+              color={activeTab === tab.id ? COLORS.background : COLORS.textSecondary} 
+            />
             <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
               {tab.label}
             </Text>
@@ -441,147 +510,183 @@ export default function AdminSettings() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
       >
         {/* Guard App Tab */}
         {activeTab === 'guard' && guardSettings && (
           <View>
-            {/* Procesos de Acceso - Nueva sección */}
+            {/* Navigation to Access Process */}
             <TouchableOpacity
               style={styles.navigationButton}
               onPress={() => router.push(`/admin/access-process?locationId=${locationId}`)}
             >
-              <View style={styles.navigationButtonContent}>
-                <Text style={styles.navigationButtonTitle}>📷 Procesos de Acceso</Text>
-                <Text style={styles.navigationButtonDescription}>Configurar qué datos capturar al registrar visitantes</Text>
+              <View style={styles.navigationButtonIcon}>
+                <Ionicons name="camera" size={24} color={COLORS.lime} />
               </View>
-              <Text style={styles.navigationButtonArrow}>›</Text>
+              <View style={styles.navigationButtonContent}>
+                <Text style={styles.navigationButtonTitle}>Procesos de Acceso</Text>
+                <Text style={styles.navigationButtonDescription}>
+                  Configurar qué datos capturar al registrar visitantes
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={COLORS.textMuted} />
             </TouchableOpacity>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Permisos de Acceso</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="key" size={20} color={COLORS.lime} />
+                <Text style={styles.sectionTitle}>Permisos de Acceso</Text>
+              </View>
               <SettingToggle
                 label="Escanear QR"
                 description="Permitir escaneo de códigos"
                 value={guardSettings.can_scan_qr}
                 onChange={(v) => handleGuardSettingChange('can_scan_qr', v)}
+                icon="qr-code"
               />
               <SettingToggle
                 label="Entrada Manual"
                 description="Registro sin QR"
                 value={guardSettings.can_manual_entry}
                 onChange={(v) => handleGuardSettingChange('can_manual_entry', v)}
+                icon="create"
               />
               <SettingToggle
                 label="Ver Historial"
                 description="Historial de visitas"
                 value={guardSettings.can_view_visitor_history}
                 onChange={(v) => handleGuardSettingChange('can_view_visitor_history', v)}
+                icon="time"
               />
               <SettingToggle
                 label="Directorio Residentes"
                 description="Ver lista de residentes"
                 value={guardSettings.can_view_resident_directory}
                 onChange={(v) => handleGuardSettingChange('can_view_resident_directory', v)}
+                icon="people"
               />
               <SettingToggle
                 label="Llamar Residentes"
                 description="Llamadas directas"
                 value={guardSettings.can_call_residents}
                 onChange={(v) => handleGuardSettingChange('can_call_residents', v)}
+                icon="call"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Permisos de Registro</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="document-text" size={20} color={COLORS.purple} />
+                <Text style={styles.sectionTitle}>Permisos de Registro</Text>
+              </View>
               <SettingToggle
                 label="Registrar Incidentes"
                 description="Crear reportes"
                 value={guardSettings.can_register_incidents}
                 onChange={(v) => handleGuardSettingChange('can_register_incidents', v)}
+                icon="alert-circle"
               />
               <SettingToggle
                 label="Subir Fotos"
                 description="Tomar fotografías"
                 value={guardSettings.can_upload_photos}
                 onChange={(v) => handleGuardSettingChange('can_upload_photos', v)}
+                icon="camera"
               />
               <SettingToggle
                 label="Registrar Vehículos"
                 description="Capturar placas"
                 value={guardSettings.can_register_vehicles}
                 onChange={(v) => handleGuardSettingChange('can_register_vehicles', v)}
+                icon="car"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Aprobaciones</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+                <Text style={styles.sectionTitle}>Aprobaciones</Text>
+              </View>
               <SettingToggle
                 label="Aprobar Visitantes"
                 description="Permitir entrada"
                 value={guardSettings.can_approve_visitors}
                 onChange={(v) => handleGuardSettingChange('can_approve_visitors', v)}
+                icon="checkmark"
               />
               <SettingToggle
                 label="Denegar Visitantes"
                 description="Rechazar entrada"
                 value={guardSettings.can_deny_visitors}
                 onChange={(v) => handleGuardSettingChange('can_deny_visitors', v)}
+                icon="close"
               />
               <SettingToggle
                 label="Auto-aprobar Pre-registrados"
                 description="Aprobación automática"
                 value={guardSettings.auto_approve_preregistered}
                 onChange={(v) => handleGuardSettingChange('auto_approve_preregistered', v)}
+                icon="flash"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Alertas</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="notifications" size={20} color={COLORS.warning} />
+                <Text style={styles.sectionTitle}>Alertas</Text>
+              </View>
               <SettingToggle
                 label="Alerta Lista Negra"
                 description="Visitante bloqueado"
                 value={guardSettings.alert_on_blacklisted}
                 onChange={(v) => handleGuardSettingChange('alert_on_blacklisted', v)}
+                icon="ban"
               />
               <SettingToggle
                 label="Alerta QR Expirado"
                 description="Código vencido"
                 value={guardSettings.alert_on_expired_qr}
                 onChange={(v) => handleGuardSettingChange('alert_on_expired_qr', v)}
+                icon="timer"
               />
               <SettingToggle
                 label="Alerta Residente Suspendido"
                 description="Usuario bloqueado"
                 value={guardSettings.alert_on_suspended_resident}
                 onChange={(v) => handleGuardSettingChange('alert_on_suspended_resident', v)}
+                icon="person-remove"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Emergencias</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="warning" size={20} color={COLORS.danger} />
+                <Text style={styles.sectionTitle}>Emergencias</Text>
+              </View>
               <SettingToggle
                 label="Botón de Pánico"
                 description="Permitir alertas de emergencia"
                 value={guardSettings.panic_button_enabled ?? true}
                 onChange={(v) => handleGuardSettingChange('panic_button_enabled', v)}
+                icon="alert"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Configuración de Cámara</Text>
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Modo de Cámara</Text>
-                  <Text style={styles.settingDescription}>Selecciona el tipo de cámara</Text>
-                </View>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="videocam" size={20} color={COLORS.teal} />
+                <Text style={styles.sectionTitle}>Configuración de Cámara</Text>
               </View>
               <View style={styles.cameraOptions}>
                 {[
-                  { value: 'phone', label: '📱 Teléfono' },
-                  { value: 'ip_camera', label: '📹 Cámara IP' },
-                  { value: 'both', label: '📱+📹 Ambas' },
+                  { value: 'phone', label: 'Teléfono', icon: 'phone-portrait' },
+                  { value: 'ip_camera', label: 'Cámara IP', icon: 'videocam' },
+                  { value: 'both', label: 'Ambas', icon: 'albums' },
                 ].map(option => (
                   <TouchableOpacity
                     key={option.value}
@@ -591,6 +696,11 @@ export default function AdminSettings() {
                     ]}
                     onPress={() => handleGuardSettingChange('camera_mode', option.value)}
                   >
+                    <Ionicons 
+                      name={option.icon} 
+                      size={20} 
+                      color={guardSettings.camera_mode === option.value ? COLORS.background : COLORS.textSecondary} 
+                    />
                     <Text style={[
                       styles.cameraOptionText,
                       guardSettings.camera_mode === option.value && styles.cameraOptionTextActive
@@ -600,6 +710,7 @@ export default function AdminSettings() {
                   </TouchableOpacity>
                 ))}
               </View>
+              
               {(guardSettings.camera_mode === 'ip_camera' || guardSettings.camera_mode === 'both') && (
                 <View style={styles.ipCameraConfig}>
                   <Text style={styles.inputLabel}>URL de Cámara IP</Text>
@@ -608,7 +719,7 @@ export default function AdminSettings() {
                     value={guardSettings.ip_camera_url || ''}
                     onChangeText={(v) => handleGuardSettingChange('ip_camera_url', v)}
                     placeholder="rtsp://192.168.1.100:554/stream"
-                    placeholderTextColor={COLORS.gray}
+                    placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="none"
                   />
                   <Text style={styles.inputLabel}>Usuario</Text>
@@ -617,7 +728,7 @@ export default function AdminSettings() {
                     value={guardSettings.ip_camera_username || ''}
                     onChangeText={(v) => handleGuardSettingChange('ip_camera_username', v)}
                     placeholder="admin"
-                    placeholderTextColor={COLORS.gray}
+                    placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="none"
                   />
                   <Text style={styles.inputLabel}>Contraseña</Text>
@@ -626,7 +737,7 @@ export default function AdminSettings() {
                     value={guardSettings.ip_camera_password || ''}
                     onChangeText={(v) => handleGuardSettingChange('ip_camera_password', v)}
                     placeholder="••••••••"
-                    placeholderTextColor={COLORS.gray}
+                    placeholderTextColor={COLORS.textMuted}
                     secureTextEntry
                   />
                 </View>
@@ -638,9 +749,14 @@ export default function AdminSettings() {
               onPress={saveGuardSettings}
               disabled={saving}
             >
-              <Text style={styles.saveButtonText}>
-                {saving ? 'Guardando...' : '💾 Guardar Cambios'}
-              </Text>
+              {saving ? (
+                <ActivityIndicator size="small" color={COLORS.background} />
+              ) : (
+                <>
+                  <Ionicons name="save" size={20} color={COLORS.background} />
+                  <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -649,90 +765,114 @@ export default function AdminSettings() {
         {activeTab === 'location' && locationSettings && (
           <View>
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Configuración de Pagos</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="card" size={20} color={COLORS.warning} />
+                <Text style={styles.sectionTitle}>Configuración de Pagos</Text>
+              </View>
               <SettingToggle
                 label="Auto-suspender por Mora"
                 description="Suspender usuarios con pagos vencidos"
                 value={locationSettings.auto_suspend_on_overdue}
                 onChange={(v) => handleLocationSettingChange('auto_suspend_on_overdue', v)}
+                icon="pause-circle"
               />
               <SettingNumber
                 label="Días de Mora"
                 description="Días antes de suspender"
                 value={locationSettings.overdue_days_before_suspend}
                 onChange={(v) => handleLocationSettingChange('overdue_days_before_suspend', v)}
+                icon="calendar"
               />
               <SettingNumber
                 label="Pagos Vencidos"
                 description="Cantidad para suspender"
                 value={locationSettings.overdue_payments_threshold}
                 onChange={(v) => handleLocationSettingChange('overdue_payments_threshold', v)}
+                icon="receipt"
               />
               <SettingToggle
                 label="Recordatorios de Pago"
                 description="Enviar notificaciones"
                 value={locationSettings.send_payment_reminders}
                 onChange={(v) => handleLocationSettingChange('send_payment_reminders', v)}
+                icon="notifications"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Control de Acceso</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="shield-checkmark" size={20} color={COLORS.blue} />
+                <Text style={styles.sectionTitle}>Control de Acceso</Text>
+              </View>
               <SettingToggle
                 label="Pre-registro de Visitantes"
                 description="Permitir pre-registro"
                 value={locationSettings.allow_visitor_preregistration}
                 onChange={(v) => handleLocationSettingChange('allow_visitor_preregistration', v)}
+                icon="person-add"
               />
               <SettingNumber
                 label="QR Activos por Usuario"
                 description="Máximo permitido"
                 value={locationSettings.max_active_qr_per_user}
                 onChange={(v) => handleLocationSettingChange('max_active_qr_per_user', v)}
+                icon="qr-code"
               />
               <SettingNumber
                 label="Validez de QR (horas)"
                 description="Duración por defecto"
                 value={locationSettings.default_qr_validity_hours}
                 onChange={(v) => handleLocationSettingChange('default_qr_validity_hours', v)}
+                icon="time"
               />
               <SettingToggle
                 label="Requerir ID"
                 description="Obligar identificación"
                 value={locationSettings.require_visitor_id}
                 onChange={(v) => handleLocationSettingChange('require_visitor_id', v)}
+                icon="id-card"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Comunicación</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="megaphone" size={20} color={COLORS.purple} />
+                <Text style={styles.sectionTitle}>Comunicación</Text>
+              </View>
               <SettingToggle
                 label="Anuncios"
                 description="Sistema de anuncios"
                 value={locationSettings.enable_announcements}
                 onChange={(v) => handleLocationSettingChange('enable_announcements', v)}
+                icon="megaphone"
               />
               <SettingToggle
                 label="Alertas de Emergencia"
                 description="Botón de pánico"
                 value={locationSettings.enable_emergency_alerts}
                 onChange={(v) => handleLocationSettingChange('enable_emergency_alerts', v)}
+                icon="warning"
               />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Amenidades</Text>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="calendar" size={20} color={COLORS.success} />
+                <Text style={styles.sectionTitle}>Amenidades</Text>
+              </View>
               <SettingToggle
                 label="Reservaciones"
                 description="Áreas comunes"
                 value={locationSettings.enable_amenity_reservations}
                 onChange={(v) => handleLocationSettingChange('enable_amenity_reservations', v)}
+                icon="calendar"
               />
               <SettingNumber
                 label="Reservaciones/Semana"
                 description="Máximo por usuario"
                 value={locationSettings.max_reservations_per_week}
                 onChange={(v) => handleLocationSettingChange('max_reservations_per_week', v)}
+                icon="repeat"
               />
             </View>
 
@@ -741,9 +881,14 @@ export default function AdminSettings() {
               onPress={saveLocationSettings}
               disabled={saving}
             >
-              <Text style={styles.saveButtonText}>
-                {saving ? 'Guardando...' : '💾 Guardar Cambios'}
-              </Text>
+              {saving ? (
+                <ActivityIndicator size="small" color={COLORS.background} />
+              ) : (
+                <>
+                  <Ionicons name="save" size={20} color={COLORS.background} />
+                  <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         )}
@@ -754,7 +899,7 @@ export default function AdminSettings() {
             {/* Overdue Alert */}
             {overdueUsers.length > 0 && (
               <View style={styles.alertBanner}>
-                <Text style={styles.alertIcon}>⚠️</Text>
+                <Ionicons name="warning" size={28} color={COLORS.warning} />
                 <View style={styles.alertContent}>
                   <Text style={styles.alertTitle}>{overdueUsers.length} usuarios con pagos vencidos</Text>
                   <Text style={styles.alertSubtitle}>
@@ -770,6 +915,13 @@ export default function AdminSettings() {
             {/* Users List */}
             {usersPaymentStatus.filter(u => u.role === 'user').map(usr => (
               <View key={usr.id} style={styles.userCard}>
+                <View style={styles.userAvatarContainer}>
+                  <View style={[styles.userAvatar, { backgroundColor: usr.is_active ? COLORS.success + '30' : COLORS.danger + '30' }]}>
+                    <Text style={[styles.userAvatarText, { color: usr.is_active ? COLORS.success : COLORS.danger }]}>
+                      {(usr.name || 'U')[0].toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{usr.name}</Text>
                   <Text style={styles.userEmail}>{usr.email}</Text>
@@ -778,17 +930,23 @@ export default function AdminSettings() {
                       styles.statusBadge,
                       { backgroundColor: usr.is_active ? COLORS.success + '20' : COLORS.danger + '20' }
                     ]}>
+                      <Ionicons 
+                        name={usr.is_active ? 'checkmark-circle' : 'close-circle'} 
+                        size={12} 
+                        color={usr.is_active ? COLORS.success : COLORS.danger} 
+                      />
                       <Text style={[
                         styles.statusBadgeText,
                         { color: usr.is_active ? COLORS.success : COLORS.danger }
                       ]}>
-                        {usr.is_active ? '✅ Activo' : '❌ Suspendido'}
+                        {usr.is_active ? 'Activo' : 'Suspendido'}
                       </Text>
                     </View>
                     {usr.overdue_payments > 0 && (
                       <View style={[styles.statusBadge, { backgroundColor: COLORS.warning + '20' }]}>
+                        <Ionicons name="alert-circle" size={12} color={COLORS.warning} />
                         <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                          ⚠️ {usr.overdue_payments} vencidos
+                          {usr.overdue_payments} vencidos
                         </Text>
                       </View>
                     )}
@@ -805,21 +963,21 @@ export default function AdminSettings() {
                       style={[styles.actionButton, { backgroundColor: COLORS.danger + '15' }]}
                       onPress={() => { setSelectedUser(usr); setShowSuspendModal(true); }}
                     >
-                      <Text style={[styles.actionButtonText, { color: COLORS.danger }]}>Suspender</Text>
+                      <Ionicons name="pause-circle" size={16} color={COLORS.danger} />
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: COLORS.success + '15' }]}
                       onPress={() => handleReactivateUser(usr.id)}
                     >
-                      <Text style={[styles.actionButtonText, { color: COLORS.success }]}>Reactivar</Text>
+                      <Ionicons name="play-circle" size={16} color={COLORS.success} />
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: COLORS.primary + '15' }]}
+                    style={[styles.actionButton, { backgroundColor: COLORS.teal + '15' }]}
                     onPress={() => { setSelectedUser(usr); viewSuspensionHistory(usr.id); }}
                   >
-                    <Text style={[styles.actionButtonText, { color: COLORS.primary }]}>📋</Text>
+                    <Ionicons name="document-text" size={16} color={COLORS.teal} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -827,7 +985,7 @@ export default function AdminSettings() {
 
             {usersPaymentStatus.filter(u => u.role === 'user').length === 0 && (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>👥</Text>
+                <Ionicons name="people-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>No hay usuarios</Text>
               </View>
             )}
@@ -841,18 +999,28 @@ export default function AdminSettings() {
               style={styles.addButton}
               onPress={() => setShowBlacklistModal(true)}
             >
-              <Text style={styles.addButtonText}>➕ Agregar a Lista Negra</Text>
+              <Ionicons name="add-circle" size={20} color={COLORS.textPrimary} />
+              <Text style={styles.addButtonText}>Agregar a Lista Negra</Text>
             </TouchableOpacity>
 
             {blacklist.map(item => (
               <View key={item.id} style={styles.blacklistCard}>
+                <View style={styles.blacklistIcon}>
+                  <Ionicons name="ban" size={24} color={COLORS.danger} />
+                </View>
                 <View style={styles.blacklistInfo}>
                   <Text style={styles.blacklistName}>{item.visitor_name || 'Sin nombre'}</Text>
                   {item.visitor_phone && (
-                    <Text style={styles.blacklistDetail}>📱 {item.visitor_phone}</Text>
+                    <View style={styles.blacklistDetailRow}>
+                      <Ionicons name="call" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.blacklistDetail}>{item.visitor_phone}</Text>
+                    </View>
                   )}
                   {item.visitor_id_number && (
-                    <Text style={styles.blacklistDetail}>🪪 {item.visitor_id_number}</Text>
+                    <View style={styles.blacklistDetailRow}>
+                      <Ionicons name="id-card" size={14} color={COLORS.textMuted} />
+                      <Text style={styles.blacklistDetail}>{item.visitor_id_number}</Text>
+                    </View>
                   )}
                   <Text style={styles.blacklistReason}>{item.reason}</Text>
                   <Text style={styles.blacklistDate}>
@@ -863,15 +1031,16 @@ export default function AdminSettings() {
                   style={styles.removeButton}
                   onPress={() => handleRemoveFromBlacklist(item.id)}
                 >
-                  <Text style={styles.removeButtonText}>🗑️</Text>
+                  <Ionicons name="trash" size={20} color={COLORS.danger} />
                 </TouchableOpacity>
               </View>
             ))}
 
             {blacklist.length === 0 && (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>🚫</Text>
+                <Ionicons name="ban-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>Lista negra vacía</Text>
+                <Text style={styles.emptySubtitle}>No hay visitantes bloqueados</Text>
               </View>
             )}
           </View>
@@ -887,7 +1056,7 @@ export default function AdminSettings() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowSuspendModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSuspendModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -901,6 +1070,11 @@ export default function AdminSettings() {
           <ScrollView style={styles.modalContent}>
             {selectedUser && (
               <View style={styles.modalUserInfo}>
+                <View style={[styles.modalUserAvatar, { backgroundColor: COLORS.danger + '30' }]}>
+                  <Text style={[styles.modalUserAvatarText, { color: COLORS.danger }]}>
+                    {(selectedUser.name || 'U')[0].toUpperCase()}
+                  </Text>
+                </View>
                 <Text style={styles.modalUserName}>{selectedUser.name}</Text>
                 <Text style={styles.modalUserEmail}>{selectedUser.email}</Text>
               </View>
@@ -916,6 +1090,11 @@ export default function AdminSettings() {
                 ]}
                 onPress={() => setSuspendForm(prev => ({ ...prev, reason: reason.value }))}
               >
+                <Ionicons 
+                  name={reason.icon} 
+                  size={20} 
+                  color={suspendForm.reason === reason.value ? COLORS.danger : COLORS.textSecondary} 
+                />
                 <Text style={[
                   styles.reasonOptionText,
                   suspendForm.reason === reason.value && styles.reasonOptionTextActive
@@ -931,7 +1110,7 @@ export default function AdminSettings() {
               value={suspendForm.message}
               onChangeText={(text) => setSuspendForm(prev => ({ ...prev, message: text }))}
               placeholder="Mensaje que verá el usuario..."
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={3}
             />
@@ -946,7 +1125,7 @@ export default function AdminSettings() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBlacklistModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowBlacklistModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -964,7 +1143,7 @@ export default function AdminSettings() {
               value={blacklistForm.visitor_name}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_name: text }))}
               placeholder="Nombre del visitante"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
             />
 
             <Text style={styles.inputLabel}>Teléfono</Text>
@@ -973,7 +1152,7 @@ export default function AdminSettings() {
               value={blacklistForm.visitor_phone}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_phone: text }))}
               placeholder="Teléfono"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="phone-pad"
             />
 
@@ -983,7 +1162,7 @@ export default function AdminSettings() {
               value={blacklistForm.visitor_id_number}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_id_number: text }))}
               placeholder="ID / DNI"
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
             />
 
             <Text style={styles.inputLabel}>Razón *</Text>
@@ -992,7 +1171,7 @@ export default function AdminSettings() {
               value={blacklistForm.reason}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, reason: text }))}
               placeholder="Razón por la que se agrega..."
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={2}
             />
@@ -1003,7 +1182,7 @@ export default function AdminSettings() {
               value={blacklistForm.notes}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, notes: text }))}
               placeholder="Notas adicionales..."
-              placeholderTextColor={COLORS.gray}
+              placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={2}
             />
@@ -1018,7 +1197,7 @@ export default function AdminSettings() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowHistoryModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
               <Text style={styles.modalCancel}>Cerrar</Text>
@@ -1035,11 +1214,16 @@ export default function AdminSettings() {
                     styles.historyBadge,
                     { backgroundColor: item.action === 'suspended' ? COLORS.danger + '20' : COLORS.success + '20' }
                   ]}>
+                    <Ionicons 
+                      name={item.action === 'suspended' ? 'close-circle' : 'checkmark-circle'} 
+                      size={14} 
+                      color={item.action === 'suspended' ? COLORS.danger : COLORS.success} 
+                    />
                     <Text style={[
                       styles.historyBadgeText,
                       { color: item.action === 'suspended' ? COLORS.danger : COLORS.success }
                     ]}>
-                      {item.action === 'suspended' ? '❌ Suspendido' : '✅ Reactivado'}
+                      {item.action === 'suspended' ? 'Suspendido' : 'Reactivado'}
                     </Text>
                   </View>
                   {item.reason && (
@@ -1058,6 +1242,7 @@ export default function AdminSettings() {
               ))
             ) : (
               <View style={styles.emptyContainer}>
+                <Ionicons name="document-text-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>Sin historial</Text>
               </View>
             )}
@@ -1069,173 +1254,601 @@ export default function AdminSettings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  loadingText: { 
+    marginTop: scale(12), 
+    color: COLORS.textSecondary, 
+    fontSize: scale(14) 
+  },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  headerSubtitle: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: scale(16), 
+    paddingVertical: scale(12),
+  },
+  backButton: { 
+    width: scale(40), 
+    height: scale(40), 
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  headerTitleContainer: { 
+    flex: 1, 
+    marginLeft: scale(12) 
+  },
+  headerTitle: { 
+    fontSize: scale(18), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary 
+  },
+  headerSubtitle: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(2) 
+  },
 
   // Tabs
-  tabsContainer: { backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight, flexGrow: 0, height: 52 },
-  tabsContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8, alignItems: 'center' },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: COLORS.grayLighter, height: 36, justifyContent: 'center' },
-  tabActive: { backgroundColor: COLORS.primary },
-  tabText: { fontSize: 14, color: COLORS.gray, fontWeight: '500' },
-  tabTextActive: { color: COLORS.white },
+  tabsContainer: { 
+    flexGrow: 0, 
+    maxHeight: scale(56),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  tabsContent: { 
+    paddingHorizontal: scale(12), 
+    paddingVertical: scale(8), 
+    gap: scale(8), 
+    alignItems: 'center' 
+  },
+  tab: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16), 
+    paddingVertical: scale(10), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundSecondary,
+    gap: scale(6),
+  },
+  tabActive: { 
+    backgroundColor: COLORS.lime 
+  },
+  tabText: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
+    fontWeight: '500' 
+  },
+  tabTextActive: { 
+    color: COLORS.background,
+    fontWeight: '600',
+  },
 
   // Content
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
+  content: { 
+    flex: 1 
+  },
+  scrollContent: { 
+    padding: scale(16) 
+  },
 
   // Sections
-  section: { backgroundColor: COLORS.white, borderRadius: 12, marginBottom: 16, overflow: 'hidden' },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.navy, padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
+  section: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    marginBottom: scale(16), 
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(16),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: scale(10),
+  },
+  sectionTitle: { 
+    fontSize: scale(15), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary,
+  },
 
   // Settings
-  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.grayLighter },
-  settingInfo: { flex: 1, marginRight: 12 },
-  settingLabel: { fontSize: 15, fontWeight: '500', color: COLORS.navy },
-  settingDescription: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  numberInput: { width: 60, height: 36, backgroundColor: COLORS.grayLighter, borderRadius: 8, textAlign: 'center', fontSize: 15, color: COLORS.navy },
-
-  // Save Button
-  saveButton: { backgroundColor: COLORS.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  saveButtonDisabled: { opacity: 0.7 },
-  saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
-
-  // Alert Banner
-  alertBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warning + '15', borderRadius: 12, padding: 14, marginBottom: 16 },
-  alertIcon: { fontSize: 24, marginRight: 12 },
-  alertContent: { flex: 1 },
-  alertTitle: { fontSize: 14, fontWeight: '600', color: COLORS.navy },
-  alertSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  alertButton: { backgroundColor: COLORS.warning, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  alertButtonText: { color: COLORS.white, fontSize: 13, fontWeight: '600' },
-
-  // User Card
-  userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  userEmail: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  userMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  statusBadgeText: { fontSize: 12, fontWeight: '500' },
-  suspensionReason: { fontSize: 12, color: COLORS.danger, marginTop: 6 },
-  userActions: { flexDirection: 'column', gap: 6 },
-  actionButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
-  actionButtonText: { fontSize: 12, fontWeight: '600' },
-
-  // Add Button
-  addButton: { backgroundColor: COLORS.danger, padding: 14, borderRadius: 12, alignItems: 'center', marginBottom: 16 },
-  addButtonText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
-
-  // Blacklist Card
-  blacklistCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, marginBottom: 10 },
-  blacklistInfo: { flex: 1 },
-  blacklistName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  blacklistDetail: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
-  blacklistReason: { fontSize: 13, color: COLORS.danger, marginTop: 6 },
-  blacklistDate: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
-  removeButton: { padding: 10 },
-  removeButtonText: { fontSize: 20 },
-
-  // Empty
-  emptyContainer: { alignItems: 'center', paddingVertical: 40 },
-  emptyIcon: { fontSize: 60, marginBottom: 16 },
-  emptyTitle: { fontSize: 16, color: COLORS.gray },
-
-  // Modal
-  modalContainer: { flex: 1, backgroundColor: COLORS.white },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  modalCancel: { fontSize: 16, color: COLORS.gray },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.navy },
-  modalDone: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: 16 },
-  modalUserInfo: { alignItems: 'center', marginBottom: 24 },
-  modalUserName: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  modalUserEmail: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
-
-  // Form
-  inputLabel: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 8, marginTop: 16 },
-  input: { backgroundColor: COLORS.grayLighter, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: COLORS.navy },
-  textArea: { backgroundColor: COLORS.grayLighter, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: COLORS.navy, minHeight: 80, textAlignVertical: 'top' },
-  reasonOption: { padding: 14, borderRadius: 10, backgroundColor: COLORS.grayLighter, marginBottom: 8 },
-  reasonOptionActive: { backgroundColor: COLORS.primary + '20', borderWidth: 1, borderColor: COLORS.primary },
-  reasonOptionText: { fontSize: 15, color: COLORS.gray },
-  reasonOptionTextActive: { color: COLORS.primary, fontWeight: '500' },
-
-  // History
-  historyItem: { backgroundColor: COLORS.grayLighter, borderRadius: 10, padding: 14, marginBottom: 10 },
-  historyBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 8 },
-  historyBadgeText: { fontSize: 13, fontWeight: '500' },
-  historyReason: { fontSize: 14, color: COLORS.navy, marginBottom: 4 },
-  historyMessage: { fontSize: 13, color: COLORS.gray, marginBottom: 8 },
-  historyDate: { fontSize: 12, color: COLORS.gray },
-  historyBy: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  settingRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: scale(14), 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.border,
+  },
+  settingIconContainer: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.backgroundTertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  settingInfo: { 
+    flex: 1, 
+    marginRight: scale(12) 
+  },
+  settingLabel: { 
+    fontSize: scale(14), 
+    fontWeight: '500', 
+    color: COLORS.textPrimary 
+  },
+  settingDescription: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(2) 
+  },
+  numberInput: { 
+    width: scale(60), 
+    height: scale(36), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(8), 
+    textAlign: 'center', 
+    fontSize: scale(15), 
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
 
   // Navigation Button
   navigationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    marginBottom: scale(16),
+    padding: scale(16),
+    borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: COLORS.grayLight
+    borderColor: COLORS.border,
+  },
+  navigationButtonIcon: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.lime + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
   },
   navigationButtonContent: {
-    flex: 1
+    flex: 1,
   },
   navigationButtonTitle: {
-    fontSize: 16,
+    fontSize: scale(15),
     fontWeight: '600',
-    color: COLORS.navy,
-    marginBottom: 4
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
   },
   navigationButtonDescription: {
-    fontSize: 13,
-    color: COLORS.gray
-  },
-  navigationButtonArrow: { 
-    fontSize: 24, 
-    color: COLORS.gray, 
-    marginLeft: 8 
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
   },
 
   // Camera Config
   cameraOptions: { 
     flexDirection: 'row', 
-    paddingHorizontal: 16, 
-    paddingBottom: 16, 
-    gap: 8 
+    padding: scale(16), 
+    gap: scale(8) 
   },
   cameraOption: { 
     flex: 1, 
-    paddingVertical: 12, 
-    borderRadius: 8, 
-    backgroundColor: COLORS.grayLighter, 
-    alignItems: 'center' 
+    paddingVertical: scale(12), 
+    borderRadius: scale(10), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    alignItems: 'center',
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   cameraOptionActive: { 
-    backgroundColor: COLORS.primary 
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   cameraOptionText: { 
-    fontSize: 13, 
-    color: COLORS.gray, 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
     fontWeight: '500' 
   },
   cameraOptionTextActive: { 
-    color: COLORS.white 
+    color: COLORS.background 
   },
   ipCameraConfig: { 
-    paddingHorizontal: 16, 
-    paddingBottom: 16 
+    paddingHorizontal: scale(16), 
+    paddingBottom: scale(16) 
+  },
+
+  // Save Button
+  saveButton: { 
+    flexDirection: 'row',
+    backgroundColor: COLORS.lime, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginTop: scale(8),
+    gap: scale(8),
+  },
+  saveButtonDisabled: { 
+    opacity: 0.7 
+  },
+  saveButtonText: { 
+    color: COLORS.background, 
+    fontSize: scale(16), 
+    fontWeight: '600' 
+  },
+
+  // Alert Banner
+  alertBanner: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.warning + '15', 
+    borderRadius: scale(12), 
+    padding: scale(14), 
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.warning + '30',
+  },
+  alertContent: { 
+    flex: 1,
+    marginLeft: scale(12),
+  },
+  alertTitle: { 
+    fontSize: scale(14), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  alertSubtitle: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(2) 
+  },
+  alertButton: { 
+    backgroundColor: COLORS.warning, 
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(8), 
+    borderRadius: scale(8) 
+  },
+  alertButtonText: { 
+    color: COLORS.background, 
+    fontSize: scale(13), 
+    fontWeight: '600' 
+  },
+
+  // User Card
+  userCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    padding: scale(14), 
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  userAvatarContainer: {
+    marginRight: scale(12),
+  },
+  userAvatar: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+  },
+  userInfo: { 
+    flex: 1 
+  },
+  userName: { 
+    fontSize: scale(15), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  userEmail: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(2) 
+  },
+  userMeta: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: scale(6), 
+    marginTop: scale(8) 
+  },
+  statusBadge: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8), 
+    paddingVertical: scale(4), 
+    borderRadius: scale(6),
+    gap: scale(4),
+  },
+  statusBadgeText: { 
+    fontSize: scale(11), 
+    fontWeight: '500' 
+  },
+  suspensionReason: { 
+    fontSize: scale(12), 
+    color: COLORS.danger, 
+    marginTop: scale(6) 
+  },
+  userActions: { 
+    flexDirection: 'column', 
+    gap: scale(6) 
+  },
+  actionButton: { 
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(8), 
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Add Button
+  addButton: { 
+    flexDirection: 'row',
+    backgroundColor: COLORS.danger, 
+    padding: scale(14), 
+    borderRadius: scale(12), 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginBottom: scale(16),
+    gap: scale(8),
+  },
+  addButtonText: { 
+    color: COLORS.textPrimary, 
+    fontSize: scale(15), 
+    fontWeight: '600' 
+  },
+
+  // Blacklist Card
+  blacklistCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    padding: scale(14), 
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  blacklistIcon: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.danger + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  blacklistInfo: { 
+    flex: 1 
+  },
+  blacklistName: { 
+    fontSize: scale(15), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  blacklistDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginTop: scale(4),
+  },
+  blacklistDetail: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary,
+  },
+  blacklistReason: { 
+    fontSize: scale(13), 
+    color: COLORS.danger, 
+    marginTop: scale(6) 
+  },
+  blacklistDate: { 
+    fontSize: scale(12), 
+    color: COLORS.textMuted, 
+    marginTop: scale(4) 
+  },
+  removeButton: { 
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.danger + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Empty
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: scale(40) 
+  },
+  emptyTitle: { 
+    fontSize: scale(16), 
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+
+  // Modal
+  modalContainer: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: scale(16), 
+    paddingVertical: scale(12), 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.border 
+  },
+  modalCancel: { 
+    fontSize: scale(16), 
+    color: COLORS.textSecondary 
+  },
+  modalTitle: { 
+    fontSize: scale(17), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  modalDone: { 
+    fontSize: scale(16), 
+    color: COLORS.lime, 
+    fontWeight: '600' 
+  },
+  modalContent: { 
+    flex: 1, 
+    padding: scale(16) 
+  },
+  modalUserInfo: { 
+    alignItems: 'center', 
+    marginBottom: scale(24) 
+  },
+  modalUserAvatar: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(12),
+  },
+  modalUserAvatarText: {
+    fontSize: scale(24),
+    fontWeight: '600',
+  },
+  modalUserName: { 
+    fontSize: scale(18), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary 
+  },
+  modalUserEmail: { 
+    fontSize: scale(14), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(4) 
+  },
+
+  // Form
+  inputLabel: { 
+    fontSize: scale(14), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(8), 
+    marginTop: scale(16) 
+  },
+  input: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(10), 
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(12), 
+    fontSize: scale(15), 
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  textArea: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(10), 
+    paddingHorizontal: scale(14), 
+    paddingVertical: scale(12), 
+    fontSize: scale(15), 
+    color: COLORS.textPrimary, 
+    minHeight: scale(80), 
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reasonOption: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(14), 
+    borderRadius: scale(10), 
+    backgroundColor: COLORS.backgroundSecondary, 
+    marginBottom: scale(8),
+    gap: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reasonOptionActive: { 
+    backgroundColor: COLORS.danger + '15', 
+    borderColor: COLORS.danger 
+  },
+  reasonOptionText: { 
+    fontSize: scale(15), 
+    color: COLORS.textSecondary 
+  },
+  reasonOptionTextActive: { 
+    color: COLORS.danger, 
+    fontWeight: '500' 
+  },
+
+  // History
+  historyItem: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(10), 
+    padding: scale(14), 
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  historyBadge: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start', 
+    paddingHorizontal: scale(10), 
+    paddingVertical: scale(4), 
+    borderRadius: scale(6), 
+    marginBottom: scale(8),
+    gap: scale(6),
+  },
+  historyBadgeText: { 
+    fontSize: scale(13), 
+    fontWeight: '500' 
+  },
+  historyReason: { 
+    fontSize: scale(14), 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(4) 
+  },
+  historyMessage: { 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary, 
+    marginBottom: scale(8) 
+  },
+  historyDate: { 
+    fontSize: scale(12), 
+    color: COLORS.textMuted 
+  },
+  historyBy: { 
+    fontSize: scale(12), 
+    color: COLORS.textMuted, 
+    marginTop: scale(4) 
   },
 });

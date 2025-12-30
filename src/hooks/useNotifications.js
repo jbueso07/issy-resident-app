@@ -2,7 +2,7 @@
 // ISSY Resident App - Push Notifications Hook
 
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -55,11 +55,12 @@ export const useNotifications = () => {
     });
 
     return () => {
+      // API actualizada: usar .remove() directamente en la suscripción
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, []);

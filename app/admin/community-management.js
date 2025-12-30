@@ -1,6 +1,5 @@
 // app/admin/community-management.js
-// ISSY Resident App - Admin: Gestión de Miembros de Comunidad
-// Similar a MembersManager.jsx de la web
+// ISSY Resident App - Admin: Gestión de Miembros de Comunidad (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -15,36 +14,47 @@ import {
   ActivityIndicator,
   RefreshControl,
   Switch,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const API_URL = 'https://api.joinissy.com/api';
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#3B82F6',
-  danger: '#EF4444',
-  warning: '#F59E0B',
-  success: '#10B981',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
-  purple: '#8B5CF6',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  card: 'rgba(255, 255, 255, 0.05)',
+  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  cyan: '#00E5FF',
+  purple: '#6366F1',
   pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const ROLES = {
-  resident: { label: 'Residente', color: COLORS.success, bg: '#ECFDF5' },
-  host: { label: 'Anfitrión principal', color: COLORS.primary, bg: '#EFF6FF' },
-  tenant: { label: 'Inquilino', color: COLORS.pink, bg: '#FDF2F8' },
-  admin: { label: 'Administrador', color: COLORS.purple, bg: '#F5F3FF' },
-  owner: { label: 'Propietario', color: COLORS.purple, bg: '#F5F3FF' },
-  guard: { label: 'Guardia', color: COLORS.warning, bg: '#FFFBEB' },
+  resident: { label: 'Residente', color: COLORS.success, bg: COLORS.success + '20' },
+  host: { label: 'Anfitrión principal', color: COLORS.teal, bg: COLORS.teal + '20' },
+  tenant: { label: 'Inquilino', color: COLORS.pink, bg: COLORS.pink + '20' },
+  admin: { label: 'Administrador', color: COLORS.purple, bg: COLORS.purple + '20' },
+  owner: { label: 'Propietario', color: COLORS.lime, bg: COLORS.lime + '20' },
+  guard: { label: 'Guardia', color: COLORS.warning, bg: COLORS.warning + '20' },
 };
 
 const DEACTIVATION_REASONS = [
@@ -68,8 +78,8 @@ export default function CommunityManagement() {
   const [pendingMembers, setPendingMembers] = useState([]);
   const [stats, setStats] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all' | 'active' | 'inactive'
-  const [activeTab, setActiveTab] = useState('members'); // 'members' | 'pending'
+  const [filter, setFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('members');
   
   // Location state (for superadmin)
   const [locations, setLocations] = useState([]);
@@ -148,7 +158,6 @@ export default function CommunityManagement() {
     try {
       const headers = await getAuthHeaders();
       
-      // Fetch members
       const membersRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/members`,
         { headers }
@@ -158,7 +167,6 @@ export default function CommunityManagement() {
         setMembers(membersData.data || []);
       }
       
-      // Fetch pending
       const pendingRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/pending`,
         { headers }
@@ -168,7 +176,6 @@ export default function CommunityManagement() {
         setPendingMembers(pendingData.data || []);
       }
       
-      // Fetch stats
       const statsRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/stats`,
         { headers }
@@ -191,10 +198,7 @@ export default function CommunityManagement() {
     fetchData();
   }, [selectedLocationId]);
 
-  // ==========================================
   // FILTERS & GROUPING
-  // ==========================================
-
   const filteredMembers = members.filter(m => {
     const matchesSearch = 
       m.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -220,19 +224,14 @@ export default function CommunityManagement() {
     setExpandedUnits(prev => ({ ...prev, [unit]: !prev[unit] }));
   };
 
-  // ==========================================
   // MEMBER ACTIONS
-  // ==========================================
-
   const handleToggleMember = async (member, newStatus) => {
     if (!newStatus) {
-      // Deactivating - show reason modal
       setSelectedMember(member);
       setDeactivationReason('');
       setCustomReason('');
       setShowDeactivateModal(true);
     } else {
-      // Activating - do it directly
       await updateMemberStatus(member.id, true);
     }
   };
@@ -324,10 +323,7 @@ export default function CommunityManagement() {
     }
   };
 
-  // ==========================================
   // PENDING ACTIONS
-  // ==========================================
-
   const handleApproveMember = async (membershipId) => {
     setActionLoading(true);
     try {
@@ -415,27 +411,21 @@ export default function CommunityManagement() {
     );
   };
 
-  // ==========================================
   // RENDER HELPERS
-  // ==========================================
-
   const getRoleBadge = (role) => {
-    return ROLES[role] || { label: role, color: COLORS.gray, bg: COLORS.grayLighter };
+    return ROLES[role] || { label: role, color: COLORS.textSecondary, bg: COLORS.backgroundTertiary };
   };
 
   const getSelectedLocation = () => {
     return locations.find(l => l.id === selectedLocationId);
   };
 
-  // ==========================================
   // RENDER
-  // ==========================================
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       </SafeAreaView>
@@ -443,11 +433,11 @@ export default function CommunityManagement() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Gestión de Comunidad</Text>
@@ -460,7 +450,7 @@ export default function CommunityManagement() {
           )}
         </View>
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Text style={styles.refreshButtonText}>↻</Text>
+          <Ionicons name="refresh" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -468,7 +458,7 @@ export default function CommunityManagement() {
       {stats && (
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.members?.active || 0}</Text>
+            <Text style={[styles.statValue, { color: COLORS.success }]}>{stats.members?.active || 0}</Text>
             <Text style={styles.statLabel}>Activos</Text>
           </View>
           <View style={styles.statCard}>
@@ -478,7 +468,7 @@ export default function CommunityManagement() {
             <Text style={styles.statLabel}>Pendientes</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: COLORS.gray }]}>
+            <Text style={[styles.statValue, { color: COLORS.textMuted }]}>
               {stats.members?.inactive || 0}
             </Text>
             <Text style={styles.statLabel}>Inactivos</Text>
@@ -492,16 +482,26 @@ export default function CommunityManagement() {
           style={[styles.tab, activeTab === 'members' && styles.tabActive]}
           onPress={() => setActiveTab('members')}
         >
+          <Ionicons 
+            name="people" 
+            size={16} 
+            color={activeTab === 'members' ? COLORS.lime : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
-            👥 Miembros
+            Miembros
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
           onPress={() => setActiveTab('pending')}
         >
+          <Ionicons 
+            name="hourglass" 
+            size={16} 
+            color={activeTab === 'pending' ? COLORS.lime : COLORS.textSecondary} 
+          />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            ⏳ Pendientes {pendingMembers.length > 0 && `(${pendingMembers.length})`}
+            Pendientes {pendingMembers.length > 0 && `(${pendingMembers.length})`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -509,13 +509,16 @@ export default function CommunityManagement() {
       {/* Search & Filter (only for members tab) */}
       {activeTab === 'members' && (
         <View style={styles.searchFilterContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar por nombre, email o unidad..."
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholderTextColor={COLORS.gray}
-          />
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={18} color={COLORS.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por nombre, email o unidad..."
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholderTextColor={COLORS.textMuted}
+            />
+          </View>
           <View style={styles.filterContainer}>
             {['all', 'active', 'inactive'].map(f => (
               <TouchableOpacity
@@ -537,15 +540,19 @@ export default function CommunityManagement() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={COLORS.lime}
+          />
         }
       >
         {activeTab === 'members' ? (
-          // Members List
           Object.keys(groupedMembers).length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>👥</Text>
+              <Ionicons name="people-outline" size={60} color={COLORS.textMuted} />
               <Text style={styles.emptyTitle}>No hay miembros</Text>
+              <Text style={styles.emptySubtitle}>Los miembros aparecerán aquí</Text>
             </View>
           ) : (
             Object.entries(groupedMembers).map(([unit, unitMembers]) => (
@@ -555,15 +562,19 @@ export default function CommunityManagement() {
                   onPress={() => toggleUnit(unit)}
                 >
                   <View style={styles.unitInfo}>
-                    <Text style={styles.unitIcon}>🏠</Text>
+                    <View style={styles.unitIconContainer}>
+                      <Ionicons name="home" size={18} color={COLORS.teal} />
+                    </View>
                     <Text style={styles.unitName}>{unit}</Text>
                     <Text style={styles.unitCount}>
                       {unitMembers.length} miembro{unitMembers.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <Text style={styles.expandIcon}>
-                    {expandedUnits[unit] ? '▲' : '▼'}
-                  </Text>
+                  <Ionicons 
+                    name={expandedUnits[unit] ? 'chevron-up' : 'chevron-down'} 
+                    size={18} 
+                    color={COLORS.textSecondary} 
+                  />
                 </TouchableOpacity>
 
                 {expandedUnits[unit] && (
@@ -575,8 +586,11 @@ export default function CommunityManagement() {
                             styles.memberAvatar,
                             member.is_active === false && styles.memberAvatarInactive
                           ]}>
-                            <Text style={styles.memberAvatarText}>
-                              {member.user?.name?.charAt(0) || '?'}
+                            <Text style={[
+                              styles.memberAvatarText,
+                              member.is_active === false && { color: COLORS.textMuted }
+                            ]}>
+                              {member.user?.name?.charAt(0)?.toUpperCase() || '?'}
                             </Text>
                           </View>
                           <View style={styles.memberInfo}>
@@ -612,13 +626,13 @@ export default function CommunityManagement() {
                             style={styles.editButton}
                             onPress={() => handleEditMember(member)}
                           >
-                            <Text style={styles.editButtonText}>✏️</Text>
+                            <Ionicons name="pencil" size={16} color={COLORS.teal} />
                           </TouchableOpacity>
                           <Switch
                             value={member.is_active !== false}
-                            onValueChange={(value) => handleToggleMember(member, value)}
-                            trackColor={{ false: COLORS.grayLight, true: COLORS.success + '50' }}
-                            thumbColor={member.is_active !== false ? COLORS.success : COLORS.gray}
+                            onValueChange={(val) => handleToggleMember(member, val)}
+                            trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.success + '50' }}
+                            thumbColor={member.is_active !== false ? COLORS.success : COLORS.textMuted}
                           />
                         </View>
                       </View>
@@ -629,23 +643,21 @@ export default function CommunityManagement() {
             ))
           )
         ) : (
-          // Pending List
           <>
             {pendingMembers.length > 0 && (
               <TouchableOpacity
                 style={styles.approveAllButton}
                 onPress={handleApproveAll}
               >
-                <Text style={styles.approveAllButtonText}>
-                  ✅ Aprobar Todos ({pendingMembers.length})
-                </Text>
+                <Ionicons name="checkmark-done" size={20} color={COLORS.background} />
+                <Text style={styles.approveAllButtonText}>Aprobar Todos</Text>
               </TouchableOpacity>
             )}
             
             {pendingMembers.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>✅</Text>
-                <Text style={styles.emptyTitle}>¡Todo al día!</Text>
+                <Ionicons name="checkmark-circle-outline" size={60} color={COLORS.textMuted} />
+                <Text style={styles.emptyTitle}>Sin pendientes</Text>
                 <Text style={styles.emptySubtitle}>No hay solicitudes pendientes</Text>
               </View>
             ) : (
@@ -654,7 +666,7 @@ export default function CommunityManagement() {
                   <View style={styles.pendingInfo}>
                     <View style={styles.pendingAvatar}>
                       <Text style={styles.pendingAvatarText}>
-                        {member.user?.name?.charAt(0) || '?'}
+                        {member.user?.name?.charAt(0)?.toUpperCase() || '?'}
                       </Text>
                     </View>
                     <View style={styles.pendingDetails}>
@@ -675,7 +687,9 @@ export default function CommunityManagement() {
                           </Text>
                         </View>
                         {member.unit_number && (
-                          <Text style={styles.pendingUnit}>🏠 {member.unit_number}</Text>
+                          <Text style={styles.pendingUnit}>
+                            <Ionicons name="home-outline" size={12} color={COLORS.textSecondary} /> {member.unit_number}
+                          </Text>
                         )}
                       </View>
                     </View>
@@ -685,13 +699,13 @@ export default function CommunityManagement() {
                       style={styles.approveButton}
                       onPress={() => handleApproveMember(member.id)}
                     >
-                      <Text style={styles.approveButtonText}>✓</Text>
+                      <Ionicons name="checkmark" size={22} color={COLORS.textPrimary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.rejectButton}
                       onPress={() => handleRejectMember(member.id)}
                     >
-                      <Text style={styles.rejectButtonText}>✕</Text>
+                      <Ionicons name="close" size={22} color={COLORS.danger} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -707,7 +721,7 @@ export default function CommunityManagement() {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDeactivateModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -717,9 +731,11 @@ export default function CommunityManagement() {
               onPress={confirmDeactivation}
               disabled={actionLoading}
             >
-              <Text style={[styles.modalSave, actionLoading && { opacity: 0.5 }]}>
-                {actionLoading ? '...' : 'Confirmar'}
-              </Text>
+              {actionLoading ? (
+                <ActivityIndicator size="small" color={COLORS.danger} />
+              ) : (
+                <Text style={styles.modalSave}>Confirmar</Text>
+              )}
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
@@ -744,7 +760,7 @@ export default function CommunityManagement() {
                   {reason.label}
                 </Text>
                 {deactivationReason === reason.id && (
-                  <Text style={styles.reasonCheck}>✓</Text>
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.danger} />
                 )}
               </TouchableOpacity>
             ))}
@@ -756,7 +772,7 @@ export default function CommunityManagement() {
                 value={customReason}
                 onChangeText={setCustomReason}
                 multiline
-                placeholderTextColor={COLORS.gray}
+                placeholderTextColor={COLORS.textMuted}
               />
             )}
           </ScrollView>
@@ -769,7 +785,7 @@ export default function CommunityManagement() {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowEditModal(false)}>
               <Text style={styles.modalCancel}>Cancelar</Text>
@@ -779,16 +795,18 @@ export default function CommunityManagement() {
               onPress={saveEditMember}
               disabled={actionLoading}
             >
-              <Text style={[styles.modalSave, actionLoading && { opacity: 0.5 }]}>
-                {actionLoading ? '...' : 'Guardar'}
-              </Text>
+              {actionLoading ? (
+                <ActivityIndicator size="small" color={COLORS.lime} />
+              ) : (
+                <Text style={styles.modalSave}>Guardar</Text>
+              )}
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
             <View style={styles.editMemberHeader}>
               <View style={styles.editMemberAvatar}>
                 <Text style={styles.editMemberAvatarText}>
-                  {selectedMember?.user?.name?.charAt(0) || '?'}
+                  {selectedMember?.user?.name?.charAt(0)?.toUpperCase() || '?'}
                 </Text>
               </View>
               <Text style={styles.editMemberName}>
@@ -798,38 +816,35 @@ export default function CommunityManagement() {
                 {selectedMember?.user?.email}
               </Text>
             </View>
-
+            
             <Text style={styles.inputLabel}>Rol</Text>
             <View style={styles.roleSelector}>
-              {Object.entries(ROLES).map(([key, value]) => (
+              {Object.entries(ROLES).map(([key, { label, color, bg }]) => (
                 <TouchableOpacity
                   key={key}
                   style={[
                     styles.roleSelectorItem,
-                    editForm.role === key && { 
-                      backgroundColor: value.bg,
-                      borderColor: value.color 
-                    }
+                    editForm.role === key && { backgroundColor: bg, borderColor: color }
                   ]}
                   onPress={() => setEditForm({ ...editForm, role: key })}
                 >
                   <Text style={[
                     styles.roleSelectorText,
-                    editForm.role === key && { color: value.color }
+                    editForm.role === key && { color }
                   ]}>
-                    {value.label}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-
+            
             <Text style={styles.inputLabel}>Unidad / Casa</Text>
             <TextInput
               style={styles.input}
               value={editForm.unit_number}
               onChangeText={(text) => setEditForm({ ...editForm, unit_number: text })}
-              placeholder="Ej: Casa #5, Apto 301"
-              placeholderTextColor={COLORS.gray}
+              placeholder="Ej: A-101, Casa 5"
+              placeholderTextColor={COLORS.textMuted}
             />
           </ScrollView>
         </SafeAreaView>
@@ -841,12 +856,12 @@ export default function CommunityManagement() {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
               <Text style={styles.modalCancel}>Cerrar</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Seleccionar Comunidad</Text>
+            <Text style={styles.modalTitle}>Seleccionar Ubicación</Text>
             <View style={{ width: 60 }} />
           </View>
           <ScrollView style={styles.modalContent}>
@@ -862,42 +877,39 @@ export default function CommunityManagement() {
                   setShowLocationPicker(false);
                 }}
               >
-                <Text style={styles.locationIcon}>🏢</Text>
+                <View style={styles.locationIconContainer}>
+                  <Ionicons name="location" size={24} color={COLORS.teal} />
+                </View>
                 <View style={styles.locationInfo}>
                   <Text style={styles.locationName}>{location.name}</Text>
-                  <Text style={styles.locationAddress}>
-                    {location.address || 'Sin dirección'}
-                  </Text>
+                  <Text style={styles.locationAddress}>{location.address}</Text>
                 </View>
                 {selectedLocationId === location.id && (
-                  <Text style={styles.locationCheck}>✓</Text>
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.lime} />
                 )}
               </TouchableOpacity>
             ))}
           </ScrollView>
         </SafeAreaView>
       </Modal>
-
-      {/* Loading Overlay */}
-      {actionLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={COLORS.white} />
-        </View>
-      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    color: COLORS.textSecondary,
+    marginTop: scale(12),
+    fontSize: scale(14),
   },
   
   // Header
@@ -905,323 +917,562 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  headerSubtitle: { fontSize: 13, color: COLORS.primary, marginTop: 2 },
-  refreshButton: { 
-    width: 40, height: 40, 
-    justifyContent: 'center', alignItems: 'center',
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 20,
+  backButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  refreshButtonText: { fontSize: 20, color: COLORS.navy },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  headerSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.teal,
+    marginTop: scale(2),
+  },
+  refreshButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   
   // Stats
   statsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: COLORS.white,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
+    gap: scale(10),
   },
   statCard: {
     flex: 1,
-    backgroundColor: COLORS.grayLighter,
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: COLORS.backgroundSecondary,
+    padding: scale(12),
+    borderRadius: scale(12),
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  statValue: { fontSize: 24, fontWeight: '700', color: COLORS.success },
-  statLabel: { fontSize: 11, color: COLORS.gray, marginTop: 2 },
+  statValue: {
+    fontSize: scale(24),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  statLabel: {
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
   
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(12),
+    gap: scale(10),
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: COLORS.grayLighter,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(6),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  tabActive: { backgroundColor: COLORS.primary + '15' },
-  tabText: { fontSize: 13, color: COLORS.gray, fontWeight: '500' },
-  tabTextActive: { color: COLORS.primary, fontWeight: '600' },
+  tabActive: {
+    backgroundColor: COLORS.lime + '20',
+    borderColor: COLORS.lime,
+  },
+  tabText: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
   
   // Search & Filter
   searchFilterContainer: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(12),
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(14),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: scale(10),
   },
   searchInput: {
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: COLORS.navy,
-    marginBottom: 8,
+    flex: 1,
+    paddingVertical: scale(12),
+    paddingLeft: scale(10),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
   },
-  filterContainer: { flexDirection: 'row', gap: 8 },
+  filterContainer: {
+    flexDirection: 'row',
+    gap: scale(8),
+  },
   filterButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: COLORS.grayLighter,
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  filterButtonActive: { backgroundColor: COLORS.primary },
-  filterText: { fontSize: 12, color: COLORS.gray },
-  filterTextActive: { color: COLORS.white, fontWeight: '600' },
+  filterButtonActive: {
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
+  },
+  filterText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  filterTextActive: {
+    color: COLORS.background,
+    fontWeight: '600',
+  },
   
   // Content
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: scale(16),
+    paddingBottom: scale(100),
+  },
   
   // Empty
-  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon: { fontSize: 60, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  emptySubtitle: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: scale(60),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
   
   // Unit Group
   unitGroup: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    marginBottom: scale(12),
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   unitHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 14,
-    backgroundColor: COLORS.grayLighter,
+    padding: scale(14),
+    backgroundColor: COLORS.backgroundTertiary,
   },
-  unitInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  unitIcon: { fontSize: 18 },
-  unitName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  unitCount: { fontSize: 12, color: COLORS.gray },
-  expandIcon: { fontSize: 12, color: COLORS.gray },
-  unitMembers: { padding: 8 },
+  unitInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  unitIconContainer: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    backgroundColor: COLORS.teal + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  unitCount: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  unitMembers: {
+    padding: scale(8),
+  },
   
   // Member Card
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 4,
+    padding: scale(12),
+    borderRadius: scale(8),
+    marginBottom: scale(4),
   },
-  memberLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   memberAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.primary + '20',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.teal + '30',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
   },
-  memberAvatarInactive: { backgroundColor: COLORS.grayLight },
-  memberAvatarText: { fontSize: 18, fontWeight: '600', color: COLORS.primary },
-  memberInfo: { flex: 1 },
-  memberName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  memberNameInactive: { color: COLORS.gray },
-  memberEmail: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  memberActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  memberAvatarInactive: {
+    backgroundColor: COLORS.backgroundTertiary,
+  },
+  memberAvatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  memberNameInactive: {
+    color: COLORS.textMuted,
+  },
+  memberEmail: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  memberActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
   editButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.grayLighter,
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: COLORS.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editButtonText: { fontSize: 16 },
   deactivationReason: {
-    fontSize: 11,
+    fontSize: scale(11),
     color: COLORS.danger,
-    marginTop: 4,
+    marginTop: scale(4),
   },
   
   // Role Badge
   roleBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
     alignSelf: 'flex-start',
-    marginTop: 4,
+    marginTop: scale(4),
   },
-  roleBadgeText: { fontSize: 11, fontWeight: '500' },
+  roleBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '500',
+  },
   
   // Pending Card
   pendingCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(14),
+    marginBottom: scale(10),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  pendingInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  pendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   pendingAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.warning + '20',
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+    backgroundColor: COLORS.warning + '30',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
   },
-  pendingAvatarText: { fontSize: 18, fontWeight: '600', color: COLORS.warning },
-  pendingDetails: { flex: 1 },
-  pendingName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  pendingEmail: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  pendingMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  pendingUnit: { fontSize: 12, color: COLORS.gray },
-  pendingActions: { flexDirection: 'row', gap: 8 },
+  pendingAvatarText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.warning,
+  },
+  pendingDetails: {
+    flex: 1,
+  },
+  pendingName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  pendingEmail: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  pendingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginTop: scale(6),
+  },
+  pendingUnit: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    gap: scale(8),
+  },
   approveButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: COLORS.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  approveButtonText: { fontSize: 20, color: COLORS.white },
   rejectButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.danger + '15',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.danger + '20',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rejectButtonText: { fontSize: 20, color: COLORS.danger },
   approveAllButton: {
-    backgroundColor: COLORS.success,
-    paddingVertical: 14,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.success,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    marginBottom: scale(16),
   },
-  approveAllButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 15 },
+  approveAllButtonText: {
+    color: COLORS.background,
+    fontWeight: '600',
+    fontSize: scale(15),
+  },
   
   // Modal
-  modalContainer: { flex: 1, backgroundColor: COLORS.white },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    borderBottomColor: COLORS.border,
   },
-  modalCancel: { fontSize: 16, color: COLORS.gray },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.navy },
-  modalSave: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  modalContent: { flex: 1, padding: 16 },
-  modalSubtitle: { fontSize: 14, color: COLORS.gray, marginBottom: 16 },
+  modalCancel: {
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
+  },
+  modalTitle: {
+    fontSize: scale(17),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  modalSave: {
+    fontSize: scale(15),
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: scale(16),
+  },
+  modalSubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginBottom: scale(16),
+  },
   
   // Deactivation Reasons
   reasonOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 10,
+    padding: scale(14),
+    borderRadius: scale(10),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    marginBottom: 8,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    marginBottom: scale(8),
   },
   reasonOptionSelected: {
-    backgroundColor: COLORS.danger + '10',
+    backgroundColor: COLORS.danger + '15',
     borderColor: COLORS.danger,
   },
-  reasonIcon: { fontSize: 20, marginRight: 12 },
-  reasonLabel: { flex: 1, fontSize: 15, color: COLORS.navy },
-  reasonLabelSelected: { color: COLORS.danger, fontWeight: '500' },
-  reasonCheck: { fontSize: 18, color: COLORS.danger },
+  reasonIcon: {
+    fontSize: scale(20),
+    marginRight: scale(12),
+  },
+  reasonLabel: {
+    flex: 1,
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+  },
+  reasonLabelSelected: {
+    color: COLORS.danger,
+    fontWeight: '500',
+  },
   customReasonInput: {
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 15,
-    color: COLORS.navy,
-    minHeight: 80,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    padding: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+    minHeight: scale(80),
     textAlignVertical: 'top',
-    marginTop: 8,
+    marginTop: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   
   // Edit Modal
-  editMemberHeader: { alignItems: 'center', marginBottom: 24 },
+  editMemberHeader: {
+    alignItems: 'center',
+    marginBottom: scale(24),
+  },
   editMemberAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: COLORS.primary + '20',
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(35),
+    backgroundColor: COLORS.teal + '30',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
-  editMemberAvatarText: { fontSize: 28, fontWeight: '600', color: COLORS.primary },
-  editMemberName: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  editMemberEmail: { fontSize: 14, color: COLORS.gray, marginTop: 2 },
-  inputLabel: { fontSize: 14, fontWeight: '600', color: COLORS.navy, marginBottom: 8, marginTop: 16 },
+  editMemberAvatarText: {
+    fontSize: scale(28),
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
+  editMemberName: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  editMemberEmail: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  inputLabel: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+    marginTop: scale(16),
+  },
   input: {
-    backgroundColor: COLORS.grayLighter,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: COLORS.navy,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
+    borderColor: COLORS.border,
   },
-  roleSelector: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  roleSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+  },
   roleSelectorItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(8),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
   },
-  roleSelectorText: { fontSize: 12, color: COLORS.gray },
+  roleSelectorText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
   
   // Location Picker
   locationOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 10,
+    padding: scale(14),
+    borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: COLORS.grayLight,
-    marginBottom: 8,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    marginBottom: scale(10),
   },
   locationOptionSelected: {
-    backgroundColor: COLORS.primary + '10',
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.lime + '15',
+    borderColor: COLORS.lime,
   },
-  locationIcon: { fontSize: 24, marginRight: 12 },
-  locationInfo: { flex: 1 },
-  locationName: { fontSize: 15, fontWeight: '600', color: COLORS.navy },
-  locationAddress: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  locationCheck: { fontSize: 18, color: COLORS.primary },
+  locationIconContainer: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.teal + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  locationAddress: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
 });

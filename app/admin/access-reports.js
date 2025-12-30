@@ -1,5 +1,5 @@
 // app/admin/access-reports.js
-// ISSY - Control de Acceso y Auditoría para Admins (Mobile)
+// ISSY - Control de Acceso y Auditoría para Admins (ProHome Dark Theme)
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -12,16 +12,38 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  SafeAreaView,
   Image,
   TextInput,
-  Platform,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
+const COLORS = {
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
+};
 
 export default function AccessReportsScreen() {
   const router = useRouter();
@@ -176,6 +198,16 @@ export default function AccessReportsScreen() {
     });
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleString('es-HN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   // Filter logs by search
   const filteredLogs = accessLogs.filter(log => {
     if (!searchQuery) return true;
@@ -187,23 +219,60 @@ export default function AccessReportsScreen() {
   });
 
   const tabs = [
-    { id: 'dashboard', label: '📊', title: 'Dashboard' },
-    { id: 'history', label: '📋', title: 'Historial' },
-    { id: 'inside', label: '👥', title: 'Adentro' },
-    { id: 'incidents', label: '🚨', title: 'Incidentes' },
+    { id: 'dashboard', icon: 'stats-chart', title: 'Dashboard' },
+    { id: 'history', icon: 'list', title: 'Historial' },
+    { id: 'inside', icon: 'people', title: 'Adentro' },
+    { id: 'incidents', icon: 'alert-circle', title: 'Incidentes' },
   ];
 
+  // Stat Card Component
+  const StatCard = ({ icon, label, value, color, highlight }) => (
+    <View style={[
+      styles.statCard,
+      highlight && { borderWidth: 2, borderColor: color }
+    ]}>
+      <View style={[styles.statIconContainer, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={24} color={color} />
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+
+  // Get QR type info
+  const getQRTypeInfo = (qrType) => {
+    switch(qrType) {
+      case 'single': return { icon: 'ticket', label: 'Único', color: COLORS.purple };
+      case 'temporary': return { icon: 'calendar', label: 'Temporal', color: COLORS.warning };
+      case 'permanent': return { icon: 'infinite', label: 'Permanente', color: COLORS.success };
+      default: return { icon: 'qr-code', label: 'QR', color: COLORS.textSecondary };
+    }
+  };
+
+  // Get severity info
+  const getSeverityInfo = (severity) => {
+    switch(severity) {
+      case 'high': return { label: 'Alta', color: COLORS.danger };
+      case 'medium': return { label: 'Media', color: COLORS.warning };
+      case 'low': return { label: 'Baja', color: COLORS.success };
+      default: return { label: severity, color: COLORS.textSecondary };
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>📊 Control de Acceso</Text>
+          <Text style={styles.headerTitle}>Control de Acceso</Text>
           <Text style={styles.headerSubtitle}>Auditoría y reportes</Text>
         </View>
+        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={22} color={COLORS.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -214,7 +283,11 @@ export default function AccessReportsScreen() {
             style={[styles.tab, activeTab === tab.id && styles.tabActive]}
             onPress={() => setActiveTab(tab.id)}
           >
-            <Text style={styles.tabEmoji}>{tab.label}</Text>
+            <Ionicons 
+              name={tab.icon} 
+              size={20} 
+              color={activeTab === tab.id ? COLORS.lime : COLORS.textMuted} 
+            />
             <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
               {tab.title}
             </Text>
@@ -225,13 +298,18 @@ export default function AccessReportsScreen() {
       {/* Content */}
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color={COLORS.lime} />
             <Text style={styles.loadingText}>Cargando...</Text>
           </View>
         ) : (
@@ -242,58 +320,71 @@ export default function AccessReportsScreen() {
                 {/* Stats Cards */}
                 <View style={styles.statsGrid}>
                   <StatCard
-                    icon="🚪"
+                    icon="enter"
                     label="Entradas Hoy"
                     value={dashboardData?.stats?.today?.entries || 0}
-                    color="#10B981"
+                    color={COLORS.success}
                   />
                   <StatCard
-                    icon="🚶"
+                    icon="exit"
                     label="Salidas Hoy"
                     value={dashboardData?.stats?.today?.exits || 0}
-                    color="#F59E0B"
+                    color={COLORS.warning}
                   />
                   <StatCard
-                    icon="👥"
+                    icon="people"
                     label="Adentro"
                     value={dashboardData?.stats?.today?.currently_inside || 0}
-                    color="#3B82F6"
+                    color={COLORS.blue}
                     highlight
                   />
                   <StatCard
-                    icon="🚨"
+                    icon="alert-circle"
                     label="Incidentes"
                     value={dashboardData?.stats?.today?.incidents || 0}
-                    color="#EF4444"
+                    color={COLORS.danger}
                   />
                 </View>
 
                 {/* Recent Access */}
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Accesos Recientes</Text>
+                  <View style={styles.sectionHeader}>
+                    <Ionicons name="time" size={20} color={COLORS.lime} />
+                    <Text style={styles.sectionTitle}>Accesos Recientes</Text>
+                  </View>
                   
                   {dashboardData?.recent_access?.length > 0 ? (
                     dashboardData.recent_access.map((access, idx) => (
                       <View key={idx} style={styles.recentAccessItem}>
                         <View style={[
                           styles.accessIcon,
-                          { backgroundColor: access.movement_type === 'entry' ? '#D1FAE5' : '#FEF3C7' }
+                          { backgroundColor: access.movement_type === 'entry' ? COLORS.success + '20' : COLORS.warning + '20' }
                         ]}>
-                          <Text>{access.movement_type === 'entry' ? '🚪' : '🚶'}</Text>
+                          <Ionicons 
+                            name={access.movement_type === 'entry' ? 'enter' : 'exit'} 
+                            size={20} 
+                            color={access.movement_type === 'entry' ? COLORS.success : COLORS.warning} 
+                          />
                         </View>
                         <View style={styles.accessInfo}>
                           <Text style={styles.accessName}>{access.visitor_name}</Text>
-                          <Text style={styles.accessType}>
-                            {access.qr_type === 'single' ? '🎫 Único' : 
-                             access.qr_type === 'temporary' ? '📅 Temporal' : '♾️ Permanente'}
-                          </Text>
+                          <View style={styles.accessTypeContainer}>
+                            <Ionicons 
+                              name={getQRTypeInfo(access.qr_type).icon} 
+                              size={12} 
+                              color={getQRTypeInfo(access.qr_type).color} 
+                            />
+                            <Text style={[styles.accessType, { color: getQRTypeInfo(access.qr_type).color }]}>
+                              {getQRTypeInfo(access.qr_type).label}
+                            </Text>
+                          </View>
                         </View>
                         <Text style={styles.accessTime}>{formatTime(access.timestamp)}</Text>
                       </View>
                     ))
                   ) : (
                     <View style={styles.emptyState}>
-                      <Text style={styles.emptyIcon}>📭</Text>
+                      <Ionicons name="mail-open-outline" size={48} color={COLORS.textMuted} />
                       <Text style={styles.emptyText}>No hay accesos recientes</Text>
                     </View>
                   )}
@@ -306,62 +397,65 @@ export default function AccessReportsScreen() {
               <View>
                 {/* Filters */}
                 <View style={styles.filtersContainer}>
-                  <TouchableOpacity 
-                    style={styles.dateFilter}
-                    onPress={() => {
-                      // TODO: Implementar date picker
-                      Alert.alert('Fecha', `Fecha seleccionada: ${selectedDate}`);
-                    }}
-                  >
-                    <Text style={styles.dateFilterIcon}>📅</Text>
+                  <TouchableOpacity style={styles.dateFilter}>
+                    <Ionicons name="calendar" size={18} color={COLORS.teal} />
                     <Text style={styles.dateFilterText}>{selectedDate}</Text>
                   </TouchableOpacity>
-
+                  
                   <View style={styles.filterButtons}>
-                    <TouchableOpacity
-                      style={[styles.filterBtn, movementFilter === '' && styles.filterBtnActive]}
+                    <TouchableOpacity 
+                      style={[styles.filterBtn, !movementFilter && styles.filterBtnActive]}
                       onPress={() => setMovementFilter('')}
                     >
-                      <Text style={[styles.filterBtnText, movementFilter === '' && styles.filterBtnTextActive]}>
+                      <Text style={[styles.filterBtnText, !movementFilter && styles.filterBtnTextActive]}>
                         Todos
                       </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    <TouchableOpacity 
                       style={[styles.filterBtn, movementFilter === 'entry' && styles.filterBtnActive]}
                       onPress={() => setMovementFilter('entry')}
                     >
-                      <Text style={[styles.filterBtnText, movementFilter === 'entry' && styles.filterBtnTextActive]}>
-                        Entradas
-                      </Text>
+                      <Ionicons 
+                        name="enter" 
+                        size={14} 
+                        color={movementFilter === 'entry' ? COLORS.background : COLORS.textSecondary} 
+                      />
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    <TouchableOpacity 
                       style={[styles.filterBtn, movementFilter === 'exit' && styles.filterBtnActive]}
                       onPress={() => setMovementFilter('exit')}
                     >
-                      <Text style={[styles.filterBtnText, movementFilter === 'exit' && styles.filterBtnTextActive]}>
-                        Salidas
-                      </Text>
+                      <Ionicons 
+                        name="exit" 
+                        size={14} 
+                        color={movementFilter === 'exit' ? COLORS.background : COLORS.textSecondary} 
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* Search */}
                 <View style={styles.searchContainer}>
-                  <Text style={styles.searchIcon}>🔍</Text>
+                  <Ionicons name="search" size={18} color={COLORS.textMuted} />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Buscar por nombre, placa..."
+                    placeholder="Buscar visitante o placa..."
+                    placeholderTextColor={COLORS.textMuted}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholderTextColor="#9CA3AF"
                   />
+                  {searchQuery ? (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                      <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
 
-                {/* List */}
+                {/* History List */}
                 {filteredLogs.length > 0 ? (
                   filteredLogs.map((log, idx) => (
-                    <TouchableOpacity
-                      key={log.id || idx}
+                    <TouchableOpacity 
+                      key={idx} 
                       style={styles.historyItem}
                       onPress={() => {
                         setSelectedLog(log);
@@ -370,30 +464,40 @@ export default function AccessReportsScreen() {
                     >
                       <View style={[
                         styles.historyIcon,
-                        { backgroundColor: log.movement_type === 'entry' ? '#D1FAE5' : '#FEF3C7' }
+                        { backgroundColor: log.movement_type === 'entry' ? COLORS.success + '20' : COLORS.warning + '20' }
                       ]}>
-                        <Text>{log.movement_type === 'entry' ? '🚪' : '🚶'}</Text>
+                        <Ionicons 
+                          name={log.movement_type === 'entry' ? 'enter' : 'exit'} 
+                          size={18} 
+                          color={log.movement_type === 'entry' ? COLORS.success : COLORS.warning} 
+                        />
                       </View>
                       <View style={styles.historyInfo}>
                         <Text style={styles.historyName}>{log.visitor_name}</Text>
                         <View style={styles.historyMeta}>
-                          <Text style={styles.historyMetaText}>
-                            {log.qr_type === 'single' ? '🎫' : log.qr_type === 'temporary' ? '📅' : '♾️'}
-                          </Text>
                           {log.vehicle_plate && (
-                            <Text style={styles.historyMetaText}>🚗 {log.vehicle_plate}</Text>
+                            <View style={styles.historyMetaItem}>
+                              <Ionicons name="car" size={12} color={COLORS.textMuted} />
+                              <Text style={styles.historyMetaText}>{log.vehicle_plate}</Text>
+                            </View>
                           )}
+                          <View style={styles.historyMetaItem}>
+                            <Ionicons name={getQRTypeInfo(log.qr_type).icon} size={12} color={COLORS.textMuted} />
+                            <Text style={styles.historyMetaText}>{getQRTypeInfo(log.qr_type).label}</Text>
+                          </View>
                         </View>
                       </View>
                       <View style={styles.historyRight}>
                         <Text style={styles.historyTime}>{formatTime(log.timestamp)}</Text>
-                        <Text style={styles.historyGuard}>{log.guard_name || 'Sistema'}</Text>
+                        {log.guard_name && (
+                          <Text style={styles.historyGuard}>{log.guard_name}</Text>
+                        )}
                       </View>
                     </TouchableOpacity>
                   ))
                 ) : (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>📋</Text>
+                    <Ionicons name="document-text-outline" size={48} color={COLORS.textMuted} />
                     <Text style={styles.emptyText}>No hay registros para esta fecha</Text>
                   </View>
                 )}
@@ -405,56 +509,66 @@ export default function AccessReportsScreen() {
               <View>
                 {/* Counter */}
                 <View style={styles.insideCounter}>
-                  <Text style={styles.insideCounterLabel}>Visitantes Dentro Ahora</Text>
+                  <Ionicons name="people" size={32} color={COLORS.textPrimary} />
+                  <Text style={styles.insideCounterLabel}>Visitantes Adentro</Text>
                   <Text style={styles.insideCounterValue}>{visitorsInside.length}</Text>
                 </View>
 
-                {/* List */}
+                {/* Visitors List */}
                 {visitorsInside.length > 0 ? (
-                  visitorsInside.map((visitor, idx) => (
-                    <View 
-                      key={visitor.id || idx} 
-                      style={[
-                        styles.visitorCard,
-                        visitor.has_alert && styles.visitorCardAlert
-                      ]}
-                    >
-                      <View style={styles.visitorHeader}>
-                        <View>
-                          <Text style={styles.visitorName}>{visitor.visitor_name}</Text>
-                          <Text style={styles.visitorType}>
-                            {visitor.qr_type === 'single' ? '🎫 Único' : 
-                             visitor.qr_type === 'temporary' ? '📅 Temporal' : '♾️ Permanente'}
-                          </Text>
+                  visitorsInside.map((visitor, idx) => {
+                    const entryTime = new Date(visitor.entry_time);
+                    const now = new Date();
+                    const hoursInside = Math.floor((now - entryTime) / (1000 * 60 * 60));
+                    const isLongStay = hoursInside >= 4;
+
+                    return (
+                      <View 
+                        key={idx} 
+                        style={[styles.visitorCard, isLongStay && styles.visitorCardAlert]}
+                      >
+                        <View style={styles.visitorHeader}>
+                          <View>
+                            <Text style={styles.visitorName}>{visitor.visitor_name}</Text>
+                            <View style={styles.visitorTypeRow}>
+                              <Ionicons 
+                                name={getQRTypeInfo(visitor.qr_type).icon} 
+                                size={14} 
+                                color={getQRTypeInfo(visitor.qr_type).color} 
+                              />
+                              <Text style={styles.visitorType}>{getQRTypeInfo(visitor.qr_type).label}</Text>
+                            </View>
+                          </View>
+                          {isLongStay && (
+                            <View style={styles.alertBadge}>
+                              <Ionicons name="time" size={12} color={COLORS.danger} />
+                              <Text style={styles.alertBadgeText}>+{hoursInside}h</Text>
+                            </View>
+                          )}
                         </View>
-                        {visitor.has_alert && (
-                          <View style={styles.alertBadge}>
-                            <Text style={styles.alertBadgeText}>⚠️ +3h</Text>
+                        <View style={styles.visitorDetails}>
+                          <View style={styles.visitorDetailItem}>
+                            <Ionicons name="enter" size={14} color={COLORS.textMuted} />
+                            <Text style={styles.visitorDetail}>Entrada: {formatTime(visitor.entry_time)}</Text>
+                          </View>
+                          <View style={styles.visitorDetailItem}>
+                            <Ionicons name="home" size={14} color={COLORS.textMuted} />
+                            <Text style={styles.visitorDetail}>Unidad: {visitor.unit_number || '-'}</Text>
+                          </View>
+                        </View>
+                        {visitor.vehicle_plate && (
+                          <View style={styles.visitorVehicle}>
+                            <Ionicons name="car" size={14} color={COLORS.textMuted} />
+                            <Text style={styles.visitorDetail}>{visitor.vehicle_plate}</Text>
                           </View>
                         )}
                       </View>
-                      
-                      <View style={styles.visitorDetails}>
-                        <Text style={styles.visitorDetail}>
-                          🕐 Entrada: {formatTime(visitor.entry_time)}
-                        </Text>
-                        <Text style={styles.visitorDetail}>
-                          ⏱️ {visitor.duration_formatted}
-                        </Text>
-                      </View>
-                      
-                      {visitor.vehicle_plate && (
-                        <Text style={styles.visitorVehicle}>
-                          🚗 {visitor.vehicle_plate}
-                          {visitor.companions_count > 0 && ` • ${visitor.companions_count} acompañantes`}
-                        </Text>
-                      )}
-                    </View>
-                  ))
+                    );
+                  })
                 ) : (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>👥</Text>
-                    <Text style={styles.emptyText}>No hay visitantes dentro</Text>
+                    <Ionicons name="people-outline" size={48} color={COLORS.textMuted} />
+                    <Text style={styles.emptyText}>No hay visitantes adentro</Text>
                   </View>
                 )}
               </View>
@@ -464,63 +578,51 @@ export default function AccessReportsScreen() {
             {activeTab === 'incidents' && (
               <View>
                 {incidents.length > 0 ? (
-                  incidents.map((incident, idx) => (
-                    <View 
-                      key={incident.id || idx}
-                      style={[
-                        styles.incidentCard,
-                        { borderLeftColor: incident.severity === 'high' ? '#EF4444' : 
-                                          incident.severity === 'medium' ? '#F59E0B' : '#10B981' }
-                      ]}
-                    >
-                      <View style={styles.incidentHeader}>
-                        <View style={[
-                          styles.severityBadge,
-                          { backgroundColor: incident.severity === 'high' ? '#FEE2E2' : 
-                                            incident.severity === 'medium' ? '#FEF3C7' : '#D1FAE5' }
-                        ]}>
-                          <Text style={[
-                            styles.severityText,
-                            { color: incident.severity === 'high' ? '#DC2626' : 
-                                     incident.severity === 'medium' ? '#D97706' : '#059669' }
-                          ]}>
-                            {incident.incident_type || 'Incidente'}
-                          </Text>
+                  incidents.map((incident, idx) => {
+                    const severityInfo = getSeverityInfo(incident.severity);
+                    
+                    return (
+                      <View 
+                        key={idx} 
+                        style={[styles.incidentCard, { borderLeftColor: severityInfo.color }]}
+                      >
+                        <View style={styles.incidentHeader}>
+                          <View style={[styles.severityBadge, { backgroundColor: severityInfo.color + '20' }]}>
+                            <Ionicons name="alert-circle" size={12} color={severityInfo.color} />
+                            <Text style={[styles.severityText, { color: severityInfo.color }]}>
+                              {severityInfo.label}
+                            </Text>
+                          </View>
+                          <Text style={styles.incidentDate}>{formatDateTime(incident.created_at)}</Text>
                         </View>
-                        <Text style={styles.incidentDate}>
-                          {formatDate(incident.reported_at)} {formatTime(incident.reported_at)}
-                        </Text>
+                        <Text style={styles.incidentDescription}>{incident.description}</Text>
+                        
+                        {incident.photos?.length > 0 && (
+                          <View style={styles.incidentPhotos}>
+                            {incident.photos.slice(0, 3).map((photo, pIdx) => (
+                              <Image 
+                                key={pIdx} 
+                                source={{ uri: photo }} 
+                                style={styles.incidentPhoto} 
+                              />
+                            ))}
+                            {incident.photos.length > 3 && (
+                              <View style={styles.incidentPhotoMore}>
+                                <Text style={styles.incidentPhotoMoreText}>
+                                  +{incident.photos.length - 3}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
                       </View>
-                      
-                      <Text style={styles.incidentDescription}>
-                        {incident.description?.substring(0, 150)}
-                        {incident.description?.length > 150 ? '...' : ''}
-                      </Text>
-                      
-                      {incident.photo_urls?.length > 0 && (
-                        <View style={styles.incidentPhotos}>
-                          {incident.photo_urls.slice(0, 3).map((url, i) => (
-                            <Image
-                              key={i}
-                              source={{ uri: url }}
-                              style={styles.incidentPhoto}
-                            />
-                          ))}
-                          {incident.photo_urls.length > 3 && (
-                            <View style={styles.incidentPhotoMore}>
-                              <Text style={styles.incidentPhotoMoreText}>
-                                +{incident.photo_urls.length - 3}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  ))
+                    );
+                  })
                 ) : (
                   <View style={styles.emptyState}>
-                    <Text style={styles.emptyIcon}>🚨</Text>
+                    <Ionicons name="shield-checkmark-outline" size={48} color={COLORS.textMuted} />
                     <Text style={styles.emptyText}>No hay incidentes reportados</Text>
+                    <Text style={styles.emptySubtext}>Todo en orden</Text>
                   </View>
                 )}
               </View>
@@ -528,7 +630,7 @@ export default function AccessReportsScreen() {
           </>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: scale(100) }} />
       </ScrollView>
 
       {/* Detail Modal */}
@@ -538,7 +640,7 @@ export default function AccessReportsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowDetailModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDetailModal(false)}>
               <Text style={styles.modalClose}>Cerrar</Text>
@@ -546,54 +648,78 @@ export default function AccessReportsScreen() {
             <Text style={styles.modalTitle}>Detalle de Acceso</Text>
             <View style={{ width: 50 }} />
           </View>
-
+          
           {selectedLog && (
             <ScrollView style={styles.modalContent}>
+              {/* Header */}
               <View style={styles.detailHeader}>
                 <View style={[
                   styles.detailIcon,
-                  { backgroundColor: selectedLog.movement_type === 'entry' ? '#D1FAE5' : '#FEF3C7' }
+                  { backgroundColor: selectedLog.movement_type === 'entry' ? COLORS.success + '20' : COLORS.warning + '20' }
                 ]}>
-                  <Text style={styles.detailIconText}>
-                    {selectedLog.movement_type === 'entry' ? '🚪' : '🚶'}
-                  </Text>
+                  <Ionicons 
+                    name={selectedLog.movement_type === 'entry' ? 'enter' : 'exit'} 
+                    size={32} 
+                    color={selectedLog.movement_type === 'entry' ? COLORS.success : COLORS.warning} 
+                  />
                 </View>
                 <Text style={styles.detailName}>{selectedLog.visitor_name}</Text>
                 <Text style={styles.detailMovement}>
-                  {selectedLog.movement_type === 'entry' ? 'Entrada' : 'Salida'} • {formatTime(selectedLog.timestamp)}
+                  {selectedLog.movement_type === 'entry' ? 'Entrada' : 'Salida'}
                 </Text>
               </View>
 
+              {/* Details */}
               <View style={styles.detailSection}>
-                <DetailRow label="Fecha" value={formatDate(selectedLog.timestamp)} />
-                <DetailRow 
-                  label="Tipo de QR" 
-                  value={selectedLog.qr_type === 'single' ? 'Único' : 
-                         selectedLog.qr_type === 'temporary' ? 'Temporal' : 'Permanente'} 
-                />
-                <DetailRow label="Vehículo" value={selectedLog.vehicle_plate || 'No registrado'} />
-                <DetailRow label="Acompañantes" value={String(selectedLog.companions_count || 0)} />
-                <DetailRow label="Guardia" value={selectedLog.guard_name || 'Sistema'} />
-                {selectedLog.observations && (
-                  <DetailRow label="Observaciones" value={selectedLog.observations} />
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailRowLabel}>Fecha y Hora</Text>
+                  <Text style={styles.detailRowValue}>{formatDateTime(selectedLog.timestamp)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailRowLabel}>Tipo de QR</Text>
+                  <Text style={styles.detailRowValue}>{getQRTypeInfo(selectedLog.qr_type).label}</Text>
+                </View>
+                {selectedLog.vehicle_plate && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailRowLabel}>Placa</Text>
+                    <Text style={styles.detailRowValue}>{selectedLog.vehicle_plate}</Text>
+                  </View>
+                )}
+                {selectedLog.unit_number && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailRowLabel}>Unidad</Text>
+                    <Text style={styles.detailRowValue}>{selectedLog.unit_number}</Text>
+                  </View>
+                )}
+                {selectedLog.guard_name && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailRowLabel}>Guardia</Text>
+                    <Text style={styles.detailRowValue}>{selectedLog.guard_name}</Text>
+                  </View>
+                )}
+                {selectedLog.id_number && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailRowLabel}>ID</Text>
+                    <Text style={styles.detailRowValue}>{selectedLog.id_number}</Text>
+                  </View>
                 )}
               </View>
 
-              {/* Photos section */}
-              {(selectedLog.photo_url || selectedLog.vehicle_photo_url || selectedLog.id_document_url) && (
+              {/* Photos */}
+              {selectedLog.photos?.length > 0 && (
                 <View style={styles.photosSection}>
-                  <Text style={styles.photosSectionTitle}>📸 Evidencia Capturada</Text>
-                  <View style={styles.photosGrid}>
-                    {selectedLog.photo_url && (
-                      <Image source={{ uri: selectedLog.photo_url }} style={styles.evidencePhoto} />
-                    )}
-                    {selectedLog.id_document_url && (
-                      <Image source={{ uri: selectedLog.id_document_url }} style={styles.evidencePhoto} />
-                    )}
-                    {selectedLog.vehicle_photo_url && (
-                      <Image source={{ uri: selectedLog.vehicle_photo_url }} style={styles.evidencePhoto} />
-                    )}
-                  </View>
+                  <Text style={styles.photosSectionTitle}>Evidencia Fotográfica</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.photosGrid}>
+                      {selectedLog.photos.map((photo, idx) => (
+                        <Image 
+                          key={idx} 
+                          source={{ uri: photo }} 
+                          style={styles.evidencePhoto} 
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
                 </View>
               )}
             </ScrollView>
@@ -604,520 +730,575 @@ export default function AccessReportsScreen() {
   );
 }
 
-// Stat Card Component
-const StatCard = ({ icon, label, value, color, highlight }) => (
-  <View style={[
-    styles.statCard,
-    highlight && { borderColor: color, borderWidth: 2 }
-  ]}>
-    <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-      <Text style={styles.statIconText}>{icon}</Text>
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
-// Detail Row Component
-const DetailRow = ({ label, value }) => (
-  <View style={styles.detailRow}>
-    <Text style={styles.detailRowLabel}>{label}</Text>
-    <Text style={styles.detailRowValue}>{value}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 24,
-    color: '#374151',
-  },
   headerTitleContainer: {
-    marginLeft: 12,
+    flex: 1,
+    marginLeft: scale(12),
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: scale(18),
     fontWeight: '700',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
+  refreshButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: 'white',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(12),
+    gap: scale(6),
   },
   tab: {
     flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
+    justifyContent: 'center',
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(10),
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'transparent',
+    gap: scale(4),
   },
   tabActive: {
-    backgroundColor: '#3B82F6',
-  },
-  tabEmoji: {
-    fontSize: 20,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderColor: COLORS.lime,
   },
   tabText: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(11),
+    color: COLORS.textMuted,
+    fontWeight: '500',
   },
   tabTextActive: {
-    color: 'white',
+    color: COLORS.lime,
     fontWeight: '600',
   },
+
+  // Content
   content: {
     flex: 1,
-    padding: 16,
+  },
+  scrollContent: {
+    padding: scale(16),
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingVertical: scale(60),
   },
   loadingText: {
-    marginTop: 12,
-    color: '#6B7280',
+    marginTop: scale(12),
+    color: COLORS.textSecondary,
+    fontSize: scale(14),
   },
+
+  // Stats Grid
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    gap: scale(10),
+    marginBottom: scale(16),
   },
   statCard: {
-    width: '48%',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: '1%',
-    marginBottom: 12,
+    width: (SCREEN_WIDTH - scale(42)) / 2,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+  statIconContainer: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  statIconText: {
-    fontSize: 20,
+    marginBottom: scale(12),
   },
   statValue: {
-    fontSize: 28,
+    fontSize: scale(28),
     fontWeight: '700',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
   },
+
+  // Section
   section: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(16),
+    gap: scale(8),
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: scale(15),
     fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
+    color: COLORS.textPrimary,
   },
+
+  // Recent Access
   recentAccessItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: scale(12),
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.border,
   },
   accessIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     justifyContent: 'center',
     alignItems: 'center',
   },
   accessInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   accessName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  accessTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: scale(4),
+    gap: scale(4),
   },
   accessType: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(12),
   },
   accessTime: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: scale(13),
+    fontWeight: '500',
+    color: COLORS.textSecondary,
   },
+
+  // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
+    paddingVertical: scale(40),
   },
   emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(12),
   },
+  emptySubtext: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+
+  // Filters
   filtersContainer: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(12),
   },
   dateFilter: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  dateFilterIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    backgroundColor: COLORS.backgroundSecondary,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    gap: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   dateFilterText: {
-    fontSize: 14,
-    color: '#374151',
+    fontSize: scale(13),
+    color: COLORS.textPrimary,
     fontWeight: '500',
   },
   filterButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   filterBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: 'white',
-    borderRadius: 20,
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: COLORS.border,
   },
   filterBtnActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: COLORS.lime,
+    borderColor: COLORS.lime,
   },
   filterBtnText: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   filterBtnTextActive: {
-    color: 'white',
+    color: COLORS.background,
     fontWeight: '600',
   },
+
+  // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#1F2937',
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(10),
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
   },
+
+  // History Item
   historyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   historyIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     justifyContent: 'center',
     alignItems: 'center',
   },
   historyInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   historyName: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   historyMeta: {
     flexDirection: 'row',
-    marginTop: 4,
-    gap: 8,
+    marginTop: scale(4),
+    gap: scale(12),
+  },
+  historyMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
   },
   historyMetaText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: COLORS.textMuted,
   },
   historyRight: {
     alignItems: 'flex-end',
   },
   historyTime: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '500',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   historyGuard: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 2,
+    fontSize: scale(11),
+    color: COLORS.textMuted,
+    marginTop: scale(2),
   },
+
+  // Inside Counter
   insideCounter: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: COLORS.blue,
+    borderRadius: scale(16),
+    padding: scale(24),
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   insideCounterLabel: {
-    fontSize: 14,
+    fontSize: scale(14),
     color: 'rgba(255,255,255,0.9)',
-    marginBottom: 4,
+    marginTop: scale(8),
   },
   insideCounterValue: {
-    fontSize: 48,
+    fontSize: scale(48),
     fontWeight: '700',
-    color: 'white',
+    color: COLORS.textPrimary,
   },
+
+  // Visitor Card
   visitorCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   visitorCardAlert: {
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: COLORS.danger,
   },
   visitorHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   visitorName: {
-    fontSize: 16,
+    fontSize: scale(16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
+  },
+  visitorTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: scale(4),
+    gap: scale(6),
   },
   visitorType: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
   },
   alertBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.danger + '20',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(4),
   },
   alertBadgeText: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
-    color: '#DC2626',
+    color: COLORS.danger,
   },
   visitorDetails: {
     flexDirection: 'row',
-    gap: 16,
+    gap: scale(16),
+  },
+  visitorDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
   },
   visitorDetail: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
   },
   visitorVehicle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: scale(8),
+    gap: scale(6),
   },
+
+  // Incident Card
   incidentCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
     borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   incidentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   severityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(4),
   },
   severityText: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
   },
   incidentDate: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: scale(12),
+    color: COLORS.textMuted,
   },
   incidentDescription: {
-    fontSize: 14,
-    color: '#374151',
-    lineHeight: 20,
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
+    lineHeight: scale(20),
   },
   incidentPhotos: {
     flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
+    marginTop: scale(12),
+    gap: scale(8),
   },
   incidentPhoto: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(8),
   },
   incidentPhotoMore: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(8),
+    backgroundColor: COLORS.backgroundTertiary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   incidentPhotoMoreText: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
   },
+
+  // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: COLORS.background,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
+    padding: scale(16),
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: COLORS.border,
   },
   modalClose: {
-    fontSize: 16,
-    color: '#3B82F6',
+    fontSize: scale(16),
+    color: COLORS.lime,
     fontWeight: '500',
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: scale(17),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: scale(16),
   },
   detailHeader: {
     alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: scale(24),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   detailIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: scale(72),
+    height: scale(72),
+    borderRadius: scale(36),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  detailIconText: {
-    fontSize: 32,
+    marginBottom: scale(12),
   },
   detailName: {
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   detailMovement: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
   },
   detailSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: scale(14),
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: COLORS.border,
   },
   detailRowLabel: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
   },
   detailRowValue: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
-    color: '#1F2937',
+    color: COLORS.textPrimary,
   },
   photosSection: {
-    marginTop: 16,
+    marginTop: scale(16),
   },
   photosSectionTitle: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 12,
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
   },
   photosGrid: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   evidencePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
+    width: scale(100),
+    height: scale(100),
+    borderRadius: scale(8),
   },
 });

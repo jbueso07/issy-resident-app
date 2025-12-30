@@ -1,5 +1,5 @@
 // app/admin/reports.js
-// ISSY Resident App - Admin: Reportes y Estadísticas
+// ISSY Resident App - Admin: Reportes y Estadísticas (ProHome Dark Theme)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -11,28 +11,35 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+// ProHome Dark Theme Colors
 const COLORS = {
-  primary: '#84CC16',
-  secondary: '#009FF5',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
-  purple: '#8B5CF6',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  grayLighter: '#F9FAFB',
+  blue: '#3B82F6',
+  pink: '#EC4899',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 export default function AdminReports() {
@@ -112,11 +119,31 @@ export default function AdminReports() {
     return `${sign}${num.toFixed(1)}%`;
   };
 
+  const getActivityIcon = (type) => {
+    switch(type) {
+      case 'payment': return 'card';
+      case 'reservation': return 'calendar';
+      case 'access': return 'car';
+      case 'user': return 'person';
+      default: return 'pin';
+    }
+  };
+
+  const getActivityColor = (type) => {
+    switch(type) {
+      case 'payment': return COLORS.success;
+      case 'reservation': return COLORS.purple;
+      case 'access': return COLORS.teal;
+      case 'user': return COLORS.blue;
+      default: return COLORS.lime;
+    }
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>Cargando reportes...</Text>
         </View>
       </SafeAreaView>
@@ -128,50 +155,65 @@ export default function AdminReports() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>📈 Reportes</Text>
+          <Text style={styles.headerTitle}>Reportes</Text>
+          <Text style={styles.headerSubtitle}>Estadísticas y métricas</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
+          <Ionicons name="refresh" size={22} color={COLORS.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={COLORS.lime}
+          />
         }
       >
         {/* Overview Cards */}
         <Text style={styles.sectionTitle}>Resumen General</Text>
         <View style={styles.overviewGrid}>
-          <View style={[styles.overviewCard, { backgroundColor: COLORS.secondary + '15' }]}>
-            <Text style={styles.overviewIcon}>👥</Text>
+          <View style={[styles.overviewCard, { borderLeftColor: COLORS.blue }]}>
+            <View style={[styles.overviewIconContainer, { backgroundColor: COLORS.blue + '20' }]}>
+              <Ionicons name="people" size={24} color={COLORS.blue} />
+            </View>
             <Text style={styles.overviewValue}>
               {globalStats?.totalUsers || globalStats?.users || 0}
             </Text>
             <Text style={styles.overviewLabel}>Usuarios</Text>
           </View>
           
-          <View style={[styles.overviewCard, { backgroundColor: COLORS.success + '15' }]}>
-            <Text style={styles.overviewIcon}>🏠</Text>
+          <View style={[styles.overviewCard, { borderLeftColor: COLORS.success }]}>
+            <View style={[styles.overviewIconContainer, { backgroundColor: COLORS.success + '20' }]}>
+              <Ionicons name="home" size={24} color={COLORS.success} />
+            </View>
             <Text style={styles.overviewValue}>
               {globalStats?.totalUnits || globalStats?.units || 0}
             </Text>
             <Text style={styles.overviewLabel}>Unidades</Text>
           </View>
           
-          <View style={[styles.overviewCard, { backgroundColor: COLORS.warning + '15' }]}>
-            <Text style={styles.overviewIcon}>📅</Text>
+          <View style={[styles.overviewCard, { borderLeftColor: COLORS.purple }]}>
+            <View style={[styles.overviewIconContainer, { backgroundColor: COLORS.purple + '20' }]}>
+              <Ionicons name="calendar" size={24} color={COLORS.purple} />
+            </View>
             <Text style={styles.overviewValue}>
               {globalStats?.totalReservations || globalStats?.reservations || 0}
             </Text>
             <Text style={styles.overviewLabel}>Reservaciones</Text>
           </View>
           
-          <View style={[styles.overviewCard, { backgroundColor: COLORS.purple + '15' }]}>
-            <Text style={styles.overviewIcon}>🚗</Text>
+          <View style={[styles.overviewCard, { borderLeftColor: COLORS.teal }]}>
+            <View style={[styles.overviewIconContainer, { backgroundColor: COLORS.teal + '20' }]}>
+              <Ionicons name="car" size={24} color={COLORS.teal} />
+            </View>
             <Text style={styles.overviewValue}>
               {globalStats?.totalAccess || globalStats?.accessLogs || 0}
             </Text>
@@ -184,6 +226,7 @@ export default function AdminReports() {
         <View style={styles.financialCard}>
           <View style={styles.financialRow}>
             <View style={styles.financialItem}>
+              <Ionicons name="trending-up" size={20} color={COLORS.success} />
               <Text style={styles.financialLabel}>Ingresos del Mes</Text>
               <Text style={[styles.financialValue, { color: COLORS.success }]}>
                 {formatCurrency(globalStats?.monthlyIncome || globalStats?.income || 0)}
@@ -191,20 +234,20 @@ export default function AdminReports() {
             </View>
             <View style={styles.financialDivider} />
             <View style={styles.financialItem}>
+              <Ionicons name="trending-down" size={20} color={COLORS.danger} />
               <Text style={styles.financialLabel}>Gastos del Mes</Text>
               <Text style={[styles.financialValue, { color: COLORS.danger }]}>
                 {formatCurrency(globalStats?.monthlyExpenses || globalStats?.expenses || 0)}
               </Text>
             </View>
           </View>
-          
           <View style={styles.financialBalance}>
             <Text style={styles.balanceLabel}>Balance</Text>
             <Text style={[
               styles.balanceValue,
-              { color: (globalStats?.balance || 0) >= 0 ? COLORS.success : COLORS.danger }
+              { color: (globalStats?.monthlyIncome || 0) - (globalStats?.monthlyExpenses || 0) >= 0 ? COLORS.lime : COLORS.danger }
             ]}>
-              {formatCurrency(globalStats?.balance || 0)}
+              {formatCurrency((globalStats?.monthlyIncome || 0) - (globalStats?.monthlyExpenses || 0))}
             </Text>
           </View>
         </View>
@@ -212,9 +255,14 @@ export default function AdminReports() {
         {/* Trends */}
         {trends && (
           <>
-            <Text style={styles.sectionTitle}>Tendencias (vs mes anterior)</Text>
+            <Text style={styles.sectionTitle}>Tendencias vs Mes Anterior</Text>
             <View style={styles.trendsContainer}>
               <View style={styles.trendCard}>
+                <Ionicons 
+                  name={(trends.usersChange || 0) >= 0 ? 'arrow-up' : 'arrow-down'} 
+                  size={18} 
+                  color={(trends.usersChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
+                />
                 <Text style={styles.trendLabel}>Usuarios</Text>
                 <Text style={[
                   styles.trendValue,
@@ -225,6 +273,11 @@ export default function AdminReports() {
               </View>
               
               <View style={styles.trendCard}>
+                <Ionicons 
+                  name={(trends.incomeChange || 0) >= 0 ? 'arrow-up' : 'arrow-down'} 
+                  size={18} 
+                  color={(trends.incomeChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
+                />
                 <Text style={styles.trendLabel}>Ingresos</Text>
                 <Text style={[
                   styles.trendValue,
@@ -235,7 +288,12 @@ export default function AdminReports() {
               </View>
               
               <View style={styles.trendCard}>
-                <Text style={styles.trendLabel}>Reservaciones</Text>
+                <Ionicons 
+                  name={(trends.reservationsChange || 0) >= 0 ? 'arrow-up' : 'arrow-down'} 
+                  size={18} 
+                  color={(trends.reservationsChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
+                />
+                <Text style={styles.trendLabel}>Reservas</Text>
                 <Text style={[
                   styles.trendValue,
                   { color: (trends.reservationsChange || 0) >= 0 ? COLORS.success : COLORS.danger }
@@ -270,21 +328,21 @@ export default function AdminReports() {
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
               <Text style={styles.collectionLabel}>Pagado</Text>
-              <Text style={styles.collectionValue}>
+              <Text style={[styles.collectionValue, { color: COLORS.success }]}>
                 {formatCurrency(globalStats?.totalPaid || 0)}
               </Text>
             </View>
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
               <Text style={styles.collectionLabel}>Pendiente</Text>
-              <Text style={styles.collectionValue}>
+              <Text style={[styles.collectionValue, { color: COLORS.warning }]}>
                 {formatCurrency(globalStats?.totalPending || 0)}
               </Text>
             </View>
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
               <Text style={styles.collectionLabel}>Vencido</Text>
-              <Text style={styles.collectionValue}>
+              <Text style={[styles.collectionValue, { color: COLORS.danger }]}>
                 {formatCurrency(globalStats?.totalOverdue || 0)}
               </Text>
             </View>
@@ -297,13 +355,23 @@ export default function AdminReports() {
             <Text style={styles.sectionTitle}>Actividad Reciente</Text>
             <View style={styles.activityCard}>
               {activity.slice(0, 5).map((item, index) => (
-                <View key={index} style={styles.activityItem}>
-                  <Text style={styles.activityIcon}>
-                    {item.type === 'payment' ? '💰' : 
-                     item.type === 'reservation' ? '📅' :
-                     item.type === 'access' ? '🚗' :
-                     item.type === 'user' ? '👤' : '📌'}
-                  </Text>
+                <View 
+                  key={index} 
+                  style={[
+                    styles.activityItem,
+                    index === activity.slice(0, 5).length - 1 && { borderBottomWidth: 0 }
+                  ]}
+                >
+                  <View style={[
+                    styles.activityIconContainer,
+                    { backgroundColor: getActivityColor(item.type) + '20' }
+                  ]}>
+                    <Ionicons 
+                      name={getActivityIcon(item.type)} 
+                      size={18} 
+                      color={getActivityColor(item.type)} 
+                    />
+                  </View>
                   <View style={styles.activityInfo}>
                     <Text style={styles.activityText}>{item.description || item.message}</Text>
                     <Text style={styles.activityTime}>{item.time || item.created_at}</Text>
@@ -321,7 +389,9 @@ export default function AdminReports() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/payments')}
           >
-            <Text style={styles.actionIcon}>💰</Text>
+            <View style={[styles.actionIconContainer, { backgroundColor: COLORS.success + '20' }]}>
+              <Ionicons name="card" size={24} color={COLORS.success} />
+            </View>
             <Text style={styles.actionLabel}>Ver Cobros</Text>
           </TouchableOpacity>
           
@@ -329,7 +399,9 @@ export default function AdminReports() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/expenses')}
           >
-            <Text style={styles.actionIcon}>📊</Text>
+            <View style={[styles.actionIconContainer, { backgroundColor: COLORS.danger + '20' }]}>
+              <Ionicons name="trending-down" size={24} color={COLORS.danger} />
+            </View>
             <Text style={styles.actionLabel}>Ver Gastos</Text>
           </TouchableOpacity>
           
@@ -337,7 +409,9 @@ export default function AdminReports() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/users')}
           >
-            <Text style={styles.actionIcon}>👥</Text>
+            <View style={[styles.actionIconContainer, { backgroundColor: COLORS.blue + '20' }]}>
+              <Ionicons name="people" size={24} color={COLORS.blue} />
+            </View>
             <Text style={styles.actionLabel}>Ver Usuarios</Text>
           </TouchableOpacity>
           
@@ -345,77 +419,312 @@ export default function AdminReports() {
             style={styles.actionCard}
             onPress={() => router.push('/admin/announcements')}
           >
-            <Text style={styles.actionIcon}>📢</Text>
+            <View style={[styles.actionIconContainer, { backgroundColor: COLORS.purple + '20' }]}>
+              <Ionicons name="megaphone" size={24} color={COLORS.purple} />
+            </View>
             <Text style={styles.actionLabel}>Anuncios</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: scale(100) }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, color: COLORS.gray, fontSize: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
-  backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backButtonText: { fontSize: 24, color: COLORS.navy },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: COLORS.navy },
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.navy, marginBottom: 12, marginTop: 8 },
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  loadingText: { 
+    marginTop: scale(12), 
+    color: COLORS.textSecondary, 
+    fontSize: scale(14) 
+  },
+  
+  // Header
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: scale(16), 
+    paddingVertical: scale(12),
+  },
+  backButton: { 
+    width: scale(40), 
+    height: scale(40), 
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  headerTitleContainer: { 
+    flex: 1, 
+    marginLeft: scale(12) 
+  },
+  headerTitle: { 
+    fontSize: scale(18), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary 
+  },
+  headerSubtitle: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  refreshButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  content: { 
+    flex: 1 
+  },
+  scrollContent: { 
+    padding: scale(16) 
+  },
+  sectionTitle: { 
+    fontSize: scale(15), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    marginBottom: scale(12), 
+    marginTop: scale(8) 
+  },
   
   // Overview Grid
-  overviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
-  overviewCard: { width: (width - 42) / 2, padding: 16, borderRadius: 12, alignItems: 'center' },
-  overviewIcon: { fontSize: 28, marginBottom: 8 },
-  overviewValue: { fontSize: 24, fontWeight: '700', color: COLORS.navy },
-  overviewLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  overviewGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: scale(10), 
+    marginBottom: scale(8) 
+  },
+  overviewCard: { 
+    width: (SCREEN_WIDTH - scale(42)) / 2, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    backgroundColor: COLORS.backgroundSecondary,
+    borderLeftWidth: 3,
+  },
+  overviewIconContainer: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: scale(12),
+  },
+  overviewValue: { 
+    fontSize: scale(24), 
+    fontWeight: '700', 
+    color: COLORS.textPrimary 
+  },
+  overviewLabel: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginTop: scale(4) 
+  },
   
   // Financial Card
-  financialCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, marginBottom: 8 },
-  financialRow: { flexDirection: 'row', alignItems: 'center' },
-  financialItem: { flex: 1, alignItems: 'center' },
-  financialLabel: { fontSize: 12, color: COLORS.gray, marginBottom: 4 },
-  financialValue: { fontSize: 18, fontWeight: '700' },
-  financialDivider: { width: 1, height: 40, backgroundColor: COLORS.grayLight },
-  financialBalance: { alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.grayLight },
-  balanceLabel: { fontSize: 12, color: COLORS.gray, marginBottom: 4 },
-  balanceValue: { fontSize: 24, fontWeight: '700' },
+  financialCard: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    padding: scale(16), 
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  financialRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  financialItem: { 
+    flex: 1, 
+    alignItems: 'center' 
+  },
+  financialLabel: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginVertical: scale(4) 
+  },
+  financialValue: { 
+    fontSize: scale(18), 
+    fontWeight: '700' 
+  },
+  financialDivider: { 
+    width: 1, 
+    height: scale(50), 
+    backgroundColor: COLORS.border 
+  },
+  financialBalance: { 
+    alignItems: 'center', 
+    marginTop: scale(16), 
+    paddingTop: scale(16), 
+    borderTopWidth: 1, 
+    borderTopColor: COLORS.border 
+  },
+  balanceLabel: { 
+    fontSize: scale(12), 
+    color: COLORS.textSecondary, 
+    marginBottom: scale(4) 
+  },
+  balanceValue: { 
+    fontSize: scale(24), 
+    fontWeight: '700' 
+  },
   
   // Trends
-  trendsContainer: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  trendCard: { flex: 1, backgroundColor: COLORS.white, padding: 14, borderRadius: 10, alignItems: 'center' },
-  trendLabel: { fontSize: 12, color: COLORS.gray, marginBottom: 4 },
-  trendValue: { fontSize: 18, fontWeight: '700' },
+  trendsContainer: { 
+    flexDirection: 'row', 
+    gap: scale(10), 
+    marginBottom: scale(8) 
+  },
+  trendCard: { 
+    flex: 1, 
+    backgroundColor: COLORS.backgroundSecondary, 
+    padding: scale(14), 
+    borderRadius: scale(10), 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  trendLabel: { 
+    fontSize: scale(11), 
+    color: COLORS.textSecondary, 
+    marginVertical: scale(4) 
+  },
+  trendValue: { 
+    fontSize: scale(16), 
+    fontWeight: '700' 
+  },
   
   // Collection
-  collectionCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, marginBottom: 8 },
-  progressContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  progressBar: { flex: 1, height: 12, backgroundColor: COLORS.grayLight, borderRadius: 6, marginRight: 12, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 6 },
-  progressText: { fontSize: 16, fontWeight: '600', color: COLORS.navy, width: 50, textAlign: 'right' },
-  collectionDetails: { gap: 8 },
-  collectionItem: { flexDirection: 'row', alignItems: 'center' },
-  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
-  collectionLabel: { flex: 1, fontSize: 13, color: COLORS.gray },
-  collectionValue: { fontSize: 13, fontWeight: '600', color: COLORS.navy },
+  collectionCard: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    padding: scale(16), 
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  progressContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: scale(16) 
+  },
+  progressBar: { 
+    flex: 1, 
+    height: scale(12), 
+    backgroundColor: COLORS.backgroundTertiary, 
+    borderRadius: scale(6), 
+    marginRight: scale(12), 
+    overflow: 'hidden' 
+  },
+  progressFill: { 
+    height: '100%', 
+    borderRadius: scale(6) 
+  },
+  progressText: { 
+    fontSize: scale(16), 
+    fontWeight: '600', 
+    color: COLORS.textPrimary, 
+    width: scale(50), 
+    textAlign: 'right' 
+  },
+  collectionDetails: { 
+    gap: scale(10) 
+  },
+  collectionItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  legendDot: { 
+    width: scale(10), 
+    height: scale(10), 
+    borderRadius: scale(5), 
+    marginRight: scale(10) 
+  },
+  collectionLabel: { 
+    flex: 1, 
+    fontSize: scale(13), 
+    color: COLORS.textSecondary 
+  },
+  collectionValue: { 
+    fontSize: scale(13), 
+    fontWeight: '600' 
+  },
   
   // Activity
-  activityCard: { backgroundColor: COLORS.white, borderRadius: 12, padding: 12, marginBottom: 8 },
-  activityItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.grayLighter },
-  activityIcon: { fontSize: 20, marginRight: 12 },
-  activityInfo: { flex: 1 },
-  activityText: { fontSize: 13, color: COLORS.navy },
-  activityTime: { fontSize: 11, color: COLORS.gray, marginTop: 2 },
+  activityCard: { 
+    backgroundColor: COLORS.backgroundSecondary, 
+    borderRadius: scale(12), 
+    padding: scale(12), 
+    marginBottom: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  activityItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: scale(10), 
+    borderBottomWidth: 1, 
+    borderBottomColor: COLORS.border 
+  },
+  activityIconContainer: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: scale(12),
+  },
+  activityInfo: { 
+    flex: 1 
+  },
+  activityText: { 
+    fontSize: scale(13), 
+    color: COLORS.textPrimary 
+  },
+  activityTime: { 
+    fontSize: scale(11), 
+    color: COLORS.textMuted, 
+    marginTop: scale(2) 
+  },
   
   // Actions
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  actionCard: { width: (width - 42) / 2, backgroundColor: COLORS.white, padding: 16, borderRadius: 12, alignItems: 'center' },
-  actionIcon: { fontSize: 28, marginBottom: 8 },
-  actionLabel: { fontSize: 13, color: COLORS.navy, fontWeight: '500' },
+  actionsGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: scale(10) 
+  },
+  actionCard: { 
+    width: (SCREEN_WIDTH - scale(42)) / 2, 
+    backgroundColor: COLORS.backgroundSecondary, 
+    padding: scale(16), 
+    borderRadius: scale(12), 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  actionIconContainer: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: scale(10),
+  },
+  actionLabel: { 
+    fontSize: scale(13), 
+    color: COLORS.textPrimary, 
+    fontWeight: '500' 
+  },
 });

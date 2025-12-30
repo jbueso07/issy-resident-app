@@ -5,11 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F1A1A"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,12 +22,14 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Usa Face ID para acceder a tu cuenta de forma segura",
+        "NSCameraUsageDescription": "ISSY necesita acceso a la camara para escanear codigos QR",
+        "NSPhotoLibraryUsageDescription": "ISSY necesita acceso a tus fotos para subir imagenes",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
               "com.issy.resident",
-              "issy",
-              "com.googleusercontent.apps.844659689774-9dmfp7uhgh4kj9pl7na3lfec8hdfk0pl"
+              "issy"
             ]
           }
         ]
@@ -35,9 +38,16 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0F1A1A"
       },
       "package": "com.issy.resident",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -58,28 +68,43 @@
         }
       ]
     },
-    "scheme": "com.issy.resident",
+    "scheme": "issy",
     "plugins": [
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font",
       "expo-apple-authentication",
-      "expo-notifications",
-      
-      
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#D4FE48"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite usar Face ID para acceso seguro"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ISSY necesita acceso a tus fotos para subir imagenes",
+          "cameraPermission": "ISSY necesita acceso a la camara para tomar fotos"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ISSY necesita acceso a la camara para escanear codigos QR"
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "c4a103bf-1ca0-4901-817c-af9dc40325e8"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/c4a103bf-1ca0-4901-817c-af9dc40325e8",
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    }
+    "owner": "jbuesoo"
   }
 }

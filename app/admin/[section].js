@@ -1,49 +1,68 @@
 // app/admin/[section].js
-// ISSY Resident App - Admin: Pantalla Placeholder para secciones en desarrollo
+// ISSY Resident App - Admin: Pantalla Placeholder para secciones en desarrollo (ProHome Dark Theme)
 
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// ProHome Dark Theme Colors
 const COLORS = {
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
-  primary: '#009FF5',
+  background: '#0F1A1A',
+  backgroundSecondary: '#1A2C2C',
+  backgroundTertiary: '#243636',
+  lime: '#D4FE48',
+  teal: '#5DDED8',
+  purple: '#8B5CF6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  blue: '#3B82F6',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
+  textMuted: '#5A6666',
+  border: 'rgba(255,255,255,0.1)',
 };
 
 const SECTIONS = {
   'payments': {
-    icon: '💰',
+    icon: 'card',
     title: 'Gestor de Cobros',
     description: 'Administra las cuotas y pagos de tu comunidad',
+    color: COLORS.success,
   },
   'expenses': {
-    icon: '📊',
+    icon: 'trending-down',
     title: 'Gastos',
     description: 'Control de egresos y gastos de la comunidad',
+    color: COLORS.danger,
   },
   'users': {
-    icon: '👥',
+    icon: 'people',
     title: 'Usuarios',
     description: 'Gestiona residentes, guardias y roles',
+    color: COLORS.blue,
   },
   'guard-config': {
-    icon: '🔐',
+    icon: 'shield-checkmark',
     title: 'App Guardias',
     description: 'Configuración del control de acceso',
+    color: COLORS.purple,
   },
   'location-settings': {
-    icon: '⚙️',
+    icon: 'settings',
     title: 'Configuración',
     description: 'Ajustes generales de tu ubicación',
+    color: COLORS.teal,
   },
   'reports': {
-    icon: '📈',
+    icon: 'stats-chart',
     title: 'Reportes',
     description: 'Estadísticas y métricas de tu comunidad',
+    color: COLORS.lime,
   },
 };
 
@@ -52,9 +71,10 @@ export default function AdminSection() {
   const { section } = useLocalSearchParams();
   
   const sectionInfo = SECTIONS[section] || {
-    icon: '🔧',
+    icon: 'construct',
     title: 'Sección',
     description: 'Esta sección está en desarrollo',
+    color: COLORS.lime,
   };
 
   return (
@@ -62,20 +82,26 @@ export default function AdminSection() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{sectionInfo.icon} {sectionInfo.title}</Text>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>{sectionInfo.title}</Text>
+        </View>
+        <View style={{ width: scale(40) }} />
       </View>
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.comingSoonIcon}>{sectionInfo.icon}</Text>
+        <View style={[styles.iconContainer, { backgroundColor: sectionInfo.color + '20' }]}>
+          <Ionicons name={sectionInfo.icon} size={64} color={sectionInfo.color} />
+        </View>
+        
         <Text style={styles.comingSoonTitle}>{sectionInfo.title}</Text>
         <Text style={styles.comingSoonDescription}>{sectionInfo.description}</Text>
         
         <View style={styles.comingSoonBadge}>
-          <Text style={styles.comingSoonBadgeText}>🚧 Próximamente</Text>
+          <Ionicons name="construct" size={16} color={COLORS.warning} />
+          <Text style={styles.comingSoonBadgeText}>Próximamente</Text>
         </View>
         
         <Text style={styles.comingSoonNote}>
@@ -85,6 +111,7 @@ export default function AdminSection() {
         </Text>
         
         <View style={styles.webLink}>
+          <Ionicons name="globe" size={18} color={COLORS.teal} />
           <Text style={styles.webLinkText}>app.joinissy.com</Text>
         </View>
 
@@ -92,6 +119,7 @@ export default function AdminSection() {
           style={styles.backToHomeButton}
           onPress={() => router.push('/(tabs)/home')}
         >
+          <Ionicons name="home" size={20} color={COLORS.background} />
           <Text style={styles.backToHomeText}>Volver al inicio</Text>
         </TouchableOpacity>
       </View>
@@ -104,94 +132,109 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayLight,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 24,
-    color: COLORS.navy,
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: scale(12),
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.navy,
+    color: COLORS.textPrimary,
   },
+  
+  // Content
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: scale(40),
   },
-  comingSoonIcon: {
-    fontSize: 80,
-    marginBottom: 20,
+  iconContainer: {
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(30),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: scale(24),
   },
   comingSoonTitle: {
-    fontSize: 24,
+    fontSize: scale(24),
     fontWeight: '700',
-    color: COLORS.navy,
-    marginBottom: 8,
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
     textAlign: 'center',
   },
   comingSoonDescription: {
-    fontSize: 15,
-    color: COLORS.gray,
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: scale(24),
   },
   comingSoonBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warning + '20',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    marginBottom: scale(24),
+    gap: scale(8),
   },
   comingSoonBadgeText: {
-    color: '#D97706',
-    fontSize: 14,
+    color: COLORS.warning,
+    fontSize: scale(14),
     fontWeight: '600',
   },
   comingSoonNote: {
-    fontSize: 14,
-    color: COLORS.gray,
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 16,
+    lineHeight: scale(22),
+    marginBottom: scale(16),
   },
   webLink: {
-    backgroundColor: COLORS.primary + '15',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.teal + '15',
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    marginBottom: scale(32),
+    gap: scale(8),
   },
   webLinkText: {
-    color: COLORS.primary,
-    fontSize: 16,
+    color: COLORS.teal,
+    fontSize: scale(16),
     fontWeight: '600',
   },
   backToHomeButton: {
-    backgroundColor: COLORS.navy,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: scale(32),
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    gap: scale(8),
   },
   backToHomeText: {
-    color: COLORS.white,
-    fontSize: 16,
+    color: COLORS.background,
+    fontSize: scale(16),
     fontWeight: '600',
   },
 });
