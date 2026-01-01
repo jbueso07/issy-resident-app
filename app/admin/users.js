@@ -1,6 +1,6 @@
 // app/admin/users.js
 // ISSY Resident App - Admin: Gestión de Usuarios e Invitaciones (ProHome Dark Theme)
-// Usando endpoints correctos de /api/invitations/organization
+// ACTUALIZADO: Opción de Crear Usuario Directo (especialmente para Guardias)
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -17,6 +17,10 @@ import {
   Share,
   Clipboard,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,12 +91,18 @@ export default function AdminUsers() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   
+  // NUEVO: Método de creación (invite o direct)
+  const [createMethod, setCreateMethod] = useState('invite');
+  
   const [inviteForm, setInviteForm] = useState({
     role: 'resident',
     unit_number: '',
     expected_name: '',
     expected_email: '',
     expected_phone: '',
+    // Campos adicionales para crear directo
+    password: '',
+    confirm_password: '',
   });
 
   const userRole = profile?.role || user?.role || 'user';
@@ -143,7 +153,6 @@ export default function AdminUsers() {
       }
     } catch (error) {
       console.error('Error fetching locations:', error);
-      // Fallback to user's location
       if (userLocationId) {
         setSelectedLocationId(userLocationId);
       }
@@ -157,7 +166,6 @@ export default function AdminUsers() {
   const handleSwitchLocation = (location) => {
     setSelectedLocationId(location.id);
     setShowLocationPicker(false);
-    // Data will be refetched by useEffect when selectedLocationId changes
   };
 
   const fetchData = async () => {
@@ -166,7 +174,6 @@ export default function AdminUsers() {
     try {
       const headers = await getAuthHeaders();
       
-      // Fetch members using the correct endpoint (same as community-management.js)
       const membersRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/members`,
         { headers }
@@ -174,7 +181,6 @@ export default function AdminUsers() {
       const membersData = await membersRes.json();
       
       if (membersData.success) {
-        // Transform member data to match expected format
         const transformedUsers = (membersData.data || []).map(member => ({
           id: member.id,
           user_id: member.user_id,
@@ -186,14 +192,13 @@ export default function AdminUsers() {
           unit_number: member.unit_number,
           is_active: member.is_active !== false,
           created_at: member.created_at,
-          membership_id: member.id, // Keep reference to membership for actions
+          membership_id: member.id,
         }));
         setUsers(transformedUsers);
       } else {
         setUsers([]);
       }
       
-      // Fetch stats
       const statsRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/stats`,
         { headers }
@@ -203,7 +208,6 @@ export default function AdminUsers() {
         setStats(statsData.data);
       }
       
-      // Fetch pending invitations
       const invitationsRes = await fetch(
         `${API_URL}/invitations/organization/${selectedLocationId}/pending`,
         { headers }
@@ -297,6 +301,7 @@ export default function AdminUsers() {
                 Alert.alert('Éxito', `Usuario ${newStatus ? 'activado' : 'desactivado'}`);
                 setSelectedUser({ ...selectedUser, is_active: newStatus });
                 fetchData();
+                setShowModal(false);
               } else {
                 Alert.alert('Error', 'No se pudo actualizar el estado');
               }
@@ -309,11 +314,84 @@ export default function AdminUsers() {
     );
   };
 
-  const handleCreateInvitation = async () => {
+  // NUEVO: Crear usuario directamente
+  const handleCreateDirectUser = async () => {
+    // Validaciones
+    if (!inviteForm.expected_name?.trim()) {
+      Alert.alert('Error', 'El nombre es requerido');
+      return;
+    }
+    if (!inviteForm.expected_email?.trim()) {
+      Alert.alert('Error', 'El email es requerido');
+      return;
+    }
+    if (!inviteForm.password?.trim()) {
+      Alert.alert('Error', 'La contraseña es requerida');
+      return;
+    }
+    if (inviteForm.password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (inviteForm.password !== inviteForm.confirm_password) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
     setInviteLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/organization-invitations`, {
+      
+      // Crear usuario directamente
+      const response = await fetch(`${API_URL}/users`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: inviteForm.expected_name.trim(),
+          email: inviteForm.expected_email.trim().toLowerCase(),
+          password: inviteForm.password,
+          phone: inviteForm.expected_phone || null,
+          role: inviteForm.role,
+          location_id: selectedLocationId,
+          unit_number: inviteForm.unit_number || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && (data.success !== false)) {
+        Alert.alert(
+          '✅ Usuario Creado',
+          `Se creó el usuario "${inviteForm.expected_name}" correctamente.\n\nEmail: ${inviteForm.expected_email}\n\nComparte las credenciales con el usuario.`,
+          [{ text: 'OK' }]
+        );
+        setShowInviteModal(false);
+        resetInviteForm();
+        fetchData();
+      } else {
+        Alert.alert('Error', data.error || data.message || 'No se pudo crear el usuario');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      Alert.alert('Error', 'No se pudo crear el usuario');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  // Crear invitación (flujo original)
+  const handleCreateInvitation = async () => {
+    // Si es crear directo, usar la otra función
+    if (createMethod === 'direct') {
+      handleCreateDirectUser();
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/invitations/organization`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -396,7 +474,15 @@ export default function AdminUsers() {
       expected_name: '',
       expected_email: '',
       expected_phone: '',
+      password: '',
+      confirm_password: '',
     });
+    setCreateMethod('invite');
+  };
+
+  const copyToClipboard = (text) => {
+    Clipboard.setString(text);
+    Alert.alert('Copiado', 'Código copiado al portapapeles');
   };
 
   const filteredUsers = users.filter(usr => {
@@ -432,7 +518,6 @@ export default function AdminUsers() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Usuarios</Text>
-          {/* Location Selector */}
           {isSuperAdminUser && locations.length > 1 ? (
             <TouchableOpacity 
               style={styles.locationSelector}
@@ -488,7 +573,7 @@ export default function AdminUsers() {
         </TouchableOpacity>
       </View>
 
-      {/* Search (only for users tab) */}
+      {/* Search */}
       {activeTab === 'users' && (
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
@@ -562,7 +647,7 @@ export default function AdminUsers() {
                   onPress={() => setShowInviteModal(true)}
                 >
                   <Ionicons name="person-add" size={18} color={COLORS.background} />
-                  <Text style={styles.emptyButtonText}>Invitar Usuario</Text>
+                  <Text style={styles.emptyButtonText}>Agregar Usuario</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -598,10 +683,12 @@ export default function AdminUsers() {
                         )}
                       </View>
                     </View>
-                    <View style={[
-                      styles.statusDot,
-                      { backgroundColor: usr.is_active ? COLORS.success : COLORS.textMuted }
-                    ]} />
+                    {!usr.is_active && (
+                      <View style={styles.inactiveBadge}>
+                        <Ionicons name="close-circle" size={16} color={COLORS.danger} />
+                      </View>
+                    )}
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 );
               })
@@ -609,25 +696,25 @@ export default function AdminUsers() {
           </>
         ) : (
           <>
-            {/* Invitations List */}
+            {/* Invitations Tab */}
             {invitations.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="mail-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>No hay invitaciones pendientes</Text>
+                <Text style={styles.emptyTitle}>Sin invitaciones pendientes</Text>
+                <Text style={styles.emptySubtitle}>
+                  Crea una invitación para agregar usuarios
+                </Text>
                 <TouchableOpacity 
                   style={styles.emptyButton}
                   onPress={() => setShowInviteModal(true)}
                 >
                   <Ionicons name="add" size={18} color={COLORS.background} />
-                  <Text style={styles.emptyButtonText}>Crear Invitación</Text>
+                  <Text style={styles.emptyButtonText}>Nueva Invitación</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               invitations.map((inv) => {
-                const roleInfo = INVITE_ROLES[inv.role] || INVITE_ROLES.resident;
-                const expiresDate = inv.expires_at ? new Date(inv.expires_at) : null;
-                const isExpired = expiresDate && expiresDate < new Date();
-                
+                const roleInfo = getRoleInfo(inv.role);
                 return (
                   <View key={inv.id} style={styles.invitationCard}>
                     <View style={styles.invitationHeader}>
@@ -637,46 +724,32 @@ export default function AdminUsers() {
                           {roleInfo.label}
                         </Text>
                       </View>
-                      {isExpired ? (
-                        <View style={[styles.statusBadge, { backgroundColor: COLORS.danger + '20' }]}>
-                          <Ionicons name="close-circle" size={12} color={COLORS.danger} />
-                          <Text style={[styles.statusBadgeText, { color: COLORS.danger }]}>Expirada</Text>
-                        </View>
-                      ) : (
-                        <View style={[styles.statusBadge, { backgroundColor: COLORS.success + '20' }]}>
-                          <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
-                          <Text style={[styles.statusBadgeText, { color: COLORS.success }]}>Activa</Text>
-                        </View>
-                      )}
+                      <Text style={styles.invitationCode}>{inv.code}</Text>
                     </View>
                     
-                    <View style={styles.invitationDetails}>
-                      <View style={styles.codeContainer}>
-                        <Ionicons name="key" size={16} color={COLORS.teal} />
-                        <Text style={styles.invitationCode}>{inv.code}</Text>
+                    {inv.expected_name && (
+                      <View style={styles.invitationInfoRow}>
+                        <Ionicons name="person" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.invitationInfo}>{inv.expected_name}</Text>
                       </View>
-                      {inv.expected_name && (
-                        <View style={styles.invitationInfoRow}>
-                          <Ionicons name="person" size={14} color={COLORS.textSecondary} />
-                          <Text style={styles.invitationInfo}>{inv.expected_name}</Text>
-                        </View>
-                      )}
-                      {inv.unit_number && (
-                        <View style={styles.invitationInfoRow}>
-                          <Ionicons name="home" size={14} color={COLORS.textSecondary} />
-                          <Text style={styles.invitationInfo}>Unidad: {inv.unit_number}</Text>
-                        </View>
-                      )}
-                      {expiresDate && (
-                        <View style={styles.invitationInfoRow}>
-                          <Ionicons name="time" size={14} color={COLORS.textMuted} />
-                          <Text style={styles.invitationExpires}>
-                            Expira: {expiresDate.toLocaleDateString()}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
+                    )}
+                    {inv.expected_email && (
+                      <View style={styles.invitationInfoRow}>
+                        <Ionicons name="mail" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.invitationInfo}>{inv.expected_email}</Text>
+                      </View>
+                    )}
+                    {inv.unit_number && (
+                      <View style={styles.invitationInfoRow}>
+                        <Ionicons name="home" size={14} color={COLORS.textSecondary} />
+                        <Text style={styles.invitationInfo}>Unidad: {inv.unit_number}</Text>
+                      </View>
+                    )}
+                    
+                    <Text style={styles.invitationExpires}>
+                      Expira: {new Date(inv.expires_at).toLocaleDateString()}
+                    </Text>
+                    
                     <View style={styles.invitationActions}>
                       <TouchableOpacity 
                         style={styles.shareButton}
@@ -687,10 +760,7 @@ export default function AdminUsers() {
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.copyButton}
-                        onPress={() => {
-                          Clipboard.setString(inv.invitation_link || inv.code);
-                          Alert.alert('Copiado', 'Código copiado al portapapeles');
-                        }}
+                        onPress={() => copyToClipboard(inv.code)}
                       >
                         <Ionicons name="copy" size={16} color={COLORS.textSecondary} />
                         <Text style={styles.copyButtonText}>Copiar</Text>
@@ -832,7 +902,7 @@ export default function AdminUsers() {
                 </View>
               </View>
 
-              {/* Cambiar Rol (solo superadmin) */}
+              {/* Cambiar Rol */}
               {isSuperAdminUser && selectedUser.user_id !== user?.id && (
                 <View style={styles.roleSection}>
                   <Text style={styles.roleSectionTitle}>Cambiar Rol</Text>
@@ -895,127 +965,233 @@ export default function AdminUsers() {
         </SafeAreaView>
       </Modal>
 
-      {/* Create Invitation Modal */}
+      {/* ============================================= */}
+      {/* MODAL ACTUALIZADO: Crear/Invitar Usuario */}
+      {/* ============================================= */}
       <Modal
         visible={showInviteModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowInviteModal(false)}
+        onRequestClose={() => {
+          setShowInviteModal(false);
+          resetInviteForm();
+        }}
       >
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => {
-              setShowInviteModal(false);
-              resetInviteForm();
-            }}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Invitar Usuario</Text>
-            <TouchableOpacity 
-              onPress={handleCreateInvitation}
-              disabled={inviteLoading}
-            >
-              {inviteLoading ? (
-                <ActivityIndicator size="small" color={COLORS.lime} />
-              ) : (
-                <Text style={styles.modalSave}>Crear</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={() => {
+                    setShowInviteModal(false);
+                    resetInviteForm();
+                  }}>
+                    <Text style={styles.modalCancel}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>Agregar Usuario</Text>
+                  <TouchableOpacity 
+                    onPress={handleCreateInvitation}
+                    disabled={inviteLoading}
+                  >
+                    {inviteLoading ? (
+                      <ActivityIndicator size="small" color={COLORS.lime} />
+                    ) : (
+                      <Text style={styles.modalSave}>
+                        {createMethod === 'direct' ? 'Crear' : 'Invitar'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
 
-          <ScrollView style={styles.modalContent}>
-            {/* Location indicator */}
-            {currentLocation && (
-              <View style={styles.inviteLocationBanner}>
-                <Ionicons name="location" size={16} color={COLORS.teal} />
-                <Text style={styles.inviteLocationText}>
-                  Invitando a: {currentLocation.name}
-                </Text>
-              </View>
-            )}
-
-            {/* Role Selection */}
-            <Text style={styles.inputLabel}>Rol *</Text>
-            <View style={styles.roleSelector}>
-              {Object.entries(INVITE_ROLES).map(([key, info]) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.roleSelectorItem,
-                    inviteForm.role === key && { 
-                      backgroundColor: info.color + '20',
-                      borderColor: info.color 
-                    }
-                  ]}
-                  onPress={() => setInviteForm({...inviteForm, role: key})}
+                <ScrollView 
+                  style={styles.modalContent}
+                  keyboardShouldPersistTaps="handled"
                 >
-                  <Ionicons 
-                    name={info.icon} 
-                    size={20} 
-                    color={inviteForm.role === key ? info.color : COLORS.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.roleSelectorText,
-                    inviteForm.role === key && { color: info.color, fontWeight: '600' }
-                  ]}>
-                    {info.label}
+                  {/* Location indicator */}
+                  {currentLocation && (
+                    <View style={styles.inviteLocationBanner}>
+                      <Ionicons name="location" size={16} color={COLORS.teal} />
+                      <Text style={styles.inviteLocationText}>
+                        Ubicación: {currentLocation.name}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* NUEVO: Selector de Método */}
+                  <Text style={styles.inputLabel}>Método *</Text>
+                  <View style={styles.methodSelector}>
+                    <TouchableOpacity
+                      style={[
+                        styles.methodOption,
+                        createMethod === 'invite' && styles.methodOptionActive
+                      ]}
+                      onPress={() => setCreateMethod('invite')}
+                    >
+                      <Ionicons 
+                        name="mail" 
+                        size={20} 
+                        color={createMethod === 'invite' ? COLORS.lime : COLORS.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.methodOptionText,
+                        createMethod === 'invite' && styles.methodOptionTextActive
+                      ]}>
+                        Invitar
+                      </Text>
+                      <Text style={styles.methodOptionSubtext}>
+                        Código de invitación
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.methodOption,
+                        createMethod === 'direct' && styles.methodOptionActive
+                      ]}
+                      onPress={() => setCreateMethod('direct')}
+                    >
+                      <Ionicons 
+                        name="create" 
+                        size={20} 
+                        color={createMethod === 'direct' ? COLORS.lime : COLORS.textSecondary} 
+                      />
+                      <Text style={[
+                        styles.methodOptionText,
+                        createMethod === 'direct' && styles.methodOptionTextActive
+                      ]}>
+                        Crear Directo
+                      </Text>
+                      <Text style={styles.methodOptionSubtext}>
+                        Tú defines contraseña
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Role Selection */}
+                  <Text style={styles.inputLabel}>Rol *</Text>
+                  <View style={styles.roleSelector}>
+                    {Object.entries(INVITE_ROLES).map(([key, info]) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.roleSelectorItem,
+                          inviteForm.role === key && { 
+                            backgroundColor: info.color + '20',
+                            borderColor: info.color 
+                          }
+                        ]}
+                        onPress={() => setInviteForm({...inviteForm, role: key})}
+                      >
+                        <Ionicons 
+                          name={info.icon} 
+                          size={20} 
+                          color={inviteForm.role === key ? info.color : COLORS.textSecondary} 
+                        />
+                        <Text style={[
+                          styles.roleSelectorText,
+                          inviteForm.role === key && { color: info.color, fontWeight: '600' }
+                        ]}>
+                          {info.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Unit Number (solo para residentes) */}
+                  {inviteForm.role !== 'guard' && (
+                    <>
+                      <Text style={styles.inputLabel}>Número de Unidad (opcional)</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inviteForm.unit_number}
+                        onChangeText={(text) => setInviteForm({...inviteForm, unit_number: text})}
+                        placeholder="Ej: A-101, Casa 5"
+                        placeholderTextColor={COLORS.textMuted}
+                      />
+                    </>
+                  )}
+
+                  {/* Name */}
+                  <Text style={styles.inputLabel}>
+                    {createMethod === 'direct' ? 'Nombre *' : 'Nombre (opcional)'}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <TextInput
+                    style={styles.input}
+                    value={inviteForm.expected_name}
+                    onChangeText={(text) => setInviteForm({...inviteForm, expected_name: text})}
+                    placeholder={inviteForm.role === 'guard' ? 'Ej: Caseta Principal, Portón Norte' : 'Nombre del usuario'}
+                    placeholderTextColor={COLORS.textMuted}
+                  />
 
-            {/* Unit Number */}
-            <Text style={styles.inputLabel}>Número de Unidad (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={inviteForm.unit_number}
-              onChangeText={(text) => setInviteForm({...inviteForm, unit_number: text})}
-              placeholder="Ej: A-101, Casa 5"
-              placeholderTextColor={COLORS.textMuted}
-            />
+                  {/* Email */}
+                  <Text style={styles.inputLabel}>
+                    {createMethod === 'direct' ? 'Email *' : 'Email (opcional)'}
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    value={inviteForm.expected_email}
+                    onChangeText={(text) => setInviteForm({...inviteForm, expected_email: text})}
+                    placeholder="email@ejemplo.com"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
 
-            {/* Expected Name */}
-            <Text style={styles.inputLabel}>Nombre (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={inviteForm.expected_name}
-              onChangeText={(text) => setInviteForm({...inviteForm, expected_name: text})}
-              placeholder="Nombre del invitado"
-              placeholderTextColor={COLORS.textMuted}
-            />
+                  {/* Phone */}
+                  <Text style={styles.inputLabel}>Teléfono (opcional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={inviteForm.expected_phone}
+                    onChangeText={(text) => setInviteForm({...inviteForm, expected_phone: text})}
+                    placeholder="+504 9999-9999"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="phone-pad"
+                  />
 
-            {/* Expected Email */}
-            <Text style={styles.inputLabel}>Email (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={inviteForm.expected_email}
-              onChangeText={(text) => setInviteForm({...inviteForm, expected_email: text})}
-              placeholder="email@ejemplo.com"
-              placeholderTextColor={COLORS.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+                  {/* CAMPOS DE CONTRASEÑA (solo para crear directo) */}
+                  {createMethod === 'direct' && (
+                    <>
+                      <Text style={styles.inputLabel}>Contraseña *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inviteForm.password}
+                        onChangeText={(text) => setInviteForm({...inviteForm, password: text})}
+                        placeholder="Mínimo 6 caracteres"
+                        placeholderTextColor={COLORS.textMuted}
+                        secureTextEntry
+                      />
 
-            {/* Expected Phone */}
-            <Text style={styles.inputLabel}>Teléfono (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={inviteForm.expected_phone}
-              onChangeText={(text) => setInviteForm({...inviteForm, expected_phone: text})}
-              placeholder="+504 9999-9999"
-              placeholderTextColor={COLORS.textMuted}
-              keyboardType="phone-pad"
-            />
+                      <Text style={styles.inputLabel}>Confirmar Contraseña *</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={inviteForm.confirm_password}
+                        onChangeText={(text) => setInviteForm({...inviteForm, confirm_password: text})}
+                        placeholder="Repetir contraseña"
+                        placeholderTextColor={COLORS.textMuted}
+                        secureTextEntry
+                      />
+                    </>
+                  )}
 
-            <View style={styles.inviteNote}>
-              <Ionicons name="information-circle" size={20} color={COLORS.teal} />
-              <Text style={styles.inviteNoteText}>
-                Se generará un código único que podrás compartir. La invitación expira en 7 días.
-              </Text>
-            </View>
+                  {/* Info Note */}
+                  <View style={styles.inviteNote}>
+                    <Ionicons name="information-circle" size={20} color={COLORS.teal} />
+                    <Text style={styles.inviteNoteText}>
+                      {createMethod === 'direct' 
+                        ? 'El usuario se creará inmediatamente. Comparte las credenciales de forma segura.'
+                        : 'Se generará un código único que podrás compartir. La invitación expira en 7 días.'
+                      }
+                    </Text>
+                  </View>
 
-            <View style={{ height: 100 }} />
-          </ScrollView>
+                  <View style={{ height: 150 }} />
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -1102,18 +1278,15 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.backgroundSecondary,
     gap: scale(6),
   },
   tabActive: {
     backgroundColor: COLORS.lime,
-    borderColor: COLORS.lime,
   },
   tabText: {
     fontSize: scale(13),
@@ -1129,48 +1302,42 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
+    backgroundColor: COLORS.backgroundSecondary,
+    marginHorizontal: scale(16),
+    marginBottom: scale(12),
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
   },
   searchIcon: {
-    position: 'absolute',
-    left: scale(28),
-    zIndex: 1,
+    marginRight: scale(8),
   },
   searchInput: {
     flex: 1,
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(10),
-    paddingHorizontal: scale(40),
     paddingVertical: scale(12),
-    fontSize: scale(15),
+    fontSize: scale(14),
     color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  
+
   // Content
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: scale(16),
+    paddingHorizontal: scale(16),
   },
-  
+
   // Stats
   statsContainer: {
     flexDirection: 'row',
-    gap: scale(8),
     marginBottom: scale(16),
+    gap: scale(8),
   },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
     padding: scale(12),
-    borderRadius: scale(10),
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   statValue: {
     fontSize: scale(18),
@@ -1179,64 +1346,32 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: scale(10),
-    color: COLORS.textSecondary,
+    color: COLORS.textMuted,
     marginTop: scale(2),
   },
-  
-  // Empty
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: scale(40),
-  },
-  emptyTitle: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: scale(16),
-  },
-  emptySubtitle: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    marginTop: scale(4),
-    marginBottom: scale(16),
-  },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lime,
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(12),
-    borderRadius: scale(10),
-    gap: scale(8),
-  },
-  emptyButtonText: {
-    color: COLORS.background,
-    fontWeight: '600',
-    fontSize: scale(15),
-  },
-  
+
   // User Card
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
-    padding: scale(14),
-    marginBottom: scale(10),
+    padding: scale(12),
+    marginBottom: scale(8),
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   userAvatar: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(12),
   },
   userAvatarText: {
     fontSize: scale(18),
-    fontWeight: '600',
+    fontWeight: '700',
   },
   userInfo: {
     flex: 1,
@@ -1247,27 +1382,26 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   userEmail: {
-    fontSize: scale(13),
+    fontSize: scale(12),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
   userMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(8),
     marginTop: scale(6),
+    gap: scale(8),
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(8),
-    paddingVertical: scale(3),
+    paddingVertical: scale(4),
     borderRadius: scale(6),
     gap: scale(4),
   },
   roleBadgeText: {
     fontSize: scale(11),
-    fontWeight: '500',
+    fontWeight: '600',
   },
   unitBadge: {
     flexDirection: 'row',
@@ -1275,29 +1409,11 @@ const styles = StyleSheet.create({
     gap: scale(4),
   },
   unitText: {
-    fontSize: scale(12),
+    fontSize: scale(11),
     color: COLORS.textSecondary,
   },
-  statusDot: {
-    width: scale(10),
-    height: scale(10),
-    borderRadius: scale(5),
-  },
-
-  // Invitation Card
-  invitationCard: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginBottom: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  invitationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(12),
+  inactiveBadge: {
+    marginRight: scale(8),
   },
   statusBadge: {
     flexDirection: 'row',
@@ -1311,19 +1427,60 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
     fontWeight: '600',
   },
-  invitationDetails: {
-    marginBottom: scale(12),
+
+  // Empty
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(60),
   },
-  codeContainer: {
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginTop: scale(16),
+  },
+  emptySubtitle: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
+  },
+  emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    marginTop: scale(20),
     gap: scale(8),
-    marginBottom: scale(8),
+  },
+  emptyButtonText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+
+  // Invitations
+  invitationCard: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(14),
+    marginBottom: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  invitationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: scale(10),
   },
   invitationCode: {
     fontSize: scale(16),
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: COLORS.lime,
   },
   invitationInfoRow: {
     flexDirection: 'row',
@@ -1332,12 +1489,14 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   invitationInfo: {
-    fontSize: scale(14),
+    fontSize: scale(13),
     color: COLORS.textSecondary,
   },
   invitationExpires: {
-    fontSize: scale(12),
+    fontSize: scale(11),
     color: COLORS.textMuted,
+    marginTop: scale(8),
+    marginBottom: scale(12),
   },
   invitationActions: {
     flexDirection: 'row',
@@ -1374,14 +1533,14 @@ const styles = StyleSheet.create({
     fontSize: scale(13),
   },
   cancelButton: {
-    width: scale(40),
+    width: scale(44),
     backgroundColor: COLORS.danger + '15',
     paddingVertical: scale(10),
     borderRadius: scale(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   // Modal
   modalContainer: {
     flex: 1,
@@ -1414,7 +1573,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: scale(16),
   },
-  
+
   // Location Picker
   locationItem: {
     flexDirection: 'row',
@@ -1578,6 +1737,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  
+  // NUEVO: Method Selector
+  methodSelector: {
+    flexDirection: 'row',
+    gap: scale(10),
+  },
+  methodOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: scale(14),
+    paddingHorizontal: scale(10),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    gap: scale(6),
+  },
+  methodOptionActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '15',
+  },
+  methodOptionText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  methodOptionTextActive: {
+    color: COLORS.lime,
+  },
+  methodOptionSubtext: {
+    fontSize: scale(11),
+    color: COLORS.textMuted,
+  },
+  
   roleSelector: {
     flexDirection: 'row',
     gap: scale(8),
