@@ -20,6 +20,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getIncidentById, addIncidentComment } from '../src/services/api';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -37,35 +38,39 @@ const COLORS = {
   green: '#10B981',
 };
 
-const STATUS_CONFIG = {
-  reported: { label: 'Reportado', color: COLORS.cyan, bg: '#DBEAFE', icon: 'alert-circle' },
-  in_progress: { label: 'En Proceso', color: '#F59E0B', bg: '#FEF3C7', icon: 'time' },
-  resolved: { label: 'Resuelto', color: COLORS.green, bg: '#D1FAE5', icon: 'checkmark-circle' },
-  closed: { label: 'Cerrado', color: COLORS.gray, bg: '#F3F4F6', icon: 'lock-closed' },
-};
+const getStatusConfig = (t) => ({
+  reported: { label: t('incidentDetail.status.reported'), color: COLORS.cyan, bg: '#DBEAFE', icon: 'alert-circle' },
+  in_progress: { label: t('incidentDetail.status.inProgress'), color: '#F59E0B', bg: '#FEF3C7', icon: 'time' },
+  resolved: { label: t('incidentDetail.status.resolved'), color: COLORS.green, bg: '#D1FAE5', icon: 'checkmark-circle' },
+  closed: { label: t('incidentDetail.status.closed'), color: COLORS.gray, bg: '#F3F4F6', icon: 'lock-closed' },
+});
 
-const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: COLORS.cyanLight },
-  medium: { label: 'Media', color: COLORS.cyan },
-  high: { label: 'Alta', color: '#F59E0B' },
-  critical: { label: 'Crítica', color: COLORS.red },
-};
+const getSeverityConfig = (t) => ({
+  low: { label: t('incidentDetail.severity.low'), color: COLORS.cyanLight },
+  medium: { label: t('incidentDetail.severity.medium'), color: COLORS.cyan },
+  high: { label: t('incidentDetail.severity.high'), color: '#F59E0B' },
+  critical: { label: t('incidentDetail.severity.critical'), color: COLORS.red },
+});
 
-const TYPE_LABELS = {
-  security: 'Seguridad',
-  theft: 'Robo',
-  vandalism: 'Vandalismo',
-  noise_complaint: 'Ruido',
-  parking_violation: 'Estacionamiento',
-  maintenance: 'Mantenimiento',
-  cleaning: 'Limpieza',
-  lighting: 'Iluminación',
-  water: 'Agua',
-  elevator: 'Elevador',
-  other: 'Otro',
-};
+const getTypeLabels = (t) => ({
+  security: t('incidentDetail.types.security'),
+  theft: t('incidentDetail.types.theft'),
+  vandalism: t('incidentDetail.types.vandalism'),
+  noise_complaint: t('incidentDetail.types.noiseComplaint'),
+  parking_violation: t('incidentDetail.types.parkingViolation'),
+  maintenance: t('incidentDetail.types.maintenance'),
+  cleaning: t('incidentDetail.types.cleaning'),
+  lighting: t('incidentDetail.types.lighting'),
+  water: t('incidentDetail.types.water'),
+  elevator: t('incidentDetail.types.elevator'),
+  other: t('incidentDetail.types.other'),
+});
 
 export default function IncidentDetailScreen() {
+  const { t } = useTranslation();
+  const STATUS_CONFIG = getStatusConfig(t);
+  const SEVERITY_CONFIG = getSeverityConfig(t);
+  const TYPE_LABELS = getTypeLabels(t);
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [incident, setIncident] = useState(null);
@@ -86,12 +91,12 @@ export default function IncidentDetailScreen() {
       if (result.success) {
         setIncident(result.data.incident || result.data);
       } else {
-        Alert.alert('Error', 'No se pudo cargar el incidente');
+        Alert.alert(t('common.error'), t('incidentDetail.errors.loadFailed'));
         router.back();
       }
     } catch (error) {
       console.error('Error loading incident:', error);
-      Alert.alert('Error', 'Ocurrió un error al cargar el incidente');
+      Alert.alert(t('common.error'), t('incidentDetail.errors.loadError'));
       router.back();
     } finally {
       setLoading(false);
@@ -110,11 +115,11 @@ export default function IncidentDetailScreen() {
         // Reload incident to get updated comments
         loadIncident();
       } else {
-        Alert.alert('Error', result.error || 'No se pudo agregar el comentario');
+        Alert.alert(t('common.error'), result.error || t('incidentDetail.errors.commentFailed'));
       }
     } catch (error) {
       console.error('Error adding comment:', error);
-      Alert.alert('Error', 'Ocurrió un error al agregar el comentario');
+      Alert.alert(t('common.error'), t('incidentDetail.errors.commentError'));
     } finally {
       setSubmittingComment(false);
     }
@@ -151,12 +156,12 @@ export default function IncidentDetailScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={COLORS.black} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Detalle</Text>
+          <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.cyan} />
-          <Text style={styles.loadingText}>Cargando incidente...</Text>
+          <Text style={styles.loadingText}>{t('incidentDetail.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -169,12 +174,12 @@ export default function IncidentDetailScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={COLORS.black} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Detalle</Text>
+          <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={COLORS.gray} />
-          <Text style={styles.errorText}>Incidente no encontrado</Text>
+          <Text style={styles.errorText}>{t('incidentDetail.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -191,7 +196,7 @@ export default function IncidentDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalle</Text>
+        <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
         <TouchableOpacity onPress={loadIncident} style={styles.refreshButton}>
           <Ionicons name="refresh" size={22} color={COLORS.cyan} />
         </TouchableOpacity>
@@ -239,22 +244,22 @@ export default function IncidentDetailScreen() {
 
           {/* Description */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Descripción</Text>
+            <Text style={styles.sectionTitle}>{t('incidentDetail.sections.description')}</Text>
             <View style={styles.sectionCard}>
               <Text style={styles.descriptionText}>
-                {incident.description || 'Sin descripción'}
+                {incident.description || t('incidentDetail.noDescription')}
               </Text>
             </View>
           </View>
 
           {/* Details */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Detalles</Text>
+            <Text style={styles.sectionTitle}>{t('incidentDetail.sections.details')}</Text>
             <View style={styles.sectionCard}>
               <View style={styles.detailRow}>
                 <Ionicons name="calendar-outline" size={18} color={COLORS.gray} />
                 <View style={styles.detailContent}>
-                  <Text style={styles.detailLabel}>Fecha de reporte</Text>
+                  <Text style={styles.detailLabel}>{t('incidentDetail.details.reportDate')}</Text>
                   <Text style={styles.detailValue}>{formatDate(incident.created_at)}</Text>
                 </View>
               </View>
@@ -263,7 +268,7 @@ export default function IncidentDetailScreen() {
                 <View style={styles.detailRow}>
                   <Ionicons name="location-outline" size={18} color={COLORS.gray} />
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Ubicación</Text>
+                    <Text style={styles.detailLabel}>{t('incidentDetail.details.location')}</Text>
                     <Text style={styles.detailValue}>{incident.location_description}</Text>
                   </View>
                 </View>
@@ -273,7 +278,7 @@ export default function IncidentDetailScreen() {
                 <View style={styles.detailRow}>
                   <Ionicons name="checkmark-done-outline" size={18} color={COLORS.green} />
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Resuelto</Text>
+                    <Text style={styles.detailLabel}>{t('incidentDetail.details.resolved')}</Text>
                     <Text style={styles.detailValue}>{formatDate(incident.resolved_at)}</Text>
                   </View>
                 </View>
@@ -283,7 +288,7 @@ export default function IncidentDetailScreen() {
                 <View style={styles.detailRow}>
                   <Ionicons name="document-text-outline" size={18} color={COLORS.gray} />
                   <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>Notas de resolución</Text>
+                    <Text style={styles.detailLabel}>{t('incidentDetail.details.resolutionNotes')}</Text>
                     <Text style={styles.detailValue}>{incident.resolution_notes}</Text>
                   </View>
                 </View>
@@ -293,7 +298,7 @@ export default function IncidentDetailScreen() {
 
           {/* Timeline / Status Progress */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Progreso</Text>
+            <Text style={styles.sectionTitle}>{t('incidentDetail.sections.progress')}</Text>
             <View style={styles.sectionCard}>
               <View style={styles.timeline}>
                 {['reported', 'in_progress', 'resolved', 'closed'].map((step, index) => {
@@ -336,7 +341,7 @@ export default function IncidentDetailScreen() {
           {/* Comments */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Comentarios ({incident.comments?.length || 0})
+              {t('incidentDetail.sections.comments')} ({incident.comments?.length || 0})
             </Text>
             
             {incident.comments && incident.comments.length > 0 ? (
@@ -349,7 +354,7 @@ export default function IncidentDetailScreen() {
                       </View>
                       <View style={styles.commentMeta}>
                         <Text style={styles.commentAuthor}>
-                          {comment.user?.name || 'Usuario'}
+                          {comment.user?.name || t('incidentDetail.user')}
                         </Text>
                         <Text style={styles.commentDate}>
                           {formatShortDate(comment.created_at)}
@@ -362,7 +367,7 @@ export default function IncidentDetailScreen() {
               </View>
             ) : (
               <View style={styles.sectionCard}>
-                <Text style={styles.noCommentsText}>No hay comentarios aún</Text>
+                <Text style={styles.noCommentsText}>{t('incidentDetail.noComments')}</Text>
               </View>
             )}
           </View>
@@ -374,7 +379,7 @@ export default function IncidentDetailScreen() {
         <View style={styles.addCommentContainer}>
           <TextInput
             style={styles.commentInput}
-            placeholder="Agregar comentario..."
+            placeholder={t('incidentDetail.addCommentPlaceholder')}
             placeholderTextColor={COLORS.gray}
             value={commentText}
             onChangeText={setCommentText}

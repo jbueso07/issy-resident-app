@@ -1,8 +1,8 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard ProHome Style
+// ISSY Resident App - Home Dashboard ProHome Style + i18n
 // Admin carrusel horizontal, Más Servicios horizontal, Font accessibility
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 // Importar iconos SVG
 import {
@@ -33,6 +34,8 @@ import {
   BriefcaseIcon,
   PlusIcon,
 } from '../../src/components/Icons';
+
+import NotificationBell from '../../src/components/NotificationBell';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -63,182 +66,6 @@ const COLORS = {
   gradientStart: '#00BFA6',
   gradientEnd: '#AAFF00',
 };
-
-// ============ SERVICIOS DE COMUNIDAD ============
-const COMMUNITY_SERVICES = [
-  { 
-    id: 'visitors', 
-    title: 'Accesos', 
-    subtitle: 'Genera códigos QR',
-    route: '/(tabs)/visits',
-    activeColor: COLORS.teal,
-    available: true,
-  },
-  { 
-    id: 'announcements', 
-    title: 'Anuncios', 
-    subtitle: 'De tu comunidad',
-    route: '/announcements',
-    activeColor: COLORS.cyan,
-    available: true,
-  },
-  { 
-    id: 'reservations', 
-    title: 'Reservaciones', 
-    subtitle: 'Áreas comunes',
-    route: '/reservations',
-    activeColor: COLORS.orange,
-    available: true,
-  },
-  { 
-    id: 'payments', 
-    title: 'Pagos', 
-    subtitle: 'Estado de cuenta',
-    route: '/(tabs)/payments',
-    activeColor: COLORS.purple,
-    available: true,
-  },
-];
-
-// ============ SERVICIOS B2C ============
-const B2C_SERVICES = [
-  { 
-    id: 'pms', 
-    title: 'Gestor de Propiedades', 
-    subtitle: 'Administrar alquileres',
-    route: '/pms',
-    icon: 'business-outline',
-    color: COLORS.teal,
-    available: true,
-  },
-  { 
-    id: 'finances',
-    title: 'Finanzas Personales',
-    subtitle: 'Control de Gastos',
-    route: '/finances',
-    icon: 'wallet-outline',
-    color: COLORS.lime,
-    available: true,
-  },
-  { 
-    id: 'marketplace',
-    title: 'Marketplace',
-    subtitle: 'Compra y vende',
-    route: '/marketplace',
-    icon: 'storefront-outline',
-    color: COLORS.orange,
-    available: true,  // ← Cambiar a true
-  },
-  { 
-    id: 'services',
-    title: 'Servicios',
-    subtitle: 'Encuentra expertos',
-    route: '/services',
-    icon: 'construct-outline',
-    color: COLORS.purple,
-    available: true,  // ← Cambiar a true
-  },
-];
-
-// ============ ADMIN SERVICES ============
-const ADMIN_SERVICES = [
-  { 
-    id: 'create-announcement', 
-    title: 'Crear Anuncios', 
-    subtitle: 'Publicar en tu comunidad',
-    route: '/admin/announcements',
-    activeColor: COLORS.cyan,
-    icon: 'megaphone-outline',
-  },
-  { 
-    id: 'community-management', 
-    title: 'Gestión de Comunidad', 
-    subtitle: 'Miembros y configuración',
-    route: '/admin/community-management',
-    activeColor: COLORS.teal,
-    icon: 'people-outline',
-  },
-  { 
-    id: 'common-areas', 
-    title: 'Áreas Comunes', 
-    subtitle: 'Configurar espacios',
-    route: '/admin/common-areas',
-    activeColor: COLORS.teal,
-    icon: 'fitness-outline',
-  },
-  { 
-    id: 'reservations-admin', 
-    title: 'Gestión de Reservas', 
-    subtitle: 'Aprobar solicitudes',
-    route: '/admin/reservations',
-    activeColor: COLORS.orange,
-    icon: 'calendar-outline',
-  },
-  { 
-    id: 'incidents', 
-    title: 'Incidentes', 
-    subtitle: 'Atender reportes',
-    route: '/admin/incidents',
-    activeColor: COLORS.coral,
-    icon: 'warning-outline',
-  },
-  { 
-    id: 'payment-manager', 
-    title: 'Gestor de Cobros', 
-    subtitle: 'Cuotas y pagos',
-    route: '/admin/payments',
-    activeColor: COLORS.purple,
-    icon: 'card-outline',
-  },
-  { 
-    id: 'expenses', 
-    title: 'Gastos', 
-    subtitle: 'Control de egresos',
-    route: '/admin/expenses',
-    activeColor: COLORS.coral,
-    icon: 'trending-down-outline',
-  },
-  { 
-    id: 'users', 
-    title: 'Usuarios', 
-    subtitle: 'Residentes y roles',
-    route: '/admin/users',
-    activeColor: COLORS.indigo,
-    icon: 'person-outline',
-  },
-  { 
-    id: 'admin-settings', 
-    title: 'Configuración', 
-    subtitle: 'Guard App, blacklist',
-    route: '/admin/settings',
-    activeColor: COLORS.indigo,
-    icon: 'settings-outline',
-  },
-  { 
-    id: 'access-reports', 
-    title: 'Control de Acceso', 
-    subtitle: 'Auditoría visitantes',
-    route: '/admin/access-reports',
-    activeColor: COLORS.blue,
-    icon: 'shield-checkmark-outline',
-  },
-  { 
-    id: 'reports', 
-    title: 'Reportes', 
-    subtitle: 'Estadísticas',
-    route: '/admin/reports',
-    activeColor: COLORS.lime,
-    icon: 'analytics-outline',
-  },
-];
-
-// ============ QUICK ACTIONS ============
-const QUICK_ACTIONS = [
-  { id: 'qr', label: 'Nuevo QR', route: '/(tabs)/visits' },
-  { id: 'reserve', label: 'Reservas', route: '/reservations' },
-  { id: 'announce', label: 'Anuncios', route: '/announcements' },
-  { id: 'pay', label: 'Pagos', route: '/(tabs)/payments' },
-];
 
 // ============ SERVICE ICON COMPONENT ============
 const ServiceIcon = ({ serviceId, color, size = 24 }) => {
@@ -295,6 +122,7 @@ const switchLocationAPI = async (token, locationId) => {
 export default function Home() {
   const { user, profile, token, hasLocation, refreshProfile } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [switchingLocation, setSwitchingLocation] = useState(false);
@@ -320,6 +148,195 @@ export default function Home() {
     'access-reports': false,
     'reports': false,
   });
+
+  // ============ SERVICIOS CON TRADUCCIONES ============
+  const COMMUNITY_SERVICES = useMemo(() => [
+    { 
+      id: 'visitors', 
+      title: t('services.access'), 
+      subtitle: t('services.accessDesc'),
+      route: '/(tabs)/visits',
+      activeColor: COLORS.teal,
+      available: true,
+    },
+    { 
+      id: 'announcements', 
+      title: t('services.announcements'), 
+      subtitle: t('services.announcementsDesc'),
+      route: '/announcements',
+      activeColor: COLORS.cyan,
+      available: true,
+    },
+    { 
+      id: 'reservations', 
+      title: t('services.reservations'), 
+      subtitle: t('services.reservationsDesc'),
+      route: '/reservations',
+      activeColor: COLORS.orange,
+      available: true,
+    },
+    { 
+      id: 'payments', 
+      title: t('services.payments'), 
+      subtitle: t('services.paymentsDesc'),
+      route: '/(tabs)/payments',
+      activeColor: COLORS.purple,
+      available: true,
+    },
+  ], [t]);
+
+  const B2C_SERVICES = useMemo(() => [
+    { 
+      id: 'pms', 
+      title: t('services.pms'), 
+      subtitle: t('services.pmsDesc'),
+      route: '/pms',
+      icon: 'business-outline',
+      color: COLORS.teal,
+      available: true,
+    },
+    { 
+      id: 'finances',
+      title: t('services.finances'),
+      subtitle: t('services.financesDesc'),
+      route: '/finances',
+      icon: 'wallet-outline',
+      color: COLORS.lime,
+      available: true,
+    },
+    { 
+      id: 'marketplace',
+      title: t('services.marketplace'),
+      subtitle: t('services.marketplaceDesc'),
+      route: '/marketplace',
+      icon: 'storefront-outline',
+      color: COLORS.orange,
+      available: true,
+    },
+    { 
+      id: 'services',
+      title: t('services.servicesTitle'),
+      subtitle: t('services.servicesDesc'),
+      route: '/services',
+      icon: 'construct-outline',
+      color: COLORS.purple,
+      available: true,
+    },
+  ], [t]);
+
+  const ADMIN_SERVICES = useMemo(() => [
+  { 
+    id: 'create-announcement', 
+    title: t('adminMenu.announcements'), 
+    subtitle: t('adminMenu.announcementsDesc'),
+    route: '/admin/announcements',
+    activeColor: COLORS.cyan,
+    icon: 'megaphone-outline',
+  },
+  { 
+    id: 'community-management', 
+    title: t('adminMenu.community'), 
+    subtitle: t('adminMenu.communityDesc'),
+    route: '/admin/community-management',
+    activeColor: COLORS.teal,
+    icon: 'people-outline',
+  },
+  { 
+    id: 'common-areas', 
+    title: t('adminMenu.commonAreas'), 
+    subtitle: t('adminMenu.commonAreasDesc'),
+    route: '/admin/common-areas',
+    activeColor: COLORS.teal,
+    icon: 'fitness-outline',
+  },
+  { 
+    id: 'reservations-admin', 
+    title: t('adminMenu.reservationsAdmin'), 
+    subtitle: t('adminMenu.reservationsAdminDesc'),
+    route: '/admin/reservations',
+    activeColor: COLORS.orange,
+    icon: 'calendar-outline',
+  },
+  { 
+    id: 'incidents', 
+    title: t('adminMenu.incidents'), 
+    subtitle: t('adminMenu.incidentsDesc'),
+    route: '/admin/incidents',
+    activeColor: COLORS.coral,
+    icon: 'warning-outline',
+  },
+  { 
+    id: 'payment-manager', 
+    title: t('adminMenu.paymentManager'), 
+    subtitle: t('adminMenu.paymentManagerDesc'),
+    route: '/admin/payments',
+    activeColor: COLORS.purple,
+    icon: 'card-outline',
+  },
+  { 
+    id: 'expenses', 
+    title: t('adminMenu.expenses'), 
+    subtitle: t('adminMenu.expensesDesc'),
+    route: '/admin/expenses',
+    activeColor: COLORS.coral,
+    icon: 'trending-down-outline',
+  },
+  { 
+    id: 'users', 
+    title: t('adminMenu.users'), 
+    subtitle: t('adminMenu.usersDesc'),
+    route: '/admin/users',
+    activeColor: COLORS.indigo,
+    icon: 'person-outline',
+  },
+  { 
+    id: 'admin-settings', 
+    title: t('adminMenu.settings'), 
+    subtitle: t('adminMenu.settingsDesc'),
+    route: '/admin/settings',
+    activeColor: COLORS.indigo,
+    icon: 'settings-outline',
+  },
+  { 
+    id: 'guard-shifts', 
+    title: t('adminMenu.guardShifts'), 
+    subtitle: t('adminMenu.guardShiftsDesc'),
+    route: '/admin/guard-shifts',
+    activeColor: COLORS.blue,
+    icon: 'time-outline',
+  },
+  { 
+    id: 'gates', 
+    title: t('adminMenu.gates'), 
+    subtitle: t('adminMenu.gatesDesc'),
+    route: '/admin/gates',
+    activeColor: COLORS.teal,
+    icon: 'business-outline',
+  },
+  { 
+    id: 'access-reports', 
+    title: t('adminMenu.accessReports'), 
+    subtitle: t('adminMenu.accessReportsDesc'),
+    route: '/admin/access-reports',
+    activeColor: COLORS.blue,
+    icon: 'shield-checkmark-outline',
+  },
+  { 
+    id: 'reports', 
+    title: t('adminMenu.reports'), 
+    subtitle: t('adminMenu.reportsDesc'),
+    route: '/admin/reports',
+    activeColor: COLORS.lime,
+    icon: 'analytics-outline',
+  },
+], [t]);
+
+  const QUICK_ACTIONS = useMemo(() => [
+    { id: 'qr', label: t('home.quickActions.newQR'), route: '/(tabs)/visits' },
+    { id: 'reserve', label: t('home.quickActions.reservations'), route: '/reservations' },
+    { id: 'announce', label: t('home.quickActions.announcements'), route: '/announcements' },
+    { id: 'pay', label: t('home.quickActions.payments'), route: '/(tabs)/payments' },
+  ], [t]);
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
   const userLocations = profile?.user_locations || [];
@@ -368,9 +385,9 @@ export default function Home() {
     setActiveAdminServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
   };
 
-  const getUserName = () => profile?.name || user?.email?.split('@')[0] || 'Usuario';
+  const getUserName = () => profile?.name || user?.email?.split('@')[0] || t('profile.user');
   const getUserInitials = () => (profile?.name || user?.email || 'U').charAt(0).toUpperCase();
-  const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || 'Mi Comunidad';
+  const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || t('home.myCommunity');
   const getResidentCount = () => currentLocation?.member_count || profile?.location?.member_count || 0;
 
   // ========================================
@@ -386,7 +403,7 @@ export default function Home() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Cambiar ubicación</Text>
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>{t('home.changeLocation')}</Text>
             <TouchableOpacity onPress={() => setShowLocationModal(false)}>
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
@@ -429,7 +446,7 @@ export default function Home() {
           {switchingLocation && (
             <View style={styles.switchingOverlay}>
               <ActivityIndicator size="large" color={COLORS.cyan} />
-              <Text style={styles.switchingText} maxFontSizeMultiplier={1.2}>Cambiando ubicación...</Text>
+              <Text style={styles.switchingText} maxFontSizeMultiplier={1.2}>{t('home.switchingLocation')}</Text>
             </View>
           )}
         </View>
@@ -450,29 +467,36 @@ export default function Home() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
           }
         >
-          <View style={styles.headerSimple}>
-            <View style={styles.avatarSmall}>
-              <Text style={styles.avatarTextSmall} maxFontSizeMultiplier={1.2}>{getUserInitials()}</Text>
+          {/* Header con Avatar y Campana */}
+          <View style={styles.homeHeader}>
+            <View style={styles.homeHeaderLeft}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
+              </View>
+              <View>
+                <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
+                <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
+              </View>
             </View>
-            <Text style={styles.greeting} maxFontSizeMultiplier={1.2}>¡Hola, {getUserName()}! 👋</Text>
+            <NotificationBell />
           </View>
 
           <View style={styles.joinCard}>
             <View style={styles.joinIconContainer}>
               <Text style={styles.joinIcon}>🏡</Text>
             </View>
-            <Text style={styles.joinTitle} maxFontSizeMultiplier={1.2}>¿Vives en una comunidad privada?</Text>
+            <Text style={styles.joinTitle} maxFontSizeMultiplier={1.2}>{t('home.joinCommunity.title')}</Text>
             <Text style={styles.joinSubtitle} maxFontSizeMultiplier={1.2}>
-              Únete para acceder al control de acceso, reservaciones y más.
+              {t('home.joinCommunity.subtitle')}
             </Text>
             <TouchableOpacity style={styles.joinButton} onPress={handleJoinCommunity}>
-              <Text style={styles.joinButtonText} maxFontSizeMultiplier={1.2}>Unirme a mi comunidad</Text>
+              <Text style={styles.joinButtonText} maxFontSizeMultiplier={1.2}>{t('home.joinCommunity.button')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* B2C Services - Horizontal Scroll */}
           <Text style={[styles.sectionTitle, { paddingHorizontal: scale(16) }]} maxFontSizeMultiplier={1.2}>
-            Más Servicios
+            {t('home.moreServices')}
           </Text>
           <ScrollView
             horizontal
@@ -497,7 +521,7 @@ export default function Home() {
                 </Text>
                 {!service.available && (
                   <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>Pronto</Text>
+                    <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>{t('common.comingSoon')}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -522,6 +546,20 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
         }
       >
+        {/* Header con Avatar y Campana */}
+        <View style={styles.homeHeader}>
+          <View style={styles.homeHeaderLeft}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
+            </View>
+            <View>
+              <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
+              <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
+            </View>
+          </View>
+          <NotificationBell />
+        </View>
+
         {/* Location Card - Gradient */}
         <TouchableOpacity 
           style={styles.locationCard}
@@ -540,7 +578,7 @@ export default function Home() {
                   {getCurrentLocationName()}
                 </Text>
                 <Text style={styles.locationCount} maxFontSizeMultiplier={1.1}>
-                  {getResidentCount()} residentes activos
+                  {getResidentCount()} {t('home.residents')}
                 </Text>
               </View>
               <View style={styles.locationPinContainer}>
@@ -583,10 +621,10 @@ export default function Home() {
         {/* Services Section Header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>
-            Servicios <Text style={styles.sectionCount}>({COMMUNITY_SERVICES.length})</Text>
+            {t('home.services')} <Text style={styles.sectionCount}>({COMMUNITY_SERVICES.length})</Text>
           </Text>
           <TouchableOpacity>
-            <Text style={styles.sectionLink} maxFontSizeMultiplier={1.2}>Ver todos</Text>
+            <Text style={styles.sectionLink} maxFontSizeMultiplier={1.2}>{t('home.viewAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -641,7 +679,7 @@ export default function Home() {
 
         {/* Más Servicios - Horizontal Scroll */}
         <Text style={[styles.sectionTitle, { marginTop: scale(24) }]} maxFontSizeMultiplier={1.2}>
-          Más Servicios
+          {t('home.moreServices')}
         </Text>
         <ScrollView
           horizontal
@@ -666,7 +704,7 @@ export default function Home() {
               </Text>
               {!service.available && (
                 <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>Pronto</Text>
+                  <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>{t('common.comingSoon')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -677,7 +715,7 @@ export default function Home() {
         {isAdmin && (
           <>
             <View style={styles.adminSectionHeader}>
-              <Text style={styles.adminSectionTitle} maxFontSizeMultiplier={1.2}>Administrar</Text>
+              <Text style={styles.adminSectionTitle} maxFontSizeMultiplier={1.2}>{t('home.admin')}</Text>
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeText} maxFontSizeMultiplier={1}>
                   {userRole === 'superadmin' ? 'Super Admin' : 'Admin'}
@@ -764,6 +802,43 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: scale(10),
+  },
+
+  // ============ HOME HEADER ============
+  homeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    marginBottom: scale(16),
+  },
+  homeHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  avatarCircle: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+    backgroundColor: COLORS.teal,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  greetingText: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  greetingSubtext: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
 
   // ============ LOCATION CARD ============
@@ -888,28 +963,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: scale(10),
-  },
-  statusBadge: {
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(3),
-    borderRadius: scale(12),
-  },
-  statusBadgeActive: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  statusBadgeOff: {
-    backgroundColor: 'transparent',
-  },
-  statusText: {
-    fontSize: scale(9),
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  statusTextActive: {
-    color: COLORS.textPrimary,
-  },
-  statusTextOff: {
-    color: COLORS.textMuted,
   },
   toggle: {
     transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }],
@@ -1083,32 +1136,6 @@ const styles = StyleSheet.create({
   },
 
   // ============ JOIN CARD ============
-  headerSimple: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: scale(20),
-    paddingHorizontal: scale(16),
-  },
-  avatarSmall: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
-    backgroundColor: COLORS.bgCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(12),
-  },
-  avatarTextSmall: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  greeting: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    flex: 1,
-  },
   joinCard: {
     backgroundColor: COLORS.bgCard,
     borderRadius: scale(20),

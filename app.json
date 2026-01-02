@@ -64,7 +64,10 @@
               "pathPrefix": "/join"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -98,7 +101,8 @@
         {
           "cameraPermission": "ISSY necesita acceso a la camara para escanear codigos QR"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "extra": {
       "eas": {

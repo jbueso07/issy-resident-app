@@ -21,6 +21,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -48,28 +49,33 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const ROLES = {
-  resident: { label: 'Residente', color: COLORS.success, bg: COLORS.success + '20' },
-  host: { label: 'Anfitrión principal', color: COLORS.teal, bg: COLORS.teal + '20' },
-  tenant: { label: 'Inquilino', color: COLORS.pink, bg: COLORS.pink + '20' },
-  admin: { label: 'Administrador', color: COLORS.purple, bg: COLORS.purple + '20' },
-  owner: { label: 'Propietario', color: COLORS.lime, bg: COLORS.lime + '20' },
-  guard: { label: 'Guardia', color: COLORS.warning, bg: COLORS.warning + '20' },
-};
+const getRolesConfig = (t) => ({
+  resident: { label: t('admin.communityManagement.roles.resident'), color: COLORS.success, bg: COLORS.success + '20' },
+  host: { label: t('admin.communityManagement.roles.host'), color: COLORS.teal, bg: COLORS.teal + '20' },
+  tenant: { label: t('admin.communityManagement.roles.tenant'), color: COLORS.pink, bg: COLORS.pink + '20' },
+  admin: { label: t('admin.communityManagement.roles.admin'), color: COLORS.purple, bg: COLORS.purple + '20' },
+  owner: { label: t('admin.communityManagement.roles.owner'), color: COLORS.lime, bg: COLORS.lime + '20' },
+  guard: { label: t('admin.communityManagement.roles.guard'), color: COLORS.warning, bg: COLORS.warning + '20' },
+});
 
-const DEACTIVATION_REASONS = [
-  { id: 'moved', label: 'Se mudó / Ya no vive aquí', icon: '🏠' },
-  { id: 'payment', label: 'Falta de pago', icon: '💳' },
-  { id: 'violation', label: 'Violación de reglamento', icon: '⚠️' },
-  { id: 'temporary', label: 'Ausencia temporal', icon: '✈️' },
-  { id: 'request', label: 'Solicitud del residente', icon: '📝' },
-  { id: 'duplicate', label: 'Cuenta duplicada', icon: '👥' },
-  { id: 'other', label: 'Otra razón', icon: '📋' },
+const getDeactivationReasons = (t) => [
+  { id: 'moved', label: t('admin.communityManagement.deactivationReasons.moved'), icon: '🏠' },
+  { id: 'payment', label: t('admin.communityManagement.deactivationReasons.payment'), icon: '💳' },
+  { id: 'violation', label: t('admin.communityManagement.deactivationReasons.violation'), icon: '⚠️' },
+  { id: 'temporary', label: t('admin.communityManagement.deactivationReasons.temporary'), icon: '✈️' },
+  { id: 'request', label: t('admin.communityManagement.deactivationReasons.request'), icon: '📝' },
+  { id: 'duplicate', label: t('admin.communityManagement.deactivationReasons.duplicate'), icon: '👥' },
+  { id: 'other', label: t('admin.communityManagement.deactivationReasons.other'), icon: '📋' },
 ];
 
 export default function CommunityManagement() {
+  const { t } = useTranslation();
   const { user, profile, isSuperAdmin } = useAuth();
   const router = useRouter();
+  
+  // i18n configs
+  const ROLES = getRolesConfig(t);
+  const DEACTIVATION_REASONS = getDeactivationReasons(t);
   
   // State
   const [loading, setLoading] = useState(true);
@@ -105,7 +111,7 @@ export default function CommunityManagement() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos para esta sección');
+      Alert.alert(t('admin.communityManagement.accessDenied'), t('admin.communityManagement.noPermissions'));
       router.back();
       return;
     }
@@ -186,7 +192,7 @@ export default function CommunityManagement() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.loadFailed'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -214,7 +220,7 @@ export default function CommunityManagement() {
   });
 
   const groupedMembers = filteredMembers.reduce((acc, member) => {
-    const unit = member.unit_number || 'Sin asignar';
+    const unit = member.unit_number || t('admin.communityManagement.unassigned');
     if (!acc[unit]) acc[unit] = [];
     acc[unit].push(member);
     return acc;
@@ -253,14 +259,14 @@ export default function CommunityManagement() {
       );
       const data = await res.json();
       if (data.success) {
-        Alert.alert('Éxito', isActive ? 'Miembro activado' : 'Miembro desactivado');
+        Alert.alert(t('common.success'), isActive ? t('admin.communityManagement.success.activated') : t('admin.communityManagement.success.deactivated'));
         fetchData();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo actualizar');
+        Alert.alert(t('common.error'), data.error || t('admin.communityManagement.errors.updateFailed'));
       }
     } catch (error) {
       console.error('Error updating member:', error);
-      Alert.alert('Error', 'No se pudo actualizar el estado');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.updateFailed'));
     } finally {
       setActionLoading(false);
       setShowDeactivateModal(false);
@@ -270,7 +276,7 @@ export default function CommunityManagement() {
 
   const confirmDeactivation = () => {
     if (!deactivationReason) {
-      Alert.alert('Error', 'Selecciona una razón');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.selectReason'));
       return;
     }
     
@@ -278,7 +284,7 @@ export default function CommunityManagement() {
       DEACTIVATION_REASONS.find(r => r.id === deactivationReason)?.label;
     
     if (deactivationReason === 'other' && !customReason.trim()) {
-      Alert.alert('Error', 'Escribe la razón');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.writeReason'));
       return;
     }
     
@@ -308,14 +314,14 @@ export default function CommunityManagement() {
       );
       const data = await res.json();
       if (data.success) {
-        Alert.alert('Éxito', 'Miembro actualizado');
+        Alert.alert(t('common.success'), t('admin.communityManagement.success.updated'));
         fetchData();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo actualizar');
+        Alert.alert(t('common.error'), data.error || t('admin.communityManagement.errors.updateFailed'));
       }
     } catch (error) {
       console.error('Error updating member:', error);
-      Alert.alert('Error', 'No se pudo actualizar');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.updateFailed'));
     } finally {
       setActionLoading(false);
       setShowEditModal(false);
@@ -334,13 +340,13 @@ export default function CommunityManagement() {
       );
       const data = await res.json();
       if (data.success) {
-        Alert.alert('Éxito', 'Miembro aprobado');
+        Alert.alert(t('common.success'), t('admin.communityManagement.success.approved'));
         fetchData();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo aprobar');
+        Alert.alert(t('common.error'), data.error || t('admin.communityManagement.errors.approveFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo aprobar');
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.approveFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -348,12 +354,12 @@ export default function CommunityManagement() {
 
   const handleRejectMember = async (membershipId) => {
     Alert.alert(
-      'Rechazar Solicitud',
-      '¿Estás seguro de rechazar esta solicitud?',
+      t('admin.communityManagement.rejectRequest'),
+      t('admin.communityManagement.rejectConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Rechazar',
+          text: t('admin.communityManagement.reject'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
@@ -365,11 +371,11 @@ export default function CommunityManagement() {
               );
               const data = await res.json();
               if (data.success) {
-                Alert.alert('Éxito', 'Solicitud rechazada');
+                Alert.alert(t('common.success'), t('admin.communityManagement.success.rejected'));
                 fetchData();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo rechazar');
+              Alert.alert(t('common.error'), t('admin.communityManagement.errors.rejectFailed'));
             } finally {
               setActionLoading(false);
             }
@@ -381,12 +387,12 @@ export default function CommunityManagement() {
 
   const handleApproveAll = async () => {
     Alert.alert(
-      'Aprobar Todos',
-      `¿Aprobar ${pendingMembers.length} solicitudes pendientes?`,
+      t('admin.communityManagement.approveAll'),
+      t('admin.communityManagement.approveAllConfirm', { count: pendingMembers.length }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Aprobar Todos',
+          text: t('admin.communityManagement.approveAll'),
           onPress: async () => {
             setActionLoading(true);
             try {
@@ -397,11 +403,11 @@ export default function CommunityManagement() {
               );
               const data = await res.json();
               if (data.success) {
-                Alert.alert('Éxito', `${data.count} miembros aprobados`);
+                Alert.alert(t('common.success'), t('admin.communityManagement.success.approvedCount', { count: data.count }));
                 fetchData();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo aprobar');
+              Alert.alert(t('common.error'), t('admin.communityManagement.errors.approveFailed'));
             } finally {
               setActionLoading(false);
             }
@@ -426,7 +432,7 @@ export default function CommunityManagement() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -440,7 +446,7 @@ export default function CommunityManagement() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Gestión de Comunidad</Text>
+          <Text style={styles.headerTitle}>{t('admin.communityManagement.title')}</Text>
           {isSuperAdminUser && getSelectedLocation() && (
             <TouchableOpacity onPress={() => setShowLocationPicker(true)}>
               <Text style={styles.headerSubtitle}>
@@ -459,19 +465,19 @@ export default function CommunityManagement() {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={[styles.statValue, { color: COLORS.success }]}>{stats.members?.active || 0}</Text>
-            <Text style={styles.statLabel}>Activos</Text>
+            <Text style={styles.statLabel}>{t('admin.communityManagement.stats.active')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statValue, { color: COLORS.warning }]}>
               {pendingMembers.length}
             </Text>
-            <Text style={styles.statLabel}>Pendientes</Text>
+            <Text style={styles.statLabel}>{t('admin.communityManagement.stats.pending')}</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statValue, { color: COLORS.textMuted }]}>
               {stats.members?.inactive || 0}
             </Text>
-            <Text style={styles.statLabel}>Inactivos</Text>
+            <Text style={styles.statLabel}>{t('admin.communityManagement.stats.inactive')}</Text>
           </View>
         </View>
       )}
@@ -488,7 +494,7 @@ export default function CommunityManagement() {
             color={activeTab === 'members' ? COLORS.lime : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'members' && styles.tabTextActive]}>
-            Miembros
+            {t('admin.communityManagement.tabs.members')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -501,7 +507,7 @@ export default function CommunityManagement() {
             color={activeTab === 'pending' ? COLORS.lime : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-            Pendientes {pendingMembers.length > 0 && `(${pendingMembers.length})`}
+            {t('admin.communityManagement.tabs.pending')} {pendingMembers.length > 0 && `(${pendingMembers.length})`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -513,7 +519,7 @@ export default function CommunityManagement() {
             <Ionicons name="search" size={18} color={COLORS.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar por nombre, email o unidad..."
+              placeholder={t('admin.communityManagement.searchPlaceholder')}
               value={searchTerm}
               onChangeText={setSearchTerm}
               placeholderTextColor={COLORS.textMuted}
@@ -527,7 +533,7 @@ export default function CommunityManagement() {
                 onPress={() => setFilter(f)}
               >
                 <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
-                  {f === 'all' ? 'Todos' : f === 'active' ? 'Activos' : 'Inactivos'}
+                  {f === 'all' ? t('admin.communityManagement.filters.all') : f === 'active' ? t('admin.communityManagement.filters.active') : t('admin.communityManagement.filters.inactive')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -551,8 +557,8 @@ export default function CommunityManagement() {
           Object.keys(groupedMembers).length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={60} color={COLORS.textMuted} />
-              <Text style={styles.emptyTitle}>No hay miembros</Text>
-              <Text style={styles.emptySubtitle}>Los miembros aparecerán aquí</Text>
+              <Text style={styles.emptyTitle}>{t('admin.communityManagement.empty.noMembers')}</Text>
+              <Text style={styles.emptySubtitle}>{t('admin.communityManagement.empty.membersWillAppear')}</Text>
             </View>
           ) : (
             Object.entries(groupedMembers).map(([unit, unitMembers]) => (
@@ -567,7 +573,7 @@ export default function CommunityManagement() {
                     </View>
                     <Text style={styles.unitName}>{unit}</Text>
                     <Text style={styles.unitCount}>
-                      {unitMembers.length} miembro{unitMembers.length !== 1 ? 's' : ''}
+                      {unitMembers.length} {unitMembers.length !== 1 ? t('admin.communityManagement.members') : t('admin.communityManagement.member')}
                     </Text>
                   </View>
                   <Ionicons 
@@ -598,7 +604,7 @@ export default function CommunityManagement() {
                               styles.memberName,
                               member.is_active === false && styles.memberNameInactive
                             ]}>
-                              {member.user?.name || 'Sin nombre'}
+                              {member.user?.name || t('admin.communityManagement.noName')}
                             </Text>
                             <Text style={styles.memberEmail}>
                               {member.user?.email}
@@ -650,15 +656,15 @@ export default function CommunityManagement() {
                 onPress={handleApproveAll}
               >
                 <Ionicons name="checkmark-done" size={20} color={COLORS.background} />
-                <Text style={styles.approveAllButtonText}>Aprobar Todos</Text>
+                <Text style={styles.approveAllButtonText}>{t('admin.communityManagement.approveAll')}</Text>
               </TouchableOpacity>
             )}
             
             {pendingMembers.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="checkmark-circle-outline" size={60} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>Sin pendientes</Text>
-                <Text style={styles.emptySubtitle}>No hay solicitudes pendientes</Text>
+                <Text style={styles.emptyTitle}>{t('admin.communityManagement.empty.noPending')}</Text>
+                <Text style={styles.emptySubtitle}>{t('admin.communityManagement.empty.noPendingRequests')}</Text>
               </View>
             ) : (
               pendingMembers.map(member => (
@@ -671,7 +677,7 @@ export default function CommunityManagement() {
                     </View>
                     <View style={styles.pendingDetails}>
                       <Text style={styles.pendingName}>
-                        {member.user?.name || 'Sin nombre'}
+                        {member.user?.name || t('admin.communityManagement.noName')}
                       </Text>
                       <Text style={styles.pendingEmail}>{member.user?.email}</Text>
                       <View style={styles.pendingMeta}>
@@ -724,9 +730,9 @@ export default function CommunityManagement() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDeactivateModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Razón de Desactivación</Text>
+            <Text style={styles.modalTitle}>{t('admin.communityManagement.deactivateReason')}</Text>
             <TouchableOpacity 
               onPress={confirmDeactivation}
               disabled={actionLoading}
@@ -734,13 +740,13 @@ export default function CommunityManagement() {
               {actionLoading ? (
                 <ActivityIndicator size="small" color={COLORS.danger} />
               ) : (
-                <Text style={styles.modalSave}>Confirmar</Text>
+                <Text style={styles.modalSave}>{t('common.confirm')}</Text>
               )}
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalContent}>
             <Text style={styles.modalSubtitle}>
-              Selecciona la razón para desactivar a {selectedMember?.user?.name}:
+              {t('admin.communityManagement.selectReasonFor', { name: selectedMember?.user?.name })}
             </Text>
             
             {DEACTIVATION_REASONS.map(reason => (
@@ -768,7 +774,7 @@ export default function CommunityManagement() {
             {deactivationReason === 'other' && (
               <TextInput
                 style={styles.customReasonInput}
-                placeholder="Escribe la razón..."
+                placeholder={t('admin.communityManagement.writeReason')}
                 value={customReason}
                 onChangeText={setCustomReason}
                 multiline
@@ -788,9 +794,9 @@ export default function CommunityManagement() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowEditModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Editar Miembro</Text>
+            <Text style={styles.modalTitle}>{t('admin.communityManagement.editMember')}</Text>
             <TouchableOpacity 
               onPress={saveEditMember}
               disabled={actionLoading}
@@ -798,7 +804,7 @@ export default function CommunityManagement() {
               {actionLoading ? (
                 <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
-                <Text style={styles.modalSave}>Guardar</Text>
+                <Text style={styles.modalSave}>{t('common.save')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -817,7 +823,7 @@ export default function CommunityManagement() {
               </Text>
             </View>
             
-            <Text style={styles.inputLabel}>Rol</Text>
+            <Text style={styles.inputLabel}>{t('admin.communityManagement.form.role')}</Text>
             <View style={styles.roleSelector}>
               {Object.entries(ROLES).map(([key, { label, color, bg }]) => (
                 <TouchableOpacity
@@ -838,12 +844,12 @@ export default function CommunityManagement() {
               ))}
             </View>
             
-            <Text style={styles.inputLabel}>Unidad / Casa</Text>
+            <Text style={styles.inputLabel}>{t('admin.communityManagement.form.unit')}</Text>
             <TextInput
               style={styles.input}
               value={editForm.unit_number}
               onChangeText={(text) => setEditForm({ ...editForm, unit_number: text })}
-              placeholder="Ej: A-101, Casa 5"
+              placeholder={t('admin.communityManagement.form.unitPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
           </ScrollView>
@@ -859,9 +865,9 @@ export default function CommunityManagement() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
-              <Text style={styles.modalCancel}>Cerrar</Text>
+              <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Seleccionar Ubicación</Text>
+            <Text style={styles.modalTitle}>{t('admin.communityManagement.selectLocation')}</Text>
             <View style={{ width: 60 }} />
           </View>
           <ScrollView style={styles.modalContent}>

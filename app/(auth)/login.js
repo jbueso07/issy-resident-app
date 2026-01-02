@@ -1,5 +1,5 @@
 // app/(auth)/login.js
-// ISSY Resident App - Login Screen con Biometría - ProHome Dark Theme
+// ISSY Resident App - Login Screen con Biometría - ProHome Dark Theme + i18n
 import { useState } from 'react';
 import {
   View,
@@ -19,6 +19,7 @@ import { useRouter, Link } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -46,6 +47,8 @@ export default function Login() {
   const [socialLoading, setSocialLoading] = useState(null);
   const [biometricLoading, setBiometricLoading] = useState(false);
   
+  const { t } = useTranslation();
+  
   const { 
     signIn, 
     signInWithGoogle, 
@@ -59,11 +62,11 @@ export default function Login() {
 
   const handleLogin = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
+      Alert.alert(t('common.error'), t('auth.emailRequired'));
       return;
     }
     if (!password) {
-      Alert.alert('Error', 'Por favor ingresa tu contraseña');
+      Alert.alert(t('common.error'), t('auth.passwordRequired'));
       return;
     }
 
@@ -79,7 +82,7 @@ export default function Login() {
         router.replace('/join-community');
       }
     } else {
-      Alert.alert('Error', result.error || 'Credenciales inválidas');
+      Alert.alert(t('common.error'), result.error || t('auth.invalidCredentials'));
     }
   };
 
@@ -93,7 +96,7 @@ export default function Login() {
         router.replace('/(tabs)/home');
       }, 1000);
     } else if (result.error && result.error !== 'Inicio de sesión cancelado') {
-      Alert.alert('Error', result.error);
+      Alert.alert(t('common.error'), result.error);
     }
   };
 
@@ -107,7 +110,7 @@ export default function Login() {
         router.replace('/(tabs)/home');
       }, 1000);
     } else if (result.error && result.error !== 'Inicio de sesión cancelado') {
-      Alert.alert('Error', result.error);
+      Alert.alert(t('common.error'), result.error);
     }
   };
 
@@ -119,7 +122,7 @@ export default function Login() {
     if (result.success) {
       router.replace('/(tabs)/home');
     } else if (result.error && !result.cancelled) {
-      Alert.alert('Error', result.error);
+      Alert.alert(t('common.error'), result.error);
     }
   };
 
@@ -167,7 +170,7 @@ export default function Login() {
               ) : (
                 <>
                   <GoogleIcon />
-                  <Text style={styles.googleButtonText}>Continuar con Google</Text>
+                  <Text style={styles.googleButtonText}>{t('auth.signInWithGoogle')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -184,7 +187,7 @@ export default function Login() {
                 ) : (
                   <>
                     <AppleIcon />
-                    <Text style={styles.appleButtonText}>Continuar con Apple</Text>
+                    <Text style={styles.appleButtonText}>{t('auth.signInWithApple')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -193,17 +196,17 @@ export default function Login() {
 
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>o</Text>
+            <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.inputLabel}>{t('auth.email')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="tu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -216,7 +219,7 @@ export default function Login() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Contraseña</Text>
+              <Text style={styles.inputLabel}>{t('auth.password')}</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
@@ -258,7 +261,7 @@ export default function Login() {
                   <ActivityIndicator color={COLORS.background} />
                 ) : (
                   <>
-                    <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+                    <Text style={styles.loginButtonText}>{t('auth.signIn')}</Text>
                     <View style={styles.arrowContainer}>
                       <ArrowIcon />
                     </View>
@@ -289,16 +292,16 @@ export default function Login() {
 
             <Link href="/(auth)/forgot-password" asChild>
               <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+                <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword.title')}</Text>
               </TouchableOpacity>
             </Link>
           </View>
 
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>¿No tienes cuenta? </Text>
+            <Text style={styles.registerText}>{t('auth.noAccount')} </Text>
             <Link href="/(auth)/register" asChild>
               <TouchableOpacity disabled={isLoading}>
-                <Text style={styles.registerLink}>Regístrate</Text>
+                <Text style={styles.registerLink}>{t('auth.registerHere')}</Text>
               </TouchableOpacity>
             </Link>
           </View>

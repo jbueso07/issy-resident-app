@@ -1,5 +1,5 @@
 // app/join/[code].js
-// ISSY Resident App - Join Community via Deep Link - ProHome Dark Theme
+// ISSY Resident App - Join Community via Deep Link - ProHome Dark Theme + i18n
 
 import { useState, useEffect } from 'react';
 import {
@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -50,12 +51,19 @@ export default function JoinScreen() {
   const { code } = useLocalSearchParams();
   const router = useRouter();
   const { user, profile, token, refreshProfile } = useAuth();
+  const { t, language } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [invitation, setInvitation] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Locale dinámico para fechas
+  const getLocale = () => {
+    const locales = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
+    return locales[language] || 'es-HN';
+  };
 
   useEffect(() => {
     if (code) {
@@ -83,11 +91,11 @@ export default function JoinScreen() {
       if (data.success) {
         setInvitation(data.data);
       } else {
-        setError(data.error || 'Código de invitación inválido o expirado');
+        setError(data.error || t('auth.join.invalidOrExpired'));
       }
     } catch (err) {
       console.error('Error verifying invitation:', err);
-      setError('Error al verificar la invitación');
+      setError(t('auth.join.verifyError'));
     } finally {
       setLoading(false);
     }
@@ -96,12 +104,12 @@ export default function JoinScreen() {
   const acceptInvitation = async () => {
     if (!user || !token) {
       Alert.alert(
-        'Iniciar sesión',
-        'Necesitas iniciar sesión para aceptar la invitación',
+        t('auth.login'),
+        t('auth.join.needLoginToAccept'),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Iniciar sesión',
+            text: t('auth.login'),
             onPress: () => {
               router.push('/login');
             },
@@ -134,11 +142,11 @@ export default function JoinScreen() {
           router.replace('/(tabs)/home');
         }, 2000);
       } else {
-        setError(data.error || 'Error al aceptar la invitación');
+        setError(data.error || t('auth.join.acceptError'));
       }
     } catch (err) {
       console.error('Error accepting invitation:', err);
-      setError('Error al procesar la invitación');
+      setError(t('auth.join.processError'));
     } finally {
       setAccepting(false);
     }
@@ -151,10 +159,10 @@ export default function JoinScreen() {
 
   const getRoleName = (role) => {
     switch (role) {
-      case 'admin': return 'Administrador';
-      case 'guard': return 'Guardia';
-      case 'superadmin': return 'Super Admin';
-      default: return 'Residente';
+      case 'admin': return t('auth.joinCode.roles.admin');
+      case 'guard': return t('auth.joinCode.roles.guard');
+      case 'superadmin': return t('auth.joinCode.roles.superadmin');
+      default: return t('auth.joinCode.roles.resident');
     }
   };
 
@@ -166,7 +174,7 @@ export default function JoinScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Verificando invitación...</Text>
+          <Text style={styles.loadingText}>{t('auth.join.verifying')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -182,9 +190,9 @@ export default function JoinScreen() {
           <View style={styles.successIconContainer}>
             <Ionicons name="checkmark-circle" size={80} color={COLORS.green} />
           </View>
-          <Text style={styles.successTitle}>¡Te has unido exitosamente!</Text>
+          <Text style={styles.successTitle}>{t('auth.join.joinedSuccessfully')}</Text>
           <Text style={styles.successSubtitle}>
-            Ahora eres parte de {invitation?.location?.name || 'la comunidad'}
+            {t('auth.join.nowPartOf', { name: invitation?.location?.name || t('auth.join.theCommunity') })}
           </Text>
           <ActivityIndicator size="small" color={COLORS.purple} style={{ marginTop: scale(20) }} />
         </View>
@@ -202,14 +210,14 @@ export default function JoinScreen() {
           <View style={styles.errorIconContainer}>
             <Ionicons name="close-circle" size={80} color={COLORS.red} />
           </View>
-          <Text style={styles.errorTitle}>Invitación no válida</Text>
+          <Text style={styles.errorTitle}>{t('auth.join.invalidInvitation')}</Text>
           <Text style={styles.errorSubtitle}>{error}</Text>
           
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => router.replace('/(tabs)/home')}
           >
-            <Text style={styles.secondaryButtonText}>Ir al inicio</Text>
+            <Text style={styles.secondaryButtonText}>{t('auth.join.goToHome')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -226,7 +234,7 @@ export default function JoinScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="close" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Invitación</Text>
+        <Text style={styles.headerTitle}>{t('auth.join.invitation')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -240,10 +248,8 @@ export default function JoinScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Te han invitado</Text>
-        <Text style={styles.subtitle}>
-          Revisa los detalles antes de aceptar
-        </Text>
+        <Text style={styles.title}>{t('auth.join.youAreInvited')}</Text>
+        <Text style={styles.subtitle}>{t('auth.join.reviewDetails')}</Text>
 
         {/* Type Badge */}
         <View style={[
@@ -254,7 +260,9 @@ export default function JoinScreen() {
             styles.typeBadgeText,
             { color: invitation?.type === 'rental' ? COLORS.blue : COLORS.purple }
           ]}>
-            {invitation?.type === 'rental' ? '🏠 Invitación de Inquilino' : '🏘️ Invitación de Comunidad'}
+            {invitation?.type === 'rental' 
+              ? `🏠 ${t('auth.join.tenantInvitation')}` 
+              : `🏘️ ${t('auth.join.communityInvitation')}`}
           </Text>
         </View>
 
@@ -263,27 +271,29 @@ export default function JoinScreen() {
           {/* Organization invitation */}
           {invitation?.type === 'organization' && (
             <>
-              <DetailRow label="Comunidad" value={invitation.location?.name || 'N/A'} />
-              <DetailRow label="Dirección" value={invitation.location?.address || 'N/A'} />
-              <DetailRow label="Ciudad" value={invitation.location?.city || 'N/A'} />
-              <DetailRow label="Rol asignado" value={getRoleName(invitation.role)} />
+              <DetailRow label={t('auth.join.community')} value={invitation.location?.name || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.address')} value={invitation.location?.address || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.city')} value={invitation.location?.city || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.assignedRole')} value={getRoleName(invitation.role)} t={t} />
             </>
           )}
 
           {/* Rental invitation */}
           {invitation?.type === 'rental' && (
             <>
-              <DetailRow label="Propiedad" value={invitation.property?.name || 'N/A'} />
-              <DetailRow label="Unidad" value={invitation.unit?.unit_number || 'N/A'} />
+              <DetailRow label={t('auth.join.property')} value={invitation.property?.name || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.unit')} value={invitation.unit?.unit_number || 'N/A'} t={t} />
               {invitation.lease && (
                 <>
                   <DetailRow 
-                    label="Renta mensual" 
+                    label={t('auth.join.monthlyRent')} 
                     value={formatCurrency(invitation.lease.rent_amount, invitation.lease.currency)} 
+                    t={t}
                   />
                   <DetailRow 
-                    label="Fecha inicio" 
-                    value={new Date(invitation.lease.start_date).toLocaleDateString('es-HN')} 
+                    label={t('auth.join.startDate')} 
+                    value={new Date(invitation.lease.start_date).toLocaleDateString(getLocale())} 
+                    t={t}
                   />
                 </>
               )}
@@ -293,9 +303,10 @@ export default function JoinScreen() {
           {/* Invited by */}
           {invitation?.invited_by && (
             <DetailRow 
-              label="Invitado por" 
+              label={t('auth.join.invitedBy')} 
               value={invitation.invited_by.name} 
               isLast 
+              t={t}
             />
           )}
         </View>
@@ -312,9 +323,7 @@ export default function JoinScreen() {
         {!user && (
           <View style={styles.warningBox}>
             <Ionicons name="information-circle" size={18} color={COLORS.yellow} />
-            <Text style={styles.warningText}>
-              Necesitas iniciar sesión para aceptar esta invitación
-            </Text>
+            <Text style={styles.warningText}>{t('auth.join.needLoginToAccept')}</Text>
           </View>
         )}
 
@@ -331,7 +340,7 @@ export default function JoinScreen() {
               <>
                 <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
                 <Text style={styles.primaryButtonText}>
-                  {user ? 'Aceptar Invitación' : 'Iniciar sesión y aceptar'}
+                  {user ? t('auth.join.acceptInvitation') : t('auth.join.loginAndAccept')}
                 </Text>
               </>
             )}
@@ -341,7 +350,7 @@ export default function JoinScreen() {
             style={styles.secondaryButton}
             onPress={() => router.replace('/(tabs)/home')}
           >
-            <Text style={styles.secondaryButtonText}>Cancelar</Text>
+            <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -352,7 +361,7 @@ export default function JoinScreen() {
 }
 
 // Detail Row Component
-const DetailRow = ({ label, value, isLast }) => (
+const DetailRow = ({ label, value, isLast, t }) => (
   <View style={[styles.detailRow, isLast && styles.detailRowLast]}>
     <Text style={styles.detailLabel}>{label}</Text>
     <Text style={styles.detailValue}>{value}</Text>

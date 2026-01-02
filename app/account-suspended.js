@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const COLORS = {
   primary: '#6366F1',
@@ -18,41 +19,43 @@ const COLORS = {
   grayLight: '#E5E7EB',
 };
 
-const SUSPENSION_INFO = {
+const getSuspensionInfo = (t) => ({
   unpaid: {
     icon: '💰',
-    title: 'Cuenta Suspendida por Falta de Pago',
-    description: 'Tu cuenta ha sido suspendida debido a pagos pendientes. Para reactivar tu cuenta, por favor realiza el pago de los montos adeudados.',
-    action: 'Ver Pagos Pendientes',
+    title: t('accountSuspended.reasons.unpaid.title'),
+    description: t('accountSuspended.reasons.unpaid.description'),
+    action: t('accountSuspended.reasons.unpaid.action'),
     actionRoute: '/payments',
   },
   moved_out: {
     icon: '🏠',
-    title: 'Cuenta Desactivada',
-    description: 'Tu cuenta ha sido desactivada porque ya no resides en esta ubicación. Si esto es un error, contacta a administración.',
+    title: t('accountSuspended.reasons.movedOut.title'),
+    description: t('accountSuspended.reasons.movedOut.description'),
     action: null,
   },
   rule_violation: {
     icon: '⚠️',
-    title: 'Cuenta Suspendida',
-    description: 'Tu cuenta ha sido suspendida por violación del reglamento. Contacta a administración para más información.',
+    title: t('accountSuspended.reasons.ruleViolation.title'),
+    description: t('accountSuspended.reasons.ruleViolation.description'),
     action: null,
   },
   admin_suspended: {
     icon: '🛡️',
-    title: 'Cuenta Suspendida',
-    description: 'Tu cuenta ha sido suspendida por el administrador. Contacta a administración para más información.',
+    title: t('accountSuspended.reasons.adminSuspended.title'),
+    description: t('accountSuspended.reasons.adminSuspended.description'),
     action: null,
   },
   default: {
     icon: '🚫',
-    title: 'Cuenta Suspendida',
-    description: 'Tu cuenta ha sido suspendida. Contacta a administración para más información.',
+    title: t('accountSuspended.reasons.default.title'),
+    description: t('accountSuspended.reasons.default.description'),
     action: null,
   },
-};
+});
 
 export default function AccountSuspended() {
+  const { t } = useTranslation();
+  const SUSPENSION_INFO = getSuspensionInfo(t);
   const router = useRouter();
   const params = useLocalSearchParams();
   const { logout } = useAuth();
@@ -97,10 +100,10 @@ export default function AccountSuspended() {
         {reason !== 'default' && (
           <View style={styles.reasonBadge}>
             <Text style={styles.reasonBadgeText}>
-              {reason === 'unpaid' && '💰 Falta de Pago'}
-              {reason === 'moved_out' && '🏠 Ya no reside'}
-              {reason === 'rule_violation' && '⚠️ Violación de Reglas'}
-              {reason === 'admin_suspended' && '🛡️ Suspensión Administrativa'}
+              {reason === 'unpaid' && `💰 ${t('accountSuspended.badges.unpaid')}`}
+              {reason === 'moved_out' && `🏠 ${t('accountSuspended.badges.movedOut')}`}
+              {reason === 'rule_violation' && `⚠️ ${t('accountSuspended.badges.ruleViolation')}`}
+              {reason === 'admin_suspended' && `🛡️ ${t('accountSuspended.badges.adminSuspended')}`}
             </Text>
           </View>
         )}
@@ -114,20 +117,20 @@ export default function AccountSuspended() {
 
         {/* Contact Button */}
         <TouchableOpacity style={styles.contactButton} onPress={handleContact}>
-          <Text style={styles.contactButtonText}>📞 Contactar Administración</Text>
+          <Text style={styles.contactButtonText}>📞 {t('accountSuspended.contactAdmin')}</Text>
         </TouchableOpacity>
 
         {/* Info Box */}
         <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>¿Qué significa esto?</Text>
+          <Text style={styles.infoTitle}>{t('accountSuspended.infoBox.title')}</Text>
           <Text style={styles.infoText}>
-            Mientras tu cuenta esté suspendida:
+            {t('accountSuspended.infoBox.subtitle')}
           </Text>
-          <Text style={styles.infoItem}>• No podrás generar códigos QR para visitantes</Text>
-          <Text style={styles.infoItem}>• Tus códigos QR existentes están bloqueados</Text>
-          <Text style={styles.infoItem}>• No podrás acceder a ciertas funciones</Text>
+          <Text style={styles.infoItem}>• {t('accountSuspended.infoBox.item1')}</Text>
+          <Text style={styles.infoItem}>• {t('accountSuspended.infoBox.item2')}</Text>
+          <Text style={styles.infoItem}>• {t('accountSuspended.infoBox.item3')}</Text>
           <Text style={[styles.infoText, { marginTop: 12 }]}>
-            Para reactivar tu cuenta, contacta a la administración de tu comunidad.
+            {t('accountSuspended.infoBox.reactivate')}
           </Text>
         </View>
       </View>
@@ -135,7 +138,7 @@ export default function AccountSuspended() {
       {/* Logout Button */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+          <Text style={styles.logoutButtonText}>{t('accountSuspended.logout')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

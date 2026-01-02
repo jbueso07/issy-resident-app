@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -43,6 +44,7 @@ const COLORS = {
 };
 
 export default function AdminReports() {
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const router = useRouter();
   
@@ -57,7 +59,7 @@ export default function AdminReports() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.reports.accessDenied'), t('admin.reports.noPermissions'));
       router.back();
       return;
     }
@@ -144,7 +146,7 @@ export default function AdminReports() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando reportes...</Text>
+          <Text style={styles.loadingText}>{t('admin.reports.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -158,8 +160,8 @@ export default function AdminReports() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Reportes</Text>
-          <Text style={styles.headerSubtitle}>Estadísticas y métricas</Text>
+          <Text style={styles.headerTitle}>{t('admin.reports.title')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.reports.subtitle')}</Text>
         </View>
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
           <Ionicons name="refresh" size={22} color={COLORS.textSecondary} />
@@ -178,7 +180,7 @@ export default function AdminReports() {
         }
       >
         {/* Overview Cards */}
-        <Text style={styles.sectionTitle}>Resumen General</Text>
+        <Text style={styles.sectionTitle}>{t('admin.reports.overview.title')}</Text>
         <View style={styles.overviewGrid}>
           <View style={[styles.overviewCard, { borderLeftColor: COLORS.blue }]}>
             <View style={[styles.overviewIconContainer, { backgroundColor: COLORS.blue + '20' }]}>
@@ -187,7 +189,7 @@ export default function AdminReports() {
             <Text style={styles.overviewValue}>
               {globalStats?.totalUsers || globalStats?.users || 0}
             </Text>
-            <Text style={styles.overviewLabel}>Usuarios</Text>
+            <Text style={styles.overviewLabel}>{t('admin.reports.overview.users')}</Text>
           </View>
           
           <View style={[styles.overviewCard, { borderLeftColor: COLORS.success }]}>
@@ -197,7 +199,7 @@ export default function AdminReports() {
             <Text style={styles.overviewValue}>
               {globalStats?.totalUnits || globalStats?.units || 0}
             </Text>
-            <Text style={styles.overviewLabel}>Unidades</Text>
+            <Text style={styles.overviewLabel}>{t('admin.reports.overview.units')}</Text>
           </View>
           
           <View style={[styles.overviewCard, { borderLeftColor: COLORS.purple }]}>
@@ -207,7 +209,7 @@ export default function AdminReports() {
             <Text style={styles.overviewValue}>
               {globalStats?.totalReservations || globalStats?.reservations || 0}
             </Text>
-            <Text style={styles.overviewLabel}>Reservaciones</Text>
+            <Text style={styles.overviewLabel}>{t('admin.reports.overview.reservations')}</Text>
           </View>
           
           <View style={[styles.overviewCard, { borderLeftColor: COLORS.teal }]}>
@@ -217,17 +219,17 @@ export default function AdminReports() {
             <Text style={styles.overviewValue}>
               {globalStats?.totalAccess || globalStats?.accessLogs || 0}
             </Text>
-            <Text style={styles.overviewLabel}>Accesos</Text>
+            <Text style={styles.overviewLabel}>{t('admin.reports.overview.access')}</Text>
           </View>
         </View>
 
         {/* Financial Summary */}
-        <Text style={styles.sectionTitle}>Resumen Financiero</Text>
+        <Text style={styles.sectionTitle}>{t('admin.reports.financial.title')}</Text>
         <View style={styles.financialCard}>
           <View style={styles.financialRow}>
             <View style={styles.financialItem}>
               <Ionicons name="trending-up" size={20} color={COLORS.success} />
-              <Text style={styles.financialLabel}>Ingresos del Mes</Text>
+              <Text style={styles.financialLabel}>{t('admin.reports.financial.monthlyIncome')}</Text>
               <Text style={[styles.financialValue, { color: COLORS.success }]}>
                 {formatCurrency(globalStats?.monthlyIncome || globalStats?.income || 0)}
               </Text>
@@ -235,14 +237,14 @@ export default function AdminReports() {
             <View style={styles.financialDivider} />
             <View style={styles.financialItem}>
               <Ionicons name="trending-down" size={20} color={COLORS.danger} />
-              <Text style={styles.financialLabel}>Gastos del Mes</Text>
+              <Text style={styles.financialLabel}>{t('admin.reports.financial.monthlyExpenses')}</Text>
               <Text style={[styles.financialValue, { color: COLORS.danger }]}>
                 {formatCurrency(globalStats?.monthlyExpenses || globalStats?.expenses || 0)}
               </Text>
             </View>
           </View>
           <View style={styles.financialBalance}>
-            <Text style={styles.balanceLabel}>Balance</Text>
+            <Text style={styles.balanceLabel}>{t('admin.reports.financial.balance')}</Text>
             <Text style={[
               styles.balanceValue,
               { color: (globalStats?.monthlyIncome || 0) - (globalStats?.monthlyExpenses || 0) >= 0 ? COLORS.lime : COLORS.danger }
@@ -255,7 +257,7 @@ export default function AdminReports() {
         {/* Trends */}
         {trends && (
           <>
-            <Text style={styles.sectionTitle}>Tendencias vs Mes Anterior</Text>
+            <Text style={styles.sectionTitle}>{t('admin.reports.trends.title')}</Text>
             <View style={styles.trendsContainer}>
               <View style={styles.trendCard}>
                 <Ionicons 
@@ -263,7 +265,7 @@ export default function AdminReports() {
                   size={18} 
                   color={(trends.usersChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
                 />
-                <Text style={styles.trendLabel}>Usuarios</Text>
+                <Text style={styles.trendLabel}>{t('admin.reports.trends.users')}</Text>
                 <Text style={[
                   styles.trendValue,
                   { color: (trends.usersChange || 0) >= 0 ? COLORS.success : COLORS.danger }
@@ -278,7 +280,7 @@ export default function AdminReports() {
                   size={18} 
                   color={(trends.incomeChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
                 />
-                <Text style={styles.trendLabel}>Ingresos</Text>
+                <Text style={styles.trendLabel}>{t('admin.reports.trends.income')}</Text>
                 <Text style={[
                   styles.trendValue,
                   { color: (trends.incomeChange || 0) >= 0 ? COLORS.success : COLORS.danger }
@@ -293,7 +295,7 @@ export default function AdminReports() {
                   size={18} 
                   color={(trends.reservationsChange || 0) >= 0 ? COLORS.success : COLORS.danger} 
                 />
-                <Text style={styles.trendLabel}>Reservas</Text>
+                <Text style={styles.trendLabel}>{t('admin.reports.trends.reservations')}</Text>
                 <Text style={[
                   styles.trendValue,
                   { color: (trends.reservationsChange || 0) >= 0 ? COLORS.success : COLORS.danger }
@@ -306,7 +308,7 @@ export default function AdminReports() {
         )}
 
         {/* Collection Rate */}
-        <Text style={styles.sectionTitle}>Tasa de Cobranza</Text>
+        <Text style={styles.sectionTitle}>{t('admin.reports.collection.title')}</Text>
         <View style={styles.collectionCard}>
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
@@ -327,21 +329,21 @@ export default function AdminReports() {
           <View style={styles.collectionDetails}>
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
-              <Text style={styles.collectionLabel}>Pagado</Text>
+              <Text style={styles.collectionLabel}>{t('admin.reports.collection.paid')}</Text>
               <Text style={[styles.collectionValue, { color: COLORS.success }]}>
                 {formatCurrency(globalStats?.totalPaid || 0)}
               </Text>
             </View>
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
-              <Text style={styles.collectionLabel}>Pendiente</Text>
+              <Text style={styles.collectionLabel}>{t('admin.reports.collection.pending')}</Text>
               <Text style={[styles.collectionValue, { color: COLORS.warning }]}>
                 {formatCurrency(globalStats?.totalPending || 0)}
               </Text>
             </View>
             <View style={styles.collectionItem}>
               <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
-              <Text style={styles.collectionLabel}>Vencido</Text>
+              <Text style={styles.collectionLabel}>{t('admin.reports.collection.overdue')}</Text>
               <Text style={[styles.collectionValue, { color: COLORS.danger }]}>
                 {formatCurrency(globalStats?.totalOverdue || 0)}
               </Text>
@@ -352,7 +354,7 @@ export default function AdminReports() {
         {/* Recent Activity */}
         {activity && activity.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Actividad Reciente</Text>
+            <Text style={styles.sectionTitle}>{t('admin.reports.activity.title')}</Text>
             <View style={styles.activityCard}>
               {activity.slice(0, 5).map((item, index) => (
                 <View 
@@ -383,7 +385,7 @@ export default function AdminReports() {
         )}
 
         {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+        <Text style={styles.sectionTitle}>{t('admin.reports.actions.title')}</Text>
         <View style={styles.actionsGrid}>
           <TouchableOpacity 
             style={styles.actionCard}
@@ -392,7 +394,7 @@ export default function AdminReports() {
             <View style={[styles.actionIconContainer, { backgroundColor: COLORS.success + '20' }]}>
               <Ionicons name="card" size={24} color={COLORS.success} />
             </View>
-            <Text style={styles.actionLabel}>Ver Cobros</Text>
+            <Text style={styles.actionLabel}>{t('admin.reports.actions.viewPayments')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -402,7 +404,7 @@ export default function AdminReports() {
             <View style={[styles.actionIconContainer, { backgroundColor: COLORS.danger + '20' }]}>
               <Ionicons name="trending-down" size={24} color={COLORS.danger} />
             </View>
-            <Text style={styles.actionLabel}>Ver Gastos</Text>
+            <Text style={styles.actionLabel}>{t('admin.reports.actions.viewExpenses')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -412,7 +414,7 @@ export default function AdminReports() {
             <View style={[styles.actionIconContainer, { backgroundColor: COLORS.blue + '20' }]}>
               <Ionicons name="people" size={24} color={COLORS.blue} />
             </View>
-            <Text style={styles.actionLabel}>Ver Usuarios</Text>
+            <Text style={styles.actionLabel}>{t('admin.reports.actions.viewUsers')}</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -422,7 +424,7 @@ export default function AdminReports() {
             <View style={[styles.actionIconContainer, { backgroundColor: COLORS.purple + '20' }]}>
               <Ionicons name="megaphone" size={24} color={COLORS.purple} />
             </View>
-            <Text style={styles.actionLabel}>Anuncios</Text>
+            <Text style={styles.actionLabel}>{t('admin.reports.actions.announcements')}</Text>
           </TouchableOpacity>
         </View>
 

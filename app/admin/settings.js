@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -46,22 +47,25 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const TABS = [
-  { id: 'guard', label: 'Guard App', icon: 'shield-checkmark' },
-  { id: 'location', label: 'Ubicación', icon: 'settings' },
-  { id: 'users', label: 'Usuarios', icon: 'people' },
-  { id: 'blacklist', label: 'Lista Negra', icon: 'ban' },
+const getTabs = (t) => [
+  { id: 'guard', label: t('admin.settings.tabs.guard'), icon: 'shield-checkmark' },
+  { id: 'location', label: t('admin.settings.tabs.location'), icon: 'settings' },
+  { id: 'users', label: t('admin.settings.tabs.users'), icon: 'people' },
+  { id: 'blacklist', label: t('admin.settings.tabs.blacklist'), icon: 'ban' },
 ];
 
-const SUSPENSION_REASONS = [
-  { value: 'unpaid', label: 'Falta de Pago', icon: 'card' },
-  { value: 'moved_out', label: 'Ya no reside', icon: 'home' },
-  { value: 'rule_violation', label: 'Violación de Reglas', icon: 'warning' },
-  { value: 'admin_suspended', label: 'Suspensión Admin', icon: 'shield' },
-  { value: 'other', label: 'Otra Razón', icon: 'document-text' },
+const getSuspensionReasons = (t) => [
+  { value: 'unpaid', label: t('admin.settings.suspensionReasons.unpaid'), icon: 'card' },
+  { value: 'moved_out', label: t('admin.settings.suspensionReasons.movedOut'), icon: 'home' },
+  { value: 'rule_violation', label: t('admin.settings.suspensionReasons.ruleViolation'), icon: 'warning' },
+  { value: 'admin_suspended', label: t('admin.settings.suspensionReasons.adminSuspended'), icon: 'shield' },
+  { value: 'other', label: t('admin.settings.suspensionReasons.other'), icon: 'document-text' },
 ];
 
 export default function AdminSettings() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
+  const SUSPENSION_REASONS = getSuspensionReasons(t);
   const { user, profile } = useAuth();
   const router = useRouter();
 
@@ -104,7 +108,7 @@ export default function AdminSettings() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.settings.accessDenied'), t('admin.settings.noPermissions'));
       router.back();
       return;
     }
@@ -218,12 +222,12 @@ export default function AdminSettings() {
         body: JSON.stringify(guardSettings),
       });
       if (res.ok) {
-        Alert.alert('Éxito', 'Configuración guardada');
+        Alert.alert(t('common.success'), t('admin.settings.success.saved'));
       } else {
-        Alert.alert('Error', 'No se pudo guardar');
+        Alert.alert(t('common.error'), t('admin.settings.errors.saveFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar');
+      Alert.alert(t('common.error'), t('admin.settings.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -244,12 +248,12 @@ export default function AdminSettings() {
         body: JSON.stringify(locationSettings),
       });
       if (res.ok) {
-        Alert.alert('Éxito', 'Configuración guardada');
+        Alert.alert(t('common.success'), t('admin.settings.success.saved'));
       } else {
-        Alert.alert('Error', 'No se pudo guardar');
+        Alert.alert(t('common.error'), t('admin.settings.errors.saveFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar');
+      Alert.alert(t('common.error'), t('admin.settings.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -271,26 +275,26 @@ export default function AdminSettings() {
       });
 
       if (res.ok) {
-        Alert.alert('Éxito', 'Usuario suspendido');
+        Alert.alert(t('common.success'), t('admin.settings.success.userSuspended'));
         setShowSuspendModal(false);
         setSuspendForm({ reason: 'admin_suspended', message: '' });
         loadData();
       } else {
-        Alert.alert('Error', 'No se pudo suspender');
+        Alert.alert(t('common.error'), t('admin.settings.errors.suspendFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo suspender');
+      Alert.alert(t('common.error'), t('admin.settings.errors.suspendFailed'));
     }
   };
 
   const handleReactivateUser = async (userId) => {
     Alert.alert(
-      'Reactivar Usuario',
-      '¿Estás seguro de reactivar este usuario?',
+      t('admin.settings.reactivateTitle'),
+      t('admin.settings.reactivateConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Reactivar',
+          text: t('admin.settings.reactivate'),
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
@@ -299,13 +303,13 @@ export default function AdminSettings() {
                 headers,
               });
               if (res.ok) {
-                Alert.alert('Éxito', 'Usuario reactivado');
+                Alert.alert(t('common.success'), t('admin.settings.success.userReactivated'));
                 loadData();
               } else {
-                Alert.alert('Error', 'No se pudo reactivar');
+                Alert.alert(t('common.error'), t('admin.settings.errors.reactivateFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo reactivar');
+              Alert.alert(t('common.error'), t('admin.settings.errors.reactivateFailed'));
             }
           }
         }
@@ -315,12 +319,12 @@ export default function AdminSettings() {
 
   const runAutoSuspension = async () => {
     Alert.alert(
-      'Suspender Usuarios',
-      `¿Suspender ${overdueUsers.length} usuarios con pagos vencidos?`,
+      t('admin.settings.suspendUsersTitle'),
+      t('admin.settings.suspendUsersConfirm', { count: overdueUsers.length }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Suspender',
+          text: t('admin.settings.suspend'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -331,13 +335,13 @@ export default function AdminSettings() {
                 body: JSON.stringify({ location_id: locationId }),
               });
               if (res.ok) {
-                Alert.alert('Éxito', 'Usuarios suspendidos');
+                Alert.alert(t('common.success'), t('admin.settings.success.usersSuspended'));
                 loadData();
               } else {
-                Alert.alert('Error', 'No se pudo completar');
+                Alert.alert(t('common.error'), t('admin.settings.errors.operationFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo completar');
+              Alert.alert(t('common.error'), t('admin.settings.errors.operationFailed'));
             }
           }
         }
@@ -362,7 +366,7 @@ export default function AdminSettings() {
   // Blacklist handlers
   const handleAddToBlacklist = async () => {
     if (!blacklistForm.reason.trim()) {
-      Alert.alert('Error', 'La razón es requerida');
+      Alert.alert(t('common.error'), t('admin.settings.errors.reasonRequired'));
       return;
     }
 
@@ -375,26 +379,26 @@ export default function AdminSettings() {
       });
 
       if (res.ok) {
-        Alert.alert('Éxito', 'Agregado a lista negra');
+        Alert.alert(t('common.success'), t('admin.settings.success.addedToBlacklist'));
         setShowBlacklistModal(false);
         setBlacklistForm({ visitor_name: '', visitor_phone: '', visitor_id_number: '', reason: '', notes: '' });
         loadData();
       } else {
-        Alert.alert('Error', 'No se pudo agregar');
+        Alert.alert(t('common.error'), t('admin.settings.errors.addFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo agregar');
+      Alert.alert(t('common.error'), t('admin.settings.errors.addFailed'));
     }
   };
 
   const handleRemoveFromBlacklist = async (id) => {
     Alert.alert(
-      'Eliminar',
-      '¿Eliminar de la lista negra?',
+      t('admin.settings.blacklist.removeTitle'),
+      t('admin.settings.blacklist.removeConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -404,11 +408,11 @@ export default function AdminSettings() {
                 headers,
               });
               if (res.ok) {
-                Alert.alert('Éxito', 'Eliminado de lista negra');
+                Alert.alert(t('common.success'), t('admin.settings.success.removedFromBlacklist'));
                 loadData();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar');
+              Alert.alert(t('common.error'), t('admin.settings.errors.removeFailed'));
             }
           }
         }
@@ -461,7 +465,7 @@ export default function AdminSettings() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -475,7 +479,7 @@ export default function AdminSettings() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Configuración</Text>
+          <Text style={styles.headerTitle}>{t('admin.settings.title')}</Text>
           <Text style={styles.headerSubtitle}>Administración</Text>
         </View>
         <View style={{ width: scale(40) }} />
@@ -529,9 +533,9 @@ export default function AdminSettings() {
                 <Ionicons name="camera" size={24} color={COLORS.lime} />
               </View>
               <View style={styles.navigationButtonContent}>
-                <Text style={styles.navigationButtonTitle}>Procesos de Acceso</Text>
+                <Text style={styles.navigationButtonTitle}>{t('admin.settings.guard.accessProcess')}</Text>
                 <Text style={styles.navigationButtonDescription}>
-                  Configurar qué datos capturar al registrar visitantes
+                  {t('admin.settings.guard.accessProcessDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color={COLORS.textMuted} />
@@ -540,39 +544,39 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="key" size={20} color={COLORS.lime} />
-                <Text style={styles.sectionTitle}>Permisos de Acceso</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.accessPermissions')}</Text>
               </View>
               <SettingToggle
-                label="Escanear QR"
-                description="Permitir escaneo de códigos"
+                label={t('admin.settings.guard.scanQr')}
+                description={t('admin.settings.guard.scanQrDesc')}
                 value={guardSettings.can_scan_qr}
                 onChange={(v) => handleGuardSettingChange('can_scan_qr', v)}
                 icon="qr-code"
               />
               <SettingToggle
-                label="Entrada Manual"
-                description="Registro sin QR"
+                label={t('admin.settings.guard.manualEntry')}
+                description={t('admin.settings.guard.manualEntryDesc')}
                 value={guardSettings.can_manual_entry}
                 onChange={(v) => handleGuardSettingChange('can_manual_entry', v)}
                 icon="create"
               />
               <SettingToggle
-                label="Ver Historial"
-                description="Historial de visitas"
+                label={t('admin.settings.guard.viewHistory')}
+                description={t('admin.settings.guard.viewHistoryDesc')}
                 value={guardSettings.can_view_visitor_history}
                 onChange={(v) => handleGuardSettingChange('can_view_visitor_history', v)}
                 icon="time"
               />
               <SettingToggle
-                label="Directorio Residentes"
-                description="Ver lista de residentes"
+                label={t('admin.settings.guard.residentDirectory')}
+                description={t('admin.settings.guard.residentDirectoryDesc')}
                 value={guardSettings.can_view_resident_directory}
                 onChange={(v) => handleGuardSettingChange('can_view_resident_directory', v)}
                 icon="people"
               />
               <SettingToggle
-                label="Llamar Residentes"
-                description="Llamadas directas"
+                label={t('admin.settings.guard.callResidents')}
+                description={t('admin.settings.guard.callResidentsDesc')}
                 value={guardSettings.can_call_residents}
                 onChange={(v) => handleGuardSettingChange('can_call_residents', v)}
                 icon="call"
@@ -582,25 +586,25 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="document-text" size={20} color={COLORS.purple} />
-                <Text style={styles.sectionTitle}>Permisos de Registro</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.registrationPermissions')}</Text>
               </View>
               <SettingToggle
-                label="Registrar Incidentes"
-                description="Crear reportes"
+                label={t('admin.settings.guard.registerIncidents')}
+                description={t('admin.settings.guard.registerIncidentsDesc')}
                 value={guardSettings.can_register_incidents}
                 onChange={(v) => handleGuardSettingChange('can_register_incidents', v)}
                 icon="alert-circle"
               />
               <SettingToggle
-                label="Subir Fotos"
-                description="Tomar fotografías"
+                label={t('admin.settings.guard.uploadPhotos')}
+                description={t('admin.settings.guard.uploadPhotosDesc')}
                 value={guardSettings.can_upload_photos}
                 onChange={(v) => handleGuardSettingChange('can_upload_photos', v)}
                 icon="camera"
               />
               <SettingToggle
-                label="Registrar Vehículos"
-                description="Capturar placas"
+                label={t('admin.settings.guard.registerVehicles')}
+                description={t('admin.settings.guard.registerVehiclesDesc')}
                 value={guardSettings.can_register_vehicles}
                 onChange={(v) => handleGuardSettingChange('can_register_vehicles', v)}
                 icon="car"
@@ -610,25 +614,25 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-                <Text style={styles.sectionTitle}>Aprobaciones</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.approvals')}</Text>
               </View>
               <SettingToggle
-                label="Aprobar Visitantes"
-                description="Permitir entrada"
+                label={t('admin.settings.guard.approveVisitors')}
+                description={t('admin.settings.guard.approveVisitorsDesc')}
                 value={guardSettings.can_approve_visitors}
                 onChange={(v) => handleGuardSettingChange('can_approve_visitors', v)}
                 icon="checkmark"
               />
               <SettingToggle
-                label="Denegar Visitantes"
-                description="Rechazar entrada"
+                label={t('admin.settings.guard.denyVisitors')}
+                description={t('admin.settings.guard.denyVisitorsDesc')}
                 value={guardSettings.can_deny_visitors}
                 onChange={(v) => handleGuardSettingChange('can_deny_visitors', v)}
                 icon="close"
               />
               <SettingToggle
-                label="Auto-aprobar Pre-registrados"
-                description="Aprobación automática"
+                label={t('admin.settings.guard.autoApprove')}
+                description={t('admin.settings.guard.autoApproveDesc')}
                 value={guardSettings.auto_approve_preregistered}
                 onChange={(v) => handleGuardSettingChange('auto_approve_preregistered', v)}
                 icon="flash"
@@ -638,25 +642,25 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="notifications" size={20} color={COLORS.warning} />
-                <Text style={styles.sectionTitle}>Alertas</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.alerts')}</Text>
               </View>
               <SettingToggle
-                label="Alerta Lista Negra"
-                description="Visitante bloqueado"
+                label={t('admin.settings.guard.alertBlacklist')}
+                description={t('admin.settings.guard.alertBlacklistDesc')}
                 value={guardSettings.alert_on_blacklisted}
                 onChange={(v) => handleGuardSettingChange('alert_on_blacklisted', v)}
                 icon="ban"
               />
               <SettingToggle
-                label="Alerta QR Expirado"
-                description="Código vencido"
+                label={t('admin.settings.guard.alertExpiredQr')}
+                description={t('admin.settings.guard.alertExpiredQrDesc')}
                 value={guardSettings.alert_on_expired_qr}
                 onChange={(v) => handleGuardSettingChange('alert_on_expired_qr', v)}
                 icon="timer"
               />
               <SettingToggle
-                label="Alerta Residente Suspendido"
-                description="Usuario bloqueado"
+                label={t('admin.settings.guard.alertSuspendedResident')}
+                description={t('admin.settings.guard.alertSuspendedResidentDesc')}
                 value={guardSettings.alert_on_suspended_resident}
                 onChange={(v) => handleGuardSettingChange('alert_on_suspended_resident', v)}
                 icon="person-remove"
@@ -666,11 +670,11 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="warning" size={20} color={COLORS.danger} />
-                <Text style={styles.sectionTitle}>Emergencias</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.emergencies')}</Text>
               </View>
               <SettingToggle
-                label="Botón de Pánico"
-                description="Permitir alertas de emergencia"
+                label={t('admin.settings.guard.panicButton')}
+                description={t('admin.settings.guard.panicButtonDesc')}
                 value={guardSettings.panic_button_enabled ?? true}
                 onChange={(v) => handleGuardSettingChange('panic_button_enabled', v)}
                 icon="alert"
@@ -680,13 +684,13 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="videocam" size={20} color={COLORS.teal} />
-                <Text style={styles.sectionTitle}>Configuración de Cámara</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.guard.cameraConfig')}</Text>
               </View>
               <View style={styles.cameraOptions}>
                 {[
-                  { value: 'phone', label: 'Teléfono', icon: 'phone-portrait' },
-                  { value: 'ip_camera', label: 'Cámara IP', icon: 'videocam' },
-                  { value: 'both', label: 'Ambas', icon: 'albums' },
+                  { value: 'phone', label: t('admin.settings.guard.cameraPhone'), icon: 'phone-portrait' },
+                  { value: 'ip_camera', label: t('admin.settings.guard.cameraIp'), icon: 'videocam' },
+                  { value: 'both', label: t('admin.settings.guard.cameraBoth'), icon: 'albums' },
                 ].map(option => (
                   <TouchableOpacity
                     key={option.value}
@@ -713,7 +717,7 @@ export default function AdminSettings() {
               
               {(guardSettings.camera_mode === 'ip_camera' || guardSettings.camera_mode === 'both') && (
                 <View style={styles.ipCameraConfig}>
-                  <Text style={styles.inputLabel}>URL de Cámara IP</Text>
+                  <Text style={styles.inputLabel}>{t('admin.settings.guard.ipCameraUrl')}</Text>
                   <TextInput
                     style={styles.input}
                     value={guardSettings.ip_camera_url || ''}
@@ -722,7 +726,7 @@ export default function AdminSettings() {
                     placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="none"
                   />
-                  <Text style={styles.inputLabel}>Usuario</Text>
+                  <Text style={styles.inputLabel}>{t('admin.settings.guard.ipCameraUser')}</Text>
                   <TextInput
                     style={styles.input}
                     value={guardSettings.ip_camera_username || ''}
@@ -731,7 +735,7 @@ export default function AdminSettings() {
                     placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="none"
                   />
-                  <Text style={styles.inputLabel}>Contraseña</Text>
+                  <Text style={styles.inputLabel}>{t('admin.settings.guard.ipCameraPassword')}</Text>
                   <TextInput
                     style={styles.input}
                     value={guardSettings.ip_camera_password || ''}
@@ -754,7 +758,7 @@ export default function AdminSettings() {
               ) : (
                 <>
                   <Ionicons name="save" size={20} color={COLORS.background} />
-                  <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                  <Text style={styles.saveButtonText}>{t('admin.settings.saveChanges')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -767,32 +771,32 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="card" size={20} color={COLORS.warning} />
-                <Text style={styles.sectionTitle}>Configuración de Pagos</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.location.paymentConfig')}</Text>
               </View>
               <SettingToggle
-                label="Auto-suspender por Mora"
-                description="Suspender usuarios con pagos vencidos"
+                label={t('admin.settings.location.autoSuspend')}
+                description={t('admin.settings.location.autoSuspendDesc')}
                 value={locationSettings.auto_suspend_on_overdue}
                 onChange={(v) => handleLocationSettingChange('auto_suspend_on_overdue', v)}
                 icon="pause-circle"
               />
               <SettingNumber
-                label="Días de Mora"
-                description="Días antes de suspender"
+                label={t('admin.settings.location.overdueDays')}
+                description={t('admin.settings.location.overdueDaysDesc')}
                 value={locationSettings.overdue_days_before_suspend}
                 onChange={(v) => handleLocationSettingChange('overdue_days_before_suspend', v)}
                 icon="calendar"
               />
               <SettingNumber
-                label="Pagos Vencidos"
-                description="Cantidad para suspender"
+                label={t('admin.settings.location.overduePayments')}
+                description={t('admin.settings.location.overduePaymentsDesc')}
                 value={locationSettings.overdue_payments_threshold}
                 onChange={(v) => handleLocationSettingChange('overdue_payments_threshold', v)}
                 icon="receipt"
               />
               <SettingToggle
-                label="Recordatorios de Pago"
-                description="Enviar notificaciones"
+                label={t('admin.settings.location.paymentReminders')}
+                description={t('admin.settings.location.paymentRemindersDesc')}
                 value={locationSettings.send_payment_reminders}
                 onChange={(v) => handleLocationSettingChange('send_payment_reminders', v)}
                 icon="notifications"
@@ -802,32 +806,32 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="shield-checkmark" size={20} color={COLORS.blue} />
-                <Text style={styles.sectionTitle}>Control de Acceso</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.location.accessControl')}</Text>
               </View>
               <SettingToggle
-                label="Pre-registro de Visitantes"
-                description="Permitir pre-registro"
+                label={t('admin.settings.location.visitorPreregistration')}
+                description={t('admin.settings.location.visitorPreregistrationDesc')}
                 value={locationSettings.allow_visitor_preregistration}
                 onChange={(v) => handleLocationSettingChange('allow_visitor_preregistration', v)}
                 icon="person-add"
               />
               <SettingNumber
-                label="QR Activos por Usuario"
-                description="Máximo permitido"
+                label={t('admin.settings.location.maxActiveQr')}
+                description={t('admin.settings.location.maxActiveQrDesc')}
                 value={locationSettings.max_active_qr_per_user}
                 onChange={(v) => handleLocationSettingChange('max_active_qr_per_user', v)}
                 icon="qr-code"
               />
               <SettingNumber
-                label="Validez de QR (horas)"
-                description="Duración por defecto"
+                label={t('admin.settings.location.qrValidity')}
+                description={t('admin.settings.location.qrValidityDesc')}
                 value={locationSettings.default_qr_validity_hours}
                 onChange={(v) => handleLocationSettingChange('default_qr_validity_hours', v)}
                 icon="time"
               />
               <SettingToggle
-                label="Requerir ID"
-                description="Obligar identificación"
+                label={t('admin.settings.location.requireId')}
+                description={t('admin.settings.location.requireIdDesc')}
                 value={locationSettings.require_visitor_id}
                 onChange={(v) => handleLocationSettingChange('require_visitor_id', v)}
                 icon="id-card"
@@ -837,18 +841,18 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="megaphone" size={20} color={COLORS.purple} />
-                <Text style={styles.sectionTitle}>Comunicación</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.location.communication')}</Text>
               </View>
               <SettingToggle
-                label="Anuncios"
-                description="Sistema de anuncios"
+                label={t('admin.settings.location.announcements')}
+                description={t('admin.settings.location.announcementsDesc')}
                 value={locationSettings.enable_announcements}
                 onChange={(v) => handleLocationSettingChange('enable_announcements', v)}
                 icon="megaphone"
               />
               <SettingToggle
-                label="Alertas de Emergencia"
-                description="Botón de pánico"
+                label={t('admin.settings.location.emergencyAlerts')}
+                description={t('admin.settings.location.emergencyAlertsDesc')}
                 value={locationSettings.enable_emergency_alerts}
                 onChange={(v) => handleLocationSettingChange('enable_emergency_alerts', v)}
                 icon="warning"
@@ -858,18 +862,18 @@ export default function AdminSettings() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="calendar" size={20} color={COLORS.success} />
-                <Text style={styles.sectionTitle}>Amenidades</Text>
+                <Text style={styles.sectionTitle}>{t('admin.settings.location.amenities')}</Text>
               </View>
               <SettingToggle
-                label="Reservaciones"
-                description="Áreas comunes"
+                label={t('admin.settings.location.reservations')}
+                description={t('admin.settings.location.reservationsDesc')}
                 value={locationSettings.enable_amenity_reservations}
                 onChange={(v) => handleLocationSettingChange('enable_amenity_reservations', v)}
                 icon="calendar"
               />
               <SettingNumber
-                label="Reservaciones/Semana"
-                description="Máximo por usuario"
+                label={t('admin.settings.location.maxReservations')}
+                description={t('admin.settings.location.maxReservationsDesc')}
                 value={locationSettings.max_reservations_per_week}
                 onChange={(v) => handleLocationSettingChange('max_reservations_per_week', v)}
                 icon="repeat"
@@ -886,7 +890,7 @@ export default function AdminSettings() {
               ) : (
                 <>
                   <Ionicons name="save" size={20} color={COLORS.background} />
-                  <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+                  <Text style={styles.saveButtonText}>{t('admin.settings.saveChanges')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -901,13 +905,13 @@ export default function AdminSettings() {
               <View style={styles.alertBanner}>
                 <Ionicons name="warning" size={28} color={COLORS.warning} />
                 <View style={styles.alertContent}>
-                  <Text style={styles.alertTitle}>{overdueUsers.length} usuarios con pagos vencidos</Text>
+                  <Text style={styles.alertTitle}>{t('admin.settings.users.overdueAlert', { count: overdueUsers.length })}</Text>
                   <Text style={styles.alertSubtitle}>
-                    Total: L {overdueUsers.reduce((sum, u) => sum + parseFloat(u.total_overdue || 0), 0).toLocaleString()}
+                    {t('admin.settings.users.total')}: L {overdueUsers.reduce((sum, u) => sum + parseFloat(u.total_overdue || 0), 0).toLocaleString()}
                   </Text>
                 </View>
                 <TouchableOpacity style={styles.alertButton} onPress={runAutoSuspension}>
-                  <Text style={styles.alertButtonText}>Suspender</Text>
+                  <Text style={styles.alertButtonText}>{t('admin.settings.suspend')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -939,21 +943,21 @@ export default function AdminSettings() {
                         styles.statusBadgeText,
                         { color: usr.is_active ? COLORS.success : COLORS.danger }
                       ]}>
-                        {usr.is_active ? 'Activo' : 'Suspendido'}
+                        {usr.is_active ? t('admin.settings.users.active') : t('admin.settings.users.suspended')}
                       </Text>
                     </View>
                     {usr.overdue_payments > 0 && (
                       <View style={[styles.statusBadge, { backgroundColor: COLORS.warning + '20' }]}>
                         <Ionicons name="alert-circle" size={12} color={COLORS.warning} />
                         <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
-                          {usr.overdue_payments} vencidos
+                          {usr.overdue_payments} {t('admin.settings.users.overdue')}
                         </Text>
                       </View>
                     )}
                   </View>
                   {!usr.is_active && usr.suspension_reason && (
                     <Text style={styles.suspensionReason}>
-                      Razón: {SUSPENSION_REASONS.find(r => r.value === usr.suspension_reason)?.label || usr.suspension_reason}
+                      {t('admin.settings.users.reason')}: {SUSPENSION_REASONS.find(r => r.value === usr.suspension_reason)?.label || usr.suspension_reason}
                     </Text>
                   )}
                 </View>
@@ -986,7 +990,7 @@ export default function AdminSettings() {
             {usersPaymentStatus.filter(u => u.role === 'user').length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>No hay usuarios</Text>
+                <Text style={styles.emptyTitle}>{t('admin.settings.users.noUsers')}</Text>
               </View>
             )}
           </View>
@@ -1000,7 +1004,7 @@ export default function AdminSettings() {
               onPress={() => setShowBlacklistModal(true)}
             >
               <Ionicons name="add-circle" size={20} color={COLORS.textPrimary} />
-              <Text style={styles.addButtonText}>Agregar a Lista Negra</Text>
+              <Text style={styles.addButtonText}>{t('admin.settings.blacklist.addToBlacklist')}</Text>
             </TouchableOpacity>
 
             {blacklist.map(item => (
@@ -1009,7 +1013,7 @@ export default function AdminSettings() {
                   <Ionicons name="ban" size={24} color={COLORS.danger} />
                 </View>
                 <View style={styles.blacklistInfo}>
-                  <Text style={styles.blacklistName}>{item.visitor_name || 'Sin nombre'}</Text>
+                  <Text style={styles.blacklistName}>{item.visitor_name || t('common.noName')}</Text>
                   {item.visitor_phone && (
                     <View style={styles.blacklistDetailRow}>
                       <Ionicons name="call" size={14} color={COLORS.textMuted} />
@@ -1039,8 +1043,8 @@ export default function AdminSettings() {
             {blacklist.length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="ban-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>Lista negra vacía</Text>
-                <Text style={styles.emptySubtitle}>No hay visitantes bloqueados</Text>
+                <Text style={styles.emptyTitle}>{t('admin.settings.blacklist.emptyTitle')}</Text>
+                <Text style={styles.emptySubtitle}>{t('admin.settings.blacklist.emptySubtitle')}</Text>
               </View>
             )}
           </View>
@@ -1059,11 +1063,11 @@ export default function AdminSettings() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSuspendModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Suspender Usuario</Text>
+            <Text style={styles.modalTitle}>{t('admin.settings.suspendModal.title')}</Text>
             <TouchableOpacity onPress={handleSuspendUser}>
-              <Text style={styles.modalDone}>Confirmar</Text>
+              <Text style={styles.modalDone}>{t('common.confirm')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1080,7 +1084,7 @@ export default function AdminSettings() {
               </View>
             )}
 
-            <Text style={styles.inputLabel}>Razón de Suspensión</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.suspendModal.reason')}</Text>
             {SUSPENSION_REASONS.map(reason => (
               <TouchableOpacity
                 key={reason.value}
@@ -1104,12 +1108,12 @@ export default function AdminSettings() {
               </TouchableOpacity>
             ))}
 
-            <Text style={styles.inputLabel}>Mensaje para el Usuario (opcional)</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.suspendModal.message')}</Text>
             <TextInput
               style={styles.textArea}
               value={suspendForm.message}
               onChangeText={(text) => setSuspendForm(prev => ({ ...prev, message: text }))}
-              placeholder="Mensaje que verá el usuario..."
+              placeholder={t('admin.settings.suspendModal.messagePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={3}
@@ -1128,60 +1132,60 @@ export default function AdminSettings() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowBlacklistModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Agregar a Lista Negra</Text>
+            <Text style={styles.modalTitle}>{t('admin.settings.blacklist.addToBlacklist')}</Text>
             <TouchableOpacity onPress={handleAddToBlacklist}>
-              <Text style={styles.modalDone}>Agregar</Text>
+              <Text style={styles.modalDone}>{t('common.add')}</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
-            <Text style={styles.inputLabel}>Nombre</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.blacklist.form.name')}</Text>
             <TextInput
               style={styles.input}
               value={blacklistForm.visitor_name}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_name: text }))}
-              placeholder="Nombre del visitante"
+              placeholder={t('admin.settings.blacklist.form.namePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
 
-            <Text style={styles.inputLabel}>Teléfono</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.blacklist.form.phone')}</Text>
             <TextInput
               style={styles.input}
               value={blacklistForm.visitor_phone}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_phone: text }))}
-              placeholder="Teléfono"
+              placeholder={t('admin.settings.blacklist.form.phone')}
               placeholderTextColor={COLORS.textMuted}
               keyboardType="phone-pad"
             />
 
-            <Text style={styles.inputLabel}>Número de Identificación</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.blacklist.form.idNumber')}</Text>
             <TextInput
               style={styles.input}
               value={blacklistForm.visitor_id_number}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, visitor_id_number: text }))}
-              placeholder="ID / DNI"
+              placeholder={t('admin.settings.blacklist.form.idPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
 
-            <Text style={styles.inputLabel}>Razón *</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.blacklist.form.reason')} *</Text>
             <TextInput
               style={styles.textArea}
               value={blacklistForm.reason}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, reason: text }))}
-              placeholder="Razón por la que se agrega..."
+              placeholder={t('admin.settings.blacklist.form.reasonPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={2}
             />
 
-            <Text style={styles.inputLabel}>Notas Adicionales</Text>
+            <Text style={styles.inputLabel}>{t('admin.settings.blacklist.form.notes')}</Text>
             <TextInput
               style={styles.textArea}
               value={blacklistForm.notes}
               onChangeText={(text) => setBlacklistForm(prev => ({ ...prev, notes: text }))}
-              placeholder="Notas adicionales..."
+              placeholder={t('admin.settings.blacklist.form.notesPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={2}
@@ -1200,9 +1204,9 @@ export default function AdminSettings() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
-              <Text style={styles.modalCancel}>Cerrar</Text>
+              <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Historial</Text>
+            <Text style={styles.modalTitle}>{t('admin.settings.historyModal.title')}</Text>
             <View style={{ width: 50 }} />
           </View>
 
@@ -1223,12 +1227,12 @@ export default function AdminSettings() {
                       styles.historyBadgeText,
                       { color: item.action === 'suspended' ? COLORS.danger : COLORS.success }
                     ]}>
-                      {item.action === 'suspended' ? 'Suspendido' : 'Reactivado'}
+                      {item.action === 'suspended' ? t('admin.settings.historyModal.suspended') : t('admin.settings.historyModal.reactivated')}
                     </Text>
                   </View>
                   {item.reason && (
                     <Text style={styles.historyReason}>
-                      Razón: {SUSPENSION_REASONS.find(r => r.value === item.reason)?.label || item.reason}
+                      {t('admin.settings.users.reason')}: {SUSPENSION_REASONS.find(r => r.value === item.reason)?.label || item.reason}
                     </Text>
                   )}
                   {item.message && <Text style={styles.historyMessage}>{item.message}</Text>}
@@ -1236,14 +1240,14 @@ export default function AdminSettings() {
                     {new Date(item.performed_at).toLocaleString()}
                   </Text>
                   {item.performed_by_user && (
-                    <Text style={styles.historyBy}>Por: {item.performed_by_user.name}</Text>
+                    <Text style={styles.historyBy}>{t('admin.settings.historyModal.by')}: {item.performed_by_user.name}</Text>
                   )}
                 </View>
               ))
             ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="document-text-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>Sin historial</Text>
+                <Text style={styles.emptyTitle}>{t('admin.settings.historyModal.noHistory')}</Text>
               </View>
             )}
           </ScrollView>

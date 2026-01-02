@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment } from '../../src/services/api';
 
@@ -44,32 +45,39 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const STATUS_CONFIG = {
-  reported: { label: 'Reportado', color: COLORS.warning, bg: COLORS.warning + '20', icon: 'alert-circle' },
-  in_progress: { label: 'En Proceso', color: COLORS.blue, bg: COLORS.blue + '20', icon: 'time' },
-  resolved: { label: 'Resuelto', color: COLORS.success, bg: COLORS.success + '20', icon: 'checkmark-circle' },
-  closed: { label: 'Cerrado', color: COLORS.textMuted, bg: COLORS.backgroundTertiary, icon: 'lock-closed' },
-};
+const getStatusConfig = (t) => ({
+  reported: { label: t('admin.incidents.statuses.reported'), color: COLORS.warning, bg: COLORS.warning + '20', icon: 'alert-circle' },
+  in_progress: { label: t('admin.incidents.statuses.inProgress'), color: COLORS.blue, bg: COLORS.blue + '20', icon: 'time' },
+  resolved: { label: t('admin.incidents.statuses.resolved'), color: COLORS.success, bg: COLORS.success + '20', icon: 'checkmark-circle' },
+  closed: { label: t('admin.incidents.statuses.closed'), color: COLORS.textMuted, bg: COLORS.backgroundTertiary, icon: 'lock-closed' },
+});
 
-const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: COLORS.success, bg: COLORS.success + '20' },
-  medium: { label: 'Media', color: COLORS.warning, bg: COLORS.warning + '20' },
-  high: { label: 'Alta', color: COLORS.danger, bg: COLORS.danger + '20' },
-  critical: { label: 'Crítica', color: '#DC2626', bg: '#DC262620' },
-};
+const getSeverityConfig = (t) => ({
+  low: { label: t('admin.incidents.severity.low'), color: COLORS.success, bg: COLORS.success + '20' },
+  medium: { label: t('admin.incidents.severity.medium'), color: COLORS.warning, bg: COLORS.warning + '20' },
+  high: { label: t('admin.incidents.severity.high'), color: COLORS.danger, bg: COLORS.danger + '20' },
+  critical: { label: t('admin.incidents.severity.critical'), color: '#DC2626', bg: '#DC262620' },
+});
 
-const TYPE_LABELS = {
-  security: 'Seguridad',
-  theft: 'Robo',
-  vandalism: 'Vandalismo',
-  noise_complaint: 'Ruido',
-  parking_violation: 'Estacionamiento',
-  maintenance: 'Mantenimiento',
-  other: 'Otro',
-};
+const getTypeLabels = (t) => ({
+  security: t('admin.incidents.types.security'),
+  theft: t('admin.incidents.types.theft'),
+  vandalism: t('admin.incidents.types.vandalism'),
+  noise_complaint: t('admin.incidents.types.noiseComplaint'),
+  parking_violation: t('admin.incidents.types.parkingViolation'),
+  maintenance: t('admin.incidents.types.maintenance'),
+  other: t('admin.incidents.types.other'),
+});
 
 export default function AdminIncidents() {
+  const { t } = useTranslation();
   const router = useRouter();
+  
+  // i18n configs
+  const STATUS_CONFIG = getStatusConfig(t);
+  const SEVERITY_CONFIG = getSeverityConfig(t);
+  const TYPE_LABELS = getTypeLabels(t);
+  
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -140,12 +148,12 @@ export default function AdminIncidents() {
       if (result.success) {
         setSelectedIncident({ ...selectedIncident, status: newStatus });
         fetchIncidents();
-        Alert.alert('Éxito', 'Estado actualizado');
+        Alert.alert(t('common.success'), t('admin.incidents.success.statusUpdated'));
       } else {
-        Alert.alert('Error', result.error || 'No se pudo actualizar');
+        Alert.alert(t('common.error'), result.error || t('admin.incidents.errors.updateFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar el estado');
+      Alert.alert(t('common.error'), t('admin.incidents.errors.updateStatusFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -165,10 +173,10 @@ export default function AdminIncidents() {
         });
         setCommentText('');
       } else {
-        Alert.alert('Error', 'No se pudo agregar el comentario');
+        Alert.alert(t('common.error'), t('admin.incidents.errors.commentFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo agregar el comentario');
+      Alert.alert(t('common.error'), t('admin.incidents.errors.commentFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -179,7 +187,7 @@ export default function AdminIncidents() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando incidentes...</Text>
+          <Text style={styles.loadingText}>{t('admin.incidents.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -208,7 +216,7 @@ export default function AdminIncidents() {
           styles.filterText,
           filterStatus === 'all' && styles.filterTextActive
         ]}>
-          Todos ({incidents.length})
+          {t('common.all')} ({incidents.length})
         </Text>
       </TouchableOpacity>
       {Object.entries(STATUS_CONFIG).map(([key, config]) => {
@@ -335,10 +343,10 @@ export default function AdminIncidents() {
                   </View>
                 </View>
 
-                <Text style={styles.sectionLabel}>Descripción</Text>
+                <Text style={styles.sectionLabel}>{t('admin.incidents.description')}</Text>
                 <Text style={styles.detailDescription}>{selectedIncident.description}</Text>
 
-                <Text style={styles.sectionLabel}>Reportado por</Text>
+                <Text style={styles.sectionLabel}>{t('admin.incidents.reportedBy')}</Text>
                 <View style={styles.reporterInfo}>
                   <View style={styles.reporterAvatar}>
                     <Ionicons name="person" size={20} color={COLORS.textSecondary} />
@@ -349,7 +357,7 @@ export default function AdminIncidents() {
                   </View>
                 </View>
 
-                <Text style={styles.sectionLabel}>Cambiar Estado</Text>
+                <Text style={styles.sectionLabel}>{t('admin.incidents.changeStatus')}</Text>
                 <View style={styles.statusButtons}>
                   {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                     <TouchableOpacity
@@ -372,7 +380,7 @@ export default function AdminIncidents() {
                   ))}
                 </View>
 
-                <Text style={styles.sectionLabel}>Comentarios ({selectedIncident.comments?.length || 0})</Text>
+                <Text style={styles.sectionLabel}>{t('admin.incidents.comments')} ({selectedIncident.comments?.length || 0})</Text>
                 {selectedIncident.comments?.length > 0 ? (
                   selectedIncident.comments.map((comment, index) => (
                     <View key={comment.id || index} style={styles.commentCard}>
@@ -391,7 +399,7 @@ export default function AdminIncidents() {
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noComments}>Sin comentarios</Text>
+                  <Text style={styles.noComments}>{t('admin.incidents.noComments')}</Text>
                 )}
                 
                 <View style={{ height: scale(100) }} />
@@ -401,7 +409,7 @@ export default function AdminIncidents() {
               <View style={styles.addCommentContainer}>
                 <TextInput
                   style={styles.commentInput}
-                  placeholder="Agregar comentario..."
+                  placeholder={t('admin.incidents.addCommentPlaceholder')}
                   placeholderTextColor={COLORS.textMuted}
                   value={commentText}
                   onChangeText={setCommentText}
@@ -434,7 +442,7 @@ export default function AdminIncidents() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Incidentes</Text>
+          <Text style={styles.headerTitle}>{t('admin.incidents.title')}</Text>
           <Text style={styles.headerSubtitle}>{incidents.length} reportes</Text>
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
@@ -486,7 +494,7 @@ export default function AdminIncidents() {
         ListEmptyComponent={() => (
           <View style={styles.emptyState}>
             <Ionicons name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>Sin incidentes</Text>
+            <Text style={styles.emptyTitle}>{t('admin.incidents.empty.noIncidents')}</Text>
             <Text style={styles.emptySubtitle}>No hay incidentes {filterStatus !== 'all' ? 'con este estado' : ''}</Text>
           </View>
         )}

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { updateUserProfile, changePassword } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -32,6 +33,7 @@ const COLORS = {
 };
 
 export default function EditProfileScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { 
     user, 
@@ -62,7 +64,7 @@ export default function EditProfileScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería');
+      Alert.alert(t('editProfile.permissionRequired'), t('editProfile.galleryAccess'));
       return;
     }
 
@@ -80,7 +82,7 @@ export default function EditProfileScreen() {
 
   const handleUpdateProfile = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      Alert.alert(t('common.error'), t('editProfile.errors.nameRequired'));
       return;
     }
 
@@ -89,22 +91,22 @@ export default function EditProfileScreen() {
     setLoading(false);
 
     if (res.success) {
-      Alert.alert('Éxito', 'Perfil actualizado');
+      Alert.alert(t('common.success'), t('editProfile.success.profileUpdated'));
       if (refreshUser) refreshUser();
       if (refreshProfile) refreshProfile();
       router.back();
     } else {
-      Alert.alert('Error', res.error || 'No se pudo actualizar');
+      Alert.alert(t('common.error'), res.error || t('editProfile.errors.updateFailed'));
     }
   };
 
   const handleChangePassword = async () => {
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('common.error'), t('editProfile.errors.passwordLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('common.error'), t('editProfile.errors.passwordMismatch'));
       return;
     }
 
@@ -113,11 +115,11 @@ export default function EditProfileScreen() {
     setLoading(false);
 
     if (res.success) {
-      Alert.alert('Éxito', 'Contraseña actualizada');
+      Alert.alert(t('common.success'), t('editProfile.success.passwordUpdated'));
       setNewPassword('');
       setConfirmPassword('');
     } else {
-      Alert.alert('Error', res.error || 'No se pudo cambiar la contraseña');
+      Alert.alert(t('common.error'), res.error || t('editProfile.errors.passwordChangeFailed'));
     }
   };
 
@@ -128,23 +130,23 @@ export default function EditProfileScreen() {
       if (value) {
         const result = await enableBiometric();
         if (result.success) {
-          Alert.alert('¡Activado!', `${getBiometricLabel()} ha sido activado correctamente.`);
+          Alert.alert(t('editProfile.biometric.activated'), t('editProfile.biometric.activatedMessage', { type: getBiometricLabel() }));
         } else {
-          Alert.alert('Error', result.error || 'No se pudo activar la biometría');
+          Alert.alert(t('common.error'), result.error || t('editProfile.errors.biometricActivateFailed'));
         }
       } else {
         Alert.alert(
-          'Desactivar ' + getBiometricLabel(),
-          '¿Estás seguro de desactivar el inicio rápido?',
+          t('editProfile.biometric.deactivateTitle', { type: getBiometricLabel() }),
+          t('editProfile.biometric.deactivateConfirm'),
           [
-            { text: 'Cancelar', style: 'cancel', onPress: () => setBiometricLoading(false) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => setBiometricLoading(false) },
             {
-              text: 'Desactivar',
+              text: t('editProfile.biometric.deactivate'),
               style: 'destructive',
               onPress: async () => {
                 const result = await disableBiometric();
                 if (result.success) {
-                  Alert.alert('Desactivado', `${getBiometricLabel()} ha sido desactivado.`);
+                  Alert.alert(t('editProfile.biometric.deactivated'), t('editProfile.biometric.deactivatedMessage', { type: getBiometricLabel() }));
                 }
                 setBiometricLoading(false);
               }
@@ -154,7 +156,7 @@ export default function EditProfileScreen() {
         return;
       }
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al cambiar la configuración');
+      Alert.alert(t('common.error'), t('editProfile.errors.biometricConfigFailed'));
     } finally {
       if (value) setBiometricLoading(false);
     }
@@ -175,7 +177,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar Perfil</Text>
+        <Text style={styles.headerTitle}>{t('editProfile.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -186,21 +188,21 @@ export default function EditProfileScreen() {
           onPress={() => setActiveTab('info')}
         >
           <Ionicons name="person-outline" size={18} color={activeTab === 'info' ? COLORS.background : COLORS.textSecondary} />
-          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Info</Text>
+          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>{t('editProfile.tabs.info')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'password' && styles.tabActive]}
           onPress={() => setActiveTab('password')}
         >
           <Ionicons name="lock-closed-outline" size={18} color={activeTab === 'password' ? COLORS.background : COLORS.textSecondary} />
-          <Text style={[styles.tabText, activeTab === 'password' && styles.tabTextActive]}>Contraseña</Text>
+          <Text style={[styles.tabText, activeTab === 'password' && styles.tabTextActive]}>{t('editProfile.tabs.password')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'security' && styles.tabActive]}
           onPress={() => setActiveTab('security')}
         >
           <Ionicons name="shield-checkmark-outline" size={18} color={activeTab === 'security' ? COLORS.background : COLORS.textSecondary} />
-          <Text style={[styles.tabText, activeTab === 'security' && styles.tabTextActive]}>Seguridad</Text>
+          <Text style={[styles.tabText, activeTab === 'security' && styles.tabTextActive]}>{t('editProfile.tabs.security')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -223,7 +225,7 @@ export default function EditProfileScreen() {
 
             {/* Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nombre completo</Text>
+              <Text style={styles.label}>{t('editProfile.form.fullName')}</Text>
               <TextInput
                 style={styles.input}
                 value={name}
@@ -235,7 +237,7 @@ export default function EditProfileScreen() {
 
             {/* Email */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Correo electrónico</Text>
+              <Text style={styles.label}>{t('editProfile.form.email')}</Text>
               <View style={[styles.input, styles.inputDisabled]}>
                 <Text style={styles.inputDisabledText}>{user?.email}</Text>
                 <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
@@ -244,7 +246,7 @@ export default function EditProfileScreen() {
 
             {/* Phone */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Teléfono</Text>
+              <Text style={styles.label}>{t('editProfile.form.phone')}</Text>
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -264,7 +266,7 @@ export default function EditProfileScreen() {
               {loading ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
-                <Text style={styles.saveBtnText}>Guardar Cambios</Text>
+                <Text style={styles.saveBtnText}>{t('editProfile.saveChanges')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -272,13 +274,13 @@ export default function EditProfileScreen() {
           <View style={styles.section}>
             {/* New Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nueva contraseña</Text>
+              <Text style={styles.label}>{t('editProfile.form.newPassword')}</Text>
               <View style={styles.passwordInput}>
                 <TextInput
                   style={styles.passwordField}
                   value={newPassword}
                   onChangeText={setNewPassword}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('editProfile.form.minChars')}
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
                 />
@@ -290,13 +292,13 @@ export default function EditProfileScreen() {
 
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirmar contraseña</Text>
+              <Text style={styles.label}>{t('editProfile.form.confirmPassword')}</Text>
               <View style={styles.passwordInput}>
                 <TextInput
                   style={styles.passwordField}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  placeholder="Repite la contraseña"
+                  placeholder={t('editProfile.form.repeatPassword')}
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
                 />
@@ -312,7 +314,7 @@ export default function EditProfileScreen() {
               {loading ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
-                <Text style={styles.saveBtnText}>Cambiar Contraseña</Text>
+                <Text style={styles.saveBtnText}>{t('editProfile.changePassword')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -326,13 +328,13 @@ export default function EditProfileScreen() {
               </View>
               
               <Text style={styles.securityTitle}>
-                {biometricAvailable ? biometricLabel : 'Biometría'}
+                {biometricAvailable ? biometricLabel : t('editProfile.security.biometric')}
               </Text>
               
               <Text style={styles.securityDescription}>
                 {biometricAvailable 
-                  ? `Usa ${biometricLabel} para iniciar sesión más rápido sin necesidad de escribir tu contraseña.`
-                  : 'La autenticación biométrica no está disponible en este dispositivo.'
+                  ? t('editProfile.security.biometricDescription', { type: biometricLabel })
+                  : t('editProfile.security.biometricUnavailable')
                 }
               </Text>
 
@@ -340,12 +342,12 @@ export default function EditProfileScreen() {
                 <View style={styles.toggleContainer}>
                   <View style={styles.toggleInfo}>
                     <Text style={styles.toggleLabel}>
-                      {biometricEnabled ? 'Activado' : 'Desactivado'}
+                      {biometricEnabled ? t('editProfile.security.enabled') : t('editProfile.security.disabled')}
                     </Text>
                     <Text style={styles.toggleStatus}>
                       {biometricEnabled 
-                        ? `Puedes usar ${biometricLabel} para iniciar sesión`
-                        : 'Toca el switch para activar'
+                        ? t('editProfile.security.canUse', { type: biometricLabel })
+                        : t('editProfile.security.tapToEnable')
                       }
                     </Text>
                   </View>
@@ -368,7 +370,7 @@ export default function EditProfileScreen() {
                 <View style={styles.unavailableBox}>
                   <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
                   <Text style={styles.unavailableText}>
-                    Configura Face ID o Touch ID en los ajustes de tu dispositivo para usar esta función.
+                    {t('editProfile.security.setupBiometric')}
                   </Text>
                 </View>
               )}
@@ -379,19 +381,19 @@ export default function EditProfileScreen() {
               <View style={styles.securityInfoRow}>
                 <Ionicons name="shield-checkmark" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
-                  Tus datos biométricos nunca salen de tu dispositivo
+                  {t('editProfile.security.info1')}
                 </Text>
               </View>
               <View style={styles.securityInfoRow}>
                 <Ionicons name="lock-closed" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
-                  Las credenciales se almacenan de forma segura
+                  {t('editProfile.security.info2')}
                 </Text>
               </View>
               <View style={styles.securityInfoRow}>
                 <Ionicons name="key" size={20} color={COLORS.green} />
                 <Text style={styles.securityInfoText}>
-                  Siempre puedes usar tu contraseña como alternativa
+                  {t('editProfile.security.info3')}
                 </Text>
               </View>
             </View>

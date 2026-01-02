@@ -1,9 +1,9 @@
 // app/_layout.js
-// ISSY Resident App - Root Layout with Push Notifications
-
+// ISSY Resident App - Root Layout with Push Notifications & i18n
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../src/context/AuthContext';
+import { LanguageProvider } from '../src/context/LanguageContext';
 import { StatusBar } from 'expo-status-bar';
 import { useNotifications } from '../src/hooks/useNotifications';
 
@@ -32,15 +32,17 @@ function NotificationInitializer() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="light" />
-      <NotificationInitializer />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="admin" />
-        <Stack.Screen name="join" />
-      </Stack>
+      <LanguageProvider>
+        <StatusBar style="light" />
+        <NotificationInitializer />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="admin" />
+          <Stack.Screen name="join" />
+        </Stack>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

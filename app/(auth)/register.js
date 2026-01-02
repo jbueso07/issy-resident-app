@@ -1,5 +1,6 @@
 // app/(auth)/register.js
-// ISSY Resident App - Register Screen - ProHome Dark Theme
+// ISSY Resident App - Register Screen - ProHome Dark Theme + i18n
+
 import { useState } from 'react';
 import {
   View,
@@ -19,6 +20,7 @@ import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -39,6 +41,7 @@ const COLORS = {
 };
 
 export default function Register() {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -62,31 +65,31 @@ export default function Register() {
 
   const validateForm = () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu nombre');
+      Alert.alert(t('common.error'), t('auth.errors.nameRequired'));
       return false;
     }
     if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
+      Alert.alert(t('common.error'), t('auth.errors.emailRequired'));
       return false;
     }
     if (!email.includes('@')) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
+      Alert.alert(t('common.error'), t('auth.errors.invalidEmail'));
       return false;
     }
     if (!password) {
-      Alert.alert('Error', 'Por favor ingresa una contraseña');
+      Alert.alert(t('common.error'), t('auth.errors.passwordRequired'));
       return false;
     }
     if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('common.error'), t('auth.errors.passwordMinLength'));
       return false;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('common.error'), t('auth.errors.passwordsMismatch'));
       return false;
     }
     if (!acceptedTerms) {
-      Alert.alert('Error', 'Debes aceptar los Términos de Servicio y Política de Privacidad');
+      Alert.alert(t('common.error'), t('auth.errors.acceptTerms'));
       return false;
     }
     return true;
@@ -102,7 +105,7 @@ export default function Register() {
       if (invitationCode.trim()) {
         const invResult = await verifyInvitation(invitationCode.trim().toUpperCase());
         if (!invResult.success) {
-          Alert.alert('Error', invResult.error || 'Código de invitación inválido');
+          Alert.alert(t('common.error'), invResult.error || t('auth.errors.invalidInvitationCode'));
           setLoading(false);
           return;
         }
@@ -121,19 +124,19 @@ export default function Register() {
         const user = result.data?.user;
         
         if (user?.location_id || invitationData) {
-          Alert.alert('¡Bienvenido!', 'Tu cuenta ha sido creada exitosamente', [
+          Alert.alert(t('auth.register.welcome'), t('auth.register.accountCreated'), [
             { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
           ]);
         } else {
-          Alert.alert('¡Cuenta creada!', 'Ahora únete a tu comunidad', [
+          Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.joinYourCommunity'), [
             { text: 'OK', onPress: () => router.replace('/join-community') }
           ]);
         }
       } else {
-        Alert.alert('Error', result.error || 'No se pudo crear la cuenta');
+        Alert.alert(t('common.error'), result.error || t('auth.errors.registerFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error. Intenta de nuevo.');
+      Alert.alert(t('common.error'), t('auth.errors.genericError'));
     } finally {
       setLoading(false);
     }
@@ -159,18 +162,18 @@ export default function Register() {
               <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
             <View style={styles.headerText}>
-              <Text style={styles.title}>Crear Cuenta</Text>
-              <Text style={styles.subtitle}>Únete a ISSY</Text>
+              <Text style={styles.title}>{t('auth.register.createAccount')}</Text>
+              <Text style={styles.subtitle}>{t('auth.register.joinIssy')}</Text>
             </View>
           </View>
 
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Nombre completo *</Text>
+              <Text style={styles.inputLabel}>{t('auth.register.fullName')} *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Juan Pérez"
+                placeholder={t('auth.register.fullNamePlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={name}
                 onChangeText={setName}
@@ -180,10 +183,10 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email *</Text>
+              <Text style={styles.inputLabel}>{t('auth.email')} *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="tu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -195,7 +198,7 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Teléfono (opcional)</Text>
+              <Text style={styles.inputLabel}>{t('auth.register.phoneOptional')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder="+504 9999-9999"
@@ -208,11 +211,11 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Contraseña *</Text>
+              <Text style={styles.inputLabel}>{t('auth.password')} *</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('auth.register.minChars')}
                   placeholderTextColor={COLORS.textMuted}
                   value={password}
                   onChangeText={setPassword}
@@ -233,11 +236,11 @@ export default function Register() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirmar contraseña *</Text>
+              <Text style={styles.inputLabel}>{t('auth.register.confirmPassword')} *</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Repite tu contraseña"
+                  placeholder={t('auth.register.repeatPassword')}
                   placeholderTextColor={COLORS.textMuted}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -259,10 +262,10 @@ export default function Register() {
 
             {/* Invitation Code */}
             <View style={styles.invitationContainer}>
-              <Text style={styles.invitationLabel}>¿Tienes un código de invitación?</Text>
+              <Text style={styles.invitationLabel}>{t('auth.register.haveInvitationCode')}</Text>
               <TextInput
                 style={styles.invitationInput}
-                placeholder="Ej: ABC123"
+                placeholder={t('auth.register.invitationCodePlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={invitationCode}
                 onChangeText={(text) => setInvitationCode(text.toUpperCase())}
@@ -271,7 +274,7 @@ export default function Register() {
                 editable={!loading}
               />
               <Text style={styles.invitationHint}>
-                Si tu administrador te dio un código, ingrésalo aquí
+                {t('auth.register.invitationCodeHint')}
               </Text>
             </View>
 
@@ -287,13 +290,13 @@ export default function Register() {
                 )}
               </View>
               <Text style={styles.termsText}>
-                Acepto los{' '}
+                {t('auth.register.acceptTermsPrefix')}{' '}
                 <Text style={styles.termsLink} onPress={openTerms}>
-                  Términos de Servicio
+                  {t('auth.register.termsOfService')}
                 </Text>
-                {' '}y la{' '}
+                {' '}{t('auth.register.and')}{' '}
                 <Text style={styles.termsLink} onPress={openPrivacy}>
-                  Política de Privacidad
+                  {t('auth.register.privacyPolicy')}
                 </Text>
               </Text>
             </TouchableOpacity>
@@ -307,17 +310,17 @@ export default function Register() {
               {loading ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
-                <Text style={styles.buttonText}>Crear Cuenta</Text>
+                <Text style={styles.buttonText}>{t('auth.register.createAccount')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
+            <Text style={styles.footerText}>{t('auth.register.alreadyHaveAccount')} </Text>
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity>
-                <Text style={styles.footerLink}>Inicia Sesión</Text>
+                <Text style={styles.footerLink}>{t('auth.login')}</Text>
               </TouchableOpacity>
             </Link>
           </View>

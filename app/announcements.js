@@ -1,5 +1,5 @@
 // app/announcements.js
-// ISSY Resident App - Pantalla de Anuncios - ProHome Dark Theme
+// ISSY Resident App - Pantalla de Anuncios - ProHome Dark Theme + i18n
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
+import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -46,6 +47,7 @@ const COLORS = {
 
 export default function AnnouncementsScreen() {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,6 +98,12 @@ export default function AnnouncementsScreen() {
     }
   };
 
+  // Get locale based on language
+  const getLocale = () => {
+    const locales = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
+    return locales[language] || 'es-HN';
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -105,13 +113,13 @@ export default function AnnouncementsScreen() {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffMinutes < 60) {
-      return `Hace ${diffMinutes} min`;
+      return t('announcements.timeAgo.minutes', { count: diffMinutes });
     } else if (diffHours < 24) {
-      return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+      return t('announcements.timeAgo.hours', { count: diffHours });
     } else if (diffDays < 7) {
-      return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+      return t('announcements.timeAgo.days', { count: diffDays });
     } else {
-      return date.toLocaleDateString('es-HN', { 
+      return date.toLocaleDateString(getLocale(), { 
         day: 'numeric', 
         month: 'long',
         year: 'numeric'
@@ -121,7 +129,7 @@ export default function AnnouncementsScreen() {
 
   const formatFullDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
+    return date.toLocaleDateString(getLocale(), {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -176,7 +184,7 @@ export default function AnnouncementsScreen() {
                 styles.statusBadgeText,
                 { color: item.is_read ? COLORS.teal : COLORS.lime }
               ]}>
-                {item.is_read ? 'VISTO' : 'NUEVO'}
+                {item.is_read ? t('announcements.seen') : t('announcements.new')}
               </Text>
             </View>
             
@@ -198,9 +206,9 @@ export default function AnnouncementsScreen() {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="megaphone-outline" size={64} color={COLORS.textMuted} />
       </View>
-      <Text style={styles.emptyTitle}>No hay anuncios</Text>
+      <Text style={styles.emptyTitle}>{t('announcements.empty.title')}</Text>
       <Text style={styles.emptySubtitle}>
-        Los anuncios de tu comunidad aparecerán aquí
+        {t('announcements.empty.subtitle')}
       </Text>
     </View>
   );
@@ -256,7 +264,7 @@ export default function AnnouncementsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando anuncios...</Text>
+          <Text style={styles.loadingText}>{t('announcements.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -274,14 +282,14 @@ export default function AnnouncementsScreen() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>Anuncios</Text>
+            <Text style={styles.headerTitle}>{t('announcements.title')}</Text>
             {unreadCount > 0 && (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.headerSubtitle}>Centro de anuncios</Text>
+          <Text style={styles.headerSubtitle}>{t('announcements.subtitle')}</Text>
         </View>
         <View style={{ width: scale(40) }} />
       </View>

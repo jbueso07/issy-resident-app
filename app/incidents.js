@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { getIncidents } from '../src/services/api';
 import IncidentFormModal from '../src/components/IncidentFormModal';
+import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -53,23 +54,29 @@ const COLORS = {
   gray: '#6B7280',
 };
 
-const STATUS_CONFIG = {
-  reported: { label: 'REPORTADO', bg: COLORS.cyan, color: '#FFFFFF' },
-  in_progress: { label: 'EN PROCESO', bg: COLORS.yellow, color: '#000000' },
-  resolved: { label: 'RESUELTO', bg: COLORS.green, color: '#FFFFFF' },
-  closed: { label: 'CERRADO', bg: COLORS.gray, color: '#FFFFFF' },
-};
-
-const SEVERITY_CONFIG = {
-  low: { label: 'Baja', color: COLORS.teal },
-  medium: { label: 'Media', color: COLORS.cyan },
-  high: { label: 'Alta', color: COLORS.yellow },
-  critical: { label: 'Crítica', color: COLORS.red },
-};
+// Status and severity configs defined dynamically in component
 
 export default function IncidentsScreen() {
   const router = useRouter();
   const { profile, token } = useAuth();
+  const { t, language } = useTranslation();
+
+  // Dynamic status config with translations
+  const STATUS_CONFIG = {
+    reported: { label: t('incidents.status.reported'), bg: COLORS.cyan, color: '#FFFFFF' },
+    in_progress: { label: t('incidents.status.inProgress'), bg: COLORS.yellow, color: '#000000' },
+    resolved: { label: t('incidents.status.resolved'), bg: COLORS.green, color: '#FFFFFF' },
+    closed: { label: t('incidents.status.closed'), bg: COLORS.gray, color: '#FFFFFF' },
+  };
+
+  // Dynamic severity config with translations
+  const SEVERITY_CONFIG = {
+    low: { label: t('incidents.severity.low'), color: COLORS.teal },
+    medium: { label: t('incidents.severity.medium'), color: COLORS.cyan },
+    high: { label: t('incidents.severity.high'), color: COLORS.yellow },
+    critical: { label: t('incidents.severity.critical'), color: COLORS.red },
+  };
+
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,11 +185,11 @@ export default function IncidentsScreen() {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="alert-circle-outline" size={48} color={COLORS.teal} />
       </View>
-      <Text style={styles.emptyTitle}>No hay incidentes</Text>
+      <Text style={styles.emptyTitle}>{t('incidents.empty.title')}</Text>
       <Text style={styles.emptySubtitle}>
         {filter === 'my_incidents' 
-          ? 'No has reportado ningún incidente aún'
-          : 'No hay incidentes reportados en tu comunidad'}
+          ? t('incidents.empty.myReports')
+          : t('incidents.empty.community')}
       </Text>
     </View>
   );
@@ -194,7 +201,7 @@ export default function IncidentsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Incidentes</Text>
+        <Text style={styles.headerTitle}>{t('incidents.title')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -211,7 +218,7 @@ export default function IncidentsScreen() {
         }
       >
         {/* Subtitle */}
-        <Text style={styles.subtitle}>Reporta un incidente en tu comunidad</Text>
+        <Text style={styles.subtitle}>{t('incidents.subtitle')}</Text>
 
         {/* Create Button */}
         <TouchableOpacity
@@ -223,8 +230,8 @@ export default function IncidentsScreen() {
             <Ionicons name="add" size={22} color={COLORS.background} />
           </View>
           <View style={styles.createButtonContent}>
-            <Text style={styles.createButtonText}>Generar Incidente</Text>
-            <Text style={styles.createButtonSubtext}>Reporta un problema o situación</Text>
+            <Text style={styles.createButtonText}>{t('incidents.createButton')}</Text>
+            <Text style={styles.createButtonSubtext}>{t('incidents.createButtonSubtext')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.background} />
         </TouchableOpacity>
@@ -236,7 +243,7 @@ export default function IncidentsScreen() {
             onPress={() => setFilter('all')}
           >
             <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-              Todos
+              {t('incidents.filters.all')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -244,7 +251,7 @@ export default function IncidentsScreen() {
             onPress={() => setFilter('my_incidents')}
           >
             <Text style={[styles.filterText, filter === 'my_incidents' && styles.filterTextActive]}>
-              Mis reportes
+              {t('incidents.filters.myReports')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -252,7 +259,7 @@ export default function IncidentsScreen() {
         {/* Section Header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {filter === 'my_incidents' ? 'Mis Incidentes' : 'Incidentes Recientes'}
+            {filter === 'my_incidents' ? t('incidents.myIncidents') : t('incidents.recentIncidents')}
           </Text>
           <Text style={styles.sectionCount}>{incidents.length}</Text>
         </View>
@@ -261,7 +268,7 @@ export default function IncidentsScreen() {
         {loading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color={COLORS.teal} />
-            <Text style={styles.loaderText}>Cargando incidentes...</Text>
+            <Text style={styles.loaderText}>{t('incidents.loading')}</Text>
           </View>
         ) : incidents.length === 0 ? (
           renderEmptyState()

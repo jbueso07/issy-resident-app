@@ -1,5 +1,5 @@
 // app/admin/common-areas.js
-// ISSY Resident App - Admin Common Areas Management (ProHome Dark Theme)
+// ISSY Resident App - Admin Common Areas Management (ProHome Dark Theme) + i18n
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -22,37 +22,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 const API_URL = 'https://api.joinissy.com/api';
-
-// ==========================================
-// CONSTANTS
-// ==========================================
-
-const CATEGORIES = [
-  { id: 'pool', icon: 'water', label: 'Piscina', color: '#3B82F6' },
-  { id: 'gym', icon: 'barbell', label: 'Gimnasio', color: '#EF4444' },
-  { id: 'court', icon: 'tennisball', label: 'Cancha', color: '#10B981' },
-  { id: 'bbq', icon: 'flame', label: 'BBQ', color: '#F59E0B' },
-  { id: 'salon', icon: 'sparkles', label: 'Salón', color: '#8B5CF6' },
-  { id: 'playground', icon: 'happy', label: 'Juegos', color: '#EC4899' },
-  { id: 'terrace', icon: 'sunny', label: 'Terraza', color: '#6366F1' },
-  { id: 'garden', icon: 'leaf', label: 'Jardín', color: '#22C55E' },
-  { id: 'parking', icon: 'car', label: 'Parking', color: '#64748B' },
-  { id: 'other', icon: 'location', label: 'Otro', color: '#78716C' },
-];
-
-const DAYS_OF_WEEK = [
-  { id: 0, label: 'Domingo', short: 'Dom' },
-  { id: 1, label: 'Lunes', short: 'Lun' },
-  { id: 2, label: 'Martes', short: 'Mar' },
-  { id: 3, label: 'Miércoles', short: 'Mié' },
-  { id: 4, label: 'Jueves', short: 'Jue' },
-  { id: 5, label: 'Viernes', short: 'Vie' },
-  { id: 6, label: 'Sábado', short: 'Sáb' },
-];
 
 // ProHome Dark Theme Colors
 const COLORS = {
@@ -73,13 +47,35 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
-
 export default function AdminCommonAreas() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, profile, token } = useAuth();
+
+  // Categories with translations
+  const CATEGORIES = [
+    { id: 'pool', icon: 'water', label: t('admin.commonAreas.categories.pool'), color: '#3B82F6' },
+    { id: 'gym', icon: 'barbell', label: t('admin.commonAreas.categories.gym'), color: '#EF4444' },
+    { id: 'court', icon: 'tennisball', label: t('admin.commonAreas.categories.court'), color: '#10B981' },
+    { id: 'bbq', icon: 'flame', label: t('admin.commonAreas.categories.bbq'), color: '#F59E0B' },
+    { id: 'salon', icon: 'sparkles', label: t('admin.commonAreas.categories.salon'), color: '#8B5CF6' },
+    { id: 'playground', icon: 'happy', label: t('admin.commonAreas.categories.playground'), color: '#EC4899' },
+    { id: 'terrace', icon: 'sunny', label: t('admin.commonAreas.categories.terrace'), color: '#6366F1' },
+    { id: 'garden', icon: 'leaf', label: t('admin.commonAreas.categories.garden'), color: '#22C55E' },
+    { id: 'parking', icon: 'car', label: t('admin.commonAreas.categories.parking'), color: '#64748B' },
+    { id: 'other', icon: 'location', label: t('admin.commonAreas.categories.other'), color: '#78716C' },
+  ];
+
+  // Days of week with translations
+  const DAYS_OF_WEEK = [
+    { id: 0, label: t('admin.commonAreas.days.sunday'), short: t('admin.commonAreas.daysShort.sun') },
+    { id: 1, label: t('admin.commonAreas.days.monday'), short: t('admin.commonAreas.daysShort.mon') },
+    { id: 2, label: t('admin.commonAreas.days.tuesday'), short: t('admin.commonAreas.daysShort.tue') },
+    { id: 3, label: t('admin.commonAreas.days.wednesday'), short: t('admin.commonAreas.daysShort.wed') },
+    { id: 4, label: t('admin.commonAreas.days.thursday'), short: t('admin.commonAreas.daysShort.thu') },
+    { id: 5, label: t('admin.commonAreas.days.friday'), short: t('admin.commonAreas.daysShort.fri') },
+    { id: 6, label: t('admin.commonAreas.days.saturday'), short: t('admin.commonAreas.daysShort.sat') },
+  ];
 
   // State
   const [areas, setAreas] = useState([]);
@@ -87,27 +83,16 @@ export default function AdminCommonAreas() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
-
-  // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingArea, setEditingArea] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
   const [schedules, setSchedules] = useState([]);
-
-  // Image upload
   const [uploadingImage, setUploadingImage] = useState(false);
-
-  // Form state
   const [form, setForm] = useState(getInitialForm());
 
-  // Permissions
   const isSuperAdmin = profile?.role === 'superadmin';
   const isAdmin = ['admin', 'superadmin'].includes(profile?.role);
-
-  // ==========================================
-  // INITIAL FORM
-  // ==========================================
 
   function getInitialForm() {
     return {
@@ -129,14 +114,8 @@ export default function AdminCommonAreas() {
     };
   }
 
-  // ==========================================
-  // DATA LOADING
-  // ==========================================
-
   useEffect(() => {
-    if (token) {
-      loadData();
-    }
+    if (token) loadData();
   }, [token]);
 
   const loadData = async () => {
@@ -158,13 +137,9 @@ export default function AdminCommonAreas() {
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/common-areas`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
-      console.log('Areas response:', data);
       if (data.success || response.ok) {
         setAreas(data.data || data || []);
       }
@@ -179,10 +154,7 @@ export default function AdminCommonAreas() {
     if (!token) return;
     try {
       const response = await fetch(`${API_URL}/locations`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (data.success || response.ok) {
@@ -197,10 +169,7 @@ export default function AdminCommonAreas() {
     if (!token) return;
     try {
       const response = await fetch(`${API_URL}/common-areas/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (data.success || response.ok) {
@@ -215,10 +184,7 @@ export default function AdminCommonAreas() {
     if (!token) return;
     try {
       const response = await fetch(`${API_URL}/common-areas/${areaId}/schedules`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (data.success || response.ok) {
@@ -230,81 +196,57 @@ export default function AdminCommonAreas() {
     }
   };
 
-  // ==========================================
-  // IMAGE HANDLING
-  // ==========================================
-
   const pickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir imágenes.');
+        Alert.alert(t('admin.commonAreas.permissionRequired'), t('admin.commonAreas.photoPermission'));
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [16, 9],
         quality: 0.8,
       });
-
-      console.log('ImagePicker result:', result);
-
       if (!result.canceled && result.assets[0]) {
         await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.imageSelectFailed'));
     }
   };
 
   const uploadImage = async (uri) => {
     try {
       setUploadingImage(true);
-
       const formData = new FormData();
-      formData.append('image', {
-        uri,
-        type: 'image/jpeg',
-        name: 'area-image.jpg',
-      });
-
+      formData.append('image', { uri, type: 'image/jpeg', name: 'area-image.jpg' });
       const response = await fetch(`${API_URL}/upload/common-area-image`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
         body: formData,
       });
-
       const data = await response.json();
-
       if (response.ok && data.success) {
         setForm((prev) => ({ ...prev, image_url: data.data.url }));
       } else {
-        Alert.alert('Error', data.error || 'No se pudo subir la imagen');
+        Alert.alert(t('common.error'), data.error || t('admin.commonAreas.errors.imageUploadFailed'));
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      Alert.alert('Error', 'No se pudo subir la imagen');
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.imageUploadFailed'));
     } finally {
       setUploadingImage(false);
     }
   };
 
-  // ==========================================
-  // CRUD OPERATIONS
-  // ==========================================
-
   const handleSave = async () => {
     if (!form.name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.nameRequired'));
       return;
     }
-
     try {
       const payload = {
         name: form.name,
@@ -323,33 +265,24 @@ export default function AdminCommonAreas() {
         image_url: form.image_url,
         is_active: true,
       };
-
-      const url = editingArea
-        ? `${API_URL}/common-areas/${editingArea.id}`
-        : `${API_URL}/common-areas`;
-
+      const url = editingArea ? `${API_URL}/common-areas/${editingArea.id}` : `${API_URL}/common-areas`;
       const response = await fetch(url, {
         method: editingArea ? 'PUT' : 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       const data = await response.json();
-
       if (data.success || response.ok) {
-        Alert.alert('Éxito', editingArea ? 'Área actualizada' : 'Área creada');
+        Alert.alert(t('common.success'), editingArea ? t('admin.commonAreas.success.updated') : t('admin.commonAreas.success.created'));
         setShowModal(false);
         resetForm();
         loadAreas();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo guardar');
+        Alert.alert(t('common.error'), data.error || t('admin.commonAreas.errors.saveFailed'));
       }
     } catch (error) {
       console.error('Error saving area:', error);
-      Alert.alert('Error', 'No se pudo guardar el área');
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.saveFailed'));
     }
   };
 
@@ -377,12 +310,12 @@ export default function AdminCommonAreas() {
 
   const handleDelete = (area) => {
     Alert.alert(
-      'Eliminar Área',
-      `¿Estás seguro de eliminar "${area.name}"?`,
+      t('admin.commonAreas.deleteTitle'),
+      t('admin.commonAreas.deleteMessage', { name: area.name }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -390,13 +323,12 @@ export default function AdminCommonAreas() {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
               });
-
               if (response.ok) {
-                Alert.alert('Éxito', 'Área eliminada');
+                Alert.alert(t('common.success'), t('admin.commonAreas.success.deleted'));
                 loadAreas();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar');
+              Alert.alert(t('common.error'), t('admin.commonAreas.errors.deleteFailed'));
             }
           },
         },
@@ -408,18 +340,12 @@ export default function AdminCommonAreas() {
     try {
       const response = await fetch(`${API_URL}/common-areas/${area.id}`, {
         method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !area.is_active }),
       });
-
-      if (response.ok) {
-        loadAreas();
-      }
+      if (response.ok) loadAreas();
     } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar');
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.updateFailed'));
     }
   };
 
@@ -434,27 +360,129 @@ export default function AdminCommonAreas() {
     setForm(getInitialForm());
   };
 
-  // ==========================================
-  // HELPERS
-  // ==========================================
-
   const getCategoryInfo = (categoryId) => {
     return CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
   };
 
-  const formatCurrency = (amount) => {
-    return `L ${parseFloat(amount || 0).toFixed(2)}`;
-  };
+  const formatCurrency = (amount) => `L ${parseFloat(amount || 0).toFixed(2)}`;
 
-  // ==========================================
-  // RENDER
-  // ==========================================
+  // Area Card Component
+  const AreaCard = ({ area, category, onEdit, onDelete, onToggle, onSchedule }) => (
+    <View style={styles.areaCard}>
+      {area.image_url && <Image source={{ uri: area.image_url }} style={styles.areaImage} />}
+      <View style={styles.areaContent}>
+        <View style={styles.areaHeader}>
+          <View style={[styles.categoryIcon, { backgroundColor: category.color + '20' }]}>
+            <Ionicons name={category.icon} size={20} color={category.color} />
+          </View>
+          <View style={styles.areaInfo}>
+            <Text style={styles.areaName}>{area.name}</Text>
+            <Text style={styles.areaCategory}>{category.label}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: area.is_active ? COLORS.success + '20' : COLORS.danger + '20' }]}>
+            <View style={[styles.statusDot, { backgroundColor: area.is_active ? COLORS.success : COLORS.danger }]} />
+            <Text style={[styles.statusText, { color: area.is_active ? COLORS.success : COLORS.danger }]}>
+              {area.is_active ? t('admin.commonAreas.active') : t('admin.commonAreas.inactive')}
+            </Text>
+          </View>
+        </View>
+        {area.description && <Text style={styles.areaDescription} numberOfLines={2}>{area.description}</Text>}
+        <View style={styles.areaMeta}>
+          <View style={styles.metaItem}>
+            <Ionicons name="people" size={14} color={COLORS.textMuted} />
+            <Text style={styles.metaText}>{area.capacity} {t('admin.commonAreas.people')}</Text>
+          </View>
+          {area.hourly_rate > 0 && (
+            <View style={styles.metaItem}>
+              <Ionicons name="cash" size={14} color={COLORS.lime} />
+              <Text style={[styles.metaText, { color: COLORS.lime }]}>{formatCurrency(area.hourly_rate)}/hr</Text>
+            </View>
+          )}
+          {area.requires_approval && (
+            <View style={styles.metaItem}>
+              <Ionicons name="hand-left" size={14} color={COLORS.warning} />
+              <Text style={[styles.metaText, { color: COLORS.warning }]}>{t('admin.commonAreas.approval')}</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.areaActions}>
+          <TouchableOpacity style={styles.areaAction} onPress={onEdit}>
+            <Ionicons name="pencil" size={16} color={COLORS.teal} />
+            <Text style={[styles.areaActionText, { color: COLORS.teal }]}>{t('common.edit')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.areaAction} onPress={onSchedule}>
+            <Ionicons name="calendar" size={16} color={COLORS.purple} />
+            <Text style={[styles.areaActionText, { color: COLORS.purple }]}>{t('admin.commonAreas.schedule')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.areaActionIcon, styles.areaActionDanger]} onPress={onDelete}>
+            <Ionicons name="trash" size={16} color={COLORS.danger} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Schedule Row Component
+  const ScheduleRow = ({ day, schedule, areaId, onSaved }) => {
+    const [isActive, setIsActive] = useState(schedule?.is_active || false);
+    const [openTime, setOpenTime] = useState(schedule?.open_time || '08:00');
+    const [closeTime, setCloseTime] = useState(schedule?.close_time || '20:00');
+    const [saving, setSaving] = useState(false);
+
+    const handleSaveSchedule = async () => {
+      setSaving(true);
+      try {
+        const response = await fetch(`${API_URL}/common-areas/${areaId}/schedules`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ day_of_week: day.id, is_active: isActive, open_time: openTime, close_time: closeTime }),
+        });
+        if (response.ok) onSaved();
+      } catch (error) {
+        console.error('Error saving schedule:', error);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    return (
+      <View style={[styles.scheduleRow, isActive && styles.scheduleRowActive]}>
+        <Switch
+          value={isActive}
+          onValueChange={setIsActive}
+          trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.success + '50' }}
+          thumbColor={isActive ? COLORS.success : COLORS.textMuted}
+        />
+        <Text style={[styles.scheduleDay, isActive && styles.scheduleDayActive]}>{day.label}</Text>
+        <TextInput
+          style={styles.scheduleTimeInput}
+          value={openTime}
+          onChangeText={setOpenTime}
+          editable={isActive}
+          placeholder="08:00"
+          placeholderTextColor={COLORS.textMuted}
+        />
+        <Text style={styles.scheduleTimeSeparator}>-</Text>
+        <TextInput
+          style={styles.scheduleTimeInput}
+          value={closeTime}
+          onChangeText={setCloseTime}
+          editable={isActive}
+          placeholder="20:00"
+          placeholderTextColor={COLORS.textMuted}
+        />
+        <TouchableOpacity style={styles.scheduleSaveButton} onPress={handleSaveSchedule} disabled={saving}>
+          {saving ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />}
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   if (!isAdmin) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
-          <Text style={styles.errorText}>No tienes permisos para ver esta página</Text>
+          <Text style={styles.errorText}>{t('admin.commonAreas.noPermission')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -468,29 +496,17 @@ export default function AdminCommonAreas() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Áreas Comunes</Text>
-          <Text style={styles.headerSubtitle}>Gestiona los espacios</Text>
+          <Text style={styles.headerTitle}>{t('admin.commonAreas.title')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.commonAreas.subtitle')}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          style={styles.addButton}
-        >
+        <TouchableOpacity onPress={() => { resetForm(); setShowModal(true); }} style={styles.addButton}>
           <Ionicons name="add" size={24} color={COLORS.background} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.content}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            tintColor={COLORS.lime}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.lime} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Stats */}
@@ -499,21 +515,17 @@ export default function AdminCommonAreas() {
             <View style={styles.statCard}>
               <Ionicons name="business" size={24} color={COLORS.purple} />
               <Text style={styles.statValue}>{stats.total_areas || 0}</Text>
-              <Text style={styles.statLabel}>Total</Text>
+              <Text style={styles.statLabel}>{t('admin.commonAreas.stats.total')}</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="calendar" size={24} color={COLORS.success} />
-              <Text style={[styles.statValue, { color: COLORS.success }]}>
-                {stats.total_reservations_this_month || 0}
-              </Text>
-              <Text style={styles.statLabel}>Reservas</Text>
+              <Text style={[styles.statValue, { color: COLORS.success }]}>{stats.total_reservations_this_month || 0}</Text>
+              <Text style={styles.statLabel}>{t('admin.commonAreas.stats.reservations')}</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="hourglass" size={24} color={COLORS.warning} />
-              <Text style={[styles.statValue, { color: COLORS.warning }]}>
-                {stats.pending_approvals || 0}
-              </Text>
-              <Text style={styles.statLabel}>Pendientes</Text>
+              <Text style={[styles.statValue, { color: COLORS.warning }]}>{stats.pending_approvals || 0}</Text>
+              <Text style={styles.statLabel}>{t('admin.commonAreas.stats.pending')}</Text>
             </View>
           </View>
         )}
@@ -522,22 +534,16 @@ export default function AdminCommonAreas() {
         {loading ? (
           <View style={styles.centerContent}>
             <ActivityIndicator size="large" color={COLORS.lime} />
-            <Text style={styles.loadingText}>Cargando áreas...</Text>
+            <Text style={styles.loadingText}>{t('admin.commonAreas.loading')}</Text>
           </View>
         ) : areas.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="water-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>No hay áreas comunes</Text>
-            <Text style={styles.emptySubtitle}>Crea tu primera área para que los residentes puedan reservar</Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-            >
+            <Text style={styles.emptyTitle}>{t('admin.commonAreas.empty.title')}</Text>
+            <Text style={styles.emptySubtitle}>{t('admin.commonAreas.empty.subtitle')}</Text>
+            <TouchableOpacity style={styles.emptyButton} onPress={() => { resetForm(); setShowModal(true); }}>
               <Ionicons name="add-circle" size={20} color={COLORS.background} />
-              <Text style={styles.emptyButtonText}>Crear área</Text>
+              <Text style={styles.emptyButtonText}>{t('admin.commonAreas.createArea')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -547,17 +553,14 @@ export default function AdminCommonAreas() {
                 key={area.id}
                 area={area}
                 category={getCategoryInfo(area.type)}
-                isSuperAdmin={isSuperAdmin}
                 onEdit={() => handleEdit(area)}
                 onDelete={() => handleDelete(area)}
                 onToggle={() => handleToggleActive(area)}
                 onSchedule={() => handleManageSchedule(area)}
-                formatCurrency={formatCurrency}
               />
             ))}
           </View>
         )}
-
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -566,37 +569,34 @@ export default function AdminCommonAreas() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{editingArea ? 'Editar' : 'Nueva'} Área</Text>
+            <Text style={styles.modalTitle}>{editingArea ? t('admin.commonAreas.editArea') : t('admin.commonAreas.newArea')}</Text>
             <TouchableOpacity onPress={handleSave}>
-              <Text style={styles.modalSave}>Guardar</Text>
+              <Text style={styles.modalSave}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Image Picker */}
-            <Text style={styles.sectionLabel}>Imagen</Text>
+            <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.image')}</Text>
             <TouchableOpacity onPress={pickImage} disabled={uploadingImage}>
               {uploadingImage ? (
                 <View style={styles.imagePlaceholder}>
                   <ActivityIndicator color={COLORS.lime} />
-                  <Text style={styles.imagePlaceholderText}>Subiendo...</Text>
+                  <Text style={styles.imagePlaceholderText}>{t('admin.commonAreas.uploading')}</Text>
                 </View>
               ) : form.image_url ? (
                 <View style={styles.imagePreviewContainer}>
                   <Image source={{ uri: form.image_url }} style={styles.imagePreview} />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => setForm((prev) => ({ ...prev, image_url: '' }))}
-                  >
+                  <TouchableOpacity style={styles.removeImageButton} onPress={() => setForm((prev) => ({ ...prev, image_url: '' }))}>
                     <Ionicons name="close-circle" size={28} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.imagePlaceholder}>
                   <Ionicons name="camera-outline" size={40} color={COLORS.textMuted} />
-                  <Text style={styles.imagePlaceholderText}>Agregar imagen</Text>
+                  <Text style={styles.imagePlaceholderText}>{t('admin.commonAreas.addImage')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -604,25 +604,15 @@ export default function AdminCommonAreas() {
             {/* Location (SuperAdmin only) */}
             {isSuperAdmin && (
               <>
-                <Text style={styles.sectionLabel}>Ubicación</Text>
+                <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.location')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerContainer}>
                   {locations.map((loc) => (
                     <TouchableOpacity
                       key={loc.id}
-                      style={[
-                        styles.locationChip,
-                        form.location_id === loc.id && styles.locationChipActive,
-                      ]}
+                      style={[styles.locationChip, form.location_id === loc.id && styles.locationChipActive]}
                       onPress={() => setForm((prev) => ({ ...prev, location_id: loc.id }))}
                     >
-                      <Text
-                        style={[
-                          styles.locationChipText,
-                          form.location_id === loc.id && styles.locationChipTextActive,
-                        ]}
-                      >
-                        {loc.name}
-                      </Text>
+                      <Text style={[styles.locationChipText, form.location_id === loc.id && styles.locationChipTextActive]}>{loc.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -630,49 +620,44 @@ export default function AdminCommonAreas() {
             )}
 
             {/* Name */}
-            <Text style={styles.sectionLabel}>Nombre *</Text>
+            <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.name')} *</Text>
             <TextInput
               style={styles.input}
               value={form.name}
               onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
-              placeholder="Ej: Piscina principal"
+              placeholder={t('admin.commonAreas.form.namePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
 
             {/* Description */}
-            <Text style={styles.sectionLabel}>Descripción</Text>
+            <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.description')}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={form.description}
               onChangeText={(text) => setForm((prev) => ({ ...prev, description: text }))}
-              placeholder="Describe el área..."
+              placeholder={t('admin.commonAreas.form.descriptionPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               multiline
               numberOfLines={3}
             />
 
             {/* Category */}
-            <Text style={styles.sectionLabel}>Categoría</Text>
+            <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.category')}</Text>
             <View style={styles.categoriesGrid}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat.id}
-                  style={[
-                    styles.categoryItem,
-                    form.category === cat.id && { borderColor: cat.color, backgroundColor: `${cat.color}30` },
-                  ]}
+                  style={[styles.categoryItem, form.category === cat.id && { borderColor: cat.color, backgroundColor: `${cat.color}30` }]}
                   onPress={() => setForm((prev) => ({ ...prev, category: cat.id }))}
                 >
                   <Ionicons name={cat.icon} size={20} color={form.category === cat.id ? cat.color : COLORS.textMuted} />
-                  <Text style={[styles.categoryLabel, form.category === cat.id && { color: cat.color }]}>
-                    {cat.label}
-                  </Text>
+                  <Text style={[styles.categoryLabel, form.category === cat.id && { color: cat.color }]}>{cat.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             {/* Capacity */}
-            <Text style={styles.sectionLabel}>Capacidad (personas)</Text>
+            <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.capacity')}</Text>
             <TextInput
               style={styles.input}
               value={form.capacity}
@@ -687,8 +672,8 @@ export default function AdminCommonAreas() {
               <View style={styles.switchInfo}>
                 <Ionicons name="cash" size={20} color={form.is_paid ? COLORS.lime : COLORS.textMuted} />
                 <View>
-                  <Text style={styles.switchLabel}>Es de pago</Text>
-                  <Text style={styles.switchHint}>Cobra por hora de uso</Text>
+                  <Text style={styles.switchLabel}>{t('admin.commonAreas.form.isPaid')}</Text>
+                  <Text style={styles.switchHint}>{t('admin.commonAreas.form.isPaidHint')}</Text>
                 </View>
               </View>
               <Switch
@@ -701,7 +686,7 @@ export default function AdminCommonAreas() {
 
             {form.is_paid && (
               <>
-                <Text style={styles.sectionLabel}>Precio por hora (L)</Text>
+                <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.pricePerHour')}</Text>
                 <TextInput
                   style={styles.input}
                   value={form.price_per_hour}
@@ -718,8 +703,8 @@ export default function AdminCommonAreas() {
               <View style={styles.switchInfo}>
                 <Ionicons name="hand-left" size={20} color={form.requires_approval ? COLORS.warning : COLORS.textMuted} />
                 <View>
-                  <Text style={styles.switchLabel}>Requiere aprobación</Text>
-                  <Text style={styles.switchHint}>Las reservas deben ser aprobadas</Text>
+                  <Text style={styles.switchLabel}>{t('admin.commonAreas.form.requiresApproval')}</Text>
+                  <Text style={styles.switchHint}>{t('admin.commonAreas.form.requiresApprovalHint')}</Text>
                 </View>
               </View>
               <Switch
@@ -732,12 +717,11 @@ export default function AdminCommonAreas() {
 
             {/* Schedule Section */}
             <View style={styles.scheduleSection}>
-              <Text style={styles.scheduleSectionTitle}>Horario de Disponibilidad</Text>
-
+              <Text style={styles.scheduleSectionTitle}>{t('admin.commonAreas.scheduleSection.title')}</Text>
               <View style={styles.switchRow}>
                 <View style={styles.switchInfo}>
                   <Ionicons name="moon" size={20} color={form.is_24_hours ? COLORS.teal : COLORS.textMuted} />
-                  <Text style={styles.switchLabel}>Disponible 24 horas</Text>
+                  <Text style={styles.switchLabel}>{t('admin.commonAreas.form.is24Hours')}</Text>
                 </View>
                 <Switch
                   value={form.is_24_hours}
@@ -746,11 +730,10 @@ export default function AdminCommonAreas() {
                   thumbColor={form.is_24_hours ? COLORS.teal : COLORS.textMuted}
                 />
               </View>
-
               {!form.is_24_hours && (
                 <View style={styles.timeRow}>
                   <View style={styles.timeField}>
-                    <Text style={styles.timeLabel}>Apertura</Text>
+                    <Text style={styles.timeLabel}>{t('admin.commonAreas.form.openTime')}</Text>
                     <TextInput
                       style={styles.timeInput}
                       value={form.available_from}
@@ -760,7 +743,7 @@ export default function AdminCommonAreas() {
                     />
                   </View>
                   <View style={styles.timeField}>
-                    <Text style={styles.timeLabel}>Cierre</Text>
+                    <Text style={styles.timeLabel}>{t('admin.commonAreas.form.closeTime')}</Text>
                     <TextInput
                       style={styles.timeInput}
                       value={form.available_until}
@@ -775,10 +758,10 @@ export default function AdminCommonAreas() {
 
             {/* Rules Section */}
             <View style={styles.rulesSection}>
-              <Text style={styles.rulesSectionTitle}>Reglas de Reserva</Text>
+              <Text style={styles.rulesSectionTitle}>{t('admin.commonAreas.rulesSection.title')}</Text>
               <View style={styles.rulesRow}>
                 <View style={styles.ruleField}>
-                  <Text style={styles.ruleLabel}>Mínimo (hrs)</Text>
+                  <Text style={styles.ruleLabel}>{t('admin.commonAreas.form.minHours')}</Text>
                   <TextInput
                     style={styles.ruleInput}
                     value={form.min_hours}
@@ -788,7 +771,7 @@ export default function AdminCommonAreas() {
                   />
                 </View>
                 <View style={styles.ruleField}>
-                  <Text style={styles.ruleLabel}>Máximo (hrs)</Text>
+                  <Text style={styles.ruleLabel}>{t('admin.commonAreas.form.maxHours')}</Text>
                   <TextInput
                     style={styles.ruleInput}
                     value={form.max_hours}
@@ -798,7 +781,7 @@ export default function AdminCommonAreas() {
                   />
                 </View>
                 <View style={styles.ruleField}>
-                  <Text style={styles.ruleLabel}>Anticipación (días)</Text>
+                  <Text style={styles.ruleLabel}>{t('admin.commonAreas.form.advanceDays')}</Text>
                   <TextInput
                     style={styles.ruleInput}
                     value={form.max_advance_days}
@@ -809,7 +792,6 @@ export default function AdminCommonAreas() {
                 </View>
               </View>
             </View>
-
             <View style={{ height: 40 }} />
           </ScrollView>
         </SafeAreaView>
@@ -820,28 +802,22 @@ export default function AdminCommonAreas() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
-              <Text style={styles.modalCancel}>Cerrar</Text>
+              <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Horarios</Text>
+            <Text style={styles.modalTitle}>{t('admin.commonAreas.schedules')}</Text>
             <View style={{ width: 60 }} />
           </View>
-
           <ScrollView style={styles.modalContent}>
-            <Text style={styles.scheduleNote}>
-              Configura los horarios específicos para cada día. Los días desactivados no permitirán reservas.
-            </Text>
-
+            <Text style={styles.scheduleNote}>{t('admin.commonAreas.scheduleNote')}</Text>
             {DAYS_OF_WEEK.map((day) => (
               <ScheduleRow
                 key={day.id}
                 day={day}
                 schedule={schedules.find((s) => s.day_of_week === day.id)}
                 areaId={selectedArea?.id}
-                token={token}
                 onSaved={() => loadSchedules(selectedArea?.id)}
               />
             ))}
-
             <View style={{ height: 40 }} />
           </ScrollView>
         </SafeAreaView>
@@ -850,742 +826,92 @@ export default function AdminCommonAreas() {
   );
 }
 
-// ==========================================
-// SUB COMPONENTS
-// ==========================================
-
-const AreaCard = ({ area, category, isSuperAdmin, onEdit, onDelete, onToggle, onSchedule, formatCurrency }) => (
-  <View style={[styles.areaCard, !area.is_active && styles.areaCardInactive]}>
-    {/* Image */}
-    {area.image_url ? (
-      <Image source={{ uri: area.image_url }} style={styles.areaImage} />
-    ) : (
-      <View style={[styles.areaImagePlaceholder, { backgroundColor: `${category.color}20` }]}>
-        <Ionicons name={category.icon} size={48} color={category.color} style={{ opacity: 0.6 }} />
-      </View>
-    )}
-
-    {/* Content */}
-    <View style={styles.areaContent}>
-      <View style={styles.areaHeader}>
-        <View style={styles.areaHeaderLeft}>
-          <View style={[styles.areaCategoryBadge, { backgroundColor: `${category.color}30` }]}>
-            <Ionicons name={category.icon} size={18} color={category.color} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.areaName}>{area.name}</Text>
-            <Text style={[styles.areaCategoryLabel, { color: category.color }]}>{category.label}</Text>
-          </View>
-        </View>
-        <View style={[styles.areaStatusBadge, area.is_active ? styles.statusActive : styles.statusInactive]}>
-          <Text style={[styles.areaStatusText, area.is_active ? styles.statusActiveText : styles.statusInactiveText]}>
-            {area.is_active ? 'Activo' : 'Inactivo'}
-          </Text>
-        </View>
-      </View>
-
-      {isSuperAdmin && area.location && (
-        <View style={styles.areaLocationRow}>
-          <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.areaLocation}>{area.location.name}</Text>
-        </View>
-      )}
-
-      {/* Info Badges */}
-      <View style={styles.areaBadges}>
-        <View style={styles.areaBadge}>
-          <Ionicons name="people" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.areaBadgeText}>{area.capacity || 10}</Text>
-        </View>
-        <View style={styles.areaBadge}>
-          <Ionicons name="time" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.areaBadgeText}>{area.min_duration_hours || 1}-{area.max_duration_hours || 4}h</Text>
-        </View>
-        {(area.hourly_rate || 0) > 0 && (
-          <View style={[styles.areaBadge, styles.areaBadgeHighlight]}>
-            <Ionicons name="cash" size={14} color={COLORS.warning} />
-            <Text style={[styles.areaBadgeText, { color: COLORS.warning }]}>{formatCurrency(area.hourly_rate)}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Schedule Info */}
-      <View style={styles.areaScheduleRow}>
-        <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
-        <Text style={styles.areaSchedule}>
-          {area.is_24_hours ? '24 horas' : `${area.available_from?.substring(0, 5)} - ${area.available_until?.substring(0, 5)}`}
-        </Text>
-      </View>
-
-      {/* Actions */}
-      <View style={styles.areaActions}>
-        <TouchableOpacity style={styles.areaAction} onPress={onEdit}>
-          <Ionicons name="pencil" size={16} color={COLORS.teal} />
-          <Text style={[styles.areaActionText, { color: COLORS.teal }]}>Editar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.areaAction} onPress={onSchedule}>
-          <Ionicons name="calendar" size={16} color={COLORS.purple} />
-          <Text style={[styles.areaActionText, { color: COLORS.purple }]}>Horarios</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.areaActionIcon} onPress={onToggle}>
-          <Ionicons name={area.is_active ? 'pause' : 'play'} size={18} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.areaActionIcon, styles.areaActionDanger]} onPress={onDelete}>
-          <Ionicons name="trash" size={18} color={COLORS.danger} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-);
-
-const ScheduleRow = ({ day, schedule, areaId, token, onSaved }) => {
-  const [isEnabled, setIsEnabled] = useState(!!schedule);
-  const [startTime, setStartTime] = useState(schedule?.start_time?.substring(0, 5) || '08:00');
-  const [endTime, setEndTime] = useState(schedule?.end_time?.substring(0, 5) || '20:00');
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!areaId) return;
-
-    try {
-      setSaving(true);
-
-      if (!isEnabled) {
-        if (schedule?.id) {
-          await fetch(`${API_URL}/common-areas/${areaId}/schedules/${schedule.id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-      } else {
-        const payload = {
-          day_of_week: day.id,
-          start_time: startTime,
-          end_time: endTime,
-          block_duration_minutes: 60,
-        };
-
-        const url = schedule?.id
-          ? `${API_URL}/common-areas/${areaId}/schedules/${schedule.id}`
-          : `${API_URL}/common-areas/${areaId}/schedules`;
-
-        await fetch(url, {
-          method: schedule?.id ? 'PUT' : 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      onSaved?.();
-    } catch (error) {
-      console.error('Error saving schedule:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <View style={[styles.scheduleRow, isEnabled && styles.scheduleRowActive]}>
-      <Switch
-        value={isEnabled}
-        onValueChange={(value) => setIsEnabled(value)}
-        trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.success + '50' }}
-        thumbColor={isEnabled ? COLORS.success : COLORS.textMuted}
-      />
-      <Text style={[styles.scheduleDay, isEnabled && styles.scheduleDayActive]}>{day.label}</Text>
-
-      {isEnabled && (
-        <>
-          <TextInput
-            style={styles.scheduleTimeInput}
-            value={startTime}
-            onChangeText={setStartTime}
-            placeholder="08:00"
-            placeholderTextColor={COLORS.textMuted}
-          />
-          <Text style={styles.scheduleTimeSeparator}>-</Text>
-          <TextInput
-            style={styles.scheduleTimeInput}
-            value={endTime}
-            onChangeText={setEndTime}
-            placeholder="20:00"
-            placeholderTextColor={COLORS.textMuted}
-          />
-          <TouchableOpacity style={styles.scheduleSaveButton} onPress={handleSave} disabled={saving}>
-            {saving ? (
-              <ActivityIndicator size="small" color={COLORS.textPrimary} />
-            ) : (
-              <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />
-            )}
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
-  );
-};
-
-// ==========================================
-// STYLES
-// ==========================================
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-  },
-  backButton: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleContainer: {
-    flex: 1,
-    marginLeft: scale(12),
-  },
-  headerTitle: {
-    fontSize: scale(18),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  headerSubtitle: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-  addButton: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
-    backgroundColor: COLORS.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  centerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: scale(40),
-  },
-  loadingText: {
-    marginTop: scale(12),
-    color: COLORS.textSecondary,
-    fontSize: scale(14),
-  },
-  errorText: {
-    color: COLORS.danger,
-    fontSize: scale(16),
-  },
-
-  // Stats
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-    gap: scale(10),
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(14),
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  statValue: {
-    fontSize: scale(22),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginTop: scale(6),
-  },
-  statLabel: {
-    fontSize: scale(11),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    padding: scale(40),
-    marginTop: scale(40),
-  },
-  emptyTitle: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: scale(16),
-  },
-  emptySubtitle: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: scale(8),
-    marginBottom: scale(24),
-  },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(8),
-    backgroundColor: COLORS.lime,
-    paddingHorizontal: scale(24),
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-  },
-  emptyButtonText: {
-    color: COLORS.background,
-    fontWeight: '600',
-    fontSize: scale(14),
-  },
-
-  // Areas Grid
-  areasGrid: {
-    padding: scale(16),
-  },
-  areaCard: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(16),
-    overflow: 'hidden',
-    marginBottom: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  areaCardInactive: {
-    opacity: 0.6,
-  },
-  areaImage: {
-    width: '100%',
-    height: scale(160),
-  },
-  areaImagePlaceholder: {
-    width: '100%',
-    height: scale(140),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  areaContent: {
-    padding: scale(16),
-  },
-  areaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: scale(10),
-  },
-  areaHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(12),
-    flex: 1,
-  },
-  areaCategoryBadge: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(10),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  areaName: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  areaCategoryLabel: {
-    fontSize: scale(12),
-    fontWeight: '500',
-    marginTop: scale(2),
-  },
-  areaStatusBadge: {
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
-    borderRadius: scale(12),
-  },
-  statusActive: {
-    backgroundColor: COLORS.success + '30',
-  },
-  statusInactive: {
-    backgroundColor: COLORS.danger + '30',
-  },
-  areaStatusText: {
-    fontSize: scale(11),
-    fontWeight: '600',
-  },
-  statusActiveText: {
-    color: COLORS.success,
-  },
-  statusInactiveText: {
-    color: COLORS.danger,
-  },
-  areaLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(4),
-    marginBottom: scale(8),
-  },
-  areaLocation: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-  },
-  areaBadges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: scale(8),
-    marginBottom: scale(10),
-  },
-  areaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(4),
-    backgroundColor: COLORS.backgroundTertiary,
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(5),
-    borderRadius: scale(8),
-  },
-  areaBadgeHighlight: {
-    backgroundColor: COLORS.warning + '20',
-  },
-  areaBadgeText: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-  },
-  areaScheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(6),
-    marginBottom: scale(12),
-  },
-  areaSchedule: {
-    fontSize: scale(12),
-    color: COLORS.textMuted,
-  },
-  areaActions: {
-    flexDirection: 'row',
-    gap: scale(8),
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: scale(12),
-  },
-  areaAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: scale(6),
-    paddingVertical: scale(10),
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(10),
-  },
-  areaActionIcon: {
-    width: scale(42),
-    paddingVertical: scale(10),
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(10),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  areaActionDanger: {
-    backgroundColor: COLORS.danger + '20',
-  },
-  areaActionText: {
-    fontSize: scale(12),
-    fontWeight: '500',
-  },
-
-  // Modal
-  modalContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  modalTitle: {
-    fontSize: scale(17),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  modalCancel: {
-    fontSize: scale(15),
-    color: COLORS.textSecondary,
-  },
-  modalSave: {
-    fontSize: scale(15),
-    color: COLORS.lime,
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-    padding: scale(16),
-  },
-  sectionLabel: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(8),
-    marginTop: scale(16),
-  },
-  input: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(10),
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(12),
-    fontSize: scale(15),
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  textArea: {
-    minHeight: scale(80),
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    marginBottom: scale(8),
-  },
-  locationChip: {
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(10),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(20),
-    marginRight: scale(8),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  locationChipActive: {
-    borderColor: COLORS.lime,
-    backgroundColor: COLORS.lime + '20',
-  },
-  locationChipText: {
-    fontSize: scale(14),
-    color: COLORS.textSecondary,
-  },
-  locationChipTextActive: {
-    color: COLORS.lime,
-    fontWeight: '600',
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: scale(8),
-  },
-  categoryItem: {
-    width: (SCREEN_WIDTH - scale(64)) / 5,
-    paddingVertical: scale(12),
-    alignItems: 'center',
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(10),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  categoryLabel: {
-    fontSize: scale(10),
-    color: COLORS.textSecondary,
-    marginTop: scale(4),
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: scale(14),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  switchInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(12),
-  },
-  switchLabel: {
-    fontSize: scale(15),
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  switchHint: {
-    fontSize: scale(12),
-    color: COLORS.textMuted,
-    marginTop: scale(2),
-  },
-  scheduleSection: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginTop: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  scheduleSectionTitle: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.teal,
-    marginBottom: scale(12),
-  },
-  timeRow: {
-    flexDirection: 'row',
-    gap: scale(12),
-    marginTop: scale(12),
-  },
-  timeField: {
-    flex: 1,
-  },
-  timeLabel: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    marginBottom: scale(4),
-  },
-  timeInput: {
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(8),
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(10),
-    fontSize: scale(15),
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  rulesSection: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginTop: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  rulesSectionTitle: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(12),
-  },
-  rulesRow: {
-    flexDirection: 'row',
-    gap: scale(12),
-  },
-  ruleField: {
-    flex: 1,
-  },
-  ruleLabel: {
-    fontSize: scale(11),
-    color: COLORS.textSecondary,
-    marginBottom: scale(4),
-  },
-  ruleInput: {
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(8),
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(10),
-    fontSize: scale(15),
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-
-  // Image picker
-  imagePreviewContainer: {
-    position: 'relative',
-  },
-  imagePreview: {
-    width: '100%',
-    height: scale(180),
-    borderRadius: scale(12),
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: scale(8),
-    right: scale(8),
-    backgroundColor: COLORS.background,
-    borderRadius: scale(14),
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: scale(140),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imagePlaceholderText: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    fontWeight: '500',
-    marginTop: scale(8),
-  },
-
-  // Schedule Modal
-  scheduleNote: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    marginBottom: scale(16),
-    lineHeight: scale(18),
-  },
-  scheduleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: scale(12),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(10),
-    marginBottom: scale(8),
-    gap: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  scheduleRowActive: {
-    backgroundColor: COLORS.success + '15',
-    borderColor: COLORS.success + '50',
-  },
-  scheduleDay: {
-    flex: 1,
-    fontSize: scale(14),
-    fontWeight: '500',
-    color: COLORS.textSecondary,
-  },
-  scheduleDayActive: {
-    color: COLORS.success,
-  },
-  scheduleTimeInput: {
-    width: scale(70),
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(6),
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(8),
-    fontSize: scale(14),
-    textAlign: 'center',
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  scheduleTimeSeparator: {
-    color: COLORS.textSecondary,
-  },
-  scheduleSaveButton: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(6),
-    backgroundColor: COLORS.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  centerContent: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: scale(60) },
+  errorText: { color: COLORS.danger, fontSize: scale(16) },
+  loadingText: { color: COLORS.textSecondary, marginTop: scale(12), fontSize: scale(14) },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: scale(16), paddingVertical: scale(12) },
+  backButton: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: COLORS.backgroundSecondary, justifyContent: 'center', alignItems: 'center' },
+  headerTitleContainer: { flex: 1, marginLeft: scale(12) },
+  headerTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
+  headerSubtitle: { fontSize: scale(12), color: COLORS.textSecondary, marginTop: scale(2) },
+  addButton: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: COLORS.lime, justifyContent: 'center', alignItems: 'center' },
+  content: { flex: 1, paddingHorizontal: scale(16) },
+  statsContainer: { flexDirection: 'row', gap: scale(10), marginBottom: scale(16) },
+  statCard: { flex: 1, backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(14), alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
+  statValue: { fontSize: scale(22), fontWeight: '700', color: COLORS.textPrimary, marginTop: scale(8) },
+  statLabel: { fontSize: scale(11), color: COLORS.textSecondary, marginTop: scale(4) },
+  emptyState: { alignItems: 'center', paddingVertical: scale(60) },
+  emptyTitle: { fontSize: scale(18), fontWeight: '600', color: COLORS.textPrimary, marginTop: scale(16) },
+  emptySubtitle: { fontSize: scale(14), color: COLORS.textSecondary, marginTop: scale(8), textAlign: 'center', paddingHorizontal: scale(20) },
+  emptyButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.lime, paddingHorizontal: scale(20), paddingVertical: scale(12), borderRadius: scale(10), marginTop: scale(24), gap: scale(8) },
+  emptyButtonText: { color: COLORS.background, fontSize: scale(14), fontWeight: '600' },
+  areasGrid: { gap: scale(12) },
+  areaCard: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(14), overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+  areaImage: { width: '100%', height: scale(140) },
+  areaContent: { padding: scale(14) },
+  areaHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(10) },
+  categoryIcon: { width: scale(40), height: scale(40), borderRadius: scale(10), justifyContent: 'center', alignItems: 'center' },
+  areaInfo: { flex: 1, marginLeft: scale(10) },
+  areaName: { fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary },
+  areaCategory: { fontSize: scale(12), color: COLORS.textSecondary, marginTop: scale(2) },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: scale(8), paddingVertical: scale(4), borderRadius: scale(8), gap: scale(4) },
+  statusDot: { width: scale(6), height: scale(6), borderRadius: scale(3) },
+  statusText: { fontSize: scale(10), fontWeight: '600' },
+  areaDescription: { fontSize: scale(13), color: COLORS.textSecondary, lineHeight: scale(18), marginBottom: scale(10) },
+  areaMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(12), marginBottom: scale(12) },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: scale(4) },
+  metaText: { fontSize: scale(12), color: COLORS.textMuted },
+  areaActions: { flexDirection: 'row', gap: scale(8), borderTopWidth: 1, borderTopColor: COLORS.border, paddingTop: scale(12) },
+  areaAction: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(6), paddingVertical: scale(10), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(10) },
+  areaActionIcon: { width: scale(42), paddingVertical: scale(10), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(10), alignItems: 'center', justifyContent: 'center' },
+  areaActionDanger: { backgroundColor: COLORS.danger + '20' },
+  areaActionText: { fontSize: scale(12), fontWeight: '500' },
+  modalContainer: { flex: 1, backgroundColor: COLORS.background },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: scale(16), paddingVertical: scale(12), borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  modalTitle: { fontSize: scale(17), fontWeight: '600', color: COLORS.textPrimary },
+  modalCancel: { fontSize: scale(15), color: COLORS.textSecondary },
+  modalSave: { fontSize: scale(15), color: COLORS.lime, fontWeight: '600' },
+  modalContent: { flex: 1, padding: scale(16) },
+  sectionLabel: { fontSize: scale(14), fontWeight: '600', color: COLORS.textPrimary, marginBottom: scale(8), marginTop: scale(16) },
+  input: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), paddingHorizontal: scale(14), paddingVertical: scale(12), fontSize: scale(15), color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  textArea: { minHeight: scale(80), textAlignVertical: 'top' },
+  pickerContainer: { marginBottom: scale(8) },
+  locationChip: { paddingHorizontal: scale(16), paddingVertical: scale(10), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(20), marginRight: scale(8), borderWidth: 1, borderColor: COLORS.border },
+  locationChipActive: { borderColor: COLORS.lime, backgroundColor: COLORS.lime + '20' },
+  locationChipText: { fontSize: scale(14), color: COLORS.textSecondary },
+  locationChipTextActive: { color: COLORS.lime, fontWeight: '600' },
+  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(8) },
+  categoryItem: { width: (SCREEN_WIDTH - scale(64)) / 5, paddingVertical: scale(12), alignItems: 'center', backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), borderWidth: 1, borderColor: COLORS.border },
+  categoryLabel: { fontSize: scale(10), color: COLORS.textSecondary, marginTop: scale(4) },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: scale(14), borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  switchInfo: { flexDirection: 'row', alignItems: 'center', gap: scale(12) },
+  switchLabel: { fontSize: scale(15), color: COLORS.textPrimary, fontWeight: '500' },
+  switchHint: { fontSize: scale(12), color: COLORS.textMuted, marginTop: scale(2) },
+  scheduleSection: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(16), marginTop: scale(16), borderWidth: 1, borderColor: COLORS.border },
+  scheduleSectionTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.teal, marginBottom: scale(12) },
+  timeRow: { flexDirection: 'row', gap: scale(12), marginTop: scale(12) },
+  timeField: { flex: 1 },
+  timeLabel: { fontSize: scale(12), color: COLORS.textSecondary, marginBottom: scale(4) },
+  timeInput: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), paddingHorizontal: scale(12), paddingVertical: scale(10), fontSize: scale(15), color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  rulesSection: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(16), marginTop: scale(16), borderWidth: 1, borderColor: COLORS.border },
+  rulesSectionTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textPrimary, marginBottom: scale(12) },
+  rulesRow: { flexDirection: 'row', gap: scale(12) },
+  ruleField: { flex: 1 },
+  ruleLabel: { fontSize: scale(11), color: COLORS.textSecondary, marginBottom: scale(4) },
+  ruleInput: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), paddingHorizontal: scale(12), paddingVertical: scale(10), fontSize: scale(15), color: COLORS.textPrimary, textAlign: 'center', borderWidth: 1, borderColor: COLORS.border },
+  imagePreviewContainer: { position: 'relative' },
+  imagePreview: { width: '100%', height: scale(180), borderRadius: scale(12) },
+  removeImageButton: { position: 'absolute', top: scale(8), right: scale(8), backgroundColor: COLORS.background, borderRadius: scale(14) },
+  imagePlaceholder: { width: '100%', height: scale(140), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), borderWidth: 2, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  imagePlaceholderText: { fontSize: scale(14), color: COLORS.textMuted, fontWeight: '500', marginTop: scale(8) },
+  scheduleNote: { fontSize: scale(13), color: COLORS.textSecondary, marginBottom: scale(16), lineHeight: scale(18) },
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', padding: scale(12), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), marginBottom: scale(8), gap: scale(12), borderWidth: 1, borderColor: COLORS.border },
+  scheduleRowActive: { backgroundColor: COLORS.success + '15', borderColor: COLORS.success + '50' },
+  scheduleDay: { flex: 1, fontSize: scale(14), fontWeight: '500', color: COLORS.textSecondary },
+  scheduleDayActive: { color: COLORS.success },
+  scheduleTimeInput: { width: scale(70), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(6), paddingHorizontal: scale(10), paddingVertical: scale(8), fontSize: scale(14), textAlign: 'center', color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  scheduleTimeSeparator: { color: COLORS.textSecondary },
+  scheduleSaveButton: { width: scale(32), height: scale(32), borderRadius: scale(6), backgroundColor: COLORS.success, alignItems: 'center', justifyContent: 'center' },
 });

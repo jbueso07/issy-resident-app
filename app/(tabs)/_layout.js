@@ -1,10 +1,11 @@
 // app/(tabs)/_layout.js
-// ISSY Resident App - Tab Bar ProHome Dark Theme
+// ISSY Resident App - Tab Bar ProHome Dark Theme + i18n
 // Estructura: Home | Finanzas | ISSY | Marketplace | Perfil
 
 import { Tabs, useRouter } from 'expo-router';
 import { View, StyleSheet, Image, Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 // Colors ProHome Theme
 const COLORS = {
@@ -117,6 +118,7 @@ const CenterLogoButton = () => (
 // ============ MAIN LAYOUT ============
 export default function TabsLayout() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -133,7 +135,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Inicio',
+          title: t('tabs.home'),
           tabBarIcon: ({ focused }) => (
             <TabIcon IconComponent={HomeIcon} focused={focused} size={22} />
           ),
@@ -144,7 +146,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="finances"
         options={{
-          title: 'Finanzas',
+          title: t('tabs.finances'),
           tabBarIcon: ({ focused }) => (
             <TabIcon IconComponent={WalletIcon} focused={focused} size={22} />
           ),
@@ -171,7 +173,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="marketplace"
         options={{
-          title: 'Marketplace',
+          title: t('tabs.marketplace'),
           tabBarIcon: ({ focused }) => (
             <TabIcon IconComponent={MarketplaceIcon} focused={focused} size={22} />
           ),
@@ -182,7 +184,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: t('tabs.profile'),
           tabBarIcon: ({ focused }) => (
             <TabIcon IconComponent={ProfileIcon} focused={focused} size={22} />
           ),
@@ -194,21 +196,21 @@ export default function TabsLayout() {
         name="visits"
         options={{
           href: null,
-          title: 'Accesos',
+          title: t('tabs.visits'),
         }}
       />
       <Tabs.Screen
         name="support"
         options={{
           href: null,
-          title: 'Soporte',
+          title: t('tabs.support'),
         }}
       />
       <Tabs.Screen
         name="payments"
         options={{
           href: null,
-          title: 'Pagos',
+          title: t('tabs.payments'),
         }}
       />
     </Tabs>

@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../src/config/supabase';
 import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -77,18 +78,28 @@ const CATEGORIES = [
   { id: 'other', label: 'MÁS ÁREAS', icon: 'grid', types: ['pool', 'parking', 'other'] },
 ];
 
-// Estados de reserva
-const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: COLORS.yellow, bgColor: 'rgba(245, 158, 11, 0.2)' },
-  approved: { label: 'Aprobada', color: COLORS.green, bgColor: 'rgba(16, 185, 129, 0.2)' },
-  rejected: { label: 'Rechazada', color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
-  cancelled: { label: 'Cancelada', color: COLORS.textMuted, bgColor: 'rgba(107, 114, 128, 0.2)' },
-  expired: { label: 'Expirada', color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
-};
+// Estados de reserva - Se traducen dinámicamente
+const getStatusConfig = (t) => ({
+  pending: { label: t('reservations.status.pending'), color: COLORS.yellow, bgColor: 'rgba(245, 158, 11, 0.2)' },
+  approved: { label: t('reservations.status.approved'), color: COLORS.green, bgColor: 'rgba(16, 185, 129, 0.2)' },
+  rejected: { label: t('reservations.status.rejected'), color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
+  cancelled: { label: t('reservations.status.cancelled'), color: COLORS.textMuted, bgColor: 'rgba(107, 114, 128, 0.2)' },
+  expired: { label: t('reservations.status.expired'), color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
+});
 
 export default function ReservationsScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { t, language } = useTranslation();
+
+  // Get locale based on language
+  const getLocale = () => {
+    const locales = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
+    return locales[language] || 'es-HN';
+  };
+
+  // Status config with translations
+  const STATUS_CONFIG = getStatusConfig(t);
 
   const [areas, setAreas] = useState([]);
   const [myReservations, setMyReservations] = useState([]);
@@ -284,7 +295,7 @@ export default function ReservationsScreen() {
       setSelectedSlots(selectedSlots.filter(s => `${s.start_time}-${s.end_time}` !== slotKey));
     } else {
       if (selectedSlots.length >= 2) {
-        Alert.alert('Límite', 'Puedes seleccionar máximo dos turnos');
+        Alert.alert(t('common.limit'), t('reservations.errors.maxSlots'));
         return;
       }
 
@@ -306,7 +317,7 @@ export default function ReservationsScreen() {
         if (isConsecutive) {
           setSelectedSlots(sortedSlots);
         } else {
-          Alert.alert('Error', 'Los turnos deben ser consecutivos');
+          Alert.alert('Error', t('reservations.errors.consecutiveSlots'));
         }
       }
     }
@@ -314,13 +325,13 @@ export default function ReservationsScreen() {
 
   const handleSubmitReservation = async () => {
     if (!selectedArea || selectedSlots.length === 0) {
-      Alert.alert('Error', 'Selecciona un área y horario');
+      Alert.alert('Error', t('reservations.errors.selectAreaAndTime'));
       return;
     }
 
     const userId = profile?.id || user?.id;
     if (!userId) {
-      Alert.alert('Error', 'No se pudo identificar el usuario');
+      Alert.alert('Error', t('reservations.errors.userNotFound'));
       return;
     }
 
@@ -348,26 +359,26 @@ export default function ReservationsScreen() {
         setShowSuccessModal(true);
         loadMyReservations();
       } else {
-        Alert.alert('Error', data.error || 'Error al crear la reserva');
+        Alert.alert('Error', data.error || t('reservations.errors.createError'));
       }
     } catch (error) {
       console.error('Error creating reservation:', error);
-      Alert.alert('Error', 'Error al crear la reserva');
+      Alert.alert('Error', t('reservations.errors.createError'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleCancelReservation = async (reservation) => {
-    const statusLabel = reservation.status === 'approved' ? 'aprobada' : 'pendiente';
+    const statusLabel = STATUS_CONFIG[reservation.status]?.label || reservation.status;
 
     Alert.alert(
-      'Cancelar Reserva',
-      `¿Estás seguro de cancelar esta reserva ${statusLabel}?`,
+      t('reservations.cancelReservation'),
+      t('reservations.cancelConfirm', { status: statusLabel.toLowerCase() }),
       [
         { text: 'No', style: 'cancel' },
         {
-          text: 'Sí, cancelar',
+          text: t('common.yes'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -377,16 +388,16 @@ export default function ReservationsScreen() {
                   status: 'cancelled',
                   cancelled_at: new Date().toISOString(),
                   cancelled_by: profile?.id || user?.id,
-                  cancellation_reason: 'Cancelada por el usuario'
+                  cancellation_reason: 'Cancelled by user'
                 })
                 .eq('id', reservation.id);
 
               if (error) throw error;
               loadMyReservations();
               setShowDetailModal(false);
-              Alert.alert('Listo', 'Tu reserva ha sido cancelada');
+              Alert.alert(t('common.done'), t('reservations.cancelSuccess'));
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cancelar la reserva');
+              Alert.alert('Error', t('reservations.errors.cancelError'));
             }
           }
         }
@@ -423,7 +434,7 @@ export default function ReservationsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.teal} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('reservations.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -445,7 +456,7 @@ export default function ReservationsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reservas</Text>
+        <Text style={styles.headerTitle}>{t('reservations.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -466,8 +477,8 @@ export default function ReservationsScreen() {
             <Ionicons name="calendar" size={22} color={COLORS.background} />
           </View>
           <View style={styles.createButtonContent}>
-            <Text style={styles.createButtonText}>Crear Reserva</Text>
-            <Text style={styles.createButtonSubtext}>Reserva áreas comunes</Text>
+            <Text style={styles.createButtonText}>{t('reservations.createButton')}</Text>
+            <Text style={styles.createButtonSubtext}>{t('reservations.createButtonSubtext')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={COLORS.background} />
         </TouchableOpacity>
@@ -476,7 +487,7 @@ export default function ReservationsScreen() {
         {activeReservations.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Próximas Reservas</Text>
+              <Text style={styles.sectionTitle}>{t('reservations.upcoming')}</Text>
               <Text style={styles.sectionCount}>{activeReservations.length}</Text>
             </View>
 
@@ -538,7 +549,7 @@ export default function ReservationsScreen() {
         {pastReservations.length > 0 && (
           <>
             <View style={[styles.sectionHeader, { marginTop: scale(24) }]}>
-              <Text style={styles.sectionTitle}>Historial</Text>
+              <Text style={styles.sectionTitle}>{t('reservations.history')}</Text>
               <Text style={styles.sectionCount}>{pastReservations.length}</Text>
             </View>
 
@@ -574,8 +585,8 @@ export default function ReservationsScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="calendar-outline" size={48} color={COLORS.teal} />
             </View>
-            <Text style={styles.emptyTitle}>No tienes reservas</Text>
-            <Text style={styles.emptySubtitle}>Crea una nueva reserva para comenzar</Text>
+            <Text style={styles.emptyTitle}>{t('reservations.empty.title')}</Text>
+            <Text style={styles.emptySubtitle}>{t('reservations.empty.subtitle')}</Text>
           </View>
         )}
 
@@ -589,13 +600,13 @@ export default function ReservationsScreen() {
             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Nueva Reserva</Text>
+            <Text style={styles.modalTitle}>{t('reservations.newReservation')}</Text>
             <View style={{ width: 24 }} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Category Selection */}
-            <Text style={styles.modalLabel}>Selecciona el área</Text>
+            <Text style={styles.modalLabel}>{t('reservations.selectArea')}</Text>
 
             {CATEGORIES.map(category => {
               const categoryAreas = getAreasForCategory(category.types);
@@ -636,7 +647,7 @@ export default function ReservationsScreen() {
                             <View style={styles.areaOptionInfo}>
                               <Text style={styles.areaOptionName}>{area.name}</Text>
                               <Text style={styles.areaOptionCapacity}>
-                                Capacidad: {area.capacity} personas
+                                {t('reservations.capacity')}: {area.capacity}
                               </Text>
                             </View>
                             <View style={[styles.radioButton, isSelected && styles.radioButtonSelected]}>
@@ -654,7 +665,7 @@ export default function ReservationsScreen() {
             {/* Date Selection */}
             {selectedArea && (
               <>
-                <Text style={styles.modalLabel}>Selecciona día</Text>
+                <Text style={styles.modalLabel}>{t('reservations.selectDate')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.datesScroll}>
                   {generateDates().map(d => (
                     <TouchableOpacity
@@ -680,12 +691,12 @@ export default function ReservationsScreen() {
             {/* Time Slots */}
             {selectedArea && selectedDate && (
               <>
-                <Text style={styles.modalLabel}>Selecciona horario</Text>
+                <Text style={styles.modalLabel}>{t('reservations.selectTime')}</Text>
 
                 {loadingAvailability ? (
                   <ActivityIndicator color={COLORS.teal} style={{ marginVertical: 20 }} />
                 ) : !availability || !Array.isArray(availability) || availability.length === 0 ? (
-                  <Text style={styles.noAvailability}>No hay horarios disponibles para esta fecha</Text>
+                  <Text style={styles.noAvailability}>{t('reservations.noSlots')}</Text>
                 ) : (
                   <>
                     <View style={styles.slotsGrid}>
@@ -721,7 +732,7 @@ export default function ReservationsScreen() {
                         );
                       })}
                     </View>
-                    <Text style={styles.slotHint}>Puedes seleccionar hasta 2 turnos consecutivos</Text>
+                    <Text style={styles.slotHint}>{t('reservations.slotsHint')}</Text>
                   </>
                 )}
               </>
@@ -730,7 +741,7 @@ export default function ReservationsScreen() {
             {/* Attendees */}
             {selectedSlots.length > 0 && (
               <>
-                <Text style={styles.modalLabel}>Número de asistentes</Text>
+                <Text style={styles.modalLabel}>{t('reservations.attendees')}</Text>
                 <View style={styles.attendeesContainer}>
                   <TouchableOpacity
                     style={styles.attendeeButton}
@@ -747,7 +758,7 @@ export default function ReservationsScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.capacityHint}>
-                  Capacidad máxima: {selectedArea?.capacity} personas
+                  {t('reservations.capacity')}: {selectedArea?.capacity}
                 </Text>
               </>
             )}
@@ -763,7 +774,7 @@ export default function ReservationsScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
-                  <Text style={styles.submitButtonText}>Confirmar Reserva</Text>
+                  <Text style={styles.submitButtonText}>{t('reservations.submitButton')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -780,7 +791,7 @@ export default function ReservationsScreen() {
             <TouchableOpacity onPress={() => setShowDetailModal(false)}>
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.detailTitle}>Detalle de Reserva</Text>
+            <Text style={styles.detailTitle}>{t('reservations.title')}</Text>
             <View style={{ width: 24 }} />
           </View>
 
@@ -823,13 +834,13 @@ export default function ReservationsScreen() {
                       <View style={styles.detailRow}>
                         <Ionicons name="people" size={20} color={COLORS.teal} />
                         <Text style={styles.detailText}>
-                          {selectedReservation.attendees || 1} asistentes
+                          {selectedReservation.attendees || 1} {t('reservations.attendees').toLowerCase()}
                         </Text>
                       </View>
 
                       {selectedReservation.confirmation_code && (
                         <View style={styles.codeContainer}>
-                          <Text style={styles.codeLabel}>CÓDIGO DE CONFIRMACIÓN</Text>
+                          <Text style={styles.codeLabel}>{t('reservations.reservationCode').toUpperCase()}</Text>
                           <Text style={styles.codeValue}>{selectedReservation.confirmation_code}</Text>
                         </View>
                       )}
@@ -840,7 +851,7 @@ export default function ReservationsScreen() {
                           onPress={() => handleCancelReservation(selectedReservation)}
                         >
                           <Ionicons name="close-circle-outline" size={20} color={COLORS.red} />
-                          <Text style={styles.cancelDetailButtonText}>Cancelar Reserva</Text>
+                          <Text style={styles.cancelDetailButtonText}>{t('reservations.cancelReservation')}</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -859,15 +870,15 @@ export default function ReservationsScreen() {
             <View style={styles.successIcon}>
               <Ionicons name="checkmark-circle" size={64} color={COLORS.green} />
             </View>
-            <Text style={styles.successTitle}>¡Reserva Creada!</Text>
+            <Text style={styles.successTitle}>{t('reservations.success.title')}</Text>
             <Text style={styles.successSubtitle}>
-              Tu reserva ha sido enviada y está pendiente de aprobación
+              {t('reservations.success.subtitle')}
             </Text>
             <TouchableOpacity
               style={styles.successButton}
               onPress={() => setShowSuccessModal(false)}
             >
-              <Text style={styles.successButtonText}>Entendido</Text>
+              <Text style={styles.successButtonText}>{t('reservations.success.button')}</Text>
             </TouchableOpacity>
           </View>
         </View>

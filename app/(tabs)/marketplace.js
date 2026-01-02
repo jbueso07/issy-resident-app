@@ -1,5 +1,5 @@
 // app/(tabs)/marketplace.js
-// ISSY Resident App - Marketplace (Coming Soon)
+// ISSY Resident App - Marketplace (Coming Soon) + i18n
 // ProHome Dark Theme
 
 import React from 'react';
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -33,13 +34,15 @@ const COLORS = {
 };
 
 export default function MarketplaceScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Marketplace</Text>
+        <Text style={styles.headerTitle}>{t('marketplace.title')}</Text>
         <View style={styles.comingSoonBadge}>
-          <Text style={styles.comingSoonBadgeText}>Próximamente</Text>
+          <Text style={styles.comingSoonBadgeText}>{t('marketplace.comingSoon')}</Text>
         </View>
       </View>
 
@@ -62,10 +65,8 @@ export default function MarketplaceScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>¡Algo grande viene!</Text>
-        <Text style={styles.subtitle}>
-          Estamos construyendo un marketplace donde podrás comprar, vender y descubrir productos y servicios de tu comunidad.
-        </Text>
+        <Text style={styles.title}>{t('marketplace.bigNews')}</Text>
+        <Text style={styles.subtitle}>{t('marketplace.description')}</Text>
 
         {/* Features Preview */}
         <View style={styles.featuresContainer}>
@@ -74,8 +75,8 @@ export default function MarketplaceScreen() {
               <Ionicons name="cart" size={scale(22)} color={COLORS.teal} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Compra y Vende</Text>
-              <Text style={styles.featureDescription}>Productos de tu comunidad</Text>
+              <Text style={styles.featureTitle}>{t('marketplace.features.buySell.title')}</Text>
+              <Text style={styles.featureDescription}>{t('marketplace.features.buySell.description')}</Text>
             </View>
           </View>
 
@@ -84,8 +85,8 @@ export default function MarketplaceScreen() {
               <Ionicons name="briefcase" size={scale(22)} color={COLORS.lime} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Servicios Locales</Text>
-              <Text style={styles.featureDescription}>Conecta con proveedores</Text>
+              <Text style={styles.featureTitle}>{t('marketplace.features.localServices.title')}</Text>
+              <Text style={styles.featureDescription}>{t('marketplace.features.localServices.description')}</Text>
             </View>
           </View>
 
@@ -94,8 +95,8 @@ export default function MarketplaceScreen() {
               <Ionicons name="shield-checkmark" size={scale(22)} color={COLORS.purple} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Transacciones Seguras</Text>
-              <Text style={styles.featureDescription}>Pagos protegidos</Text>
+              <Text style={styles.featureTitle}>{t('marketplace.features.secureTransactions.title')}</Text>
+              <Text style={styles.featureDescription}>{t('marketplace.features.secureTransactions.description')}</Text>
             </View>
           </View>
 
@@ -104,18 +105,18 @@ export default function MarketplaceScreen() {
               <Ionicons name="megaphone" size={scale(22)} color={COLORS.orange} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Ofertas Exclusivas</Text>
-              <Text style={styles.featureDescription}>Descuentos para residentes</Text>
+              <Text style={styles.featureTitle}>{t('marketplace.features.exclusiveOffers.title')}</Text>
+              <Text style={styles.featureDescription}>{t('marketplace.features.exclusiveOffers.description')}</Text>
             </View>
           </View>
         </View>
 
         {/* CTA */}
         <View style={styles.ctaContainer}>
-          <Text style={styles.ctaText}>Te notificaremos cuando esté listo</Text>
+          <Text style={styles.ctaText}>{t('marketplace.notifyText')}</Text>
           <View style={styles.notifyBadge}>
             <Ionicons name="notifications" size={scale(16)} color={COLORS.lime} />
-            <Text style={styles.notifyText}>Notificaciones activadas</Text>
+            <Text style={styles.notifyText}>{t('marketplace.notificationsEnabled')}</Text>
           </View>
         </View>
 

@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,24 +44,29 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const PAYMENT_STATUS = {
-  pending: { label: 'Pendiente', color: COLORS.warning, icon: 'time' },
-  paid: { label: 'Pagado', color: COLORS.success, icon: 'checkmark-circle' },
-  overdue: { label: 'Vencido', color: COLORS.danger, icon: 'alert-circle' },
-  cancelled: { label: 'Cancelado', color: COLORS.textMuted, icon: 'close-circle' },
-};
+const getPaymentStatus = (t) => ({
+  pending: { label: t('admin.payments.status.pending'), color: COLORS.warning, icon: 'time' },
+  paid: { label: t('admin.payments.status.paid'), color: COLORS.success, icon: 'checkmark-circle' },
+  overdue: { label: t('admin.payments.status.overdue'), color: COLORS.danger, icon: 'alert-circle' },
+  cancelled: { label: t('admin.payments.status.cancelled'), color: COLORS.textMuted, icon: 'close-circle' },
+});
 
-const PAYMENT_TYPES = [
-  { value: 'maintenance', label: 'Mantenimiento', icon: 'home' },
-  { value: 'extraordinary', label: 'Extraordinaria', icon: 'flash' },
-  { value: 'fine', label: 'Multa', icon: 'warning' },
-  { value: 'service', label: 'Servicio', icon: 'construct' },
-  { value: 'other', label: 'Otro', icon: 'document-text' },
+const getPaymentTypes = (t) => [
+  { value: 'maintenance', label: t('admin.payments.types.maintenance'), icon: 'home' },
+  { value: 'extraordinary', label: t('admin.payments.types.extraordinary'), icon: 'flash' },
+  { value: 'fine', label: t('admin.payments.types.fine'), icon: 'warning' },
+  { value: 'service', label: t('admin.payments.types.service'), icon: 'construct' },
+  { value: 'other', label: t('admin.payments.types.other'), icon: 'document-text' },
 ];
 
 export default function AdminPayments() {
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const router = useRouter();
+  
+  // i18n configs
+  const PAYMENT_STATUS = getPaymentStatus(t);
+  const PAYMENT_TYPES = getPaymentTypes(t);
   
   const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState(null);
@@ -95,7 +101,7 @@ export default function AdminPayments() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.payments.accessDenied'), t('admin.payments.noPermissions'));
       router.back();
       return;
     }
@@ -190,12 +196,12 @@ export default function AdminPayments() {
 
   const handleMarkPaid = async (payment) => {
     Alert.alert(
-      'Confirmar Pago',
-      `¿Marcar como pagado?\n${payment.concept || 'Cobro'} - L ${payment.amount}`,
+      t('admin.payments.confirmPayment'),
+      t('admin.payments.markAsPaidConfirm', { concept: payment.concept || t('admin.payments.charge'), amount: payment.amount }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirmar',
+          text: t('common.confirm'),
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
@@ -205,13 +211,13 @@ export default function AdminPayments() {
               });
 
               if (response.ok) {
-                Alert.alert('Éxito', 'Pago registrado');
+                Alert.alert(t('common.success'), t('admin.payments.success.paymentRegistered'));
                 fetchData();
               } else {
-                Alert.alert('Error', 'No se pudo actualizar');
+                Alert.alert(t('common.error'), t('admin.payments.errors.updateFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo actualizar');
+              Alert.alert(t('common.error'), t('admin.payments.errors.updateFailed'));
             }
           },
         },
@@ -221,11 +227,11 @@ export default function AdminPayments() {
 
   const handleSubmit = async () => {
     if (!formData.user_id) {
-      Alert.alert('Error', 'Selecciona un residente');
+      Alert.alert(t('common.error'), t('admin.payments.errors.selectResident'));
       return;
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      Alert.alert('Error', 'Ingresa un monto válido');
+      Alert.alert(t('common.error'), t('admin.payments.errors.enterValidAmount'));
       return;
     }
 
@@ -250,15 +256,15 @@ export default function AdminPayments() {
       const data = await response.json();
 
       if (response.ok && (data.success !== false)) {
-        Alert.alert('Éxito', 'Cobro creado exitosamente');
+        Alert.alert(t('common.success'), t('admin.payments.success.chargeCreated'));
         setShowModal(false);
         fetchData();
       } else {
-        Alert.alert('Error', data.error || data.message || 'No se pudo crear el cobro');
+        Alert.alert(t('common.error'), data.error || data.message || t('admin.payments.errors.createFailed'));
       }
     } catch (error) {
       console.error('Error creating payment:', error);
-      Alert.alert('Error', 'No se pudo crear el cobro');
+      Alert.alert(t('common.error'), t('admin.payments.errors.createFailed'));
     } finally {
       setSaving(false);
     }
@@ -298,7 +304,7 @@ export default function AdminPayments() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando cobros...</Text>
+          <Text style={styles.loadingText}>{t('admin.payments.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -312,7 +318,7 @@ export default function AdminPayments() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Cobros</Text>
+          <Text style={styles.headerTitle}>{t('admin.payments.title')}</Text>
           <Text style={styles.headerSubtitle}>Gestión de pagos</Text>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
@@ -339,21 +345,21 @@ export default function AdminPayments() {
               <Text style={[styles.statValue, { color: COLORS.success }]}>
                 {formatCurrency(stats.total_collected || stats.totalCollected || 0)}
               </Text>
-              <Text style={styles.statLabel}>Recaudado</Text>
+              <Text style={styles.statLabel}>{t('admin.payments.stats.collected')}</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="time" size={22} color={COLORS.warning} />
               <Text style={[styles.statValue, { color: COLORS.warning }]}>
                 {formatCurrency(stats.total_pending || stats.totalPending || 0)}
               </Text>
-              <Text style={styles.statLabel}>Pendiente</Text>
+              <Text style={styles.statLabel}>{t('admin.payments.stats.pending')}</Text>
             </View>
             <View style={styles.statCard}>
               <Ionicons name="alert-circle" size={22} color={COLORS.danger} />
               <Text style={[styles.statValue, { color: COLORS.danger }]}>
                 {formatCurrency(stats.total_overdue || stats.totalOverdue || 0)}
               </Text>
-              <Text style={styles.statLabel}>Vencido</Text>
+              <Text style={styles.statLabel}>{t('admin.payments.stats.overdue')}</Text>
             </View>
           </View>
         )}
@@ -382,7 +388,7 @@ export default function AdminPayments() {
                   />
                 )}
                 <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {f === 'all' ? 'Todos' : statusInfo?.label || f}
+                  {f === 'all' ? t('common.all') : statusInfo?.label || f}
                 </Text>
               </TouchableOpacity>
             );
@@ -393,8 +399,8 @@ export default function AdminPayments() {
         {payments.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="cash-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>No hay cobros</Text>
-            <Text style={styles.emptySubtitle}>Crea tu primer cobro</Text>
+            <Text style={styles.emptyTitle}>{t('admin.payments.empty.noCharges')}</Text>
+            <Text style={styles.emptySubtitle}>{t('admin.payments.empty.createFirst')}</Text>
           </View>
         ) : (
           payments.map((payment) => {
@@ -414,7 +420,7 @@ export default function AdminPayments() {
                       {payment.concept || getPaymentTypeLabel(payment.payment_type)}
                     </Text>
                     <Text style={styles.paymentUser}>
-                      {payment.user?.name || payment.user?.full_name || payment.user_name || 'Usuario'}
+                      {payment.user?.name || payment.user?.full_name || payment.user_name || t('common.user')}
                     </Text>
                   </View>
                   <Text style={styles.paymentAmount}>{formatCurrency(payment.amount)}</Text>
@@ -439,7 +445,7 @@ export default function AdminPayments() {
                     onPress={() => handleMarkPaid(payment)}
                   >
                     <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    <Text style={styles.markPaidText}>Marcar como Pagado</Text>
+                    <Text style={styles.markPaidText}>{t('admin.payments.markAsPaid')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -460,14 +466,14 @@ export default function AdminPayments() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Nuevo Cobro</Text>
+            <Text style={styles.modalTitle}>{t('admin.payments.newCharge')}</Text>
             <TouchableOpacity onPress={handleSubmit} disabled={saving}>
               {saving ? (
                 <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
-                <Text style={styles.modalSave}>Crear</Text>
+                <Text style={styles.modalSave}>{t('common.create')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -475,13 +481,13 @@ export default function AdminPayments() {
           <ScrollView style={styles.modalContent}>
             {/* Selector de Usuario */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Residente *</Text>
+              <Text style={styles.formLabel}>{t('admin.payments.form.resident')} *</Text>
               <TouchableOpacity
                 style={styles.selectorButton}
                 onPress={fetchUsers}
               >
                 <Text style={formData.user_name ? styles.selectorText : styles.selectorPlaceholder}>
-                  {formData.user_name || 'Seleccionar residente...'}
+                  {formData.user_name || t('admin.payments.form.selectResident')}
                 </Text>
                 <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
@@ -489,7 +495,7 @@ export default function AdminPayments() {
 
             {/* Tipo de Cobro */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Tipo de Cobro</Text>
+              <Text style={styles.formLabel}>{t('admin.payments.form.chargeType')}</Text>
               <View style={styles.typeGrid}>
                 {PAYMENT_TYPES.map((type) => {
                   const isSelected = formData.payment_type === type.value;
@@ -515,19 +521,19 @@ export default function AdminPayments() {
 
             {/* Concepto */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Descripción (opcional)</Text>
+              <Text style={styles.formLabel}>{t('admin.payments.form.description')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.concept}
                 onChangeText={(text) => setFormData({ ...formData, concept: text })}
-                placeholder="Ej: Cuota Diciembre 2025"
+                placeholder={t('admin.payments.form.descriptionPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
             {/* Monto */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Monto (L) *</Text>
+              <Text style={styles.formLabel}>{t('admin.payments.form.amount')} *</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.amount}
@@ -540,7 +546,7 @@ export default function AdminPayments() {
 
             {/* Fecha de Vencimiento */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Fecha de Vencimiento *</Text>
+              <Text style={styles.formLabel}>{t('admin.payments.form.dueDate')} *</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.due_date}
@@ -566,9 +572,9 @@ export default function AdminPayments() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowUserPicker(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Seleccionar Residente</Text>
+            <Text style={styles.modalTitle}>{t('admin.payments.selectResident')}</Text>
             <View style={{ width: 60 }} />
           </View>
 
@@ -579,7 +585,7 @@ export default function AdminPayments() {
               style={styles.searchInput}
               value={userSearch}
               onChangeText={setUserSearch}
-              placeholder="Buscar por nombre, email o unidad..."
+              placeholder={t('admin.payments.searchPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
             />
           </View>
@@ -587,13 +593,13 @@ export default function AdminPayments() {
           {loadingUsers ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={COLORS.lime} />
-              <Text style={styles.loadingText}>Cargando residentes...</Text>
+              <Text style={styles.loadingText}>{t('admin.payments.loadingResidents')}</Text>
             </View>
           ) : (
             <ScrollView style={styles.userList}>
               {filteredUsers.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyTitle}>No se encontraron residentes</Text>
+                  <Text style={styles.emptyTitle}>{t('admin.payments.noResidentsFound')}</Text>
                 </View>
               ) : (
                 filteredUsers.map((u) => (
@@ -609,10 +615,10 @@ export default function AdminPayments() {
                     </View>
                     <View style={styles.userInfo}>
                       <Text style={styles.userName}>
-                        {u.full_name || u.name || 'Sin nombre'}
+                        {u.full_name || u.name || t('common.noName')}
                       </Text>
                       <Text style={styles.userDetail}>
-                        {u.unit_number || u.unit ? `Unidad ${u.unit_number || u.unit}` : u.email}
+                        {u.unit_number || u.unit ? `${t('common.unit')} ${u.unit_number || u.unit}` : u.email}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../src/config/supabase';
 import { useAuth } from '../../src/context/AuthContext';
@@ -40,12 +41,12 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', color: COLORS.warning, bgColor: COLORS.warning + '20', icon: 'time' },
-  approved: { label: 'Aprobada', color: COLORS.success, bgColor: COLORS.success + '20', icon: 'checkmark-circle' },
-  rejected: { label: 'Rechazada', color: COLORS.danger, bgColor: COLORS.danger + '20', icon: 'close-circle' },
-  cancelled: { label: 'Cancelada', color: COLORS.textMuted, bgColor: COLORS.backgroundTertiary, icon: 'ban' },
-};
+const getStatusConfig = (t) => ({
+  pending: { label: t('admin.reservations.status.pending'), color: COLORS.warning, bgColor: COLORS.warning + '20', icon: 'time' },
+  approved: { label: t('admin.reservations.status.approved'), color: COLORS.success, bgColor: COLORS.success + '20', icon: 'checkmark-circle' },
+  rejected: { label: t('admin.reservations.status.rejected'), color: COLORS.danger, bgColor: COLORS.danger + '20', icon: 'close-circle' },
+  cancelled: { label: t('admin.reservations.status.cancelled'), color: COLORS.textMuted, bgColor: COLORS.backgroundTertiary, icon: 'ban' },
+});
 
 const TYPE_INFO = {
   pool: { icon: 'water', color: '#3B82F6' },
@@ -60,6 +61,8 @@ const TYPE_INFO = {
 };
 
 export default function AdminReservationsScreen() {
+  const { t } = useTranslation();
+  const STATUS_CONFIG = getStatusConfig(t);
   const router = useRouter();
   const { user, profile } = useAuth();
   
@@ -167,11 +170,11 @@ export default function AdminReservationsScreen() {
 
       if (error) throw error;
       
-      Alert.alert('Listo', 'Reserva aprobada');
+      Alert.alert(t('common.success'), t('admin.reservations.success.approved'));
       loadReservations();
       setShowDetailModal(false);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo aprobar la reserva');
+      Alert.alert(t('common.error'), t('admin.reservations.errors.approveFailed'));
     } finally {
       setProcessing(null);
     }
@@ -179,12 +182,12 @@ export default function AdminReservationsScreen() {
 
   const handleReject = (reservation) => {
     Alert.alert(
-      'Rechazar Reserva',
-      '¿Estás seguro de rechazar esta reserva?',
+      t('admin.reservations.rejectTitle'),
+      t('admin.reservations.rejectConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Rechazar',
+          text: t('admin.reservations.reject'),
           style: 'destructive',
           onPress: async () => {
             setProcessing(reservation.id);
@@ -200,11 +203,11 @@ export default function AdminReservationsScreen() {
 
               if (error) throw error;
               
-              Alert.alert('Listo', 'Reserva rechazada');
+              Alert.alert(t('common.success'), t('admin.reservations.success.rejected'));
               loadReservations();
               setShowDetailModal(false);
             } catch (error) {
-              Alert.alert('Error', 'No se pudo rechazar la reserva');
+              Alert.alert(t('common.error'), t('admin.reservations.errors.rejectFailed'));
             } finally {
               setProcessing(null);
             }
@@ -230,7 +233,7 @@ export default function AdminReservationsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando reservas...</Text>
+          <Text style={styles.loadingText}>{t('admin.reservations.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -243,7 +246,7 @@ export default function AdminReservationsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Gestión de Reservas</Text>
+        <Text style={styles.headerTitle}>{t('admin.reservations.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -252,21 +255,21 @@ export default function AdminReservationsScreen() {
         <View style={styles.statCard}>
           <Ionicons name="time" size={24} color={COLORS.warning} />
           <Text style={[styles.statNumber, { color: COLORS.warning }]}>{pendingCount}</Text>
-          <Text style={styles.statLabel}>Pendientes</Text>
+          <Text style={styles.statLabel}>{t('admin.reservations.stats.pending')}</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
           <Text style={[styles.statNumber, { color: COLORS.success }]}>
             {reservations.filter(r => r.status === 'approved').length}
           </Text>
-          <Text style={styles.statLabel}>Aprobadas</Text>
+          <Text style={styles.statLabel}>{t('admin.reservations.stats.approved')}</Text>
         </View>
         <View style={styles.statCard}>
           <Ionicons name="close-circle" size={24} color={COLORS.danger} />
           <Text style={[styles.statNumber, { color: COLORS.danger }]}>
             {reservations.filter(r => r.status === 'rejected').length}
           </Text>
-          <Text style={styles.statLabel}>Rechazadas</Text>
+          <Text style={styles.statLabel}>{t('admin.reservations.stats.rejected')}</Text>
         </View>
       </View>
 
@@ -282,7 +285,7 @@ export default function AdminReservationsScreen() {
             color={activeTab === 'pending' ? COLORS.background : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-            Pendientes
+            {t('admin.reservations.tabs.pending')}
           </Text>
           {pendingCount > 0 && (
             <View style={styles.tabBadge}>
@@ -300,7 +303,7 @@ export default function AdminReservationsScreen() {
             color={activeTab === 'all' ? COLORS.background : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-            Todas
+            {t('admin.reservations.tabs.all')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -321,12 +324,12 @@ export default function AdminReservationsScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="calendar-outline" size={64} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>
-              {activeTab === 'pending' ? 'No hay solicitudes pendientes' : 'No hay reservas'}
+              {activeTab === 'pending' ? t('admin.reservations.empty.noPending') : t('admin.reservations.empty.noReservations')}
             </Text>
             <Text style={styles.emptySubtitle}>
               {activeTab === 'pending' 
-                ? 'Las nuevas solicitudes aparecerán aquí' 
-                : 'Cuando los residentes hagan reservas, aparecerán aquí'}
+                ? t('admin.reservations.empty.pendingHint') 
+                : t('admin.reservations.empty.reservationsHint')}
             </Text>
           </View>
         )}
@@ -347,10 +350,10 @@ export default function AdminReservationsScreen() {
                   <Ionicons name={typeInfo.icon} size={24} color={typeInfo.color} />
                 </View>
                 <View style={styles.cardHeaderInfo}>
-                  <Text style={styles.areaName}>{area?.name || 'Área'}</Text>
+                  <Text style={styles.areaName}>{area?.name || t('admin.reservations.area')}</Text>
                   <View style={styles.userRow}>
                     <Ionicons name="person" size={12} color={COLORS.textSecondary} />
-                    <Text style={styles.userName}>{reqUser?.name || 'Usuario'}</Text>
+                    <Text style={styles.userName}>{reqUser?.name || t('common.user')}</Text>
                   </View>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
@@ -386,7 +389,7 @@ export default function AdminReservationsScreen() {
                     disabled={processing === item.id}
                   >
                     <Ionicons name="close" size={20} color={COLORS.danger} />
-                    <Text style={styles.rejectButtonText}>Rechazar</Text>
+                    <Text style={styles.rejectButtonText}>{t('admin.reservations.reject')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.approveButton]}
@@ -398,7 +401,7 @@ export default function AdminReservationsScreen() {
                     ) : (
                       <>
                         <Ionicons name="checkmark" size={20} color={COLORS.background} />
-                        <Text style={styles.approveButtonText}>Aprobar</Text>
+                        <Text style={styles.approveButtonText}>{t('admin.reservations.approve')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -422,7 +425,7 @@ export default function AdminReservationsScreen() {
                 <TouchableOpacity onPress={() => setShowDetailModal(false)}>
                   <Ionicons name="close" size={28} color={COLORS.textPrimary} />
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Detalle de Reserva</Text>
+                <Text style={styles.modalTitle}>{t('admin.reservations.detail.title')}</Text>
                 <View style={{ width: 28 }} />
               </View>
 
@@ -437,17 +440,17 @@ export default function AdminReservationsScreen() {
 
                 {/* Area Info */}
                 <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Área</Text>
+                  <Text style={styles.sectionTitle}>{t('admin.reservations.detail.area')}</Text>
                   <Text style={styles.sectionValue}>{detailArea?.name}</Text>
                   {detailArea?.capacity && (
-                    <Text style={styles.sectionSubtext}>Capacidad: {detailArea.capacity} personas</Text>
+                    <Text style={styles.sectionSubtext}>{t('admin.reservations.detail.capacity', { count: detailArea.capacity })}</Text>
                   )}
                 </View>
 
                 {/* User Info */}
                 <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Solicitante</Text>
-                  <Text style={styles.sectionValue}>{detailUser?.name || 'Usuario'}</Text>
+                  <Text style={styles.sectionTitle}>{t('admin.reservations.detail.requester')}</Text>
+                  <Text style={styles.sectionValue}>{detailUser?.name || t('common.user')}</Text>
                   <Text style={styles.sectionSubtext}>{detailUser?.email}</Text>
                   {detailUser?.phone && (
                     <Text style={styles.sectionSubtext}>{detailUser.phone}</Text>
@@ -456,20 +459,20 @@ export default function AdminReservationsScreen() {
 
                 {/* Date/Time Info */}
                 <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Fecha y Hora</Text>
+                  <Text style={styles.sectionTitle}>{t('admin.reservations.detail.dateTime')}</Text>
                   <Text style={styles.sectionValue}>{formatDate(selectedReservation.reservation_date)}</Text>
                   <Text style={styles.sectionSubtext}>
                     {formatTime(selectedReservation.start_time)} - {formatTime(selectedReservation.end_time)}
                   </Text>
                   <Text style={styles.sectionSubtext}>
-                    {selectedReservation.attendees || 1} personas
+                    {t('admin.reservations.detail.attendees', { count: selectedReservation.attendees || 1 })}
                   </Text>
                 </View>
 
                 {/* Notes */}
                 {selectedReservation.notes && (
                   <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Notas</Text>
+                    <Text style={styles.sectionTitle}>{t('admin.reservations.detail.notes')}</Text>
                     <Text style={styles.sectionSubtext}>{selectedReservation.notes}</Text>
                   </View>
                 )}
@@ -491,7 +494,7 @@ export default function AdminReservationsScreen() {
                       disabled={processing === selectedReservation.id}
                     >
                       <Ionicons name="close-circle" size={24} color={COLORS.danger} />
-                      <Text style={styles.modalRejectText}>Rechazar</Text>
+                      <Text style={styles.modalRejectText}>{t('admin.reservations.reject')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.modalButton, styles.modalApproveButton]}
@@ -503,7 +506,7 @@ export default function AdminReservationsScreen() {
                       ) : (
                         <>
                           <Ionicons name="checkmark-circle" size={24} color={COLORS.background} />
-                          <Text style={styles.modalApproveText}>Aprobar</Text>
+                          <Text style={styles.modalApproveText}>{t('admin.reservations.approve')}</Text>
                         </>
                       )}
                     </TouchableOpacity>
@@ -513,7 +516,7 @@ export default function AdminReservationsScreen() {
                 {/* Metadata */}
                 <View style={styles.metadataCard}>
                   <Text style={styles.metadataText}>
-                    Creado: {new Date(selectedReservation.created_at).toLocaleString('es-HN')}
+                    {t('admin.reservations.detail.created')}: {new Date(selectedReservation.created_at).toLocaleString('es-HN')}
                   </Text>
                 </View>
               </View>

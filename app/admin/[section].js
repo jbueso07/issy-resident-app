@@ -1,10 +1,11 @@
 // app/admin/[section].js
-// ISSY Resident App - Admin: Pantalla Placeholder para secciones en desarrollo (ProHome Dark Theme)
+// ISSY Resident App - Admin: Pantalla Placeholder para secciones en desarrollo (ProHome Dark Theme) + i18n
 
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -27,53 +28,54 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const SECTIONS = {
-  'payments': {
-    icon: 'card',
-    title: 'Gestor de Cobros',
-    description: 'Administra las cuotas y pagos de tu comunidad',
-    color: COLORS.success,
-  },
-  'expenses': {
-    icon: 'trending-down',
-    title: 'Gastos',
-    description: 'Control de egresos y gastos de la comunidad',
-    color: COLORS.danger,
-  },
-  'users': {
-    icon: 'people',
-    title: 'Usuarios',
-    description: 'Gestiona residentes, guardias y roles',
-    color: COLORS.blue,
-  },
-  'guard-config': {
-    icon: 'shield-checkmark',
-    title: 'App Guardias',
-    description: 'Configuración del control de acceso',
-    color: COLORS.purple,
-  },
-  'location-settings': {
-    icon: 'settings',
-    title: 'Configuración',
-    description: 'Ajustes generales de tu ubicación',
-    color: COLORS.teal,
-  },
-  'reports': {
-    icon: 'stats-chart',
-    title: 'Reportes',
-    description: 'Estadísticas y métricas de tu comunidad',
-    color: COLORS.lime,
-  },
-};
-
 export default function AdminSection() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { section } = useLocalSearchParams();
   
+  const SECTIONS = {
+    'payments': {
+      icon: 'card',
+      title: t('admin.sections.payments.title'),
+      description: t('admin.sections.payments.description'),
+      color: COLORS.success,
+    },
+    'expenses': {
+      icon: 'trending-down',
+      title: t('admin.sections.expenses.title'),
+      description: t('admin.sections.expenses.description'),
+      color: COLORS.danger,
+    },
+    'users': {
+      icon: 'people',
+      title: t('admin.sections.users.title'),
+      description: t('admin.sections.users.description'),
+      color: COLORS.blue,
+    },
+    'guard-config': {
+      icon: 'shield-checkmark',
+      title: t('admin.sections.guardConfig.title'),
+      description: t('admin.sections.guardConfig.description'),
+      color: COLORS.purple,
+    },
+    'location-settings': {
+      icon: 'settings',
+      title: t('admin.sections.locationSettings.title'),
+      description: t('admin.sections.locationSettings.description'),
+      color: COLORS.teal,
+    },
+    'reports': {
+      icon: 'stats-chart',
+      title: t('admin.sections.reports.title'),
+      description: t('admin.sections.reports.description'),
+      color: COLORS.lime,
+    },
+  };
+  
   const sectionInfo = SECTIONS[section] || {
     icon: 'construct',
-    title: 'Sección',
-    description: 'Esta sección está en desarrollo',
+    title: t('admin.sections.default.title'),
+    description: t('admin.sections.default.description'),
     color: COLORS.lime,
   };
 
@@ -101,13 +103,13 @@ export default function AdminSection() {
         
         <View style={styles.comingSoonBadge}>
           <Ionicons name="construct" size={16} color={COLORS.warning} />
-          <Text style={styles.comingSoonBadgeText}>Próximamente</Text>
+          <Text style={styles.comingSoonBadgeText}>{t('admin.sections.comingSoon')}</Text>
         </View>
         
         <Text style={styles.comingSoonNote}>
-          Esta funcionalidad estará disponible pronto en la app móvil.
+          {t('admin.sections.comingSoonNote')}
           {'\n\n'}
-          Mientras tanto, puedes usar la versión web en:
+          {t('admin.sections.useWebVersion')}
         </Text>
         
         <View style={styles.webLink}>
@@ -120,7 +122,7 @@ export default function AdminSection() {
           onPress={() => router.push('/(tabs)/home')}
         >
           <Ionicons name="home" size={20} color={COLORS.background} />
-          <Text style={styles.backToHomeText}>Volver al inicio</Text>
+          <Text style={styles.backToHomeText}>{t('admin.sections.backToHome')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -132,8 +134,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,8 +157,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
-  
-  // Content
   content: {
     flex: 1,
     justifyContent: 'center',

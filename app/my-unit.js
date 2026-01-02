@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { getMyOrganizations, switchOrganization } from '../src/services/api';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -31,6 +32,7 @@ const COLORS = {
 };
 
 export default function MyUnitScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   
@@ -66,11 +68,11 @@ export default function MyUnitScreen() {
     setSwitching(null);
     
     if (res.success) {
-      Alert.alert('¡Listo!', `Ahora estás en ${org.location?.name}`);
+      Alert.alert(t('myUnit.switchSuccess.title'), t('myUnit.switchSuccess.message', { name: org.location?.name }));
       if (refreshUser) refreshUser();
       loadOrganizations();
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert(t('common.error'), res.error);
     }
   };
 
@@ -86,10 +88,10 @@ export default function MyUnitScreen() {
 
   const getRoleLabel = (role) => {
     switch (role) {
-      case 'admin': return 'Administrador';
-      case 'guard': return 'Guardia';
-      case 'resident': return 'Residente';
-      case 'employee': return 'Empleado';
+      case 'admin': return t('myUnit.roles.admin');
+      case 'guard': return t('myUnit.roles.guard');
+      case 'resident': return t('myUnit.roles.resident');
+      case 'employee': return t('myUnit.roles.employee');
       default: return role;
     }
   };
@@ -103,7 +105,7 @@ export default function MyUnitScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mi Unidad</Text>
+        <Text style={styles.headerTitle}>{t('myUnit.title')}</Text>
         <TouchableOpacity onPress={() => router.push('/join-community')} style={styles.addBtn}>
           <Ionicons name="add" size={24} color={COLORS.lime} />
         </TouchableOpacity>
@@ -117,23 +119,23 @@ export default function MyUnitScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.purple} />
-            <Text style={styles.loadingText}>Cargando comunidades...</Text>
+            <Text style={styles.loadingText}>{t('myUnit.loading')}</Text>
           </View>
         ) : organizations.length === 0 ? (
           <View style={styles.empty}>
             <View style={styles.emptyIconContainer}>
               <Ionicons name="home" size={scale(48)} color={COLORS.teal} />
             </View>
-            <Text style={styles.emptyTitle}>Sin comunidades</Text>
+            <Text style={styles.emptyTitle}>{t('myUnit.empty.title')}</Text>
             <Text style={styles.emptyText}>
-              Únete a una comunidad con un código de invitación
+              {t('myUnit.empty.text')}
             </Text>
             <TouchableOpacity
               style={styles.joinButton}
               onPress={() => router.push('/join-community')}
             >
               <Ionicons name="add-circle" size={20} color={COLORS.background} />
-              <Text style={styles.joinButtonText}>Unirme a Comunidad</Text>
+              <Text style={styles.joinButtonText}>{t('myUnit.empty.joinButton')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -141,7 +143,7 @@ export default function MyUnitScreen() {
             {/* Organización Activa */}
             {activeOrg && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Ubicación Activa</Text>
+                <Text style={styles.sectionTitle}>{t('myUnit.activeLocation')}</Text>
                 <View style={styles.activeCard}>
                   <View style={styles.activeHeader}>
                     <View style={styles.activeIconContainer}>
@@ -149,12 +151,12 @@ export default function MyUnitScreen() {
                     </View>
                     <View style={styles.activeInfo}>
                       <Text style={styles.activeName}>{activeOrg.location?.name}</Text>
-                      <Text style={styles.activeAddress}>{activeOrg.location?.address || 'Sin dirección'}</Text>
+                      <Text style={styles.activeAddress}>{activeOrg.location?.address || t('myUnit.noAddress')}</Text>
                     </View>
                     {activeOrg.deactivation_reason ? (
                       <View style={[styles.activeBadge, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
                         <Ionicons name="alert-circle" size={16} color={COLORS.red} />
-                        <Text style={[styles.activeBadgeText, { color: COLORS.red }]}>Suspendido</Text>
+                        <Text style={[styles.activeBadgeText, { color: COLORS.red }]}>{t('myUnit.suspended')}</Text>
                       </View>
                     ) : (
                       <View style={styles.activeBadge}>
@@ -164,29 +166,29 @@ export default function MyUnitScreen() {
                         ⚠️ {activeOrg.deactivation_reason}
                       </Text>
                       <Text style={{ color: COLORS.textSecondary, fontSize: scale(11), textAlign: 'center', marginTop: scale(4) }}>
-                        Contacta a administración para más información
+                        {t('myUnit.contactAdmin')}
                       </Text>
                     </View>
                   )}
                         <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
-                        <Text style={styles.activeBadgeText}>Activo</Text>
+                        <Text style={styles.activeBadgeText}>{t('myUnit.activeBadge')}</Text>
                       </View>
                     )}
                   </View>
                   
                   <View style={styles.activeDetails}>
                     <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>Mi Rol</Text>
+                      <Text style={styles.detailLabel}>{t('myUnit.details.myRole')}</Text>
                       <Text style={styles.detailValue}>{getRoleLabel(activeOrg.role)}</Text>
                     </View>
                     {activeOrg.unit_number && (
                       <View style={styles.detailItem}>
-                        <Text style={styles.detailLabel}>Unidad</Text>
+                        <Text style={styles.detailLabel}>{t('myUnit.details.unit')}</Text>
                         <Text style={styles.detailValue}>{activeOrg.unit_number}</Text>
                       </View>
                     )}
                     <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>Miembro desde</Text>
+                      <Text style={styles.detailLabel}>{t('myUnit.details.memberSince')}</Text>
                       <Text style={styles.detailValue}>
                         {new Date(activeOrg.joined_at || activeOrg.created_at).toLocaleDateString('es', { month: 'short', year: 'numeric' })}
                       </Text>
@@ -208,7 +210,7 @@ export default function MyUnitScreen() {
             {/* Otras Organizaciones */}
             {organizations.filter(o => !o.is_active && o !== activeOrg).length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Otras Comunidades</Text>
+                <Text style={styles.sectionTitle}>{t('myUnit.otherCommunities')}</Text>
                 {organizations.filter(o => !o.is_active && o !== activeOrg).map((org) => (
                   <TouchableOpacity
                     key={org.location?.id}
@@ -227,7 +229,7 @@ export default function MyUnitScreen() {
                       <ActivityIndicator size="small" color={COLORS.purple} />
                     ) : (
                       <View style={styles.switchBtn}>
-                        <Text style={styles.switchBtnText}>Cambiar</Text>
+                        <Text style={styles.switchBtnText}>{t('myUnit.switch')}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -241,7 +243,7 @@ export default function MyUnitScreen() {
               onPress={() => router.push('/join-community')}
             >
               <Ionicons name="add-circle-outline" size={22} color={COLORS.lime} />
-              <Text style={styles.addOrgText}>Unirme a otra comunidad</Text>
+              <Text style={styles.addOrgText}>{t('myUnit.joinAnother')}</Text>
             </TouchableOpacity>
           </>
         )}

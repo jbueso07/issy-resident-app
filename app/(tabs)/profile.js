@@ -1,5 +1,5 @@
 // app/(tabs)/profile.js
-// ISSY Resident App - Profile Screen ProHome Style (Vertical Layout)
+// ISSY Resident App - Profile Screen ProHome Style con i18n
 
 import { useState } from 'react';
 import { 
@@ -22,6 +22,8 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { deleteUserAccount } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import LanguageSelector from '../../src/components/LanguageSelector';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -55,6 +57,7 @@ const COLORS = {
 export default function Profile() {
   const { user, signOut, token } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   
   // Delete account states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -65,12 +68,12 @@ export default function Profile() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas salir?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { 
-          text: 'Salir', 
+          text: t('common.yes'), 
           style: 'destructive',
           onPress: async () => {
             await signOut();
@@ -97,13 +100,13 @@ export default function Profile() {
       return;
     }
 
-    if (confirmText !== 'ELIMINAR') {
-      Alert.alert('Error', 'Debes escribir ELIMINAR para confirmar');
+    if (confirmText !== 'ELIMINAR' && confirmText !== 'DELETE') {
+      Alert.alert(t('common.error'), t('profile.deleteConfirmError'));
       return;
     }
 
     if (!password) {
-      Alert.alert('Error', 'Debes ingresar tu contraseña');
+      Alert.alert(t('common.error'), t('profile.passwordRequired'));
       return;
     }
 
@@ -112,63 +115,63 @@ export default function Profile() {
       await deleteUserAccount(token, password);
       setShowDeleteModal(false);
       Alert.alert(
-        'Cuenta Eliminada',
-        'Tu cuenta ha sido eliminada exitosamente.',
+        t('common.success'),
+        t('profile.deleteSuccess'),
         [{ text: 'OK', onPress: () => {
           signOut();
           router.replace('/(auth)/login');
         }}]
       );
     } catch (error) {
-      Alert.alert('Error', error.message || 'No se pudo eliminar la cuenta. Intenta de nuevo.');
+      Alert.alert(t('common.error'), error.message || t('profile.deleteError'));
     } finally {
       setDeleting(false);
     }
   };
 
-  // Menu sections con colores ProHome
+  // Menu sections con traducciones
   const menuSections = [
     {
-      title: 'Cuenta',
+      title: t('profile.account'),
       items: [
         { 
           icon: 'person-outline', 
-          title: 'Datos Personales', 
-          subtitle: 'Nombre, teléfono, foto',
+          title: t('profile.personalData'), 
+          subtitle: t('profile.personalDataDesc'),
           route: '/edit-profile',
           color: COLORS.teal,
         },
         { 
           icon: 'star-outline', 
-          title: 'Mi Suscripción', 
-          subtitle: 'Planes y servicios activos',
+          title: t('profile.subscription'), 
+          subtitle: t('profile.subscriptionDesc'),
           route: '/my-subscription',
           badge: 'PRO',
           color: COLORS.purple,
         },
         { 
           icon: 'card-outline', 
-          title: 'Métodos de Pago', 
-          subtitle: 'Tarjetas guardadas',
+          title: t('profile.paymentMethods'), 
+          subtitle: t('profile.paymentMethodsDesc'),
           route: '/payment-methods',
           color: COLORS.cyan,
         },
       ]
     },
     {
-      title: 'Mi Comunidad',
+      title: t('profile.myCommunity'),
       items: [
         { 
           icon: 'home-outline', 
-          title: 'Mi Unidad', 
-          subtitle: 'Información de residencia',
+          title: t('profile.myUnit'), 
+          subtitle: t('profile.myUnitDesc'),
           route: '/my-unit',
           color: COLORS.teal,
         },
         { 
           icon: 'link-outline', 
-          title: 'Unirse a Comunidad', 
-          subtitle: 'Usar código de invitación',
+          title: t('profile.joinCommunity'), 
+          subtitle: t('profile.joinCommunityDesc'),
           route: '/join-community',
           color: COLORS.lime,
           highlight: true,
@@ -176,57 +179,57 @@ export default function Profile() {
       ]
     },
     {
-      title: 'Configuración',
+      title: t('profile.settings'),
       items: [
         { 
           icon: 'notifications-outline', 
-          title: 'Notificaciones', 
-          subtitle: 'Configurar alertas',
+          title: t('profile.notifications'), 
+          subtitle: t('profile.notificationsDesc'),
           route: null,
           color: COLORS.orange,
         },
         { 
           icon: 'lock-closed-outline', 
-          title: 'Seguridad', 
-          subtitle: 'Cambiar contraseña',
+          title: t('profile.security'), 
+          subtitle: t('profile.securityDesc'),
           route: '/edit-profile',
           color: COLORS.indigo,
         },
       ]
     },
     {
-      title: 'Soporte',
+      title: t('profile.support'),
       items: [
         { 
           icon: 'warning-outline', 
-          title: 'Reportar Incidente', 
-          subtitle: 'Reporta un problema en tu comunidad',
+          title: t('profile.reportIncident'), 
+          subtitle: t('profile.reportIncidentDesc'),
           route: '/incidents',
           color: COLORS.coral,
         },
         { 
           icon: 'help-circle-outline', 
-          title: 'Ayuda', 
-          subtitle: 'Soporte y FAQ',
+          title: t('profile.help'), 
+          subtitle: t('profile.helpDesc'),
           route: '/support',
           color: COLORS.cyan,
         },
         { 
           icon: 'document-text-outline', 
-          title: 'Términos y Privacidad', 
-          subtitle: 'Políticas legales',
+          title: t('profile.legal'), 
+          subtitle: t('profile.legalDesc'),
           action: 'legal',
           color: COLORS.indigo,
         },
       ]
     },
     {
-      title: 'Zona de Peligro',
+      title: t('profile.dangerZone'),
       items: [
         { 
           icon: 'trash-outline', 
-          title: 'Eliminar mi cuenta', 
-          subtitle: 'Elimina permanentemente tu cuenta',
+          title: t('profile.deleteAccount'), 
+          subtitle: t('profile.deleteAccountDesc'),
           action: 'delete',
           color: COLORS.coral,
           isDelete: true,
@@ -240,18 +243,18 @@ export default function Profile() {
       handleDeleteAccount();
     } else if (item.action === 'legal') {
       Alert.alert(
-        'Documentos Legales',
-        'Selecciona el documento que deseas ver',
+        t('profile.legalDocuments'),
+        t('profile.selectDocument'),
         [
-          { text: 'Términos de Servicio', onPress: openTerms },
-          { text: 'Política de Privacidad', onPress: openPrivacy },
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('profile.termsOfService'), onPress: openTerms },
+          { text: t('profile.privacyPolicy'), onPress: openPrivacy },
+          { text: t('common.cancel'), style: 'cancel' },
         ]
       );
     } else if (item.route) {
       router.push(item.route);
     } else {
-      Alert.alert('Próximamente', 'Esta función estará disponible pronto');
+      Alert.alert(t('common.comingSoon'), t('common.comingSoonDesc'));
     }
   };
 
@@ -260,7 +263,7 @@ export default function Profile() {
   };
 
   const getUserRole = () => {
-    return user?.role === 'admin' || user?.role === 'superadmin' ? 'Administrador' : 'Residente';
+    return user?.role === 'admin' || user?.role === 'superadmin' ? t('profile.roleAdmin') : t('profile.roleResident');
   };
 
   return (
@@ -272,7 +275,7 @@ export default function Profile() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle} maxFontSizeMultiplier={1.2}>Perfil</Text>
+            <Text style={styles.headerTitle} maxFontSizeMultiplier={1.2}>{t('profile.title')}</Text>
           </View>
 
           {/* Profile Card con Gradiente */}
@@ -305,7 +308,7 @@ export default function Profile() {
                 
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-                    {user?.name || user?.email || 'Usuario'}
+                    {user?.name || user?.email || t('profile.user')}
                   </Text>
                   <Text style={styles.profileRole} maxFontSizeMultiplier={1.1}>
                     {getUserRole()}
@@ -337,7 +340,7 @@ export default function Profile() {
                     key={index} 
                     style={[
                       styles.menuItem,
-                      index === section.items.length - 1 && styles.menuItemLast,
+                      index === section.items.length - 1 && !section.title.includes(t('profile.settings')) && styles.menuItemLast,
                     ]}
                     onPress={() => handleMenuPress(item)}
                     activeOpacity={0.7}
@@ -371,6 +374,13 @@ export default function Profile() {
                     />
                   </TouchableOpacity>
                 ))}
+                
+                {/* Agregar LanguageSelector en la sección de Configuración */}
+                {section.title === t('profile.settings') && (
+                  <View style={styles.languageSelectorWrapper}>
+                    <LanguageSelector />
+                  </View>
+                )}
               </View>
             </View>
           ))}
@@ -378,7 +388,7 @@ export default function Profile() {
           {/* Logout Button */}
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={COLORS.coral} />
-            <Text style={styles.logoutText} maxFontSizeMultiplier={1.2}>Cerrar Sesión</Text>
+            <Text style={styles.logoutText} maxFontSizeMultiplier={1.2}>{t('profile.logout')}</Text>
           </TouchableOpacity>
 
           <Text style={styles.version} maxFontSizeMultiplier={1}>ISSY Resident App v1.0.0</Text>
@@ -402,42 +412,41 @@ export default function Profile() {
                 <Ionicons name="warning" size={32} color={COLORS.coral} />
               </View>
               <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>
-                {deleteStep === 1 ? '¿Eliminar tu cuenta?' : 'Confirmar eliminación'}
+                {deleteStep === 1 ? t('profile.deleteAccountQuestion') : t('profile.confirmDeletion')}
               </Text>
             </View>
 
             {deleteStep === 1 ? (
               <>
                 <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
-                  Esta acción es <Text style={styles.boldText}>permanente e irreversible</Text>. 
-                  Se eliminarán todos tus datos:
+                  {t('profile.deleteWarning')}
                 </Text>
                 <View style={styles.deleteList}>
-                  <Text style={styles.deleteListItem}>• Tu perfil y datos personales</Text>
-                  <Text style={styles.deleteListItem}>• Historial de visitas y códigos QR</Text>
-                  <Text style={styles.deleteListItem}>• Reservaciones y pagos</Text>
-                  <Text style={styles.deleteListItem}>• Membresías en comunidades</Text>
+                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem1')}</Text>
+                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem2')}</Text>
+                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem3')}</Text>
+                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem4')}</Text>
                 </View>
               </>
             ) : (
               <>
                 <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
-                  Escribe <Text style={styles.boldText}>ELIMINAR</Text> para confirmar
+                  {t('profile.typeToConfirm')}
                 </Text>
                 <TextInput
                   style={styles.confirmInput}
-                  placeholder="ELIMINAR"
+                  placeholder={t('profile.deleteWord')}
                   placeholderTextColor={COLORS.textMuted}
                   value={confirmText}
                   onChangeText={setConfirmText}
                   autoCapitalize="characters"
                 />
                 <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
-                  Ingresa tu contraseña
+                  {t('profile.enterPassword')}
                 </Text>
                 <TextInput
                   style={styles.confirmInput}
-                  placeholder="Contraseña"
+                  placeholder={t('auth.password')}
                   placeholderTextColor={COLORS.textMuted}
                   value={password}
                   onChangeText={setPassword}
@@ -451,7 +460,7 @@ export default function Profile() {
                 style={styles.cancelButton}
                 onPress={() => setShowDeleteModal(false)}
               >
-                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>Cancelar</Text>
+                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.confirmDeleteButton, deleting && styles.buttonDisabled]}
@@ -462,7 +471,7 @@ export default function Profile() {
                   <ActivityIndicator color={COLORS.textPrimary} size="small" />
                 ) : (
                   <Text style={styles.confirmDeleteText} maxFontSizeMultiplier={1.2}>
-                    {deleteStep === 1 ? 'Continuar' : 'Eliminar'}
+                    {deleteStep === 1 ? t('common.next') : t('common.delete')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -646,6 +655,13 @@ const styles = StyleSheet.create({
   },
   menuSubtitleDelete: {
     color: COLORS.textMuted,
+  },
+
+  // Language Selector Wrapper
+  languageSelectorWrapper: {
+    padding: scale(14),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
 
   // Logout

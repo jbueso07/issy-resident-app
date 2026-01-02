@@ -1,5 +1,6 @@
 // app/(auth)/forgot-password.js
-// ISSY Resident App - Recuperar Contraseña - ProHome Dark Theme
+// ISSY Resident App - Recuperar Contraseña - ProHome Dark Theme + i18n
+
 import { useState } from 'react';
 import {
   View,
@@ -16,6 +17,7 @@ import {
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -39,6 +41,7 @@ const COLORS = {
 };
 
 export default function ForgotPassword() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -46,12 +49,12 @@ export default function ForgotPassword() {
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu email');
+      Alert.alert(t('common.error'), t('auth.errors.emailRequired'));
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
+      Alert.alert(t('common.error'), t('auth.errors.invalidEmail'));
       return;
     }
 
@@ -90,9 +93,9 @@ export default function ForgotPassword() {
             <Ionicons name="mail" size={scale(48)} color={COLORS.teal} />
           </View>
           
-          <Text style={styles.successTitle}>¡Revisa tu correo!</Text>
+          <Text style={styles.successTitle}>{t('auth.forgotPassword.checkEmail')}</Text>
           <Text style={styles.successText}>
-            Si existe una cuenta con el email {email}, recibirás un enlace para restablecer tu contraseña.
+            {t('auth.forgotPassword.emailSentMessage', { email })}
           </Text>
 
           <TouchableOpacity
@@ -100,7 +103,7 @@ export default function ForgotPassword() {
             onPress={() => router.replace('/(auth)/login')}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>Volver al inicio</Text>
+            <Text style={styles.primaryButtonText}>{t('auth.forgotPassword.backToLogin')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -111,7 +114,7 @@ export default function ForgotPassword() {
             }}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>Intentar con otro email</Text>
+            <Text style={styles.secondaryButtonText}>{t('auth.forgotPassword.tryAnotherEmail')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -140,18 +143,16 @@ export default function ForgotPassword() {
             <Ionicons name="lock-open-outline" size={scale(48)} color={COLORS.lime} />
           </View>
 
-          <Text style={styles.title}>¿Olvidaste tu contraseña?</Text>
-          <Text style={styles.subtitle}>
-            Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña
-          </Text>
+          <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.forgotPassword.subtitle')}</Text>
 
           {/* Form */}
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.inputLabel}>{t('auth.email')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="tu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -172,17 +173,17 @@ export default function ForgotPassword() {
               {loading ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
-                <Text style={styles.primaryButtonText}>Enviar enlace</Text>
+                <Text style={styles.primaryButtonText}>{t('auth.forgotPassword.sendLink')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Back to login */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>¿Recordaste tu contraseña? </Text>
+            <Text style={styles.footerText}>{t('auth.forgotPassword.rememberPassword')} </Text>
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity>
-                <Text style={styles.footerLink}>Inicia sesión</Text>
+                <Text style={styles.footerLink}>{t('auth.login')}</Text>
               </TouchableOpacity>
             </Link>
           </View>

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { verifyInvitationCode, acceptInvitationCode } from '../src/services/api';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -36,6 +37,7 @@ const COLORS = {
 };
 
 export default function JoinCommunityScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { refreshUser } = useAuth();
@@ -55,7 +57,7 @@ export default function JoinCommunityScreen() {
 
   const handleVerify = async () => {
     if (!code.trim()) {
-      setError('Ingresa un código de invitación');
+      setError(t('joinCommunity.errors.enterCode'));
       return;
     }
 
@@ -69,7 +71,7 @@ export default function JoinCommunityScreen() {
     if (res.success) {
       setInvitation(res.data);
     } else {
-      setError(res.error || 'Código inválido o expirado');
+      setError(res.error || t('joinCommunity.errors.invalidCode'));
     }
   };
 
@@ -80,25 +82,25 @@ export default function JoinCommunityScreen() {
     
     if (res.success) {
       Alert.alert(
-        '¡Bienvenido!',
-        res.message || `Te has unido a ${invitation.location_name}`,
-        [{ text: 'Continuar', onPress: () => {
+        t('joinCommunity.success.title'),
+        res.message || t('joinCommunity.success.joined', { name: invitation.location_name }),
+        [{ text: t('joinCommunity.success.continue'), onPress: () => {
           if (refreshUser) refreshUser();
           router.replace('/my-unit');
         }}]
       );
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert(t('common.error'), res.error);
     }
   };
 
   const getTypeLabel = (type) => {
     switch (type) {
-      case 'residential': return 'Residencial';
-      case 'commercial': return 'Comercial';
-      case 'industrial': return 'Industrial';
-      case 'office': return 'Oficinas';
-      default: return 'Comunidad';
+      case 'residential': return t('joinCommunity.types.residential');
+      case 'commercial': return t('joinCommunity.types.commercial');
+      case 'industrial': return t('joinCommunity.types.industrial');
+      case 'office': return t('joinCommunity.types.office');
+      default: return t('joinCommunity.types.community');
     }
   };
 
@@ -109,7 +111,7 @@ export default function JoinCommunityScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Unirse a Comunidad</Text>
+        <Text style={styles.headerTitle}>{t('joinCommunity.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -129,9 +131,9 @@ export default function JoinCommunityScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Ingresa tu código de invitación</Text>
+        <Text style={styles.title}>{t('joinCommunity.enterCode')}</Text>
         <Text style={styles.subtitle}>
-          Solicita un código a tu administrador o usa el enlace de invitación que te compartieron
+          {t('joinCommunity.enterCodeHint')}
         </Text>
 
         {/* Code Input */}
@@ -144,7 +146,7 @@ export default function JoinCommunityScreen() {
               setError('');
               setInvitation(null);
             }}
-            placeholder="Ej: ABC123"
+            placeholder={t('joinCommunity.codePlaceholder')}
             placeholderTextColor={COLORS.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
@@ -176,7 +178,7 @@ export default function JoinCommunityScreen() {
           <View style={styles.invitationCard}>
             <View style={styles.invitationHeader}>
               <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
-              <Text style={styles.invitationTitle}>Invitación Válida</Text>
+              <Text style={styles.invitationTitle}>{t('joinCommunity.validInvitation')}</Text>
             </View>
 
             <View style={styles.invitationBody}>
@@ -194,13 +196,13 @@ export default function JoinCommunityScreen() {
 
               <View style={styles.infoRow}>
                 <Ionicons name="person" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.infoText}>Rol: {invitation.role || 'Residente'}</Text>
+                <Text style={styles.infoText}>{t('joinCommunity.role')}: {invitation.role || t('joinCommunity.resident')}</Text>
               </View>
 
               {invitation.unit_number && (
                 <View style={styles.infoRow}>
                   <Ionicons name="home" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.infoText}>Unidad: {invitation.unit_number}</Text>
+                  <Text style={styles.infoText}>{t('joinCommunity.unit')}: {invitation.unit_number}</Text>
                 </View>
               )}
 
@@ -208,7 +210,7 @@ export default function JoinCommunityScreen() {
                 <View style={styles.expiresInfo}>
                   <Ionicons name="time" size={14} color={COLORS.yellow} />
                   <Text style={styles.expiresText}>
-                    Expira: {new Date(invitation.expires_at).toLocaleDateString('es')}
+                    {t('joinCommunity.expires')}: {new Date(invitation.expires_at).toLocaleDateString('es')}
                   </Text>
                 </View>
               )}
@@ -224,7 +226,7 @@ export default function JoinCommunityScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark" size={20} color={COLORS.background} />
-                  <Text style={styles.acceptBtnText}>Unirme a {invitation.location_name}</Text>
+                  <Text style={styles.acceptBtnText}>{t('joinCommunity.joinTo', { name: invitation.location_name })}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -238,10 +240,9 @@ export default function JoinCommunityScreen() {
               <Ionicons name="help-circle" size={24} color={COLORS.yellow} />
             </View>
             <View style={styles.helpContent}>
-              <Text style={styles.helpTitle}>¿No tienes código?</Text>
+              <Text style={styles.helpTitle}>{t('joinCommunity.help.title')}</Text>
               <Text style={styles.helpText}>
-                Contacta al administrador de la comunidad a la que deseas unirte. 
-                Ellos pueden generar un código o enlace de invitación desde el panel de administración.
+                {t('joinCommunity.help.text')}
               </Text>
             </View>
           </View>

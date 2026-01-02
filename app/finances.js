@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { AppModal } from '../src/components';
 import {
   getFinanceDashboard,
@@ -69,6 +70,7 @@ const COLORS = {
 };
 
 export default function FinancesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -193,66 +195,66 @@ export default function FinancesScreen() {
   };
 
   const handleCreateTransaction = async () => {
-    if (!transactionForm.amount || !transactionForm.category) { Alert.alert('Error', 'Monto y categoría son requeridos'); return; }
+    if (!transactionForm.amount || !transactionForm.category) { Alert.alert(t('common.error'), t('finances.errors.amountCategoryRequired')); return; }
     try {
       const res = await createTransaction({ type: transactionType, amount: parseFloat(transactionForm.amount), category: transactionForm.category, description: transactionForm.description, date: transactionForm.date });
-      if (res.success) { Alert.alert('✅ Éxito', 'Transacción registrada'); setShowTransactionModal(false); setTransactionForm({ amount: '', category: '', description: '', date: new Date().toISOString().split('T')[0] }); loadData(); }
-      else Alert.alert('Error', res.error || 'No se pudo registrar');
-    } catch (error) { Alert.alert('Error', 'Error al registrar transacción'); }
+      if (res.success) { Alert.alert(t('finances.success.transactionTitle'), t('finances.success.transactionRegistered')); setShowTransactionModal(false); setTransactionForm({ amount: '', category: '', description: '', date: new Date().toISOString().split('T')[0] }); loadData(); }
+      else Alert.alert(t('common.error'), res.error || t('finances.errors.registerFailed'));
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.transactionError')); }
   };
 
   const handleCreateGoal = async () => {
-    if (!goalForm.name || !goalForm.target_amount) { Alert.alert('Error', 'Nombre y monto objetivo son requeridos'); return; }
+    if (!goalForm.name || !goalForm.target_amount) { Alert.alert(t('common.error'), t('finances.errors.goalNameAmountRequired')); return; }
     try {
       const res = await createFinanceGoal({ name: goalForm.name, target_amount: parseFloat(goalForm.target_amount), icon: goalForm.icon, deadline: goalForm.deadline || null });
-      if (res.success) { Alert.alert('🎯 Éxito', 'Meta creada'); setShowGoalModal(false); setGoalForm({ name: '', target_amount: '', icon: '🎯' }); loadData(); }
-      else Alert.alert('Error', res.error || 'No se pudo crear la meta');
-    } catch (error) { Alert.alert('Error', 'Error al crear meta'); }
+      if (res.success) { Alert.alert(t('finances.success.goalTitle'), t('finances.success.goalCreated')); setShowGoalModal(false); setGoalForm({ name: '', target_amount: '', icon: '🎯' }); loadData(); }
+      else Alert.alert(t('common.error'), res.error || t('finances.errors.createGoalFailed'));
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.goalError')); }
   };
 
   const handleAddContribution = async () => {
-    if (!contributionAmount || parseFloat(contributionAmount) <= 0) { Alert.alert('Error', 'Ingresa un monto válido'); return; }
+    if (!contributionAmount || parseFloat(contributionAmount) <= 0) { Alert.alert(t('common.error'), t('finances.errors.validAmountRequired')); return; }
     try {
       const res = await addGoalContribution(selectedGoal.id, { amount: parseFloat(contributionAmount) });
-      if (res.success) { Alert.alert('💰 Éxito', res.message || 'Aporte agregado'); setShowContributionModal(false); setContributionAmount(''); setSelectedGoal(null); loadData(); }
-      else Alert.alert('Error', res.error || 'No se pudo agregar el aporte');
-    } catch (error) { Alert.alert('Error', 'Error al agregar aporte'); }
+      if (res.success) { Alert.alert(t('finances.success.contributionTitle'), res.message || t('finances.success.contributionAdded')); setShowContributionModal(false); setContributionAmount(''); setSelectedGoal(null); loadData(); }
+      else Alert.alert(t('common.error'), res.error || t('finances.errors.contributionFailed'));
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.contributionError')); }
   };
 
   const handleCreateInvoice = async () => {
-    if (!invoiceForm.vendor_name || !invoiceForm.amount) { Alert.alert('Error', 'Proveedor y monto son requeridos'); return; }
+    if (!invoiceForm.vendor_name || !invoiceForm.amount) { Alert.alert(t('common.error'), t('finances.errors.vendorAmountRequired')); return; }
     try {
       const res = await createInvoice({ vendor_name: invoiceForm.vendor_name, amount: parseFloat(invoiceForm.amount), category: invoiceForm.category || 'Servicios', due_date: invoiceForm.due_date || null, description: invoiceForm.description });
-      if (res.success) { Alert.alert('🧾 Éxito', res.message || 'Factura registrada'); setShowInvoiceModal(false); setInvoiceForm({ vendor_name: '', amount: '', category: '', due_date: '', description: '' }); loadData(); }
-      else Alert.alert('Error', res.error || 'No se pudo registrar');
-    } catch (error) { Alert.alert('Error', 'Error al registrar factura'); }
+      if (res.success) { Alert.alert(t('finances.success.invoiceTitle'), res.message || t('finances.success.invoiceRegistered')); setShowInvoiceModal(false); setInvoiceForm({ vendor_name: '', amount: '', category: '', due_date: '', description: '' }); loadData(); }
+      else Alert.alert(t('common.error'), res.error || t('finances.errors.registerFailed'));
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.invoiceError')); }
   };
 
   const handlePayInvoice = async () => {
     if (!selectedInvoice) return;
     try {
       const res = await markInvoicePaid(selectedInvoice.id);
-      if (res.success) { Alert.alert('✅ Pagada', res.message || 'Factura marcada como pagada'); setShowInvoiceDetailModal(false); setSelectedInvoice(null); loadData(); }
-      else Alert.alert('Error', res.error);
-    } catch (error) { Alert.alert('Error', 'Error al marcar como pagada'); }
+      if (res.success) { Alert.alert(t('finances.success.paidTitle'), res.message || t('finances.success.invoicePaid')); setShowInvoiceDetailModal(false); setSelectedInvoice(null); loadData(); }
+      else Alert.alert(t('common.error'), res.error);
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.markPaidError')); }
   };
 
   const handleCreateBudget = async () => {
-    if (!budgetForm.category || !budgetForm.amount) { Alert.alert('Error', 'Categoría y monto son requeridos'); return; }
+    if (!budgetForm.category || !budgetForm.amount) { Alert.alert(t('common.error'), t('finances.errors.categoryAmountRequired')); return; }
     try {
       const res = await createBudget({ category: budgetForm.category, amount: parseFloat(budgetForm.amount), icon: budgetForm.icon });
-      if (res.success) { Alert.alert('📊 Éxito', res.message || 'Presupuesto creado'); setShowBudgetModal(false); setBudgetForm({ category: '', amount: '', icon: '💰' }); loadData(); }
-      else Alert.alert('Error', res.error || 'No se pudo crear');
-    } catch (error) { Alert.alert('Error', 'Error al crear presupuesto'); }
+      if (res.success) { Alert.alert(t('finances.success.budgetTitle'), res.message || t('finances.success.budgetCreated')); setShowBudgetModal(false); setBudgetForm({ category: '', amount: '', icon: '💰' }); loadData(); }
+      else Alert.alert(t('common.error'), res.error || t('finances.errors.createFailed'));
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.budgetError')); }
   };
 
   const handleDeleteBudget = async (budgetId) => {
-    Alert.alert('Eliminar', '¿Eliminar este presupuesto?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+    Alert.alert(t('finances.deleteBudget.title'), t('finances.deleteBudget.confirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
         const res = await deleteBudget(budgetId);
         if (res.success) loadData();
-        else Alert.alert('Error', res.error);
+        else Alert.alert(t('common.error'), res.error);
       }}
     ]);
   };
@@ -263,11 +265,11 @@ export default function FinancesScreen() {
       
       if (!methodsRes.success || !methodsRes.data || methodsRes.data.length === 0) {
         Alert.alert(
-          '💳 Método de Pago Requerido',
-          'Necesitas agregar un método de pago para suscribirte al plan Premium.',
+          t('finances.upgrade.paymentRequired'),
+          t('finances.upgrade.addPaymentMethod'),
           [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Agregar Tarjeta', onPress: () => { setShowUpgradeModal(false); router.push('/payment-methods'); }}
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('finances.upgrade.addCard'), onPress: () => { setShowUpgradeModal(false); router.push('/payment-methods'); }}
           ]
         );
         return;
@@ -276,25 +278,25 @@ export default function FinancesScreen() {
       const defaultMethod = methodsRes.data.find(m => m.is_default) || methodsRes.data[0];
       
       Alert.alert(
-        '💎 Confirmar Suscripción',
-        `¿Deseas suscribirte al plan ${planName} usando tu tarjeta terminada en ${defaultMethod.last_four}?`,
+        t('finances.upgrade.confirmTitle'),
+        t('finances.upgrade.confirmMessage', { plan: planName, lastFour: defaultMethod.last_four }),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Suscribirme', onPress: async () => {
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('finances.upgrade.subscribe'), onPress: async () => {
             try {
               const selectedPlan = plans.find(p => p.name === planName || p.display_name === planName);
-              if (!selectedPlan) { Alert.alert('Error', 'Plan no encontrado'); return; }
+              if (!selectedPlan) { Alert.alert(t('common.error'), t('finances.errors.planNotFound')); return; }
               const result = await subscribeToPlan(selectedPlan.id, defaultMethod.id, 'monthly');
               if (result.success) {
-                Alert.alert('🎉 ¡Felicidades!', result.message || 'Tu suscripción ha sido activada exitosamente.',
+                Alert.alert(t('finances.success.congratsTitle'), result.message || t('finances.success.subscriptionActivated'),
                   [{ text: 'OK', onPress: () => { setShowUpgradeModal(false); loadData(); }}]
                 );
-              } else { Alert.alert('Error', result.error || 'No se pudo procesar la suscripción'); }
-            } catch (error) { Alert.alert('Error', 'Error al procesar la suscripción: ' + error.message); }
+              } else { Alert.alert(t('common.error'), result.error || t('finances.errors.subscriptionFailed')); }
+            } catch (error) { Alert.alert(t('common.error'), t('finances.errors.subscriptionError') + ': ' + error.message); }
           }}
         ]
       );
-    } catch (error) { Alert.alert('Error', 'Error al verificar métodos de pago: ' + error.message); }
+    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.paymentMethodsError') + ': ' + error.message); }
   };
 
   const formatCurrency = (amount) => `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 0 })}`;
@@ -316,7 +318,7 @@ export default function FinancesScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando finanzas...</Text>
+          <Text style={styles.loadingText}>{t('finances.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -334,7 +336,7 @@ export default function FinancesScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis Finanzas</Text>
+        <Text style={styles.headerTitle}>{t('finances.title')}</Text>
         {isPremium ? (
           <View style={styles.premiumBadgeHeader}><Text style={styles.premiumBadgeHeaderText}>💎 PRO</Text></View>
         ) : (
@@ -355,12 +357,12 @@ export default function FinancesScreen() {
             <View style={styles.statItem}>
               <Text style={styles.statEmoji}>🔥</Text>
               <Text style={styles.statValue}>{stats.current_streak}</Text>
-              <Text style={styles.statLabel}>Racha</Text>
+              <Text style={styles.statLabel}>{t('finances.stats.streak')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statEmoji}>⭐</Text>
-              <Text style={styles.statValue}>Nv.{stats.level}</Text>
+              <Text style={styles.statValue}>{t('finances.stats.level', { level: stats.level })}</Text>
               <Text style={styles.statLabel}>{levelInfo.name}</Text>
             </View>
             <View style={styles.statDivider} />
@@ -374,20 +376,20 @@ export default function FinancesScreen() {
             <View style={styles.xpBarBg}>
               <View style={[styles.xpBarFill, { width: `${xpProgress}%` }]} />
             </View>
-            <Text style={styles.xpText}>{stats.xp % 100}/100 XP para Nv.{stats.level + 1}</Text>
+            <Text style={styles.xpText}>{t('finances.stats.xpProgress', { current: stats.xp % 100, nextLevel: stats.level + 1 })}</Text>
           </View>
         </View>
 
         {/* Tab Switcher */}
         <View style={styles.tabSwitcher}>
           <TouchableOpacity style={[styles.tab, activeTab === 'dashboard' && styles.tabActive]} onPress={() => setActiveTab('dashboard')}>
-            <Text style={[styles.tabText, activeTab === 'dashboard' && styles.tabTextActive]}>💰 Dashboard</Text>
+            <Text style={[styles.tabText, activeTab === 'dashboard' && styles.tabTextActive]}>💰 {t('finances.tabs.dashboard')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'invoices' && styles.tabActive]} onPress={() => setActiveTab('invoices')}>
-            <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>🧾 Facturas</Text>
+            <Text style={[styles.tabText, activeTab === 'invoices' && styles.tabTextActive]}>🧾 {t('finances.tabs.invoices')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'budgets' && styles.tabActive]} onPress={() => setActiveTab('budgets')}>
-            <Text style={[styles.tabText, activeTab === 'budgets' && styles.tabTextActive]}>📊 Presupuesto</Text>
+            <Text style={[styles.tabText, activeTab === 'budgets' && styles.tabTextActive]}>📊 {t('finances.tabs.budget')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -414,7 +416,7 @@ export default function FinancesScreen() {
             {/* Tips Section */}
             {tips.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>💡 Consejos para ti</Text>
+                <Text style={styles.sectionTitle}>💡 {t('finances.sections.tipsForYou')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tipsScroll}>
                   {tips.map((tip, index) => (
                     <TouchableOpacity key={tip.id || index} style={[styles.tipCard, tip.is_premium && styles.tipCardPremium]} onPress={() => handleTipPress(tip)}>
@@ -432,7 +434,7 @@ export default function FinancesScreen() {
               <TouchableOpacity style={styles.invoiceAlert} onPress={() => setActiveTab('invoices')}>
                 <Text style={styles.invoiceAlertIcon}>⚠️</Text>
                 <View style={styles.invoiceAlertContent}>
-                  <Text style={styles.invoiceAlertTitle}>{upcomingInvoices.length} factura{upcomingInvoices.length > 1 ? 's' : ''} por vencer</Text>
+                  <Text style={styles.invoiceAlertTitle}>{t('finances.invoiceAlert', { count: upcomingInvoices.length })}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
               </TouchableOpacity>
@@ -440,7 +442,7 @@ export default function FinancesScreen() {
 
             {/* Balance Card */}
             <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>Balance del mes</Text>
+              <Text style={styles.balanceLabel}>{t('finances.balance.monthBalance')}</Text>
               <Text style={[styles.balanceAmount, { color: (dashboard?.summary?.balance || dashboard?.month?.balance || 0) >= 0 ? COLORS.green : COLORS.red }]}>
                 {formatCurrency(dashboard?.summary?.balance || dashboard?.month?.balance || 0)}
               </Text>
@@ -449,7 +451,7 @@ export default function FinancesScreen() {
                   <View style={[styles.balanceItemIconBox, { backgroundColor: COLORS.greenBg }]}>
                     <Ionicons name="trending-up" size={18} color={COLORS.green} />
                   </View>
-                  <Text style={styles.balanceItemLabel}>Ingresos</Text>
+                  <Text style={styles.balanceItemLabel}>{t('finances.balance.income')}</Text>
                   <Text style={[styles.balanceItemValue, { color: COLORS.green }]}>{formatCurrency(dashboard?.summary?.income || dashboard?.month?.income || 0)}</Text>
                 </View>
                 <View style={styles.balanceDivider} />
@@ -457,7 +459,7 @@ export default function FinancesScreen() {
                   <View style={[styles.balanceItemIconBox, { backgroundColor: COLORS.redBg }]}>
                     <Ionicons name="trending-down" size={18} color={COLORS.red} />
                   </View>
-                  <Text style={styles.balanceItemLabel}>Gastos</Text>
+                  <Text style={styles.balanceItemLabel}>{t('finances.balance.expenses')}</Text>
                   <Text style={[styles.balanceItemValue, { color: COLORS.red }]}>{formatCurrency(dashboard?.summary?.expenses || dashboard?.month?.expenses || 0)}</Text>
                 </View>
               </View>
@@ -472,7 +474,7 @@ export default function FinancesScreen() {
                 <View style={styles.quickActionIconIncome}>
                   <Ionicons name="add" size={26} color={COLORS.green} />
                 </View>
-                <Text style={styles.quickActionTextIncome}>Ingreso</Text>
+                <Text style={styles.quickActionTextIncome}>{t('finances.quickActions.income')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -482,7 +484,7 @@ export default function FinancesScreen() {
                 <View style={styles.quickActionIconExpense}>
                   <Ionicons name="remove" size={26} color={COLORS.red} />
                 </View>
-                <Text style={styles.quickActionTextExpense}>Gasto</Text>
+                <Text style={styles.quickActionTextExpense}>{t('finances.quickActions.expense')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -492,23 +494,23 @@ export default function FinancesScreen() {
                 <View style={styles.quickActionIconGoal}>
                   <Ionicons name="flag" size={24} color={COLORS.teal} />
                 </View>
-                <Text style={styles.quickActionTextGoal}>Meta</Text>
+                <Text style={styles.quickActionTextGoal}>{t('finances.quickActions.goal')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Goals Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>🎯 Mis Metas</Text>
+                <Text style={styles.sectionTitle}>🎯 {t('finances.sections.myGoals')}</Text>
                 <TouchableOpacity onPress={() => { if (checkLimit('goal')) setShowGoalModal(true); }}>
-                  <Text style={styles.sectionAction}>+ Nueva</Text>
+                  <Text style={styles.sectionAction}>+ {t('finances.new')}</Text>
                 </TouchableOpacity>
               </View>
               {goals.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyIcon}>🎯</Text>
-                  <Text style={styles.emptyText}>No tienes metas aún</Text>
-                  <Text style={styles.emptySubtext}>Crea una meta para empezar a ahorrar</Text>
+                  <Text style={styles.emptyText}>{t('finances.empty.noGoals')}</Text>
+                  <Text style={styles.emptySubtext}>{t('finances.empty.createGoalHint')}</Text>
                 </View>
               ) : goals.map(goal => (
                 <TouchableOpacity key={goal.id} style={styles.goalCard} onPress={() => { setSelectedGoal(goal); setShowContributionModal(true); }}>
@@ -529,11 +531,11 @@ export default function FinancesScreen() {
 
             {/* Transactions Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📋 Últimas Transacciones</Text>
+              <Text style={styles.sectionTitle}>📋 {t('finances.sections.latestTransactions')}</Text>
               {transactions.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyIcon}>📝</Text>
-                  <Text style={styles.emptyText}>No hay transacciones</Text>
+                  <Text style={styles.emptyText}>{t('finances.empty.noTransactions')}</Text>
                 </View>
               ) : transactions.slice(0, 5).map(trans => (
                 <View key={trans.id} style={styles.transactionItem}>
@@ -559,24 +561,24 @@ export default function FinancesScreen() {
               <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
                 <Ionicons name="diamond" size={24} color={COLORS.yellow} />
                 <View style={styles.premiumFeatureContent}>
-                  <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
-                  <Text style={styles.premiumFeatureText}>Gestiona tus facturas con recordatorios</Text>
+                  <Text style={styles.premiumFeatureTitle}>{t('finances.premium.featureTitle')}</Text>
+                  <Text style={styles.premiumFeatureText}>{t('finances.premium.invoicesFeature')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
               </TouchableOpacity>
             )}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🧾 Facturas Pendientes</Text>
+              <Text style={styles.sectionTitle}>🧾 {t('finances.sections.pendingInvoices')}</Text>
               <TouchableOpacity onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}>
-                <Text style={styles.sectionAction}>+ Nueva</Text>
+                <Text style={styles.sectionAction}>+ {t('finances.new')}</Text>
               </TouchableOpacity>
             </View>
             {upcomingInvoices.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>🧾</Text>
-                <Text style={styles.emptyText}>No tienes facturas pendientes</Text>
+                <Text style={styles.emptyText}>{t('finances.empty.noInvoices')}</Text>
                 <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}>
-                  <Text style={styles.emptyButtonText}>Registrar factura</Text>
+                  <Text style={styles.emptyButtonText}>{t('finances.registerInvoice')}</Text>
                 </TouchableOpacity>
               </View>
             ) : upcomingInvoices.map(invoice => (
@@ -600,25 +602,25 @@ export default function FinancesScreen() {
               <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
                 <Ionicons name="diamond" size={24} color={COLORS.yellow} />
                 <View style={styles.premiumFeatureContent}>
-                  <Text style={styles.premiumFeatureTitle}>Función Premium</Text>
-                  <Text style={styles.premiumFeatureText}>Crea presupuestos y controla tus gastos</Text>
+                  <Text style={styles.premiumFeatureTitle}>{t('finances.premium.featureTitle')}</Text>
+                  <Text style={styles.premiumFeatureText}>{t('finances.premium.budgetsFeature')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
               </TouchableOpacity>
             )}
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📊 Mis Presupuestos</Text>
+              <Text style={styles.sectionTitle}>📊 {t('finances.sections.myBudgets')}</Text>
               <TouchableOpacity onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}>
-                <Text style={styles.sectionAction}>+ Nuevo</Text>
+                <Text style={styles.sectionAction}>+ {t('finances.new')}</Text>
               </TouchableOpacity>
             </View>
             {budgets.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>📊</Text>
-                <Text style={styles.emptyText}>No tienes presupuestos</Text>
-                <Text style={styles.emptySubtext}>Crea límites de gasto por categoría</Text>
+                <Text style={styles.emptyText}>{t('finances.empty.noBudgets')}</Text>
+                <Text style={styles.emptySubtext}>{t('finances.empty.createBudgetHint')}</Text>
                 <TouchableOpacity style={styles.emptyButton} onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}>
-                  <Text style={styles.emptyButtonText}>Crear presupuesto</Text>
+                  <Text style={styles.emptyButtonText}>{t('finances.createBudget')}</Text>
                 </TouchableOpacity>
               </View>
             ) : budgets.map(budget => (
@@ -638,15 +640,15 @@ export default function FinancesScreen() {
                 </View>
                 <View style={styles.budgetFooter}>
                   <Text style={styles.budgetRemaining}>
-                    {budget.remaining >= 0 ? `Disponible: ${formatCurrency(budget.remaining)}` : `Excedido: ${formatCurrency(Math.abs(budget.remaining))}`}
+                    {budget.remaining >= 0 ? t('finances.budget.available', { amount: formatCurrency(budget.remaining) }) : t('finances.budget.exceeded', { amount: formatCurrency(Math.abs(budget.remaining)) })}
                   </Text>
                   <Text style={[styles.budgetStatusLabel, { color: getBudgetStatusColor(budget.status) }]}>
-                    {budget.status === 'exceeded' ? '⚠️ Excedido' : budget.status === 'warning' ? '⚡ Cuidado' : '✓ En control'}
+                    {budget.status === 'exceeded' ? t('finances.budget.statusExceeded') : budget.status === 'warning' ? t('finances.budget.statusWarning') : t('finances.budget.statusOk')}
                   </Text>
                 </View>
               </TouchableOpacity>
             ))}
-            {budgets.length > 0 && <Text style={styles.budgetHint}>💡 Mantén presionado para eliminar</Text>}
+            {budgets.length > 0 && <Text style={styles.budgetHint}>{t('finances.budget.deleteHint')}</Text>}
           </>
         )}
 
@@ -655,16 +657,16 @@ export default function FinancesScreen() {
 
       {/* Transaction Modal */}
       <AppModal visible={showTransactionModal} onClose={() => setShowTransactionModal(false)}>
-        <Text style={styles.modalTitle}>{transactionType === 'income' ? '💵 Nuevo Ingreso' : '💸 Nuevo Gasto'}</Text>
+        <Text style={styles.modalTitle}>{transactionType === 'income' ? `💵 ${t('finances.modals.newIncome')}` : `💸 ${t('finances.modals.newExpense')}`}</Text>
         <View style={styles.typeSelector}>
           <TouchableOpacity style={[styles.typeButton, transactionType === 'income' && styles.typeButtonActiveIncome]} onPress={() => setTransactionType('income')}>
-            <Text style={[styles.typeButtonText, transactionType === 'income' && styles.typeButtonTextActive]}>Ingreso</Text>
+            <Text style={[styles.typeButtonText, transactionType === 'income' && styles.typeButtonTextActive]}>{t('finances.quickActions.income')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.typeButton, transactionType === 'expense' && styles.typeButtonActiveExpense]} onPress={() => setTransactionType('expense')}>
-            <Text style={[styles.typeButtonText, transactionType === 'expense' && styles.typeButtonTextActive]}>Gasto</Text>
+            <Text style={[styles.typeButtonText, transactionType === 'expense' && styles.typeButtonTextActive]}>{t('finances.quickActions.expense')}</Text>
           </TouchableOpacity>
         </View>
-        <TextInput style={styles.input} placeholder="Monto" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={transactionForm.amount} onChangeText={(v) => setTransactionForm({ ...transactionForm, amount: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.amount')} placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={transactionForm.amount} onChangeText={(v) => setTransactionForm({ ...transactionForm, amount: v })} />
         <View style={styles.categoryGrid}>
           {categories.filter(c => c.type === transactionType || c.type === 'both').map(cat => (
             <TouchableOpacity key={cat.id} style={[styles.categoryChip, transactionForm.category === cat.name && { backgroundColor: cat.color || COLORS.purple }]} onPress={() => setTransactionForm({ ...transactionForm, category: cat.name })}>
@@ -673,18 +675,18 @@ export default function FinancesScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <TextInput style={styles.input} placeholder="Descripción (opcional)" placeholderTextColor={COLORS.textMuted} value={transactionForm.description} onChangeText={(v) => setTransactionForm({ ...transactionForm, description: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.descriptionOptional')} placeholderTextColor={COLORS.textMuted} value={transactionForm.description} onChangeText={(v) => setTransactionForm({ ...transactionForm, description: v })} />
         <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowTransactionModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: transactionType === 'income' ? COLORS.green : COLORS.red }]} onPress={handleCreateTransaction}><Text style={styles.saveButtonText}>Guardar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowTransactionModal(false)}><Text style={styles.cancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: transactionType === 'income' ? COLORS.green : COLORS.red }]} onPress={handleCreateTransaction}><Text style={styles.saveButtonText}>{t('common.save')}</Text></TouchableOpacity>
         </View>
       </AppModal>
 
       {/* Goal Modal */}
       <AppModal visible={showGoalModal} onClose={() => setShowGoalModal(false)}>
-        <Text style={styles.modalTitle}>🎯 Nueva Meta</Text>
-        <TextInput style={styles.input} placeholder="Nombre de la meta" placeholderTextColor={COLORS.textMuted} value={goalForm.name} onChangeText={(v) => setGoalForm({ ...goalForm, name: v })} />
-        <TextInput style={styles.input} placeholder="Monto objetivo" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={goalForm.target_amount} onChangeText={(v) => setGoalForm({ ...goalForm, target_amount: v })} />
+        <Text style={styles.modalTitle}>🎯 {t('finances.modals.newGoal')}</Text>
+        <TextInput style={styles.input} placeholder={t('finances.form.goalName')} placeholderTextColor={COLORS.textMuted} value={goalForm.name} onChangeText={(v) => setGoalForm({ ...goalForm, name: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.targetAmount')} placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={goalForm.target_amount} onChangeText={(v) => setGoalForm({ ...goalForm, target_amount: v })} />
         <View style={styles.iconSelector}>
           {['🎯', '🏠', '🚗', '✈️', '💻', '📱', '🎓', '💍', '🏖️', '💰'].map(icon => (
             <TouchableOpacity key={icon} style={[styles.iconOption, goalForm.icon === icon && styles.iconOptionActive]} onPress={() => setGoalForm({ ...goalForm, icon })}>
@@ -693,37 +695,37 @@ export default function FinancesScreen() {
           ))}
         </View>
         <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowGoalModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.purple }]} onPress={handleCreateGoal}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowGoalModal(false)}><Text style={styles.cancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.purple }]} onPress={handleCreateGoal}><Text style={styles.saveButtonText}>{t('common.create')}</Text></TouchableOpacity>
         </View>
       </AppModal>
 
       {/* Contribution Modal */}
       <AppModal visible={showContributionModal} onClose={() => { setShowContributionModal(false); setSelectedGoal(null); }}>
-        <Text style={styles.modalTitle}>💰 Aportar a {selectedGoal?.name}</Text>
+        <Text style={styles.modalTitle}>💰 {t('finances.modals.contributeTo', { name: selectedGoal?.name })}</Text>
         {selectedGoal && (
           <View style={styles.goalPreview}>
             <Text style={styles.goalPreviewText}>{formatCurrency(selectedGoal.current_amount)} / {formatCurrency(selectedGoal.target_amount)}</Text>
             <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${getProgressPercentage(selectedGoal.current_amount, selectedGoal.target_amount)}%`, backgroundColor: COLORS.purple }]} /></View>
           </View>
         )}
-        <TextInput style={styles.input} placeholder="Monto a aportar" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={contributionAmount} onChangeText={setContributionAmount} />
+        <TextInput style={styles.input} placeholder={t('finances.form.contributionAmount')} placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={contributionAmount} onChangeText={setContributionAmount} />
         <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowContributionModal(false); setSelectedGoal(null); }}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.green }]} onPress={handleAddContribution}><Text style={styles.saveButtonText}>Aportar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => { setShowContributionModal(false); setSelectedGoal(null); }}><Text style={styles.cancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.green }]} onPress={handleAddContribution}><Text style={styles.saveButtonText}>{t('finances.contribute')}</Text></TouchableOpacity>
         </View>
       </AppModal>
 
       {/* Invoice Modal */}
       <AppModal visible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
-        <Text style={styles.modalTitle}>🧾 Nueva Factura</Text>
-        <TextInput style={styles.input} placeholder="Proveedor / Empresa" placeholderTextColor={COLORS.textMuted} value={invoiceForm.vendor_name} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, vendor_name: v })} />
-        <TextInput style={styles.input} placeholder="Monto" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={invoiceForm.amount} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, amount: v })} />
-        <TextInput style={styles.input} placeholder="Categoría (ej: Agua, Luz)" placeholderTextColor={COLORS.textMuted} value={invoiceForm.category} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, category: v })} />
-        <TextInput style={styles.input} placeholder="Vencimiento (YYYY-MM-DD)" placeholderTextColor={COLORS.textMuted} value={invoiceForm.due_date} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, due_date: v })} />
+        <Text style={styles.modalTitle}>🧾 {t('finances.modals.newInvoice')}</Text>
+        <TextInput style={styles.input} placeholder={t('finances.form.vendor')} placeholderTextColor={COLORS.textMuted} value={invoiceForm.vendor_name} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, vendor_name: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.amount')} placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={invoiceForm.amount} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, amount: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.categoryExample')} placeholderTextColor={COLORS.textMuted} value={invoiceForm.category} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, category: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.dueDate')} placeholderTextColor={COLORS.textMuted} value={invoiceForm.due_date} onChangeText={(v) => setInvoiceForm({ ...invoiceForm, due_date: v })} />
         <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowInvoiceModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.yellow }]} onPress={handleCreateInvoice}><Text style={styles.saveButtonText}>Registrar</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowInvoiceModal(false)}><Text style={styles.cancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.yellow }]} onPress={handleCreateInvoice}><Text style={styles.saveButtonText}>{t('finances.register')}</Text></TouchableOpacity>
         </View>
       </AppModal>
 
@@ -735,18 +737,18 @@ export default function FinancesScreen() {
             <View style={[styles.invoiceDetailStatus, { backgroundColor: getUrgencyColor(selectedInvoice.urgency) + '20' }]}>
               <Text style={[styles.invoiceDetailStatusText, { color: getUrgencyColor(selectedInvoice.urgency) }]}>{getUrgencyText(selectedInvoice.urgency, selectedInvoice.days_until_due)}</Text>
             </View>
-            <View style={styles.invoiceDetailRow}><Text style={styles.invoiceDetailLabel}>Monto:</Text><Text style={styles.invoiceDetailValue}>{formatCurrency(selectedInvoice.amount)}</Text></View>
-            <View style={styles.invoiceDetailRow}><Text style={styles.invoiceDetailLabel}>Vencimiento:</Text><Text style={styles.invoiceDetailValue}>{new Date(selectedInvoice.due_date).toLocaleDateString('es-HN')}</Text></View>
-            <TouchableOpacity style={styles.payButton} onPress={handlePayInvoice}><Text style={styles.payButtonText}>✅ Marcar como Pagada</Text></TouchableOpacity>
+            <View style={styles.invoiceDetailRow}><Text style={styles.invoiceDetailLabel}>{t('finances.invoiceDetail.amount')}:</Text><Text style={styles.invoiceDetailValue}>{formatCurrency(selectedInvoice.amount)}</Text></View>
+            <View style={styles.invoiceDetailRow}><Text style={styles.invoiceDetailLabel}>{t('finances.invoiceDetail.dueDate')}:</Text><Text style={styles.invoiceDetailValue}>{new Date(selectedInvoice.due_date).toLocaleDateString('es-HN')}</Text></View>
+            <TouchableOpacity style={styles.payButton} onPress={handlePayInvoice}><Text style={styles.payButtonText}>✅ {t('finances.invoiceDetail.markAsPaid')}</Text></TouchableOpacity>
           </View>
         )}
       </AppModal>
 
       {/* Budget Modal */}
       <AppModal visible={showBudgetModal} onClose={() => setShowBudgetModal(false)}>
-        <Text style={styles.modalTitle}>📊 Nuevo Presupuesto</Text>
-        <TextInput style={styles.input} placeholder="Categoría (ej: Alimentación)" placeholderTextColor={COLORS.textMuted} value={budgetForm.category} onChangeText={(v) => setBudgetForm({ ...budgetForm, category: v })} />
-        <TextInput style={styles.input} placeholder="Límite mensual" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={budgetForm.amount} onChangeText={(v) => setBudgetForm({ ...budgetForm, amount: v })} />
+        <Text style={styles.modalTitle}>📊 {t('finances.modals.newBudget')}</Text>
+        <TextInput style={styles.input} placeholder={t('finances.form.budgetCategory')} placeholderTextColor={COLORS.textMuted} value={budgetForm.category} onChangeText={(v) => setBudgetForm({ ...budgetForm, category: v })} />
+        <TextInput style={styles.input} placeholder={t('finances.form.monthlyLimit')} placeholderTextColor={COLORS.textMuted} keyboardType="numeric" value={budgetForm.amount} onChangeText={(v) => setBudgetForm({ ...budgetForm, amount: v })} />
         <View style={styles.iconSelector}>
           {['💰', '🍔', '🚗', '🏠', '💡', '📱', '🎮', '👕', '💊', '📚'].map(icon => (
             <TouchableOpacity key={icon} style={[styles.iconOption, budgetForm.icon === icon && styles.iconOptionActive]} onPress={() => setBudgetForm({ ...budgetForm, icon })}>
@@ -755,8 +757,8 @@ export default function FinancesScreen() {
           ))}
         </View>
         <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowBudgetModal(false)}><Text style={styles.cancelButtonText}>Cancelar</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.blue }]} onPress={handleCreateBudget}><Text style={styles.saveButtonText}>Crear</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setShowBudgetModal(false)}><Text style={styles.cancelButtonText}>{t('common.cancel')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: COLORS.blue }]} onPress={handleCreateBudget}><Text style={styles.saveButtonText}>{t('common.create')}</Text></TouchableOpacity>
         </View>
       </AppModal>
 
@@ -783,94 +785,94 @@ export default function FinancesScreen() {
           <View style={styles.upgradeDiamondIcon}>
             <Ionicons name="diamond" size={32} color={COLORS.purple} />
           </View>
-          <Text style={styles.upgradeModalTitle}>Desbloquea Todo</Text>
-          <Text style={styles.upgradeModalSubtitle}>Obtén control total de tus finanzas personales</Text>
+          <Text style={styles.upgradeModalTitle}>{t('finances.upgrade.unlockAll')}</Text>
+          <Text style={styles.upgradeModalSubtitle}>{t('finances.upgrade.getControl')}</Text>
         </View>
         
         {/* Plan Premium */}
         <View style={styles.planCardPremium}>
           <View style={styles.planBadgePopular}>
-            <Text style={styles.planBadgeText}>⭐ POPULAR</Text>
+            <Text style={styles.planBadgeText}>⭐ {t('finances.upgrade.popular')}</Text>
           </View>
           <Text style={styles.planNamePremium}>Premium</Text>
           <View style={styles.planPriceRow}>
             <Text style={styles.planPriceCurrency}>$</Text>
             <Text style={styles.planPriceAmount}>2.99</Text>
-            <Text style={styles.planPricePeriod}>/mes</Text>
+            <Text style={styles.planPricePeriod}>/{t('finances.upgrade.month')}</Text>
           </View>
-          <Text style={styles.planYearlyPrice}>$29.99/año (ahorra 16%)</Text>
+          <Text style={styles.planYearlyPrice}>{t('finances.upgrade.yearlyPrice', { price: '29.99', save: '16' })}</Text>
           
           <View style={styles.planFeaturesList}>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconGreen}><Ionicons name="infinite" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>Transacciones ilimitadas</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.unlimitedTransactions')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconGreen}><Ionicons name="flag" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>Metas de ahorro ilimitadas</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.unlimitedGoals')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconGreen}><Ionicons name="pie-chart" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>Presupuestos por categoría</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.categoryBudgets')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconGreen}><Ionicons name="document-text" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>Gestión de facturas</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.invoiceManagement')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconGreen}><Ionicons name="bulb" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>Consejos personalizados</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.personalizedTips')}</Text>
             </View>
           </View>
           
           <TouchableOpacity style={styles.planButtonPremium} onPress={() => handleUpgrade('Premium')}>
-            <Text style={styles.planButtonText}>Obtener Premium</Text>
+            <Text style={styles.planButtonText}>{t('finances.upgrade.getPremium')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Plan Pro */}
         <View style={styles.planCardPro}>
           <View style={styles.planBadgeBestValue}>
-            <Text style={styles.planBadgeText}>💎 MEJOR VALOR</Text>
+            <Text style={styles.planBadgeText}>💎 {t('finances.upgrade.bestValue')}</Text>
           </View>
           <Text style={styles.planNamePro}>Pro</Text>
           <View style={styles.planPriceRow}>
             <Text style={styles.planPriceCurrency}>$</Text>
             <Text style={styles.planPriceAmount}>4.99</Text>
-            <Text style={styles.planPricePeriod}>/mes</Text>
+            <Text style={styles.planPricePeriod}>/{t('finances.upgrade.month')}</Text>
           </View>
-          <Text style={styles.planYearlyPrice}>$49.99/año (ahorra 17%)</Text>
+          <Text style={styles.planYearlyPrice}>{t('finances.upgrade.yearlyPrice', { price: '49.99', save: '17' })}</Text>
           
           <View style={styles.planFeaturesList}>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconTeal}><Ionicons name="checkmark-circle" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>Todo de Premium incluido</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.allPremium')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconTeal}><Ionicons name="analytics" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>Reportes avanzados</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.advancedReports')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconTeal}><Ionicons name="cloud-download" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>Exportar a Excel/PDF</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.exportExcelPdf')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconTeal}><Ionicons name="notifications" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>Alertas inteligentes</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.smartAlerts')}</Text>
             </View>
             <View style={styles.planFeatureRow}>
               <View style={styles.planFeatureIconTeal}><Ionicons name="shield-checkmark" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>Soporte prioritario</Text>
+              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.prioritySupport')}</Text>
             </View>
           </View>
           
           <TouchableOpacity style={styles.planButtonPro} onPress={() => handleUpgrade('Pro')}>
-            <Text style={styles.planButtonTextPro}>Obtener Pro</Text>
+            <Text style={styles.planButtonTextPro}>{t('finances.upgrade.getPro')}</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.skipButton} onPress={() => setShowUpgradeModal(false)}>
-          <Text style={styles.skipButtonText}>Quizás después</Text>
+          <Text style={styles.skipButtonText}>{t('finances.upgrade.maybeLater')}</Text>
         </TouchableOpacity>
       </AppModal>
     </SafeAreaView>

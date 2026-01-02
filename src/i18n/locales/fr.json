@@ -1,0 +1,1913 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "done": "Terminé",
+    "yes": "Oui",
+    "no": "Non",
+    "save": "Enregistrer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès !",
+    "retry": "Réessayer",
+    "back": "Retour",
+    "next": "Suivant",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "all": "Tout",
+    "none": "Aucun",
+    "today": "Aujourd'hui",
+    "tomorrow": "Demain",
+    "yesterday": "Hier",
+    "seeAll": "Voir tout",
+    "seeMore": "Voir plus",
+    "noResults": "Aucun résultat",
+    "required": "Requis",
+    "optional": "Optionnel",
+    "comingSoon": "Bientôt disponible",
+    "comingSoonDesc": "Cette fonctionnalité sera bientôt disponible"
+  },
+  "app": {
+    "name": "ISSY",
+    "welcome": "Bienvenue",
+    "loading": "Chargement..."
+  },
+  "tabs": {
+    "home": "Accueil",
+    "visits": "Visites",
+    "payments": "Paiements",
+    "marketplace": "Marché",
+    "profile": "Profil"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "email": "Email",
+    "emailPlaceholder": "vous@email.com",
+    "password": "Mot de passe",
+    "forgotPassword": {
+      "title": "Mot de passe oublié ?",
+      "subtitle": "Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe",
+      "sendLink": "Envoyer le lien",
+      "checkEmail": "Vérifiez votre email !",
+      "emailSentMessage": "Si un compte existe avec l'email {{email}}, vous recevrez un lien pour réinitialiser votre mot de passe.",
+      "backToLogin": "Retour à la connexion",
+      "tryAnotherEmail": "Essayer un autre email",
+      "rememberPassword": "Vous vous souvenez de votre mot de passe ?"
+    },
+    "signIn": "Se connecter",
+    "signInWith": "Continuer avec {{provider}}",
+    "noAccount": "Pas de compte ?",
+    "register": {
+      "createAccount": "Créer un compte",
+      "joinIssy": "Rejoindre ISSY",
+      "fullName": "Nom complet",
+      "fullNamePlaceholder": "Jean Dupont",
+      "phoneOptional": "Téléphone (optionnel)",
+      "confirmPassword": "Confirmer le mot de passe",
+      "minChars": "Minimum 6 caractères",
+      "repeatPassword": "Répétez votre mot de passe",
+      "haveInvitationCode": "Avez-vous un code d'invitation ?",
+      "invitationCodePlaceholder": "Ex: ABC123",
+      "invitationCodeHint": "Si votre administrateur vous a donné un code, entrez-le ici",
+      "acceptTermsPrefix": "J'accepte les",
+      "termsOfService": "Conditions d'utilisation",
+      "and": "et la",
+      "privacyPolicy": "Politique de confidentialité",
+      "alreadyHaveAccount": "Vous avez déjà un compte ?",
+      "welcome": "Bienvenue !",
+      "accountCreated": "Votre compte a été créé avec succès",
+      "accountCreatedTitle": "Compte créé !",
+      "joinYourCommunity": "Maintenant rejoignez votre communauté"
+    },
+    "welcomeBack": "Bon retour !",
+    "enterCredentials": "Entrez vos identifiants pour continuer",
+    "invalidCredentials": "Identifiants invalides",
+    "sessionExpired": "Votre session a expiré",
+    "errors": {
+      "emailRequired": "Veuillez entrer votre email",
+      "invalidEmail": "Veuillez entrer un email valide",
+      "nameRequired": "Veuillez entrer votre nom",
+      "passwordRequired": "Veuillez entrer un mot de passe",
+      "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "acceptTerms": "Vous devez accepter les Conditions d'utilisation et la Politique de confidentialité",
+      "invalidInvitationCode": "Code d'invitation invalide",
+      "registerFailed": "Impossible de créer le compte",
+      "genericError": "Une erreur s'est produite. Veuillez réessayer."
+    },
+    "joinCode": {
+      "title": "Code d'invitation",
+      "subtitle": "Entrez le code fourni par votre administrateur",
+      "placeholder": "Ex: ABC123",
+      "verifyCode": "Vérifier le code",
+      "codeHint": "Le code est unique et ne peut être utilisé qu'une seule fois",
+      "enterCode": "Veuillez entrer un code",
+      "invalidCode": "Code invalide",
+      "codeNotExist": "Le code n'existe pas ou a déjà été utilisé",
+      "validCode": "Code valide !",
+      "changeCode": "Changer de code",
+      "type": "Type",
+      "community": "Communauté",
+      "location": "Emplacement",
+      "role": "Rôle",
+      "property": "Propriété",
+      "unit": "Unité",
+      "invitedBy": "Invité par",
+      "acceptInvitation": "Accepter l'invitation",
+      "success": "Terminé !",
+      "joinedSuccessfully": "Vous avez rejoint avec succès",
+      "acceptFailed": "Impossible d'accepter l'invitation",
+      "needAccount": "Vous avez besoin d'un compte pour accepter l'invitation",
+      "createNewAccount": "Créer un nouveau compte",
+      "useAnotherCode": "Utiliser un autre code",
+      "types": {
+        "community": "Communauté",
+        "tenant": "Locataire",
+        "invitation": "Invitation"
+      },
+      "roles": {
+        "admin": "Administrateur",
+        "guard": "Agent de sécurité",
+        "resident": "Résident",
+        "owner": "Propriétaire",
+        "employee": "Employé",
+        "superadmin": "Super Admin"
+      }
+    },
+    "join": {
+      "invitation": "Invitation",
+      "verifying": "Vérification de l'invitation...",
+      "youAreInvited": "Vous avez été invité",
+      "reviewDetails": "Vérifiez les détails avant d'accepter",
+      "tenantInvitation": "Invitation locataire",
+      "communityInvitation": "Invitation communauté",
+      "community": "Communauté",
+      "address": "Adresse",
+      "city": "Ville",
+      "assignedRole": "Rôle assigné",
+      "property": "Propriété",
+      "unit": "Unité",
+      "monthlyRent": "Loyer mensuel",
+      "startDate": "Date de début",
+      "invitedBy": "Invité par",
+      "acceptInvitation": "Accepter l'invitation",
+      "loginAndAccept": "Se connecter et accepter",
+      "needLoginToAccept": "Vous devez vous connecter pour accepter cette invitation",
+      "invalidInvitation": "Invitation invalide",
+      "invalidOrExpired": "Code d'invitation invalide ou expiré",
+      "verifyError": "Erreur lors de la vérification de l'invitation",
+      "acceptError": "Erreur lors de l'acceptation de l'invitation",
+      "processError": "Erreur lors du traitement de l'invitation",
+      "goToHome": "Aller à l'accueil",
+      "joinedSuccessfully": "Vous avez rejoint avec succès !",
+      "nowPartOf": "Vous faites maintenant partie de {{name}}",
+      "theCommunity": "la communauté"
+    }
+  },
+  "home": {
+    "greeting": "Bonjour, {{name}}",
+    "goodMorning": "Bonjour",
+    "goodAfternoon": "Bon après-midi",
+    "goodEvening": "Bonsoir",
+    "welcomeBack": "Bon retour",
+    "myCommunity": "Ma Communauté",
+    "residents": "résidents",
+    "services": "Services",
+    "viewAll": "Voir tout",
+    "admin": "Admin",
+    "changeLocation": "Changer de lieu",
+    "moreServices": "Plus de services",
+    "switchingLocation": "Changement de lieu...",
+    "quickActions": {
+      "title": "Actions rapides",
+      "newQR": "Nouveau QR",
+      "reservations": "Réservations",
+      "announcements": "Annonces",
+      "payments": "Paiements"
+    },
+    "joinCommunity": {
+      "title": "Rejoindre une Communauté",
+      "subtitle": "Entrez votre code d'invitation pour commencer",
+      "button": "Rejoindre"
+    },
+    "recentActivity": "Activité récente",
+    "pendingPayments": "Paiements en attente",
+    "upcomingVisits": "Visites à venir",
+    "announcements": "Annonces"
+  },
+  "visits": {
+    "title": "Visites",
+    "generateQr": "Générer QR",
+    "myVisits": "Mes Visites",
+    "history": "Historique",
+    "scheduled": "Programmées",
+    "qrTypes": {
+      "oneTime": "Une fois",
+      "recurring": "Récurrent",
+      "temporary": "Temporaire",
+      "permanent": "Permanent"
+    },
+    "weekdays": {
+      "monday": "Lundi",
+      "tuesday": "Mardi",
+      "wednesday": "Mercredi",
+      "thursday": "Jeudi",
+      "friday": "Vendredi",
+      "saturday": "Samedi",
+      "sunday": "Dimanche"
+    },
+    "status": {
+      "pending": "En attente",
+      "approved": "Approuvée",
+      "inProgress": "En cours",
+      "completed": "Terminée",
+      "cancelled": "Annulée",
+      "expired": "Expirée"
+    },
+    "form": {
+      "visitorName": "Nom du visiteur",
+      "visitorId": "Identification",
+      "vehiclePlate": "Plaque d'immatriculation",
+      "purpose": "Motif de visite",
+      "date": "Date",
+      "time": "Heure",
+      "notes": "Notes supplémentaires"
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "invalidDate": "Date invalide",
+      "createFailed": "Erreur lors de la création"
+    },
+    "empty": {
+      "title": "Aucune visite",
+      "subtitle": "Générez un code QR pour enregistrer des visiteurs"
+    },
+    "shareQr": "Partager QR",
+    "downloadQr": "Télécharger QR",
+    "qrValid": "Valide jusqu'au",
+    "scanToEnter": "Scanner pour entrer"
+  },
+  "payments": {
+    "title": "Paiements",
+    "pending": "En attente",
+    "paid": "Payés",
+    "overdue": "En retard",
+    "amount": "Montant",
+    "dueDate": "Date d'échéance",
+    "payNow": "Payer maintenant",
+    "paymentHistory": "Historique des paiements",
+    "paymentMethods": "Moyens de paiement",
+    "addPaymentMethod": "Ajouter un moyen",
+    "makePayment": "Effectuer un paiement",
+    "receipt": "Reçu",
+    "downloadReceipt": "Télécharger le reçu",
+    "status": {
+      "pending": "En attente",
+      "processing": "En cours",
+      "completed": "Terminé",
+      "failed": "Échoué",
+      "refunded": "Remboursé"
+    },
+    "empty": {
+      "title": "Aucun paiement en attente",
+      "subtitle": "Vous êtes à jour avec vos paiements !"
+    },
+    "tabs": {
+      "pending": "En attente",
+      "history": "Historique"
+    }
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "comingSoon": "Bientôt disponible",
+    "description": "Achetez et vendez des produits et services dans votre communauté",
+    "features": {
+      "buy": "Acheter",
+      "sell": "Vendre",
+      "services": "Services",
+      "products": "Produits"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "user": "Utilisateur",
+    "editProfile": "Modifier le profil",
+    "account": "Compte",
+    "settings": "Paramètres",
+    "help": "Aide et Support",
+    "helpDesc": "FAQ et contact",
+    "myCommunity": "Ma Communauté",
+    "myUnit": "Mon Unité",
+    "myUnitDesc": "Voir les détails de votre communauté",
+    "joinCommunity": "Rejoindre une Communauté",
+    "joinCommunityDesc": "Entrer un code d'invitation",
+    "personalData": "Données Personnelles",
+    "personalDataDesc": "Modifier vos informations",
+    "security": "Sécurité",
+    "securityDesc": "Mot de passe et biométrie",
+    "notifications": "Notifications",
+    "notificationsDesc": "Gérer vos alertes",
+    "paymentMethods": "Moyens de Paiement",
+    "paymentMethodsDesc": "Gérer vos cartes",
+    "subscription": "Abonnement",
+    "subscriptionDesc": "Gérer votre plan",
+    "legal": "Légal",
+    "legalDesc": "Termes et politiques",
+    "legalDocuments": "Documents Légaux",
+    "termsOfService": "Conditions d'Utilisation",
+    "privacyPolicy": "Politique de Confidentialité",
+    "selectDocument": "Sélectionner un document",
+    "support": "Support",
+    "reportIncident": "Signaler un Incident",
+    "reportIncidentDesc": "Signaler un problème",
+    "dangerZone": "Zone Dangereuse",
+    "deleteAccount": "Supprimer le Compte",
+    "deleteAccountDesc": "Supprimer définitivement votre compte",
+    "deleteAccountQuestion": "Êtes-vous sûr de vouloir supprimer votre compte ?",
+    "deleteWarning": "Cette action est irréversible. Toutes vos données seront définitivement supprimées :",
+    "deleteItem1": "Votre profil et données personnelles",
+    "deleteItem2": "Votre historique de visites",
+    "deleteItem3": "Vos enregistrements de paiement",
+    "deleteItem4": "Accès à toutes les communautés",
+    "typeToConfirm": "Tapez \"{{word}}\" pour confirmer",
+    "deleteWord": "SUPPRIMER",
+    "enterPassword": "Entrez votre mot de passe",
+    "passwordRequired": "Le mot de passe est requis",
+    "confirmDeletion": "Confirmer la Suppression",
+    "deleteSuccess": "Compte supprimé avec succès",
+    "deleteError": "Impossible de supprimer le compte",
+    "deleteConfirmError": "Veuillez taper correctement le mot de confirmation",
+    "logout": "Déconnexion",
+    "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
+    "roleAdmin": "Administrateur",
+    "roleResident": "Résident",
+    "language": "Langue"
+  },
+  "announcements": {
+    "title": "Annonces",
+    "new": "Nouveau",
+    "readMore": "Lire la suite",
+    "postedBy": "Publié par",
+    "timeAgo": {
+      "now": "À l'instant",
+      "minutesAgo": "Il y a {{count}} min",
+      "hoursAgo": "Il y a {{count}}h",
+      "yesterday": "Hier",
+      "daysAgo": "Il y a {{count}} jours"
+    },
+    "empty": {
+      "title": "Aucune annonce",
+      "subtitle": "Pas d'annonces récentes"
+    }
+  },
+  "reservations": {
+    "title": "Réservations",
+    "myReservations": "Mes Réservations",
+    "newReservation": "Nouvelle Réservation",
+    "commonAreas": "Espaces Communs",
+    "selectArea": "Sélectionner un espace",
+    "selectDate": "Sélectionner une date",
+    "selectTime": "Sélectionner une heure",
+    "duration": "Durée",
+    "guests": "Invités",
+    "status": {
+      "pending": "En attente",
+      "confirmed": "Confirmée",
+      "cancelled": "Annulée",
+      "completed": "Terminée"
+    },
+    "areas": {
+      "pool": "Piscine",
+      "gym": "Salle de sport",
+      "salon": "Salle des fêtes",
+      "bbq": "Zone barbecue",
+      "tennis": "Court de tennis",
+      "playground": "Aire de jeux"
+    },
+    "errors": {
+      "areaRequired": "Sélectionnez un espace",
+      "dateRequired": "Sélectionnez une date",
+      "timeRequired": "Sélectionnez une heure",
+      "notAvailable": "Créneau non disponible",
+      "maxCapacity": "Capacité maximale dépassée",
+      "createFailed": "Erreur lors de la création"
+    },
+    "success": {
+      "created": "Réservation créée avec succès",
+      "cancelled": "Réservation annulée"
+    },
+    "empty": {
+      "title": "Aucune réservation",
+      "subtitle": "Réservez des espaces communs de votre communauté"
+    },
+    "hourlyRate": "{{rate}} / heure",
+    "free": "Gratuit",
+    "book": "Réserver",
+    "cancelReservation": "Annuler la réservation",
+    "confirmCancel": "Êtes-vous sûr de vouloir annuler cette réservation ?"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "report": "Signaler",
+    "myReports": "Mes Signalements",
+    "newIncident": "Nouvel Incident",
+    "description": "Description",
+    "location": "Emplacement",
+    "attachPhoto": "Joindre une photo",
+    "status": {
+      "open": "Ouvert",
+      "inProgress": "En cours",
+      "resolved": "Résolu",
+      "closed": "Fermé"
+    },
+    "severity": {
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé",
+      "critical": "Critique"
+    },
+    "categories": {
+      "maintenance": "Maintenance",
+      "security": "Sécurité",
+      "noise": "Bruit",
+      "parking": "Stationnement",
+      "common_areas": "Espaces communs",
+      "other": "Autre"
+    },
+    "filters": {
+      "all": "Tous",
+      "mine": "Les miens",
+      "open": "Ouverts",
+      "resolved": "Résolus"
+    },
+    "form": {
+      "title": "Titre",
+      "category": "Catégorie",
+      "description": "Description détaillée",
+      "location": "Emplacement précis"
+    },
+    "empty": {
+      "title": "Aucun incident",
+      "subtitle": "Aucun incident signalé"
+    },
+    "success": {
+      "created": "Incident signalé avec succès",
+      "updated": "Incident mis à jour"
+    }
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "Comment pouvons-nous vous aider ?",
+    "contactUs": "Contactez-nous",
+    "faqTitle": "Questions Fréquentes",
+    "contact": {
+      "quickResponse": "Réponse rapide",
+      "email": "Email",
+      "call": "Appeler"
+    },
+    "faq": {
+      "qrCode": {
+        "question": "Comment générer un code QR pour les visiteurs ?",
+        "answer": "Allez dans l'onglet \"Visites\", appuyez sur \"Générer un code QR\", entrez les informations du visiteur et sélectionnez le type d'accès."
+      },
+      "joinCommunity": {
+        "question": "Comment rejoindre ma communauté ?",
+        "answer": "Vous avez besoin d'un code d'invitation de votre administrateur. Allez dans \"Rejoindre ma communauté\" et entrez le code."
+      },
+      "changePassword": {
+        "question": "Comment changer mon mot de passe ?",
+        "answer": "Allez dans Profil > Paramètres > Changer le mot de passe. Nous vous enverrons un email de vérification."
+      },
+      "contactAdmin": {
+        "question": "Comment contacter mon administrateur ?",
+        "answer": "Dans la section de votre communauté, vous trouverez les coordonnées de votre administrateur."
+      },
+      "panicButton": {
+        "question": "Comment fonctionne le bouton de panique ?",
+        "answer": "Le bouton de panique est un service premium qui envoie des alertes immédiates à la sécurité et aux contacts d'urgence."
+      }
+    },
+    "panicButton": {
+      "title": "Bouton de Panique",
+      "subtitle": "Protection personnelle 24h/24",
+      "message": "Le service Bouton de Panique est disponible en abonnement premium. Voulez-vous en savoir plus ?",
+      "viewPlans": "Voir les forfaits"
+    },
+    "premium": "Premium",
+    "copyright": "© 2024 ISSY. Tous droits réservés."
+  },
+  "paymentMethods": {
+    "title": "Moyens de Paiement",
+    "addCard": "Ajouter une Carte",
+    "saveCard": "Enregistrer la Carte",
+    "loading": "Chargement des cartes...",
+    "cardHolder": "Titulaire",
+    "expires": "Expire",
+    "default": "Par défaut",
+    "namePlaceholder": "PRÉNOM NOM",
+    "securityInfo": "Vos cartes sont protégées par un cryptage de niveau bancaire",
+    "securityNote": "Vos informations sont cryptées et sécurisées. Nous ne stockons jamais le CVV.",
+    "hint": "Maintenez appuyé sur une carte pour la supprimer",
+    "deleteTitle": "Supprimer la Carte",
+    "deleteMessage": "Supprimer la carte se terminant par {{lastFour}} ?",
+    "form": {
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "cardNumber": "Numéro de Carte",
+      "month": "Mois",
+      "year": "Année",
+      "idNumber": "Numéro d'Identité",
+      "phone": "Téléphone (optionnel)"
+    },
+    "errors": {
+      "nameRequired": "Entrez prénom et nom",
+      "invalidCard": "Numéro de carte invalide",
+      "invalidExpiry": "Date d'expiration invalide",
+      "invalidCvv": "CVV invalide",
+      "idRequired": "Entrez votre numéro d'identité",
+      "addFailed": "Impossible d'ajouter la carte",
+      "deleteFailed": "Impossible de supprimer",
+      "setDefaultFailed": "Impossible de définir par défaut"
+    },
+    "success": {
+      "added": "Carte ajoutée avec succès",
+      "deleted": "Supprimée",
+      "deletedMessage": "La carte a été supprimée"
+    },
+    "empty": {
+      "title": "Aucune carte",
+      "subtitle": "Ajoutez un moyen de paiement pour effectuer des transactions"
+    }
+  },
+  "admin": {
+    "accessProcess": {
+      "title": "Processus d'accès",
+      "subtitle": "Configuration de capture",
+      "processSection": "Processus d'accès",
+      "processDescription": "Sélectionnez les données à capturer lors de l'enregistrement des visiteurs",
+      "preferencesSection": "Préférences de sécurité",
+      "saveChanges": "Enregistrer",
+      "processes": {
+        "noData": {
+          "title": "Pas de données supplémentaires",
+          "description": "Valider QR uniquement",
+          "time": "2-3 secondes"
+        },
+        "photo1": {
+          "title": "Capturer 1 photo",
+          "description": "Photo du visiteur",
+          "time": "5-10 secondes"
+        },
+        "photo2": {
+          "title": "Capturer 2 photos",
+          "description": "Photos face et profil",
+          "time": "10-15 secondes"
+        },
+        "photo3": {
+          "title": "Capturer 3 photos",
+          "description": "Angles multiples",
+          "time": "20-25 secondes"
+        },
+        "photo1Id": {
+          "title": "1 Photo + N° d'identité",
+          "description": "Photo et numéro d'ID",
+          "time": "15-20 secondes"
+        },
+        "photo1IdPlate": {
+          "title": "1 Photo + ID + Plaque",
+          "description": "Photo, ID et plaque véhicule",
+          "time": "40-50 secondes"
+        },
+        "photo2IdPlate": {
+          "title": "2 Photos + ID + Plaque",
+          "description": "Photos, ID et plaque véhicule",
+          "time": "50-55 secondes"
+        },
+        "full": {
+          "title": "3 Photos + ID + Plaque",
+          "description": "Capture complète des données",
+          "time": "60-70 secondes"
+        }
+      },
+      "preferences": {
+        "exitRegistration": {
+          "title": "Doit marquer la sortie",
+          "description": "Enregistrer quand le visiteur part"
+        },
+        "companion": {
+          "title": "Toujours accompagné",
+          "description": "Le visiteur doit être avec un résident"
+        },
+        "qrResidents": {
+          "title": "QR pour résidents",
+          "description": "Les résidents utilisent QR pour entrer"
+        },
+        "residentApproval": {
+          "title": "Nécessite approbation",
+          "description": "Les visiteurs ont besoin d'autorisation"
+        }
+      },
+      "tags": {
+        "photo": "photo",
+        "photos": "photos",
+        "id": "ID",
+        "plate": "Plaque"
+      },
+      "success": {
+        "saved": "Configuration enregistrée"
+      },
+      "errors": {
+        "locationNotFound": "Emplacement non trouvé",
+        "saveFailed": "Impossible d'enregistrer"
+      }
+    },
+    "sections": {
+      "payments": {
+        "title": "Gestionnaire de paiements",
+        "description": "Gérez les frais et paiements de votre communauté"
+      },
+      "expenses": {
+        "title": "Dépenses",
+        "description": "Contrôle des dépenses de la communauté"
+      },
+      "users": {
+        "title": "Utilisateurs",
+        "description": "Gérez résidents, gardiens et rôles"
+      },
+      "guardConfig": {
+        "title": "App Gardiens",
+        "description": "Configuration du contrôle d'accès"
+      },
+      "locationSettings": {
+        "title": "Paramètres",
+        "description": "Paramètres généraux de votre emplacement"
+      },
+      "reports": {
+        "title": "Rapports",
+        "description": "Statistiques et métriques de votre communauté"
+      },
+      "default": {
+        "title": "Section",
+        "description": "Cette section est en développement"
+      },
+      "comingSoon": "Bientôt disponible",
+      "comingSoonNote": "Cette fonctionnalité sera bientôt disponible dans l'application mobile.",
+      "useWebVersion": "En attendant, vous pouvez utiliser la version web sur:",
+      "backToHome": "Retour à l'accueil"
+    },
+    "announcements": {
+      "title": "Annonces",
+      "newAnnouncement": "Nouvelle annonce",
+      "editAnnouncement": "Modifier l'annonce",
+      "createAnnouncement": "Créer une annonce",
+      "detail": "Détail",
+      "inactive": "Inactif",
+      "pinned": "Épinglé",
+      "image": "image",
+      "images": "images",
+      "new": "NOUVEAU",
+      "addImages": "Ajouter des images",
+      "pinAnnouncement": "Épingler l'annonce",
+      "activeAnnouncement": "Annonce active",
+      "deleteTitle": "Supprimer l'annonce",
+      "deleteMessage": "Êtes-vous sûr de vouloir supprimer \"{{title}}\"?",
+      "types": {
+        "info": "Information",
+        "warning": "Avertissement",
+        "alert": "Alerte",
+        "maintenance": "Maintenance",
+        "event": "Événement"
+      },
+      "priorities": {
+        "low": "Basse",
+        "normal": "Normale",
+        "medium": "Moyenne",
+        "high": "Haute",
+        "urgent": "Urgente"
+      },
+      "audiences": {
+        "all": "Tous",
+        "residents": "Résidents",
+        "guards": "Gardiens",
+        "admins": "Administrateurs"
+      },
+      "form": {
+        "title": "Titre",
+        "titlePlaceholder": "Titre de l'annonce",
+        "content": "Contenu",
+        "contentPlaceholder": "Écrivez le contenu de l'annonce...",
+        "type": "Type",
+        "priority": "Priorité",
+        "audience": "Audience",
+        "images": "Images",
+        "options": "Options"
+      },
+      "stats": {
+        "total": "Total",
+        "active": "Actifs",
+        "pinned": "Épinglés"
+      },
+      "success": {
+        "created": "Annonce créée",
+        "updated": "Annonce mise à jour",
+        "deleted": "Annonce supprimée"
+      },
+      "errors": {
+        "titleContentRequired": "Titre et contenu requis",
+        "saveFailed": "Impossible d'enregistrer l'annonce",
+        "deleteFailed": "Impossible de supprimer l'annonce"
+      },
+      "empty": {
+        "title": "Pas d'annonces",
+        "subtitle": "Créez la première annonce pour votre communauté"
+      }
+    },
+    "commonAreas": {
+      "title": "Espaces communs",
+      "subtitle": "Gérer les espaces",
+      "newArea": "Nouvel espace",
+      "editArea": "Modifier l'espace",
+      "createArea": "Créer un espace",
+      "schedule": "Horaires",
+      "schedules": "Horaires",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "people": "personnes",
+      "approval": "Approbation",
+      "uploading": "Téléchargement...",
+      "addImage": "Ajouter une image",
+      "permissionRequired": "Permission requise",
+      "photoPermission": "Nous avons besoin d'accéder à vos photos pour télécharger des images.",
+      "noPermission": "Vous n'avez pas la permission de voir cette page",
+      "loading": "Chargement des espaces...",
+      "deleteTitle": "Supprimer l'espace",
+      "deleteMessage": "Êtes-vous sûr de vouloir supprimer \"{{name}}\"?",
+      "scheduleNote": "Configurez les horaires spécifiques pour chaque jour. Les jours désactivés n'autoriseront pas les réservations.",
+      "categories": {
+        "pool": "Piscine",
+        "gym": "Salle de sport",
+        "court": "Terrain",
+        "bbq": "Barbecue",
+        "salon": "Salle des fêtes",
+        "playground": "Aire de jeux",
+        "terrace": "Terrasse",
+        "garden": "Jardin",
+        "parking": "Parking",
+        "other": "Autre"
+      },
+      "days": {
+        "sunday": "Dimanche",
+        "monday": "Lundi",
+        "tuesday": "Mardi",
+        "wednesday": "Mercredi",
+        "thursday": "Jeudi",
+        "friday": "Vendredi",
+        "saturday": "Samedi"
+      },
+      "daysShort": {
+        "sun": "Dim",
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mer",
+        "thu": "Jeu",
+        "fri": "Ven",
+        "sat": "Sam"
+      },
+      "form": {
+        "image": "Image",
+        "location": "Emplacement",
+        "name": "Nom",
+        "namePlaceholder": "Ex: Piscine principale",
+        "description": "Description",
+        "descriptionPlaceholder": "Décrivez l'espace...",
+        "category": "Catégorie",
+        "capacity": "Capacité (personnes)",
+        "isPaid": "Payant",
+        "isPaidHint": "Facturer par heure d'utilisation",
+        "pricePerHour": "Prix par heure",
+        "requiresApproval": "Nécessite approbation",
+        "requiresApprovalHint": "Les réservations doivent être approuvées",
+        "is24Hours": "Disponible 24h/24",
+        "openTime": "Ouverture",
+        "closeTime": "Fermeture",
+        "minHours": "Minimum (h)",
+        "maxHours": "Maximum (h)",
+        "advanceDays": "Avance (jours)"
+      },
+      "scheduleSection": {
+        "title": "Horaires de disponibilité"
+      },
+      "rulesSection": {
+        "title": "Règles de réservation"
+      },
+      "stats": {
+        "total": "Total",
+        "reservations": "Réservations",
+        "pending": "En attente"
+      },
+      "success": {
+        "created": "Espace créé",
+        "updated": "Espace mis à jour",
+        "deleted": "Espace supprimé"
+      },
+      "errors": {
+        "nameRequired": "Le nom est requis",
+        "saveFailed": "Impossible d'enregistrer l'espace",
+        "deleteFailed": "Impossible de supprimer",
+        "updateFailed": "Impossible de mettre à jour",
+        "imageSelectFailed": "Impossible de sélectionner l'image",
+        "imageUploadFailed": "Impossible de télécharger l'image"
+      },
+      "empty": {
+        "title": "Pas d'espaces communs",
+        "subtitle": "Créez votre premier espace pour que les résidents puissent réserver"
+      }
+    },
+    "accessReports": {
+      "title": "Contrôle d'accès",
+      "subtitle": "Audit et rapports",
+      "accessDenied": "Accès refusé",
+      "adminOnly": "Seuls les administrateurs peuvent accéder à cette section",
+      "loadingDetail": "Chargement des détails...",
+      "entry": "Entrée",
+      "exit": "Sortie",
+      "entries": "Entrées",
+      "exits": "Sorties",
+      "withPhoto": "Avec photo",
+      "recentAccess": "Accès récents",
+      "visitorsInside": "Visiteurs à l'intérieur",
+      "entryTime": "Entrée",
+      "incidentPhoto": "Photo d'incident",
+      "searchPlaceholder": "Rechercher visiteur, plaque, unité...",
+      "tabs": {
+        "dashboard": "Tableau de bord",
+        "history": "Historique",
+        "inside": "À l'intérieur",
+        "incidents": "Incidents"
+      },
+      "qrTypes": {
+        "single": "Unique",
+        "temporary": "Temporaire",
+        "permanent": "Permanent"
+      },
+      "severity": {
+        "high": "Haute",
+        "medium": "Moyenne",
+        "low": "Basse"
+      },
+      "stats": {
+        "entriesToday": "Entrées aujourd'hui",
+        "exitsToday": "Sorties aujourd'hui",
+        "inside": "À l'intérieur",
+        "incidents": "Incidents"
+      },
+      "detail": {
+        "title": "Détail d'accès",
+        "visitorPhoto": "Photo du visiteur",
+        "vehiclePhoto": "Photo du véhicule",
+        "idPhoto": "Photo d'identité",
+        "photoEvidence": "Preuve photographique",
+        "tapToZoom": "Appuyez sur une photo pour voir en plein écran",
+        "pinchToZoom": "Pincez pour zoomer",
+        "noPhotos": "Pas de preuve photographique",
+        "noPhotosCaptured": "Aucune photo n'a été capturée pour cet accès",
+        "accessInfo": "Informations d'accès",
+        "dateTime": "Date et heure",
+        "qrType": "Type de QR",
+        "vehiclePlate": "Plaque du véhicule",
+        "idNumber": "Numéro d'identité",
+        "companions": "Accompagnants",
+        "persons": "personne(s)",
+        "notes": "Notes",
+        "visitedResident": "Résident visité",
+        "name": "Nom",
+        "unit": "Unité",
+        "block": "Bloc",
+        "registeredBy": "Enregistré par",
+        "guard": "Gardien"
+      },
+      "export": {
+        "export": "Exporter",
+        "title": "Exporter l'historique",
+        "dateRange": "Plage de dates",
+        "from": "Du",
+        "to": "Au",
+        "lastWeek": "Semaine dernière",
+        "thisMonth": "Ce mois",
+        "lastMonth": "Mois dernier",
+        "totalRecords": "Total des enregistrements",
+        "format": "Format",
+        "csvDesc": "Recommandé pour l'analyse",
+        "pdfDesc": "Avec miniatures photos",
+        "recommended": "Recommandé",
+        "filters": "Filtres (Optionnel)",
+        "includeEntries": "Inclure les entrées",
+        "includeExits": "Inclure les sorties",
+        "onlyWithPhotos": "Seulement les enregistrements avec photo",
+        "fileInfo": "Le fichier inclura: date, heure, visiteur, plaque, type QR, unité, résident, gardien, et URLs des photos.",
+        "download": "Télécharger le rapport",
+        "selectDateRange": "Sélectionnez une plage de dates",
+        "exportError": "Erreur d'exportation",
+        "exportFailed": "Impossible d'exporter le fichier",
+        "fileSaved": "Fichier enregistré à",
+        "pdfNotAvailable": "L'exportation PDF est disponible depuis le panneau web.",
+        "exportCsv": "Exporter CSV"
+      },
+      "empty": {
+        "noRecentAccess": "Pas d'accès récents",
+        "noRecords": "Pas d'enregistrements pour cette date",
+        "noVisitorsInside": "Pas de visiteurs à l'intérieur",
+        "noIncidents": "Pas d'incidents signalés",
+        "allClear": "Tout est en ordre"
+      }
+    },
+    "payments": {
+      "title": "Frais",
+      "loading": "Chargement des frais...",
+      "accessDenied": "Accès Refusé",
+      "noPermissions": "Vous n'avez pas les permissions",
+      "charge": "Frais",
+      "markAsPaid": "Marquer comme Payé",
+      "confirmPayment": "Confirmer le Paiement",
+      "markAsPaidConfirm": "Marquer comme payé?\n{{concept}} - L {{amount}}",
+      "newCharge": "Nouveau Frais",
+      "selectResident": "Sélectionner Résident",
+      "searchPlaceholder": "Rechercher par nom, email ou unité...",
+      "loadingResidents": "Chargement des résidents...",
+      "noResidentsFound": "Aucun résident trouvé",
+      "stats": {
+        "collected": "Collecté",
+        "pending": "En attente",
+        "overdue": "En retard"
+      },
+      "status": {
+        "pending": "En attente",
+        "paid": "Payé",
+        "overdue": "En retard",
+        "cancelled": "Annulé"
+      },
+      "types": {
+        "maintenance": "Entretien",
+        "extraordinary": "Extraordinaire",
+        "fine": "Amende",
+        "service": "Service",
+        "other": "Autre"
+      },
+      "form": {
+        "resident": "Résident",
+        "selectResident": "Sélectionner résident...",
+        "chargeType": "Type de Frais",
+        "description": "Description (optionnel)",
+        "descriptionPlaceholder": "Ex: Frais Décembre 2025",
+        "amount": "Montant (L)",
+        "dueDate": "Date d'Échéance"
+      },
+      "empty": {
+        "noCharges": "Aucun frais",
+        "createFirst": "Créez votre premier frais"
+      },
+      "success": {
+        "paymentRegistered": "Paiement enregistré",
+        "chargeCreated": "Frais créé avec succès"
+      },
+      "errors": {
+        "updateFailed": "Impossible de mettre à jour",
+        "selectResident": "Sélectionnez un résident",
+        "enterValidAmount": "Entrez un montant valide",
+        "createFailed": "Impossible de créer le frais"
+      }
+    },
+    "reports": {
+      "title": "Rapports",
+      "subtitle": "Statistiques et métriques",
+      "loading": "Chargement des rapports...",
+      "accessDenied": "Accès Refusé",
+      "noPermissions": "Vous n'avez pas les permissions",
+      "overview": {
+        "title": "Aperçu Général",
+        "users": "Utilisateurs",
+        "units": "Unités",
+        "reservations": "Réservations",
+        "access": "Accès"
+      },
+      "financial": {
+        "title": "Résumé Financier",
+        "monthlyIncome": "Revenus du Mois",
+        "monthlyExpenses": "Dépenses du Mois",
+        "balance": "Solde"
+      },
+      "trends": {
+        "title": "Tendances vs Mois Précédent",
+        "users": "Utilisateurs",
+        "income": "Revenus",
+        "reservations": "Réservations"
+      },
+      "collection": {
+        "title": "Taux de Recouvrement",
+        "paid": "Payé",
+        "pending": "En attente",
+        "overdue": "En retard"
+      },
+      "activity": {
+        "title": "Activité Récente"
+      },
+      "actions": {
+        "title": "Actions Rapides",
+        "viewPayments": "Voir Paiements",
+        "viewExpenses": "Voir Dépenses",
+        "viewUsers": "Voir Utilisateurs",
+        "announcements": "Annonces"
+      }
+    },
+    "reservations": {
+      "title": "Gestion des Réservations",
+      "loading": "Chargement des réservations...",
+      "area": "Espace",
+      "approve": "Approuver",
+      "reject": "Rejeter",
+      "rejectTitle": "Rejeter Réservation",
+      "rejectConfirm": "Êtes-vous sûr de vouloir rejeter cette réservation?",
+      "status": {
+        "pending": "En attente",
+        "approved": "Approuvée",
+        "rejected": "Rejetée",
+        "cancelled": "Annulée"
+      },
+      "stats": {
+        "pending": "En attente",
+        "approved": "Approuvées",
+        "rejected": "Rejetées"
+      },
+      "tabs": {
+        "pending": "En attente",
+        "all": "Toutes"
+      },
+      "detail": {
+        "title": "Détails de la Réservation",
+        "area": "Espace",
+        "capacity": "Capacité: {{count}} personnes",
+        "requester": "Demandeur",
+        "dateTime": "Date et Heure",
+        "attendees": "{{count}} personnes",
+        "notes": "Notes",
+        "created": "Créé"
+      },
+      "empty": {
+        "noPending": "Pas de demandes en attente",
+        "noReservations": "Pas de réservations",
+        "pendingHint": "Les nouvelles demandes apparaîtront ici",
+        "reservationsHint": "Quand les résidents feront des réservations, elles apparaîtront ici"
+      },
+      "success": {
+        "approved": "Réservation approuvée",
+        "rejected": "Réservation rejetée"
+      },
+      "errors": {
+        "approveFailed": "Impossible d'approuver la réservation",
+        "rejectFailed": "Impossible de rejeter la réservation"
+      }
+    },
+    "settings": {
+      "title": "Paramètres",
+      "accessDenied": "Accès Refusé",
+      "noPermissions": "Vous n'avez pas les permissions",
+      "saveChanges": "Enregistrer",
+      "suspend": "Suspendre",
+      "reactivate": "Réactiver",
+      "reactivateTitle": "Réactiver Utilisateur",
+      "reactivateConfirm": "Êtes-vous sûr de vouloir réactiver cet utilisateur?",
+      "suspendUsersTitle": "Suspendre Utilisateurs",
+      "suspendUsersConfirm": "Suspendre {{count}} utilisateurs avec paiements en retard?",
+      "tabs": {
+        "guard": "App Gardien",
+        "location": "Emplacement",
+        "users": "Utilisateurs",
+        "blacklist": "Liste Noire"
+      },
+      "suspensionReasons": {
+        "unpaid": "Non Payé",
+        "movedOut": "Déménagé",
+        "ruleViolation": "Violation de Règles",
+        "adminSuspended": "Suspendu par Admin",
+        "other": "Autre Raison"
+      },
+      "guard": {
+        "accessProcess": "Processus d'Accès",
+        "accessProcessDesc": "Configurer les données à capturer lors de l'enregistrement",
+        "accessPermissions": "Permissions d'Accès",
+        "scanQr": "Scanner QR",
+        "scanQrDesc": "Permettre le scan",
+        "manualEntry": "Entrée Manuelle",
+        "manualEntryDesc": "Enregistrer sans QR",
+        "viewHistory": "Voir Historique",
+        "viewHistoryDesc": "Historique des visites",
+        "residentDirectory": "Répertoire Résidents",
+        "residentDirectoryDesc": "Voir liste résidents",
+        "callResidents": "Appeler Résidents",
+        "callResidentsDesc": "Appels directs",
+        "registrationPermissions": "Permissions d'Enregistrement",
+        "registerIncidents": "Enregistrer Incidents",
+        "registerIncidentsDesc": "Créer rapports",
+        "uploadPhotos": "Télécharger Photos",
+        "uploadPhotosDesc": "Prendre photos",
+        "registerVehicles": "Enregistrer Véhicules",
+        "registerVehiclesDesc": "Capturer plaques",
+        "approvals": "Approbations",
+        "approveVisitors": "Approuver Visiteurs",
+        "approveVisitorsDesc": "Permettre entrée",
+        "denyVisitors": "Refuser Visiteurs",
+        "denyVisitorsDesc": "Rejeter entrée",
+        "autoApprove": "Auto-approuver Pré-enregistrés",
+        "autoApproveDesc": "Approbation automatique",
+        "alerts": "Alertes",
+        "alertBlacklist": "Alerte Liste Noire",
+        "alertBlacklistDesc": "Visiteur bloqué",
+        "alertExpiredQr": "Alerte QR Expiré",
+        "alertExpiredQrDesc": "Code expiré",
+        "alertSuspendedResident": "Alerte Résident Suspendu",
+        "alertSuspendedResidentDesc": "Utilisateur bloqué",
+        "emergencies": "Urgences",
+        "panicButton": "Bouton Panique",
+        "panicButtonDesc": "Permettre alertes urgence",
+        "cameraConfig": "Configuration Caméra",
+        "cameraPhone": "Téléphone",
+        "cameraIp": "Caméra IP",
+        "cameraBoth": "Les deux",
+        "ipCameraUrl": "URL Caméra IP",
+        "ipCameraUser": "Utilisateur",
+        "ipCameraPassword": "Mot de passe"
+      },
+      "location": {
+        "paymentConfig": "Configuration Paiements",
+        "autoSuspend": "Auto-suspendre si Impayé",
+        "autoSuspendDesc": "Suspendre utilisateurs avec impayés",
+        "overdueDays": "Jours de Retard",
+        "overdueDaysDesc": "Jours avant suspension",
+        "overduePayments": "Paiements en Retard",
+        "overduePaymentsDesc": "Quantité pour suspendre",
+        "paymentReminders": "Rappels de Paiement",
+        "paymentRemindersDesc": "Envoyer notifications",
+        "accessControl": "Contrôle d'Accès",
+        "visitorPreregistration": "Pré-enregistrement Visiteurs",
+        "visitorPreregistrationDesc": "Permettre pré-enregistrement",
+        "maxActiveQr": "QR Actifs par Utilisateur",
+        "maxActiveQrDesc": "Maximum permis",
+        "qrValidity": "Validité QR (heures)",
+        "qrValidityDesc": "Durée par défaut",
+        "requireId": "Exiger ID",
+        "requireIdDesc": "Exiger identification",
+        "communication": "Communication",
+        "announcements": "Annonces",
+        "announcementsDesc": "Système d'annonces",
+        "emergencyAlerts": "Alertes d'Urgence",
+        "emergencyAlertsDesc": "Bouton panique",
+        "amenities": "Équipements",
+        "reservations": "Réservations",
+        "reservationsDesc": "Espaces communs",
+        "maxReservations": "Réservations/Semaine",
+        "maxReservationsDesc": "Maximum par utilisateur"
+      },
+      "users": {
+        "overdueAlert": "{{count}} utilisateurs avec paiements en retard",
+        "total": "Total",
+        "active": "Actif",
+        "suspended": "Suspendu",
+        "overdue": "en retard",
+        "reason": "Raison",
+        "noUsers": "Pas d'utilisateurs"
+      },
+      "blacklist": {
+        "addToBlacklist": "Ajouter à Liste Noire",
+        "removeTitle": "Supprimer",
+        "removeConfirm": "Supprimer de la liste noire?",
+        "emptyTitle": "Liste noire vide",
+        "emptySubtitle": "Pas de visiteurs bloqués",
+        "form": {
+          "name": "Nom",
+          "namePlaceholder": "Nom du visiteur",
+          "phone": "Téléphone",
+          "idNumber": "Numéro d'Identification",
+          "idPlaceholder": "ID / DNI",
+          "reason": "Raison",
+          "reasonPlaceholder": "Raison de l'ajout...",
+          "notes": "Notes Additionnelles",
+          "notesPlaceholder": "Notes additionnelles..."
+        }
+      },
+      "suspendModal": {
+        "title": "Suspendre Utilisateur",
+        "reason": "Raison de Suspension",
+        "message": "Message pour l'Utilisateur (optionnel)",
+        "messagePlaceholder": "Message que verra l'utilisateur..."
+      },
+      "historyModal": {
+        "title": "Historique",
+        "suspended": "Suspendu",
+        "reactivated": "Réactivé",
+        "by": "Par",
+        "noHistory": "Pas d'historique"
+      },
+      "success": {
+        "saved": "Paramètres enregistrés",
+        "userSuspended": "Utilisateur suspendu",
+        "userReactivated": "Utilisateur réactivé",
+        "usersSuspended": "Utilisateurs suspendus",
+        "addedToBlacklist": "Ajouté à la liste noire",
+        "removedFromBlacklist": "Supprimé de la liste noire"
+      },
+      "errors": {
+        "saveFailed": "Impossible d'enregistrer",
+        "suspendFailed": "Impossible de suspendre",
+        "reactivateFailed": "Impossible de réactiver",
+        "operationFailed": "Impossible de compléter",
+        "reasonRequired": "La raison est requise",
+        "addFailed": "Impossible d'ajouter",
+        "removeFailed": "Impossible de supprimer"
+      }
+    },
+    "users": {
+      "title": "Utilisateurs",
+      "accessDenied": "Accès Refusé",
+      "noPermissions": "Vous n'avez pas les permissions",
+      "select": "Sélectionner",
+      "registered": "{{count}} enregistrés",
+      "searchPlaceholder": "Rechercher par nom, email ou unité...",
+      "noUsers": "Pas d'utilisateurs",
+      "inLocation": "dans {{name}}",
+      "addUser": "Ajouter Utilisateur",
+      "noInvitations": "Pas d'invitations en attente",
+      "createInvitationHint": "Créez une invitation pour ajouter des utilisateurs",
+      "newInvitation": "Nouvelle Invitation",
+      "unit": "Unité",
+      "expires": "Expire",
+      "share": "Partager",
+      "copy": "Copier",
+      "copied": "Copié",
+      "codeCopied": "Code copié dans le presse-papiers",
+      "selectCommunity": "Sélectionner Communauté",
+      "userDetail": "Détail Utilisateur",
+      "changeRole": "Changer Rôle",
+      "changeRoleTitle": "Changer Rôle",
+      "changeRoleConfirm": "Changer le rôle de {{name}} à {{role}}?",
+      "activateUserTitle": "Activer Utilisateur",
+      "deactivateUserTitle": "Désactiver Utilisateur",
+      "toggleStatusConfirm": "{{action}} {{name}}?",
+      "activate": "Activer",
+      "deactivate": "Désactiver",
+      "activateUser": "Activer Utilisateur",
+      "deactivateUser": "Désactiver Utilisateur",
+      "cancelInvitationTitle": "Annuler Invitation",
+      "cancelInvitationConfirm": "Êtes-vous sûr d'annuler cette invitation?",
+      "yesCancel": "Oui, annuler",
+      "create": "Créer",
+      "invite": "Inviter",
+      "shareMessage": "Vous avez été invité à ISSY!\n\nUtilisez ce code pour vous inscrire: {{code}}\n\nOu utilisez ce lien: {{link}}",
+      "tabs": {
+        "users": "Utilisateurs",
+        "invitations": "Invitations"
+      },
+      "stats": {
+        "total": "Total",
+        "active": "Actifs",
+        "units": "Unités",
+        "pending": "En attente"
+      },
+      "roles": {
+        "resident": "Résident",
+        "guard": "Gardien",
+        "admin": "Admin",
+        "administrator": "Administrateur",
+        "superadmin": "Super Admin",
+        "host": "Hôte",
+        "tenant": "Locataire",
+        "owner": "Propriétaire"
+      },
+      "detail": {
+        "phone": "Téléphone",
+        "unit": "Unité",
+        "currentRole": "Rôle Actuel",
+        "status": "Statut",
+        "active": "Actif",
+        "inactive": "Inactif",
+        "notRegistered": "Non enregistré",
+        "notAssigned": "Non assigné"
+      },
+      "form": {
+        "location": "Emplacement",
+        "method": "Méthode",
+        "invitationCode": "Code d'invitation",
+        "createDirect": "Créer Direct",
+        "youDefinePassword": "Vous définissez le mot de passe",
+        "role": "Rôle",
+        "unitNumber": "Numéro d'Unité (optionnel)",
+        "unitPlaceholder": "Ex: A-101, Maison 5",
+        "nameRequired": "Nom *",
+        "nameOptional": "Nom (optionnel)",
+        "namePlaceholder": "Nom de l'utilisateur",
+        "guardNamePlaceholder": "Ex: Guérite Principale, Portail Nord",
+        "emailRequired": "Email *",
+        "emailOptional": "Email (optionnel)",
+        "emailPlaceholder": "email@exemple.com",
+        "phoneOptional": "Téléphone (optionnel)",
+        "password": "Mot de passe",
+        "passwordPlaceholder": "Minimum 6 caractères",
+        "confirmPassword": "Confirmer Mot de passe",
+        "confirmPasswordPlaceholder": "Répéter mot de passe",
+        "directNote": "L'utilisateur sera créé immédiatement. Partagez les identifiants de manière sécurisée.",
+        "inviteNote": "Un code unique sera généré que vous pourrez partager. L'invitation expire dans 7 jours."
+      },
+      "success": {
+        "roleUpdated": "Rôle mis à jour",
+        "userActivated": "Utilisateur activé",
+        "userDeactivated": "Utilisateur désactivé",
+        "userCreatedTitle": "✅ Utilisateur Créé",
+        "userCreatedMessage": "L'utilisateur \"{{name}}\" a été créé avec succès.\n\nEmail: {{email}}\n\nPartagez les identifiants avec l'utilisateur.",
+        "invitationCreated": "Invitation Créée",
+        "invitationCreatedMessage": "Code: {{code}}\n\nPartagez ce code avec l'utilisateur."
+      },
+      "errors": {
+        "nameRequired": "Le nom est requis",
+        "emailRequired": "L'email est requis",
+        "passwordRequired": "Le mot de passe est requis",
+        "passwordLength": "Le mot de passe doit avoir au moins 6 caractères",
+        "passwordMismatch": "Les mots de passe ne correspondent pas",
+        "roleUpdateFailed": "Impossible de mettre à jour le rôle",
+        "statusUpdateFailed": "Impossible de mettre à jour le statut",
+        "createUserFailed": "Impossible de créer l'utilisateur",
+        "createInvitationFailed": "Impossible de créer l'invitation",
+        "cancelFailed": "Impossible d'annuler"
+      }
+    }
+  },
+  "accountSuspended": {
+    "contactAdmin": "Contacter l'Administration",
+    "logout": "Se Déconnecter",
+    "badges": {
+      "unpaid": "Non Payé",
+      "movedOut": "Ne réside plus",
+      "ruleViolation": "Violation de Règles",
+      "adminSuspended": "Suspension Administrative"
+    },
+    "reasons": {
+      "unpaid": {
+        "title": "Compte Suspendu pour Non-Paiement",
+        "description": "Votre compte a été suspendu en raison de paiements en attente. Pour réactiver votre compte, veuillez effectuer le paiement des montants dus.",
+        "action": "Voir Paiements en Attente"
+      },
+      "movedOut": {
+        "title": "Compte Désactivé",
+        "description": "Votre compte a été désactivé car vous ne résidez plus à cet emplacement. Si c'est une erreur, contactez l'administration."
+      },
+      "ruleViolation": {
+        "title": "Compte Suspendu",
+        "description": "Votre compte a été suspendu pour violation du règlement. Contactez l'administration pour plus d'informations."
+      },
+      "adminSuspended": {
+        "title": "Compte Suspendu",
+        "description": "Votre compte a été suspendu par l'administrateur. Contactez l'administration pour plus d'informations."
+      },
+      "default": {
+        "title": "Compte Suspendu",
+        "description": "Votre compte a été suspendu. Contactez l'administration pour plus d'informations."
+      }
+    },
+    "infoBox": {
+      "title": "Qu'est-ce que cela signifie?",
+      "subtitle": "Pendant que votre compte est suspendu:",
+      "item1": "Vous ne pourrez pas générer de codes QR pour les visiteurs",
+      "item2": "Vos codes QR existants sont bloqués",
+      "item3": "Vous ne pourrez pas accéder à certaines fonctionnalités",
+      "reactivate": "Pour réactiver votre compte, contactez l'administration de votre communauté."
+    }
+  },
+  "editProfile": {
+    "title": "Modifier le Profil",
+    "permissionRequired": "Permission requise",
+    "galleryAccess": "Nous avons besoin d'accéder à votre galerie",
+    "saveChanges": "Enregistrer",
+    "changePassword": "Changer le Mot de passe",
+    "tabs": {
+      "info": "Info",
+      "password": "Mot de passe",
+      "security": "Sécurité"
+    },
+    "form": {
+      "fullName": "Nom complet",
+      "email": "Email",
+      "phone": "Téléphone",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer mot de passe",
+      "minChars": "Minimum 6 caractères",
+      "repeatPassword": "Répéter le mot de passe"
+    },
+    "security": {
+      "biometric": "Biométrie",
+      "biometricDescription": "Utilisez {{type}} pour vous connecter plus rapidement sans taper votre mot de passe.",
+      "biometricUnavailable": "L'authentification biométrique n'est pas disponible sur cet appareil.",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "canUse": "Vous pouvez utiliser {{type}} pour vous connecter",
+      "tapToEnable": "Touchez le switch pour activer",
+      "setupBiometric": "Configurez Face ID ou Touch ID dans les paramètres de votre appareil pour utiliser cette fonctionnalité.",
+      "info1": "Vos données biométriques ne quittent jamais votre appareil",
+      "info2": "Les identifiants sont stockés de manière sécurisée",
+      "info3": "Vous pouvez toujours utiliser votre mot de passe comme alternative"
+    },
+    "biometric": {
+      "activated": "Activé!",
+      "activatedMessage": "{{type}} a été activé avec succès.",
+      "deactivateTitle": "Désactiver {{type}}",
+      "deactivateConfirm": "Êtes-vous sûr de vouloir désactiver la connexion rapide?",
+      "deactivate": "Désactiver",
+      "deactivated": "Désactivé",
+      "deactivatedMessage": "{{type}} a été désactivé."
+    },
+    "success": {
+      "profileUpdated": "Profil mis à jour",
+      "passwordUpdated": "Mot de passe mis à jour"
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "updateFailed": "Impossible de mettre à jour",
+      "passwordLength": "Le mot de passe doit avoir au moins 6 caractères",
+      "passwordMismatch": "Les mots de passe ne correspondent pas",
+      "passwordChangeFailed": "Impossible de changer le mot de passe",
+      "biometricActivateFailed": "Impossible d'activer la biométrie",
+      "biometricConfigFailed": "Une erreur s'est produite lors du changement de configuration"
+    }
+  },
+  "finances": {
+    "title": "Mes Finances",
+    "loading": "Chargement des finances...",
+    "new": "Nouveau",
+    "register": "Enregistrer",
+    "contribute": "Contribuer",
+    "registerInvoice": "Enregistrer facture",
+    "createBudget": "Créer budget",
+    "invoiceAlert": "{{count}} facture(s) à échéance",
+    "tabs": {
+      "dashboard": "Tableau de bord",
+      "invoices": "Factures",
+      "budget": "Budget"
+    },
+    "stats": {
+      "streak": "Série",
+      "level": "Nv.{{level}}",
+      "xpProgress": "{{current}}/100 XP pour Nv.{{nextLevel}}"
+    },
+    "balance": {
+      "monthBalance": "Solde du mois",
+      "income": "Revenus",
+      "expenses": "Dépenses"
+    },
+    "quickActions": {
+      "income": "Revenu",
+      "expense": "Dépense",
+      "goal": "Objectif"
+    },
+    "sections": {
+      "tipsForYou": "Conseils pour vous",
+      "myGoals": "Mes Objectifs",
+      "latestTransactions": "Dernières Transactions",
+      "pendingInvoices": "Factures en Attente",
+      "myBudgets": "Mes Budgets"
+    },
+    "empty": {
+      "noGoals": "Pas encore d'objectifs",
+      "createGoalHint": "Créez un objectif pour commencer à épargner",
+      "noTransactions": "Aucune transaction",
+      "noInvoices": "Aucune facture en attente",
+      "noBudgets": "Aucun budget",
+      "createBudgetHint": "Créez des limites de dépenses par catégorie"
+    },
+    "budget": {
+      "available": "Disponible: {{amount}}",
+      "exceeded": "Dépassé: {{amount}}",
+      "statusExceeded": "⚠️ Dépassé",
+      "statusWarning": "⚡ Attention",
+      "statusOk": "✓ Sous contrôle",
+      "deleteHint": "💡 Appui long pour supprimer"
+    },
+    "premium": {
+      "featureTitle": "Fonction Premium",
+      "invoicesFeature": "Gérez vos factures avec rappels",
+      "budgetsFeature": "Créez des budgets et contrôlez vos dépenses"
+    },
+    "modals": {
+      "newIncome": "Nouveau Revenu",
+      "newExpense": "Nouvelle Dépense",
+      "newGoal": "Nouvel Objectif",
+      "contributeTo": "Contribuer à {{name}}",
+      "newInvoice": "Nouvelle Facture",
+      "newBudget": "Nouveau Budget"
+    },
+    "form": {
+      "amount": "Montant",
+      "descriptionOptional": "Description (optionnel)",
+      "goalName": "Nom de l'objectif",
+      "targetAmount": "Montant cible",
+      "contributionAmount": "Montant à contribuer",
+      "vendor": "Fournisseur / Entreprise",
+      "categoryExample": "Catégorie (ex: Eau, Électricité)",
+      "dueDate": "Échéance (AAAA-MM-JJ)",
+      "budgetCategory": "Catégorie (ex: Alimentation)",
+      "monthlyLimit": "Limite mensuelle"
+    },
+    "invoiceDetail": {
+      "amount": "Montant",
+      "dueDate": "Échéance",
+      "markAsPaid": "Marquer comme Payée"
+    },
+    "deleteBudget": {
+      "title": "Supprimer",
+      "confirm": "Supprimer ce budget?"
+    },
+    "upgrade": {
+      "paymentRequired": "💳 Méthode de Paiement Requise",
+      "addPaymentMethod": "Vous devez ajouter une méthode de paiement pour vous abonner au plan Premium.",
+      "addCard": "Ajouter Carte",
+      "confirmTitle": "💎 Confirmer l'Abonnement",
+      "confirmMessage": "Voulez-vous vous abonner au plan {{plan}} avec votre carte se terminant par {{lastFour}}?",
+      "subscribe": "S'abonner",
+      "unlockAll": "Tout Débloquer",
+      "getControl": "Obtenez le contrôle total de vos finances personnelles",
+      "popular": "POPULAIRE",
+      "bestValue": "MEILLEURE VALEUR",
+      "month": "mois",
+      "yearlyPrice": "{{price}}$/an (économisez {{save}}%)",
+      "getPremium": "Obtenir Premium",
+      "getPro": "Obtenir Pro",
+      "maybeLater": "Peut-être plus tard",
+      "features": {
+        "unlimitedTransactions": "Transactions illimitées",
+        "unlimitedGoals": "Objectifs d'épargne illimités",
+        "categoryBudgets": "Budgets par catégorie",
+        "invoiceManagement": "Gestion des factures",
+        "personalizedTips": "Conseils personnalisés",
+        "allPremium": "Tout Premium inclus",
+        "advancedReports": "Rapports avancés",
+        "exportExcelPdf": "Exporter vers Excel/PDF",
+        "smartAlerts": "Alertes intelligentes",
+        "prioritySupport": "Support prioritaire"
+      }
+    },
+    "success": {
+      "transactionTitle": "✅ Succès",
+      "transactionRegistered": "Transaction enregistrée",
+      "goalTitle": "🎯 Succès",
+      "goalCreated": "Objectif créé",
+      "contributionTitle": "💰 Succès",
+      "contributionAdded": "Contribution ajoutée",
+      "invoiceTitle": "🧾 Succès",
+      "invoiceRegistered": "Facture enregistrée",
+      "paidTitle": "✅ Payée",
+      "invoicePaid": "Facture marquée comme payée",
+      "budgetTitle": "📊 Succès",
+      "budgetCreated": "Budget créé",
+      "congratsTitle": "🎉 Félicitations!",
+      "subscriptionActivated": "Votre abonnement a été activé avec succès."
+    },
+    "errors": {
+      "amountCategoryRequired": "Montant et catégorie requis",
+      "registerFailed": "Impossible d'enregistrer",
+      "transactionError": "Erreur lors de l'enregistrement",
+      "goalNameAmountRequired": "Nom et montant cible requis",
+      "createGoalFailed": "Impossible de créer l'objectif",
+      "goalError": "Erreur lors de la création de l'objectif",
+      "validAmountRequired": "Entrez un montant valide",
+      "contributionFailed": "Impossible d'ajouter la contribution",
+      "contributionError": "Erreur lors de l'ajout de la contribution",
+      "vendorAmountRequired": "Fournisseur et montant requis",
+      "invoiceError": "Erreur lors de l'enregistrement de la facture",
+      "markPaidError": "Erreur lors du marquage comme payée",
+      "categoryAmountRequired": "Catégorie et montant requis",
+      "createFailed": "Impossible de créer",
+      "budgetError": "Erreur lors de la création du budget",
+      "planNotFound": "Plan non trouvé",
+      "subscriptionFailed": "Impossible de traiter l'abonnement",
+      "subscriptionError": "Erreur lors du traitement de l'abonnement",
+      "paymentMethodsError": "Erreur lors de la vérification des méthodes de paiement"
+    }
+  },
+  "incidentDetail": {
+    "title": "Détail",
+    "loading": "Chargement de l'incident...",
+    "notFound": "Incident non trouvé",
+    "noDescription": "Sans description",
+    "noComments": "Aucun commentaire encore",
+    "user": "Utilisateur",
+    "addCommentPlaceholder": "Ajouter un commentaire...",
+    "status": {
+      "reported": "Signalé",
+      "inProgress": "En cours",
+      "resolved": "Résolu",
+      "closed": "Fermé"
+    },
+    "severity": {
+      "low": "Basse",
+      "medium": "Moyenne",
+      "high": "Haute",
+      "critical": "Critique"
+    },
+    "types": {
+      "security": "Sécurité",
+      "theft": "Vol",
+      "vandalism": "Vandalisme",
+      "noiseComplaint": "Bruit",
+      "parkingViolation": "Stationnement",
+      "maintenance": "Maintenance",
+      "cleaning": "Nettoyage",
+      "lighting": "Éclairage",
+      "water": "Eau",
+      "elevator": "Ascenseur",
+      "other": "Autre"
+    },
+    "sections": {
+      "description": "Description",
+      "details": "Détails",
+      "progress": "Progression",
+      "comments": "Commentaires"
+    },
+    "details": {
+      "reportDate": "Date du signalement",
+      "location": "Emplacement",
+      "resolved": "Résolu",
+      "resolutionNotes": "Notes de résolution"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger l'incident",
+      "loadError": "Une erreur s'est produite lors du chargement",
+      "commentFailed": "Impossible d'ajouter le commentaire",
+      "commentError": "Une erreur s'est produite lors de l'ajout du commentaire"
+    }
+  },
+  "splash": {
+    "subtitle": "App Résident"
+  },
+  "joinCommunity": {
+    "title": "Rejoindre une Communauté",
+    "enterCode": "Entrez votre code d'invitation",
+    "enterCodeHint": "Demandez un code à votre administrateur ou utilisez le lien d'invitation qu'il vous a partagé",
+    "codePlaceholder": "Ex: ABC123",
+    "validInvitation": "Invitation Valide",
+    "role": "Rôle",
+    "resident": "Résident",
+    "unit": "Unité",
+    "expires": "Expire",
+    "joinTo": "Rejoindre {{name}}",
+    "types": {
+      "residential": "Résidentiel",
+      "commercial": "Commercial",
+      "industrial": "Industriel",
+      "office": "Bureaux",
+      "community": "Communauté"
+    },
+    "help": {
+      "title": "Pas de code?",
+      "text": "Contactez l'administrateur de la communauté que vous souhaitez rejoindre. Ils peuvent générer un code ou un lien d'invitation depuis le panneau d'administration."
+    },
+    "success": {
+      "title": "Bienvenue!",
+      "joined": "Vous avez rejoint {{name}}",
+      "continue": "Continuer"
+    },
+    "errors": {
+      "enterCode": "Entrez un code d'invitation",
+      "invalidCode": "Code invalide ou expiré"
+    }
+  },
+  "mySubscription": {
+    "title": "Mes Abonnements",
+    "loading": "Chargement des abonnements...",
+    "plan": "Plan",
+    "month": "mois",
+    "freeTrial": "Essai Gratuit",
+    "trial": "ESSAI",
+    "active": "ACTIF",
+    "daysRemaining": "{{days}} jours restants d'essai",
+    "nextBill": "Prochaine facture",
+    "method": "Méthode",
+    "noCard": "Pas de carte",
+    "changePlan": "Changer de Plan",
+    "availableServices": "Services Disponibles",
+    "exploreServices": "Explorez nos services premium",
+    "inTrialPeriod": "En période d'essai",
+    "activeSubscription": "Abonnement actif",
+    "available": "Disponible",
+    "try": "Essayer",
+    "paymentMethods": "Méthodes de Paiement",
+    "cardsSaved": "{{count}} carte(s) enregistrée(s)",
+    "addPaymentMethod": "Ajouter méthode de paiement",
+    "choosePlan": "Choisissez le plan qui vous convient",
+    "freeDays": "{{days}} jours gratuits",
+    "yearlyPrice": "ou {{price}}$/an (économisez 2 mois)",
+    "tryFree": "Essayer Gratuit",
+    "subscribe": "S'abonner",
+    "noPlansAvailable": "Aucun plan disponible",
+    "confirmSubscription": "Confirmer l'Abonnement",
+    "paymentMethodTitle": "Méthode de paiement",
+    "change": "Changer",
+    "addCard": "Ajouter carte",
+    "pay": "Payer {{amount}}$",
+    "securePayment": "Paiement sécurisé traité par Clinpays",
+    "verticals": {
+      "access": "Contrôle d'Accès",
+      "pms": "Gestionnaire de Propriétés",
+      "panic": "Bouton de Panique",
+      "finance": "Finances Personnelles",
+      "marketplace": "Marketplace"
+    },
+    "noPaymentMethod": {
+      "title": "Pas de méthode de paiement",
+      "message": "Vous devez ajouter une carte avant de vous abonner",
+      "addCard": "Ajouter Carte"
+    },
+    "cancelSubscription": {
+      "title": "Annuler l'Abonnement",
+      "message": "Êtes-vous sûr? Vous perdrez l'accès à la fin de la période actuelle.",
+      "confirm": "Oui, Annuler",
+      "successTitle": "Abonnement Annulé",
+      "successMessage": "Votre accès continuera jusqu'à la fin de la période"
+    },
+    "success": {
+      "title": "Succès!",
+      "trialActivated": "Essai gratuit activé!",
+      "subscriptionActivated": "Abonnement activé"
+    },
+    "errors": {
+      "trialFailed": "Impossible d'activer l'essai",
+      "noPaymentMethod": "Aucune méthode de paiement disponible",
+      "paymentFailed": "Impossible de traiter le paiement"
+    }
+  },
+  "myUnit": {
+    "title": "Mon Unité",
+    "loading": "Chargement des communautés...",
+    "activeLocation": "Emplacement Actif",
+    "otherCommunities": "Autres Communautés",
+    "noAddress": "Pas d'adresse",
+    "suspended": "Suspendu",
+    "activeBadge": "Actif",
+    "contactAdmin": "Contactez l'administration pour plus d'informations",
+    "switch": "Changer",
+    "joinAnother": "Rejoindre une autre communauté",
+    "roles": {
+      "admin": "Administrateur",
+      "guard": "Gardien",
+      "resident": "Résident",
+      "employee": "Employé"
+    },
+    "details": {
+      "myRole": "Mon Rôle",
+      "unit": "Unité",
+      "memberSince": "Membre depuis"
+    },
+    "empty": {
+      "title": "Aucune communauté",
+      "text": "Rejoignez une communauté avec un code d'invitation",
+      "joinButton": "Rejoindre Communauté"
+    },
+    "switchSuccess": {
+      "title": "Terminé!",
+      "message": "Vous êtes maintenant dans {{name}}"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unreadSingle": "1 non lu",
+    "unreadMultiple": "{{count}} non lus",
+    "types": {
+      "visitor": "Visiteur",
+      "entry": "Entrée",
+      "exit": "Sortie",
+      "announcement": "Annonce",
+      "reservation": "Réservation",
+      "incident": "Incident",
+      "payment": "Paiement",
+      "member": "Membre",
+      "approved": "Approuvé",
+      "admin": "Admin",
+      "general": "Général"
+    },
+    "time": {
+      "now": "Maintenant",
+      "minutesAgo": "il y a {{count}} min",
+      "hoursAgo": "il y a {{count}}h",
+      "yesterday": "Hier",
+      "daysAgo": "il y a {{count}} jours"
+    },
+    "empty": {
+      "title": "Aucune notification",
+      "subtitle": "Nous vous préviendrons quand il y aura des nouvelles"
+    }
+  },
+  "pms": {
+    "title": "Gestionnaire de Propriétés",
+    "units": "unités",
+    "occupied": "occupées",
+    "tabs": {
+      "dashboard": "Accueil",
+      "properties": "Propriétés",
+      "tenants": "Locataires",
+      "payments": "Paiements",
+      "maintenance": "Maint."
+    },
+    "dashboard": {
+      "properties": "Propriétés",
+      "tenants": "Locataires",
+      "income": "Revenus/Mois",
+      "pending": "En attente",
+      "occupancyRate": "Taux d'Occupation",
+      "quickActions": "Actions Rapides",
+      "property": "Propriété",
+      "collect": "Encaisser",
+      "tickets": "Tickets",
+      "alerts": "Alertes"
+    },
+    "alerts": {
+      "expiringLeases": "{{count}} baux expirant",
+      "overduePayments": "{{count}} paiements en retard"
+    },
+    "properties": {
+      "newProperty": "Nouvelle Propriété",
+      "empty": "Aucune propriété",
+      "emptyHint": "Ajoutez votre première propriété"
+    },
+    "propertyTypes": {
+      "apartment": "Appartement",
+      "apt": "Appt",
+      "house": "Maison",
+      "commercial": "Local"
+    },
+    "tenants": {
+      "empty": "Aucun locataire",
+      "emptyHint": "Ajoutez des locataires depuis les propriétés",
+      "active": "Actif",
+      "inactive": "Inactif",
+      "unassigned": "Non assigné"
+    },
+    "payments": {
+      "collected": "Encaissé",
+      "pending": "En attente",
+      "empty": "Aucun paiement enregistré",
+      "tenant": "Locataire",
+      "monthlyRent": "Loyer mensuel",
+      "recordPayment": "Enregistrer Paiement"
+    },
+    "maintenance": {
+      "empty": "Aucun ticket de maintenance",
+      "allGood": "Tout est en ordre"
+    },
+    "priority": {
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
+    },
+    "ticketStatus": {
+      "completed": "Terminé",
+      "inProgress": "En Cours",
+      "open": "Ouvert"
+    },
+    "modal": {
+      "newProperty": "Nouvelle Propriété",
+      "name": "Nom",
+      "namePlaceholder": "Ex: Bâtiment Central",
+      "address": "Adresse",
+      "addressPlaceholder": "Ex: Av. Principale #123",
+      "propertyType": "Type de Propriété"
+    },
+    "delete": {
+      "title": "Supprimer",
+      "message": "Supprimer cette propriété?"
+    },
+    "success": {
+      "propertyCreated": "Propriété créée",
+      "paymentRecorded": "Paiement enregistré"
+    },
+    "errors": {
+      "completeFields": "Complétez tous les champs"
+    }
+  },
+  "services": {
+    "servicesTitle": "Services",
+    "servicesDesc": "Tous les services de votre communauté",
+    "access": "Contrôle d'Accès",
+    "accessDesc": "Gérer les visiteurs et codes QR",
+    "announcements": "Annonces",
+    "announcementsDesc": "Nouvelles et mises à jour",
+    "reservations": "Réservations",
+    "reservationsDesc": "Réserver les espaces communs",
+    "payments": "Paiements",
+    "paymentsDesc": "Payer les frais",
+    "finances": "Mes Finances",
+    "financesDesc": "Suivre vos dépenses",
+    "pms": "Gestionnaire de Propriétés",
+    "pmsDesc": "Gérer vos propriétés",
+    "marketplace": "Marketplace",
+    "marketplaceDesc": "Acheter et vendre dans votre communauté"
+  }
+}

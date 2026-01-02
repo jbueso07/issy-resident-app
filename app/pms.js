@@ -13,6 +13,7 @@ import {
   getPMSDashboard, getPMSProperties, createPMSProperty, deletePMSProperty,
   getPMSTenants, getPMSPayments, recordPMSPayment, getPMSMaintenance
 } from '../src/services/api';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -38,15 +39,17 @@ const COLORS = {
   blue: '#3B82F6',
 };
 
-const TABS = [
-  { id: 'dashboard', label: 'Inicio', icon: 'grid-outline' },
-  { id: 'properties', label: 'Propiedades', icon: 'home-outline' },
-  { id: 'tenants', label: 'Inquilinos', icon: 'people-outline' },
-  { id: 'payments', label: 'Pagos', icon: 'wallet-outline' },
-  { id: 'maintenance', label: 'Mant.', icon: 'construct-outline' },
+const getTabs = (t) => [
+  { id: 'dashboard', label: t('pms.tabs.dashboard'), icon: 'grid-outline' },
+  { id: 'properties', label: t('pms.tabs.properties'), icon: 'home-outline' },
+  { id: 'tenants', label: t('pms.tabs.tenants'), icon: 'people-outline' },
+  { id: 'payments', label: t('pms.tabs.payments'), icon: 'wallet-outline' },
+  { id: 'maintenance', label: t('pms.tabs.maintenance'), icon: 'construct-outline' },
 ];
 
 export default function PMSScreen() {
+  const { t } = useTranslation();
+  const TABS = getTabs(t);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
@@ -100,24 +103,24 @@ export default function PMSScreen() {
 
   const handleAddProperty = async () => {
     if (!newProperty.name || !newProperty.address) {
-      Alert.alert('Error', 'Completa todos los campos');
+      Alert.alert(t('common.error'), t('pms.errors.completeFields'));
       return;
     }
     const res = await createPMSProperty(newProperty);
     if (res.success) {
-      Alert.alert('Éxito', 'Propiedad creada');
+      Alert.alert(t('common.success'), t('pms.success.propertyCreated'));
       setShowAddModal(false);
       setNewProperty({ name: '', address: '', type: 'apartment' });
       loadData();
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert(t('common.error'), res.error);
     }
   };
 
   const handleDeleteProperty = (id) => {
-    Alert.alert('Eliminar', '¿Eliminar esta propiedad?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+    Alert.alert(t('pms.delete.title'), t('pms.delete.message'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
         const res = await deletePMSProperty(id);
         if (res.success) loadData();
       }}
@@ -127,10 +130,10 @@ export default function PMSScreen() {
   const handleRecordPayment = async (paymentId) => {
     const res = await recordPMSPayment(paymentId);
     if (res.success) {
-      Alert.alert('Éxito', 'Pago registrado');
+      Alert.alert(t('common.success'), t('pms.success.paymentRecorded'));
       loadData();
     } else {
-      Alert.alert('Error', res.error);
+      Alert.alert(t('common.error'), res.error);
     }
   };
 
@@ -209,7 +212,7 @@ export default function PMSScreen() {
               <Ionicons name="home" size={22} color={COLORS.blue} />
             </View>
             <Text style={styles.kpiValue}>{propertiesCount}</Text>
-            <Text style={styles.kpiLabel}>Propiedades</Text>
+            <Text style={styles.kpiLabel}>{t('pms.dashboard.properties')}</Text>
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.green }]}>
@@ -217,7 +220,7 @@ export default function PMSScreen() {
               <Ionicons name="people" size={22} color={COLORS.green} />
             </View>
             <Text style={styles.kpiValue}>{tenantsCount}</Text>
-            <Text style={styles.kpiLabel}>Inquilinos</Text>
+            <Text style={styles.kpiLabel}>{t('pms.dashboard.tenants')}</Text>
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.lime }]}>
@@ -225,7 +228,7 @@ export default function PMSScreen() {
               <Ionicons name="wallet" size={22} color={COLORS.lime} />
             </View>
             <Text style={styles.kpiValue}>L{(monthlyIncome / 1000).toFixed(1)}k</Text>
-            <Text style={styles.kpiLabel}>Ingresos/Mes</Text>
+            <Text style={styles.kpiLabel}>{t('pms.dashboard.income')}</Text>
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.red }]}>
@@ -233,7 +236,7 @@ export default function PMSScreen() {
               <Ionicons name="time" size={22} color={COLORS.red} />
             </View>
             <Text style={styles.kpiValue}>{pendingCount}</Text>
-            <Text style={styles.kpiLabel}>Pendientes</Text>
+            <Text style={styles.kpiLabel}>{t('pms.dashboard.pending')}</Text>
           </View>
         </View>
 
@@ -241,7 +244,7 @@ export default function PMSScreen() {
         {occupancyRate > 0 && (
           <View style={styles.occupancyCard}>
             <View style={styles.occupancyHeader}>
-              <Text style={styles.occupancyTitle}>Tasa de Ocupación</Text>
+              <Text style={styles.occupancyTitle}>{t('pms.dashboard.occupancyRate')}</Text>
               <Text style={[styles.occupancyValue, { color: occupancyRate >= 80 ? COLORS.green : COLORS.yellow }]}>
                 {occupancyRate}%
               </Text>
@@ -256,36 +259,36 @@ export default function PMSScreen() {
         )}
 
         {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+        <Text style={styles.sectionTitle}>{t('pms.dashboard.quickActions')}</Text>
         <View style={styles.actionsRow}>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.purple }]} onPress={() => setShowAddModal(true)}>
             <Ionicons name="add" size={24} color={COLORS.textPrimary} />
-            <Text style={styles.actionText}>Propiedad</Text>
+            <Text style={styles.actionText}>{t('pms.dashboard.property')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.green }]} onPress={() => setActiveTab('payments')}>
             <Ionicons name="cash" size={24} color={COLORS.textPrimary} />
-            <Text style={styles.actionText}>Cobrar</Text>
+            <Text style={styles.actionText}>{t('pms.dashboard.collect')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.yellow }]} onPress={() => setActiveTab('maintenance')}>
             <Ionicons name="construct" size={24} color={COLORS.textPrimary} />
-            <Text style={styles.actionText}>Tickets ({openTickets})</Text>
+            <Text style={styles.actionText}>{t('pms.dashboard.tickets')} ({openTickets})</Text>
           </TouchableOpacity>
         </View>
 
         {/* Alerts */}
         {dashboard?.alerts && (dashboard.alerts.expiringLeases > 0 || dashboard.alerts.overduePayments > 0) && (
           <View style={styles.alertsSection}>
-            <Text style={styles.sectionTitle}>⚠️ Alertas</Text>
+            <Text style={styles.sectionTitle}>⚠️ {t('pms.dashboard.alerts')}</Text>
             {dashboard.alerts.expiringLeases > 0 && (
               <View style={styles.alertCard}>
                 <Ionicons name="document-text" size={20} color={COLORS.yellow} />
-                <Text style={styles.alertText}>{dashboard.alerts.expiringLeases} contratos por vencer</Text>
+                <Text style={styles.alertText}>{t('pms.alerts.expiringLeases', { count: dashboard.alerts.expiringLeases })}</Text>
               </View>
             )}
             {dashboard.alerts.overduePayments > 0 && (
               <View style={styles.alertCard}>
                 <Ionicons name="alert-circle" size={20} color={COLORS.red} />
-                <Text style={styles.alertText}>{dashboard.alerts.overduePayments} pagos vencidos</Text>
+                <Text style={styles.alertText}>{t('pms.alerts.overduePayments', { count: dashboard.alerts.overduePayments })}</Text>
               </View>
             )}
           </View>
@@ -299,7 +302,7 @@ export default function PMSScreen() {
     <View style={styles.content}>
       <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
         <Ionicons name="add-circle" size={20} color={COLORS.textPrimary} />
-        <Text style={styles.addButtonText}>Nueva Propiedad</Text>
+        <Text style={styles.addButtonText}>{t('pms.properties.newProperty')}</Text>
       </TouchableOpacity>
       
       {properties.length === 0 ? (
@@ -307,8 +310,8 @@ export default function PMSScreen() {
           <View style={styles.emptyIconBox}>
             <Ionicons name="home-outline" size={48} color={COLORS.textMuted} />
           </View>
-          <Text style={styles.emptyText}>Sin propiedades</Text>
-          <Text style={styles.emptySubtext}>Agrega tu primera propiedad</Text>
+          <Text style={styles.emptyText}>{t('pms.properties.empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('pms.properties.emptyHint')}</Text>
         </View>
       ) : (
         properties.map(prop => (
@@ -334,10 +337,10 @@ export default function PMSScreen() {
             <View style={styles.cardFooter}>
               <View style={styles.cardBadge}>
                 <Text style={styles.cardBadgeText}>
-                  {prop.property_type === 'apartment' ? '🏢 Apartamento' : prop.property_type === 'house' ? '🏠 Casa' : '🏪 Local'}
+                  {prop.property_type === 'apartment' ? `🏢 ${t('pms.propertyTypes.apartment')}` : prop.property_type === 'house' ? `🏠 ${t('pms.propertyTypes.house')}` : `🏪 ${t('pms.propertyTypes.commercial')}`}
                 </Text>
               </View>
-              <Text style={styles.cardMeta}>{prop.units_count || 0} unidades • {prop.occupied_count || 0} ocupadas</Text>
+              <Text style={styles.cardMeta}>{prop.units_count || 0} {t('pms.units')} • {prop.occupied_count || 0} {t('pms.occupied')}</Text>
             </View>
           </View>
         ))
@@ -353,8 +356,8 @@ export default function PMSScreen() {
           <View style={styles.emptyIconBox}>
             <Ionicons name="people-outline" size={48} color={COLORS.textMuted} />
           </View>
-          <Text style={styles.emptyText}>Sin inquilinos</Text>
-          <Text style={styles.emptySubtext}>Agrega inquilinos desde las propiedades</Text>
+          <Text style={styles.emptyText}>{t('pms.tenants.empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('pms.tenants.emptyHint')}</Text>
         </View>
       ) : (
         tenants.map(tenant => (
@@ -377,14 +380,14 @@ export default function PMSScreen() {
               </View>
               <View style={[styles.statusBadge, { backgroundColor: tenant.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
                 <Text style={[styles.statusText, { color: tenant.status === 'active' ? COLORS.green : COLORS.red }]}>
-                  {tenant.status === 'active' ? 'Activo' : 'Inactivo'}
+                  {tenant.status === 'active' ? t('pms.tenants.active') : t('pms.tenants.inactive')}
                 </Text>
               </View>
             </View>
             {(tenant.property_name || tenant.unit_name) && (
               <View style={styles.tenantLocation}>
                 <Ionicons name="location-outline" size={14} color={COLORS.textMuted} />
-                <Text style={styles.cardMeta}>{tenant.property_name || tenant.unit_name || 'Sin asignar'}</Text>
+                <Text style={styles.cardMeta}>{tenant.property_name || tenant.unit_name || t('pms.tenants.unassigned')}</Text>
               </View>
             )}
           </View>
@@ -404,12 +407,12 @@ export default function PMSScreen() {
         <View style={styles.paymentSummary}>
           <View style={[styles.summaryCard, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
             <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
-            <Text style={styles.summaryLabel}>Cobrado</Text>
+            <Text style={styles.summaryLabel}>{t('pms.payments.collected')}</Text>
             <Text style={[styles.summaryValue, { color: COLORS.green }]}>L{totalPaid.toLocaleString()}</Text>
           </View>
           <View style={[styles.summaryCard, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
             <Ionicons name="time" size={24} color={COLORS.red} />
-            <Text style={styles.summaryLabel}>Pendiente</Text>
+            <Text style={styles.summaryLabel}>{t('pms.payments.pending')}</Text>
             <Text style={[styles.summaryValue, { color: COLORS.red }]}>L{totalPending.toLocaleString()}</Text>
           </View>
         </View>
@@ -419,7 +422,7 @@ export default function PMSScreen() {
             <View style={styles.emptyIconBox}>
               <Ionicons name="wallet-outline" size={48} color={COLORS.textMuted} />
             </View>
-            <Text style={styles.emptyText}>Sin pagos registrados</Text>
+            <Text style={styles.emptyText}>{t('pms.payments.empty')}</Text>
           </View>
         ) : (
           payments.map(payment => (
@@ -437,8 +440,8 @@ export default function PMSScreen() {
                     />
                   </View>
                   <View style={styles.cardTitleContent}>
-                    <Text style={styles.cardTitle}>{payment.tenant_name || payment.tenant?.first_name || 'Inquilino'}</Text>
-                    <Text style={styles.cardSubtitle}>{payment.description || 'Renta mensual'}</Text>
+                    <Text style={styles.cardTitle}>{payment.tenant_name || payment.tenant?.first_name || t('pms.payments.tenant')}</Text>
+                    <Text style={styles.cardSubtitle}>{payment.description || t('pms.payments.monthlyRent')}</Text>
                   </View>
                 </View>
                 <Text style={[styles.cardAmount, { 
@@ -453,7 +456,7 @@ export default function PMSScreen() {
                   onPress={() => handleRecordPayment(payment.id)}
                 >
                   <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />
-                  <Text style={styles.payButtonText}>Registrar Pago</Text>
+                  <Text style={styles.payButtonText}>{t('pms.payments.recordPayment')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -471,8 +474,8 @@ export default function PMSScreen() {
           <View style={styles.emptyIconBox}>
             <Ionicons name="construct-outline" size={48} color={COLORS.textMuted} />
           </View>
-          <Text style={styles.emptyText}>Sin tickets de mantenimiento</Text>
-          <Text style={styles.emptySubtext}>Todo está en orden</Text>
+          <Text style={styles.emptyText}>{t('pms.maintenance.empty')}</Text>
+          <Text style={styles.emptySubtext}>{t('pms.maintenance.allGood')}</Text>
         </View>
       ) : (
         maintenance.map(ticket => (
@@ -501,7 +504,7 @@ export default function PMSScreen() {
                 <Text style={[styles.priorityText, {
                   color: ticket.priority === 'high' ? COLORS.red : ticket.priority === 'medium' ? COLORS.yellow : COLORS.blue
                 }]}>
-                  {ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja'}
+                  {ticket.priority === 'high' ? t('pms.priority.high') : ticket.priority === 'medium' ? t('pms.priority.medium') : t('pms.priority.low')}
                 </Text>
               </View>
             </View>
@@ -513,7 +516,7 @@ export default function PMSScreen() {
                 <Text style={[styles.statusChipText, {
                   color: ticket.status === 'completed' ? COLORS.green : ticket.status === 'in_progress' ? COLORS.blue : COLORS.yellow
                 }]}>
-                  {ticket.status === 'completed' ? '✓ Completado' : ticket.status === 'in_progress' ? '⏳ En Progreso' : '🔔 Abierto'}
+                  {ticket.status === 'completed' ? `✓ ${t('pms.ticketStatus.completed')}` : ticket.status === 'in_progress' ? `⏳ ${t('pms.ticketStatus.inProgress')}` : `🔔 ${t('pms.ticketStatus.open')}`}
                 </Text>
               </View>
               {ticket.property?.name && (
@@ -532,7 +535,7 @@ export default function PMSScreen() {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       );
     }
@@ -554,7 +557,7 @@ export default function PMSScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Gestor de Propiedades</Text>
+        <Text style={styles.headerTitle}>{t('pms.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -582,29 +585,29 @@ export default function PMSScreen() {
               <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
                   <View style={styles.modalHandle} />
-                  <Text style={styles.modalTitle}>Nueva Propiedad</Text>
+                  <Text style={styles.modalTitle}>{t('pms.modal.newProperty')}</Text>
                   
-                  <Text style={styles.inputLabel}>Nombre</Text>
+                  <Text style={styles.inputLabel}>{t('pms.modal.name')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Ej: Edificio Central"
+                    placeholder={t('pms.modal.namePlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                     value={newProperty.name}
                     onChangeText={(t) => setNewProperty({ ...newProperty, name: t })}
                     returnKeyType="next"
                   />
                   
-                  <Text style={styles.inputLabel}>Dirección</Text>
+                  <Text style={styles.inputLabel}>{t('pms.modal.address')}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Ej: Av. Principal #123"
+                    placeholder={t('pms.modal.addressPlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                     value={newProperty.address}
                     onChangeText={(t) => setNewProperty({ ...newProperty, address: t })}
                     returnKeyType="done"
                   />
                   
-                  <Text style={styles.inputLabel}>Tipo de Propiedad</Text>
+                  <Text style={styles.inputLabel}>{t('pms.modal.propertyType')}</Text>
                   <View style={styles.typeSelector}>
                     {['apartment', 'house', 'commercial'].map(type => (
                       <TouchableOpacity
@@ -613,7 +616,7 @@ export default function PMSScreen() {
                         onPress={() => setNewProperty({ ...newProperty, type })}
                       >
                         <Text style={[styles.typeText, newProperty.type === type && styles.typeTextActive]}>
-                          {type === 'apartment' ? '🏢 Apto' : type === 'house' ? '🏠 Casa' : '🏪 Local'}
+                          {type === 'apartment' ? `🏢 ${t('pms.propertyTypes.apt')}` : type === 'house' ? `🏠 ${t('pms.propertyTypes.house')}` : `🏪 ${t('pms.propertyTypes.commercial')}`}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -621,10 +624,10 @@ export default function PMSScreen() {
 
                   <View style={styles.modalButtons}>
                     <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowAddModal(false)}>
-                      <Text style={styles.cancelBtnText}>Cancelar</Text>
+                      <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.saveBtn} onPress={handleAddProperty}>
-                      <Text style={styles.saveBtnText}>Guardar</Text>
+                      <Text style={styles.saveBtnText}>{t('common.save')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

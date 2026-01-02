@@ -1,5 +1,5 @@
 // app/(tabs)/support.js
-// ISSY Resident App - Support/Help Screen
+// ISSY Resident App - Support/Help Screen + i18n
 
 import { useState } from 'react';
 import {
@@ -13,64 +13,68 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const FAQ_ITEMS = [
-  {
-    id: 1,
-    question: '¿Cómo genero un código QR para visitantes?',
-    answer: 'Ve a la pestaña "Visitas", toca "Generar Código QR", ingresa los datos del visitante y selecciona el tipo de acceso.',
-  },
-  {
-    id: 2,
-    question: '¿Cómo me uno a mi comunidad?',
-    answer: 'Necesitas un código de invitación de tu administrador. Ve a "Unirme a mi comunidad" e ingresa el código.',
-  },
-  {
-    id: 3,
-    question: '¿Cómo cambio mi contraseña?',
-    answer: 'Ve a Perfil > Configuración > Cambiar contraseña. Te enviaremos un correo de verificación.',
-  },
-  {
-    id: 4,
-    question: '¿Cómo contacto a mi administrador?',
-    answer: 'En la sección de tu comunidad encontrarás los datos de contacto del administrador.',
-  },
-  {
-    id: 5,
-    question: '¿Cómo funciona el botón de pánico?',
-    answer: 'El botón de pánico es un servicio premium que envía alertas inmediatas a seguridad y contactos de emergencia.',
-  },
-];
-
-const CONTACT_OPTIONS = [
-  {
-    id: 'whatsapp',
-    icon: '💬',
-    title: 'WhatsApp',
-    subtitle: 'Respuesta rápida',
-    action: () => Linking.openURL('https://wa.me/50433960908'),
-    color: '#25D366',
-  },
-  {
-    id: 'email',
-    icon: '✉️',
-    title: 'Email',
-    subtitle: 'soporte@joinissy.com',
-    action: () => Linking.openURL('mailto:soporte@joinissy.com'),
-    color: '#6366F1',
-  },
-  {
-    id: 'call',
-    icon: '📞',
-    title: 'Llamar',
-    subtitle: '+504 3396-0908',
-    action: () => Linking.openURL('tel:+50433960908'),
-    color: '#FC6447',
-  },
-];
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 export default function Support() {
+  const { t } = useTranslation();
   const [expandedFAQ, setExpandedFAQ] = useState(null);
+
+  // FAQ items traducidos
+  const FAQ_ITEMS = [
+    {
+      id: 1,
+      question: t('support.faq.qrCode.question'),
+      answer: t('support.faq.qrCode.answer'),
+    },
+    {
+      id: 2,
+      question: t('support.faq.joinCommunity.question'),
+      answer: t('support.faq.joinCommunity.answer'),
+    },
+    {
+      id: 3,
+      question: t('support.faq.changePassword.question'),
+      answer: t('support.faq.changePassword.answer'),
+    },
+    {
+      id: 4,
+      question: t('support.faq.contactAdmin.question'),
+      answer: t('support.faq.contactAdmin.answer'),
+    },
+    {
+      id: 5,
+      question: t('support.faq.panicButton.question'),
+      answer: t('support.faq.panicButton.answer'),
+    },
+  ];
+
+  // Opciones de contacto traducidas
+  const CONTACT_OPTIONS = [
+    {
+      id: 'whatsapp',
+      icon: '💬',
+      title: 'WhatsApp',
+      subtitle: t('support.contact.quickResponse'),
+      action: () => Linking.openURL('https://wa.me/50433960908'),
+      color: '#25D366',
+    },
+    {
+      id: 'email',
+      icon: '✉️',
+      title: t('support.contact.email'),
+      subtitle: 'soporte@joinissy.com',
+      action: () => Linking.openURL('mailto:soporte@joinissy.com'),
+      color: '#6366F1',
+    },
+    {
+      id: 'call',
+      icon: '📞',
+      title: t('support.contact.call'),
+      subtitle: '+504 3396-0908',
+      action: () => Linking.openURL('tel:+50433960908'),
+      color: '#FC6447',
+    },
+  ];
 
   const toggleFAQ = (id) => {
     setExpandedFAQ(expandedFAQ === id ? null : id);
@@ -80,18 +84,29 @@ export default function Support() {
     option.action();
   };
 
+  const handlePanicButtonPress = () => {
+    Alert.alert(
+      t('support.panicButton.title'),
+      t('support.panicButton.message'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('support.panicButton.viewPlans'), onPress: () => {} }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Soporte</Text>
-          <Text style={styles.subtitle}>¿En qué podemos ayudarte?</Text>
+          <Text style={styles.title}>{t('support.title')}</Text>
+          <Text style={styles.subtitle}>{t('support.subtitle')}</Text>
         </View>
 
         {/* Contact Options */}
         <View style={styles.contactSection}>
-          <Text style={styles.sectionTitle}>Contáctanos</Text>
+          <Text style={styles.sectionTitle}>{t('support.contactUs')}</Text>
           <View style={styles.contactGrid}>
             {CONTACT_OPTIONS.map((option) => (
               <TouchableOpacity
@@ -112,7 +127,7 @@ export default function Support() {
 
         {/* FAQ Section */}
         <View style={styles.faqSection}>
-          <Text style={styles.sectionTitle}>Preguntas Frecuentes</Text>
+          <Text style={styles.sectionTitle}>{t('support.faqTitle')}</Text>
           {FAQ_ITEMS.map((item) => (
             <TouchableOpacity
               key={item.id}
@@ -136,14 +151,7 @@ export default function Support() {
         {/* Emergency Banner */}
         <TouchableOpacity 
           style={styles.emergencyBanner}
-          onPress={() => Alert.alert(
-            'Botón de Pánico',
-            'El servicio de Botón de Pánico está disponible como suscripción premium. ¿Te gustaría conocer más?',
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Ver planes', onPress: () => {} }
-            ]
-          )}
+          onPress={handlePanicButtonPress}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -154,11 +162,11 @@ export default function Support() {
           >
             <Text style={styles.emergencyIcon}>🚨</Text>
             <View style={styles.emergencyTextContainer}>
-              <Text style={styles.emergencyTitle}>Botón de Pánico</Text>
-              <Text style={styles.emergencySubtitle}>Protección personal 24/7</Text>
+              <Text style={styles.emergencyTitle}>{t('support.panicButton.title')}</Text>
+              <Text style={styles.emergencySubtitle}>{t('support.panicButton.subtitle')}</Text>
             </View>
             <View style={styles.emergencyBadge}>
-              <Text style={styles.emergencyBadgeText}>Premium</Text>
+              <Text style={styles.emergencyBadgeText}>{t('support.premium')}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -166,7 +174,7 @@ export default function Support() {
         {/* App Info */}
         <View style={styles.appInfo}>
           <Text style={styles.appVersion}>ISSY Resident App v1.0.0</Text>
-          <Text style={styles.appCopyright}>© 2024 ISSY. Todos los derechos reservados.</Text>
+          <Text style={styles.appCopyright}>{t('support.copyright')}</Text>
         </View>
 
         <View style={{ height: 100 }} />

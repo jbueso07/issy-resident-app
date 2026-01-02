@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet, Image, Text } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function Index() {
+  const { t } = useTranslation();
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -21,7 +23,7 @@ export default function Index() {
     <View style={styles.container}>
       <Text style={styles.logo}>🏠</Text>
       <Text style={styles.title}>ISSY</Text>
-      <Text style={styles.subtitle}>Resident App</Text>
+      <Text style={styles.subtitle}>{t('splash.subtitle')}</Text>
       <ActivityIndicator size="large" color="#6366F1" style={styles.loader} />
     </View>
   );

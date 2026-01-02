@@ -1,0 +1,1941 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success!",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "none": "None",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "seeAll": "See all",
+    "seeMore": "See more",
+    "noResults": "No results",
+    "required": "Required",
+    "optional": "Optional",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "This feature will be available soon"
+  },
+  "app": {
+    "name": "ISSY",
+    "welcome": "Welcome",
+    "loading": "Loading..."
+  },
+  "tabs": {
+    "home": "Home",
+    "visits": "Visits",
+    "payments": "Payments",
+    "marketplace": "Market",
+    "profile": "Profile"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "emailPlaceholder": "you@email.com",
+    "password": "Password",
+    "forgotPassword": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your email and we'll send you a link to reset your password",
+      "sendLink": "Send link",
+      "checkEmail": "Check your email!",
+      "emailSentMessage": "If an account exists with the email {{email}}, you'll receive a link to reset your password.",
+      "backToLogin": "Back to login",
+      "tryAnotherEmail": "Try another email",
+      "rememberPassword": "Remember your password?"
+    },
+    "signIn": "Sign In",
+    "signInWith": "Continue with {{provider}}",
+    "noAccount": "Don't have an account?",
+    "register": {
+      "createAccount": "Create Account",
+      "joinIssy": "Join ISSY",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "John Doe",
+      "phoneOptional": "Phone (optional)",
+      "confirmPassword": "Confirm password",
+      "minChars": "Minimum 6 characters",
+      "repeatPassword": "Repeat your password",
+      "haveInvitationCode": "Have an invitation code?",
+      "invitationCodePlaceholder": "Ex: ABC123",
+      "invitationCodeHint": "If your administrator gave you a code, enter it here",
+      "acceptTermsPrefix": "I accept the",
+      "termsOfService": "Terms of Service",
+      "and": "and",
+      "privacyPolicy": "Privacy Policy",
+      "alreadyHaveAccount": "Already have an account?",
+      "welcome": "Welcome!",
+      "accountCreated": "Your account has been created successfully",
+      "accountCreatedTitle": "Account created!",
+      "joinYourCommunity": "Now join your community"
+    },
+    "welcomeBack": "Welcome back!",
+    "enterCredentials": "Enter your credentials to continue",
+    "invalidCredentials": "Invalid credentials",
+    "sessionExpired": "Your session has expired",
+    "errors": {
+      "emailRequired": "Please enter your email",
+      "invalidEmail": "Please enter a valid email",
+      "nameRequired": "Please enter your name",
+      "passwordRequired": "Please enter a password",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "passwordsMismatch": "Passwords don't match",
+      "acceptTerms": "You must accept the Terms of Service and Privacy Policy",
+      "invalidInvitationCode": "Invalid invitation code",
+      "registerFailed": "Could not create account",
+      "genericError": "An error occurred. Please try again."
+    },
+    "joinCode": {
+      "title": "Invitation Code",
+      "subtitle": "Enter the code provided by your administrator",
+      "placeholder": "Ex: ABC123",
+      "verifyCode": "Verify Code",
+      "codeHint": "The code is unique and can only be used once",
+      "enterCode": "Please enter a code",
+      "invalidCode": "Invalid Code",
+      "codeNotExist": "The code doesn't exist or has already been used",
+      "validCode": "Valid Code!",
+      "changeCode": "Change code",
+      "type": "Type",
+      "community": "Community",
+      "location": "Location",
+      "role": "Role",
+      "property": "Property",
+      "unit": "Unit",
+      "invitedBy": "Invited by",
+      "acceptInvitation": "Accept Invitation",
+      "success": "Done!",
+      "joinedSuccessfully": "You have successfully joined",
+      "acceptFailed": "Could not accept invitation",
+      "needAccount": "You need an account to accept the invitation",
+      "createNewAccount": "Create New Account",
+      "useAnotherCode": "Use another code",
+      "types": {
+        "community": "Community",
+        "tenant": "Tenant",
+        "invitation": "Invitation"
+      },
+      "roles": {
+        "admin": "Administrator",
+        "guard": "Guard",
+        "resident": "Resident",
+        "owner": "Owner",
+        "employee": "Employee",
+        "superadmin": "Super Admin"
+      }
+    },
+    "join": {
+      "invitation": "Invitation",
+      "verifying": "Verifying invitation...",
+      "youAreInvited": "You've been invited",
+      "reviewDetails": "Review the details before accepting",
+      "tenantInvitation": "Tenant Invitation",
+      "communityInvitation": "Community Invitation",
+      "community": "Community",
+      "address": "Address",
+      "city": "City",
+      "assignedRole": "Assigned role",
+      "property": "Property",
+      "unit": "Unit",
+      "monthlyRent": "Monthly rent",
+      "startDate": "Start date",
+      "invitedBy": "Invited by",
+      "acceptInvitation": "Accept Invitation",
+      "loginAndAccept": "Login and accept",
+      "needLoginToAccept": "You need to login to accept this invitation",
+      "invalidInvitation": "Invalid invitation",
+      "invalidOrExpired": "Invalid or expired invitation code",
+      "verifyError": "Error verifying invitation",
+      "acceptError": "Error accepting invitation",
+      "processError": "Error processing invitation",
+      "goToHome": "Go to home",
+      "joinedSuccessfully": "You've successfully joined!",
+      "nowPartOf": "You're now part of {{name}}",
+      "theCommunity": "the community"
+    }
+  },
+  "home": {
+    "greeting": "Hello, {{name}}",
+    "goodMorning": "Good morning",
+    "goodAfternoon": "Good afternoon",
+    "goodEvening": "Good evening",
+    "welcomeBack": "Welcome back",
+    "myCommunity": "My Community",
+    "residents": "residents",
+    "services": "Services",
+    "viewAll": "View all",
+    "admin": "Admin",
+    "changeLocation": "Change location",
+    "moreServices": "More services",
+    "switchingLocation": "Switching location...",
+    "quickActions": {
+      "title": "Quick actions",
+      "newQR": "New QR",
+      "reservations": "Reservations",
+      "announcements": "Announcements",
+      "payments": "Payments"
+    },
+    "joinCommunity": {
+      "title": "Join a Community",
+      "subtitle": "Enter your invitation code to get started",
+      "button": "Join Community"
+    },
+    "recentActivity": "Recent activity",
+    "pendingPayments": "Pending payments",
+    "upcomingVisits": "Upcoming visits",
+    "announcements": "Announcements"
+  },
+  "visits": {
+    "title": "Visits",
+    "generateQr": "Generate QR",
+    "myVisits": "My Visits",
+    "history": "History",
+    "scheduled": "Scheduled",
+    "qrTypes": {
+      "oneTime": "One time",
+      "recurring": "Recurring",
+      "temporary": "Temporary",
+      "permanent": "Permanent"
+    },
+    "weekdays": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "inProgress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "expired": "Expired"
+    },
+    "form": {
+      "visitorName": "Visitor name",
+      "visitorId": "ID",
+      "vehiclePlate": "Vehicle plate",
+      "purpose": "Purpose of visit",
+      "date": "Date",
+      "time": "Time",
+      "notes": "Additional notes"
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "invalidDate": "Invalid date",
+      "createFailed": "Error creating visit"
+    },
+    "empty": {
+      "title": "No visits",
+      "subtitle": "Generate a QR code to register visitors"
+    },
+    "shareQr": "Share QR",
+    "downloadQr": "Download QR",
+    "qrValid": "Valid until",
+    "scanToEnter": "Scan to enter"
+  },
+  "payments": {
+    "title": "Payments",
+    "pending": "Pending",
+    "paid": "Paid",
+    "overdue": "Overdue",
+    "amount": "Amount",
+    "dueDate": "Due date",
+    "payNow": "Pay now",
+    "paymentHistory": "Payment history",
+    "paymentMethods": "Payment methods",
+    "addPaymentMethod": "Add method",
+    "makePayment": "Make payment",
+    "receipt": "Receipt",
+    "downloadReceipt": "Download receipt",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "refunded": "Refunded"
+    },
+    "empty": {
+      "title": "No pending payments",
+      "subtitle": "You're up to date with your payments!"
+    },
+    "tabs": {
+      "pending": "Pending",
+      "history": "History"
+    }
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "comingSoon": "Coming soon",
+    "description": "Buy and sell products and services within your community",
+    "features": {
+      "buy": "Buy",
+      "sell": "Sell",
+      "services": "Services",
+      "products": "Products"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "user": "User",
+    "editProfile": "Edit profile",
+    "account": "Account",
+    "settings": "Settings",
+    "help": "Help & Support",
+    "helpDesc": "FAQs and contact",
+    "myCommunity": "My Community",
+    "myUnit": "My Unit",
+    "myUnitDesc": "View your community details",
+    "joinCommunity": "Join Community",
+    "joinCommunityDesc": "Enter an invitation code",
+    "personalData": "Personal Data",
+    "personalDataDesc": "Edit your information",
+    "security": "Security",
+    "securityDesc": "Password and biometrics",
+    "notifications": "Notifications",
+    "notificationsDesc": "Manage your alerts",
+    "paymentMethods": "Payment Methods",
+    "paymentMethodsDesc": "Manage your cards",
+    "subscription": "Subscription",
+    "subscriptionDesc": "Manage your plan",
+    "legal": "Legal",
+    "legalDesc": "Terms and policies",
+    "legalDocuments": "Legal Documents",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "selectDocument": "Select a document",
+    "support": "Support",
+    "reportIncident": "Report Incident",
+    "reportIncidentDesc": "Report a problem",
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete Account",
+    "deleteAccountDesc": "Permanently delete your account",
+    "deleteAccountQuestion": "Are you sure you want to delete your account?",
+    "deleteWarning": "This action cannot be undone. All your data will be permanently deleted:",
+    "deleteItem1": "Your profile and personal data",
+    "deleteItem2": "Your visit history",
+    "deleteItem3": "Your payment records",
+    "deleteItem4": "Access to all communities",
+    "typeToConfirm": "Type \"{{word}}\" to confirm",
+    "deleteWord": "DELETE",
+    "enterPassword": "Enter your password",
+    "passwordRequired": "Password is required",
+    "confirmDeletion": "Confirm Deletion",
+    "deleteSuccess": "Account deleted successfully",
+    "deleteError": "Could not delete account",
+    "deleteConfirmError": "Please type the confirmation word correctly",
+    "logout": "Log Out",
+    "logoutConfirm": "Are you sure you want to log out?",
+    "roleAdmin": "Administrator",
+    "roleResident": "Resident"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "new": "New",
+    "readMore": "Read more",
+    "postedBy": "Posted by",
+    "timeAgo": {
+      "now": "Just now",
+      "minutesAgo": "{{count}} min ago",
+      "hoursAgo": "{{count}}h ago",
+      "yesterday": "Yesterday",
+      "daysAgo": "{{count}} days ago"
+    },
+    "empty": {
+      "title": "No announcements",
+      "subtitle": "No recent announcements"
+    }
+  },
+  "reservations": {
+    "title": "Reservations",
+    "myReservations": "My Reservations",
+    "newReservation": "New Reservation",
+    "commonAreas": "Common Areas",
+    "selectArea": "Select area",
+    "selectDate": "Select date",
+    "selectTime": "Select time",
+    "duration": "Duration",
+    "guests": "Guests",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "areas": {
+      "pool": "Pool",
+      "gym": "Gym",
+      "salon": "Event hall",
+      "bbq": "BBQ area",
+      "tennis": "Tennis court",
+      "playground": "Playground"
+    },
+    "errors": {
+      "areaRequired": "Select an area",
+      "dateRequired": "Select a date",
+      "timeRequired": "Select a time",
+      "notAvailable": "Time slot not available",
+      "maxCapacity": "Maximum capacity exceeded",
+      "createFailed": "Error creating reservation"
+    },
+    "success": {
+      "created": "Reservation created successfully",
+      "cancelled": "Reservation cancelled"
+    },
+    "empty": {
+      "title": "No reservations",
+      "subtitle": "Book common areas in your community"
+    },
+    "hourlyRate": "{{rate}} / hour",
+    "free": "Free",
+    "book": "Book",
+    "cancelReservation": "Cancel reservation",
+    "confirmCancel": "Are you sure you want to cancel this reservation?"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "report": "Report",
+    "myReports": "My Reports",
+    "newIncident": "New Incident",
+    "description": "Description",
+    "location": "Location",
+    "attachPhoto": "Attach photo",
+    "status": {
+      "open": "Open",
+      "inProgress": "In progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "categories": {
+      "maintenance": "Maintenance",
+      "security": "Security",
+      "noise": "Noise",
+      "parking": "Parking",
+      "common_areas": "Common areas",
+      "other": "Other"
+    },
+    "filters": {
+      "all": "All",
+      "mine": "Mine",
+      "open": "Open",
+      "resolved": "Resolved"
+    },
+    "form": {
+      "title": "Title",
+      "category": "Category",
+      "description": "Detailed description",
+      "location": "Specific location"
+    },
+    "empty": {
+      "title": "No incidents",
+      "subtitle": "No incidents reported"
+    },
+    "success": {
+      "created": "Incident reported successfully",
+      "updated": "Incident updated"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "unreadSingle": "1 unread notification",
+    "unreadMultiple": "{{count}} unread notifications",
+    "types": {
+      "visitor": "Visitor",
+      "entry": "Entry",
+      "exit": "Exit",
+      "announcement": "Announcement",
+      "reservation": "Reservation",
+      "incident": "Incident",
+      "payment": "Payment",
+      "member": "Member",
+      "approved": "Approved",
+      "admin": "Admin",
+      "general": "General"
+    },
+    "time": {
+      "now": "Now",
+      "minutesAgo": "{{count}} min ago",
+      "hoursAgo": "{{count}}h ago",
+      "yesterday": "Yesterday",
+      "daysAgo": "{{count}} days ago"
+    },
+    "empty": {
+      "title": "No notifications",
+      "subtitle": "When you receive notifications they will appear here"
+    }
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "How can we help you?",
+    "contactUs": "Contact us",
+    "faqTitle": "Frequently Asked Questions",
+    "contact": {
+      "quickResponse": "Quick response",
+      "email": "Email",
+      "call": "Call"
+    },
+    "faq": {
+      "qrCode": {
+        "question": "How do I generate a QR code for visitors?",
+        "answer": "Go to the \"Visits\" tab, tap \"Generate QR Code\", enter the visitor's details and select the access type."
+      },
+      "joinCommunity": {
+        "question": "How do I join my community?",
+        "answer": "You need an invitation code from your administrator. Go to \"Join my community\" and enter the code."
+      },
+      "changePassword": {
+        "question": "How do I change my password?",
+        "answer": "Go to Profile > Settings > Change password. We will send you a verification email."
+      },
+      "contactAdmin": {
+        "question": "How do I contact my administrator?",
+        "answer": "In your community section you will find your administrator's contact information."
+      },
+      "panicButton": {
+        "question": "How does the panic button work?",
+        "answer": "The panic button is a premium service that sends immediate alerts to security and emergency contacts."
+      }
+    },
+    "panicButton": {
+      "title": "Panic Button",
+      "subtitle": "24/7 personal protection",
+      "message": "The Panic Button service is available as a premium subscription. Would you like to learn more?",
+      "viewPlans": "View plans"
+    },
+    "premium": "Premium",
+    "copyright": "© 2024 ISSY. All rights reserved."
+  },
+  "paymentMethods": {
+    "title": "Payment Methods",
+    "addCard": "Add Card",
+    "saveCard": "Save Card",
+    "loading": "Loading cards...",
+    "cardHolder": "Card Holder",
+    "expires": "Expires",
+    "default": "Default",
+    "namePlaceholder": "FIRST LAST NAME",
+    "securityInfo": "Your cards are protected with bank-grade encryption",
+    "securityNote": "Your information is encrypted and secure. We never store CVV.",
+    "hint": "Long press a card to delete it",
+    "deleteTitle": "Delete Card",
+    "deleteMessage": "Delete card ending in {{lastFour}}?",
+    "form": {
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "cardNumber": "Card Number",
+      "month": "Month",
+      "year": "Year",
+      "idNumber": "ID Number",
+      "phone": "Phone (optional)"
+    },
+    "errors": {
+      "nameRequired": "Enter first and last name",
+      "invalidCard": "Invalid card number",
+      "invalidExpiry": "Invalid expiration date",
+      "invalidCvv": "Invalid CVV",
+      "idRequired": "Enter your ID number",
+      "addFailed": "Could not add card",
+      "deleteFailed": "Could not delete",
+      "setDefaultFailed": "Could not set as default"
+    },
+    "success": {
+      "added": "Card added successfully",
+      "deleted": "Deleted",
+      "deletedMessage": "The card has been deleted"
+    },
+    "empty": {
+      "title": "No cards",
+      "subtitle": "Add a payment method to make transactions"
+    }
+  },
+  "admin": {
+    "accessProcess": {
+      "title": "Access Processes",
+      "subtitle": "Capture configuration",
+      "processSection": "Access Process",
+      "processDescription": "Select what data to capture when registering visitors",
+      "preferencesSection": "Security Preferences",
+      "saveChanges": "Save Changes",
+      "processes": {
+        "noData": {
+          "title": "No additional data",
+          "description": "Only validate QR",
+          "time": "2-3 seconds"
+        },
+        "photo1": {
+          "title": "Capture 1 Photo",
+          "description": "Visitor photo",
+          "time": "5-10 seconds"
+        },
+        "photo2": {
+          "title": "Capture 2 Photos",
+          "description": "Front and side photos",
+          "time": "10-15 seconds"
+        },
+        "photo3": {
+          "title": "Capture 3 Photos",
+          "description": "Multiple angles",
+          "time": "20-25 seconds"
+        },
+        "photo1Id": {
+          "title": "1 Photo + ID Number",
+          "description": "Photo and ID number",
+          "time": "15-20 seconds"
+        },
+        "photo1IdPlate": {
+          "title": "1 Photo + ID + Plate",
+          "description": "Photo, ID and vehicle plate",
+          "time": "40-50 seconds"
+        },
+        "photo2IdPlate": {
+          "title": "2 Photos + ID + Plate",
+          "description": "Photos, ID and vehicle plate",
+          "time": "50-55 seconds"
+        },
+        "full": {
+          "title": "3 Photos + ID + Plate",
+          "description": "Complete data capture",
+          "time": "60-70 seconds"
+        }
+      },
+      "preferences": {
+        "exitRegistration": {
+          "title": "Must mark exit",
+          "description": "Register when visitor leaves"
+        },
+        "companion": {
+          "title": "Always accompanied",
+          "description": "Visitor must go with resident"
+        },
+        "qrResidents": {
+          "title": "Use QR for residents",
+          "description": "Residents use QR to enter"
+        },
+        "residentApproval": {
+          "title": "Requires approval",
+          "description": "Visitors need authorization"
+        }
+      },
+      "tags": {
+        "photo": "photo",
+        "photos": "photos",
+        "id": "ID",
+        "plate": "Plate"
+      },
+      "success": {
+        "saved": "Settings saved successfully"
+      },
+      "errors": {
+        "locationNotFound": "Location not found",
+        "saveFailed": "Could not save settings"
+      }
+    },
+    "sections": {
+      "payments": {
+        "title": "Payment Manager",
+        "description": "Manage fees and payments for your community"
+      },
+      "expenses": {
+        "title": "Expenses",
+        "description": "Control community expenses and disbursements"
+      },
+      "users": {
+        "title": "Users",
+        "description": "Manage residents, guards and roles"
+      },
+      "guardConfig": {
+        "title": "Guard App",
+        "description": "Access control configuration"
+      },
+      "locationSettings": {
+        "title": "Settings",
+        "description": "General settings for your location"
+      },
+      "reports": {
+        "title": "Reports",
+        "description": "Statistics and metrics for your community"
+      },
+      "default": {
+        "title": "Section",
+        "description": "This section is under development"
+      },
+      "comingSoon": "Coming Soon",
+      "comingSoonNote": "This feature will be available soon in the mobile app.",
+      "useWebVersion": "In the meantime, you can use the web version at:",
+      "backToHome": "Back to Home"
+    },
+    "announcements": {
+      "title": "Announcements",
+      "newAnnouncement": "New Announcement",
+      "editAnnouncement": "Edit Announcement",
+      "createAnnouncement": "Create Announcement",
+      "detail": "Detail",
+      "inactive": "Inactive",
+      "pinned": "Pinned",
+      "image": "image",
+      "images": "images",
+      "new": "NEW",
+      "addImages": "Add Images",
+      "pinAnnouncement": "Pin announcement",
+      "activeAnnouncement": "Active announcement",
+      "deleteTitle": "Delete Announcement",
+      "deleteMessage": "Are you sure you want to delete \"{{title}}\"?",
+      "types": {
+        "info": "Information",
+        "warning": "Warning",
+        "alert": "Alert",
+        "maintenance": "Maintenance",
+        "event": "Event"
+      },
+      "priorities": {
+        "low": "Low",
+        "normal": "Normal",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "audiences": {
+        "all": "Everyone",
+        "residents": "Residents",
+        "guards": "Guards",
+        "admins": "Administrators"
+      },
+      "form": {
+        "title": "Title",
+        "titlePlaceholder": "Announcement title",
+        "content": "Content",
+        "contentPlaceholder": "Write the announcement content...",
+        "type": "Type",
+        "priority": "Priority",
+        "audience": "Audience",
+        "images": "Images",
+        "options": "Options"
+      },
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "pinned": "Pinned"
+      },
+      "success": {
+        "created": "Announcement created",
+        "updated": "Announcement updated",
+        "deleted": "Announcement deleted"
+      },
+      "errors": {
+        "titleContentRequired": "Title and content are required",
+        "saveFailed": "Could not save the announcement",
+        "deleteFailed": "Could not delete the announcement"
+      },
+      "empty": {
+        "title": "No announcements",
+        "subtitle": "Create the first announcement for your community"
+      }
+    },
+    "commonAreas": {
+      "title": "Common Areas",
+      "subtitle": "Manage spaces",
+      "newArea": "New Area",
+      "editArea": "Edit Area",
+      "createArea": "Create area",
+      "schedule": "Schedule",
+      "schedules": "Schedules",
+      "active": "Active",
+      "inactive": "Inactive",
+      "people": "people",
+      "approval": "Approval",
+      "uploading": "Uploading...",
+      "addImage": "Add image",
+      "permissionRequired": "Permission required",
+      "photoPermission": "We need access to your photos to upload images.",
+      "noPermission": "You don't have permission to view this page",
+      "loading": "Loading areas...",
+      "deleteTitle": "Delete Area",
+      "deleteMessage": "Are you sure you want to delete \"{{name}}\"?",
+      "scheduleNote": "Configure specific schedules for each day. Disabled days won't allow reservations.",
+      "categories": {
+        "pool": "Pool",
+        "gym": "Gym",
+        "court": "Court",
+        "bbq": "BBQ",
+        "salon": "Party Room",
+        "playground": "Playground",
+        "terrace": "Terrace",
+        "garden": "Garden",
+        "parking": "Parking",
+        "other": "Other"
+      },
+      "days": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      },
+      "daysShort": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
+      },
+      "form": {
+        "image": "Image",
+        "location": "Location",
+        "name": "Name",
+        "namePlaceholder": "Ex: Main pool",
+        "description": "Description",
+        "descriptionPlaceholder": "Describe the area...",
+        "category": "Category",
+        "capacity": "Capacity (people)",
+        "isPaid": "Is paid",
+        "isPaidHint": "Charge per hour of use",
+        "pricePerHour": "Price per hour",
+        "requiresApproval": "Requires approval",
+        "requiresApprovalHint": "Reservations must be approved",
+        "is24Hours": "Available 24 hours",
+        "openTime": "Opening",
+        "closeTime": "Closing",
+        "minHours": "Minimum (hrs)",
+        "maxHours": "Maximum (hrs)",
+        "advanceDays": "Advance (days)"
+      },
+      "scheduleSection": {
+        "title": "Availability Schedule"
+      },
+      "rulesSection": {
+        "title": "Reservation Rules"
+      },
+      "stats": {
+        "total": "Total",
+        "reservations": "Reservations",
+        "pending": "Pending"
+      },
+      "success": {
+        "created": "Area created",
+        "updated": "Area updated",
+        "deleted": "Area deleted"
+      },
+      "errors": {
+        "nameRequired": "Name is required",
+        "saveFailed": "Could not save the area",
+        "deleteFailed": "Could not delete",
+        "updateFailed": "Could not update",
+        "imageSelectFailed": "Could not select the image",
+        "imageUploadFailed": "Could not upload the image"
+      },
+      "empty": {
+        "title": "No common areas",
+        "subtitle": "Create your first area so residents can make reservations"
+      }
+    },
+    "accessReports": {
+      "title": "Access Control",
+      "subtitle": "Audit and reports",
+      "accessDenied": "Access Denied",
+      "adminOnly": "Only administrators can access this section",
+      "loadingDetail": "Loading detail...",
+      "entry": "Entry",
+      "exit": "Exit",
+      "entries": "Entries",
+      "exits": "Exits",
+      "withPhoto": "With photo",
+      "recentAccess": "Recent Access",
+      "visitorsInside": "Visitors Inside",
+      "entryTime": "Entry",
+      "incidentPhoto": "Incident Photo",
+      "searchPlaceholder": "Search visitor, plate, unit...",
+      "tabs": {
+        "dashboard": "Dashboard",
+        "history": "History",
+        "inside": "Inside",
+        "incidents": "Incidents"
+      },
+      "qrTypes": {
+        "single": "Single",
+        "temporary": "Temporary",
+        "permanent": "Permanent"
+      },
+      "severity": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "stats": {
+        "entriesToday": "Entries Today",
+        "exitsToday": "Exits Today",
+        "inside": "Inside",
+        "incidents": "Incidents"
+      },
+      "detail": {
+        "title": "Access Detail",
+        "visitorPhoto": "Visitor Photo",
+        "vehiclePhoto": "Vehicle Photo",
+        "idPhoto": "ID Photo",
+        "photoEvidence": "Photo Evidence",
+        "tapToZoom": "Tap a photo to view fullscreen",
+        "pinchToZoom": "Pinch to zoom",
+        "noPhotos": "No photo evidence",
+        "noPhotosCaptured": "No photos were captured for this access",
+        "accessInfo": "Access Information",
+        "dateTime": "Date and Time",
+        "qrType": "QR Type",
+        "vehiclePlate": "Vehicle Plate",
+        "idNumber": "ID Number",
+        "companions": "Companions",
+        "persons": "person(s)",
+        "notes": "Notes",
+        "visitedResident": "Visited Resident",
+        "name": "Name",
+        "unit": "Unit",
+        "block": "Block",
+        "registeredBy": "Registered By",
+        "guard": "Guard"
+      },
+      "export": {
+        "export": "Export",
+        "title": "Export History",
+        "dateRange": "Date Range",
+        "from": "From",
+        "to": "To",
+        "lastWeek": "Last week",
+        "thisMonth": "This month",
+        "lastMonth": "Last month",
+        "totalRecords": "Total records",
+        "format": "Format",
+        "csvDesc": "Recommended for analysis",
+        "pdfDesc": "With thumbnail photos",
+        "recommended": "Recommended",
+        "filters": "Filters (Optional)",
+        "includeEntries": "Include entries",
+        "includeExits": "Include exits",
+        "onlyWithPhotos": "Only records with photo",
+        "fileInfo": "The file will include: date, time, visitor, plate, QR type, unit, resident, guard, and photo URLs.",
+        "download": "Download Report",
+        "selectDateRange": "Select a date range",
+        "exportError": "Export error",
+        "exportFailed": "Could not export the file",
+        "fileSaved": "File saved at",
+        "pdfNotAvailable": "PDF export is available from the web panel.",
+        "exportCsv": "Export CSV"
+      },
+      "empty": {
+        "noRecentAccess": "No recent access",
+        "noRecords": "No records for this date",
+        "noVisitorsInside": "No visitors inside",
+        "noIncidents": "No reported incidents",
+        "allClear": "All clear"
+      }
+    },
+    "payments": {
+      "title": "Charges",
+      "loading": "Loading charges...",
+      "accessDenied": "Access Denied",
+      "noPermissions": "You don't have permissions",
+      "charge": "Charge",
+      "markAsPaid": "Mark as Paid",
+      "confirmPayment": "Confirm Payment",
+      "markAsPaidConfirm": "Mark as paid?\n{{concept}} - L {{amount}}",
+      "newCharge": "New Charge",
+      "selectResident": "Select Resident",
+      "searchPlaceholder": "Search by name, email or unit...",
+      "loadingResidents": "Loading residents...",
+      "noResidentsFound": "No residents found",
+      "stats": {
+        "collected": "Collected",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      },
+      "status": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "cancelled": "Cancelled"
+      },
+      "types": {
+        "maintenance": "Maintenance",
+        "extraordinary": "Extraordinary",
+        "fine": "Fine",
+        "service": "Service",
+        "other": "Other"
+      },
+      "form": {
+        "resident": "Resident",
+        "selectResident": "Select resident...",
+        "chargeType": "Charge Type",
+        "description": "Description (optional)",
+        "descriptionPlaceholder": "E.g.: December 2025 Fee",
+        "amount": "Amount (L)",
+        "dueDate": "Due Date"
+      },
+      "empty": {
+        "noCharges": "No charges",
+        "createFirst": "Create your first charge"
+      },
+      "success": {
+        "paymentRegistered": "Payment registered",
+        "chargeCreated": "Charge created successfully"
+      },
+      "errors": {
+        "updateFailed": "Could not update",
+        "selectResident": "Select a resident",
+        "enterValidAmount": "Enter a valid amount",
+        "createFailed": "Could not create charge"
+      }
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Statistics and metrics",
+      "loading": "Loading reports...",
+      "accessDenied": "Access Denied",
+      "noPermissions": "You don't have permissions",
+      "overview": {
+        "title": "General Overview",
+        "users": "Users",
+        "units": "Units",
+        "reservations": "Reservations",
+        "access": "Access"
+      },
+      "financial": {
+        "title": "Financial Summary",
+        "monthlyIncome": "Monthly Income",
+        "monthlyExpenses": "Monthly Expenses",
+        "balance": "Balance"
+      },
+      "trends": {
+        "title": "Trends vs Last Month",
+        "users": "Users",
+        "income": "Income",
+        "reservations": "Reservations"
+      },
+      "collection": {
+        "title": "Collection Rate",
+        "paid": "Paid",
+        "pending": "Pending",
+        "overdue": "Overdue"
+      },
+      "activity": {
+        "title": "Recent Activity"
+      },
+      "actions": {
+        "title": "Quick Actions",
+        "viewPayments": "View Payments",
+        "viewExpenses": "View Expenses",
+        "viewUsers": "View Users",
+        "announcements": "Announcements"
+      }
+    },
+    "reservations": {
+      "title": "Reservations Management",
+      "loading": "Loading reservations...",
+      "area": "Area",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectTitle": "Reject Reservation",
+      "rejectConfirm": "Are you sure you want to reject this reservation?",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "cancelled": "Cancelled"
+      },
+      "stats": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "tabs": {
+        "pending": "Pending",
+        "all": "All"
+      },
+      "detail": {
+        "title": "Reservation Details",
+        "area": "Area",
+        "capacity": "Capacity: {{count}} people",
+        "requester": "Requester",
+        "dateTime": "Date and Time",
+        "attendees": "{{count}} people",
+        "notes": "Notes",
+        "created": "Created"
+      },
+      "empty": {
+        "noPending": "No pending requests",
+        "noReservations": "No reservations",
+        "pendingHint": "New requests will appear here",
+        "reservationsHint": "When residents make reservations, they will appear here"
+      },
+      "success": {
+        "approved": "Reservation approved",
+        "rejected": "Reservation rejected"
+      },
+      "errors": {
+        "approveFailed": "Could not approve reservation",
+        "rejectFailed": "Could not reject reservation"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "accessDenied": "Access Denied",
+      "noPermissions": "You don't have permissions",
+      "saveChanges": "Save Changes",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "reactivateTitle": "Reactivate User",
+      "reactivateConfirm": "Are you sure you want to reactivate this user?",
+      "suspendUsersTitle": "Suspend Users",
+      "suspendUsersConfirm": "Suspend {{count}} users with overdue payments?",
+      "tabs": {
+        "guard": "Guard App",
+        "location": "Location",
+        "users": "Users",
+        "blacklist": "Blacklist"
+      },
+      "suspensionReasons": {
+        "unpaid": "Unpaid",
+        "movedOut": "Moved Out",
+        "ruleViolation": "Rule Violation",
+        "adminSuspended": "Admin Suspended",
+        "other": "Other Reason"
+      },
+      "guard": {
+        "accessProcess": "Access Processes",
+        "accessProcessDesc": "Configure what data to capture when registering visitors",
+        "accessPermissions": "Access Permissions",
+        "scanQr": "Scan QR",
+        "scanQrDesc": "Allow code scanning",
+        "manualEntry": "Manual Entry",
+        "manualEntryDesc": "Register without QR",
+        "viewHistory": "View History",
+        "viewHistoryDesc": "Visit history",
+        "residentDirectory": "Resident Directory",
+        "residentDirectoryDesc": "View resident list",
+        "callResidents": "Call Residents",
+        "callResidentsDesc": "Direct calls",
+        "registrationPermissions": "Registration Permissions",
+        "registerIncidents": "Register Incidents",
+        "registerIncidentsDesc": "Create reports",
+        "uploadPhotos": "Upload Photos",
+        "uploadPhotosDesc": "Take photographs",
+        "registerVehicles": "Register Vehicles",
+        "registerVehiclesDesc": "Capture plates",
+        "approvals": "Approvals",
+        "approveVisitors": "Approve Visitors",
+        "approveVisitorsDesc": "Allow entry",
+        "denyVisitors": "Deny Visitors",
+        "denyVisitorsDesc": "Reject entry",
+        "autoApprove": "Auto-approve Pre-registered",
+        "autoApproveDesc": "Automatic approval",
+        "alerts": "Alerts",
+        "alertBlacklist": "Blacklist Alert",
+        "alertBlacklistDesc": "Blocked visitor",
+        "alertExpiredQr": "Expired QR Alert",
+        "alertExpiredQrDesc": "Expired code",
+        "alertSuspendedResident": "Suspended Resident Alert",
+        "alertSuspendedResidentDesc": "Blocked user",
+        "emergencies": "Emergencies",
+        "panicButton": "Panic Button",
+        "panicButtonDesc": "Allow emergency alerts",
+        "cameraConfig": "Camera Configuration",
+        "cameraPhone": "Phone",
+        "cameraIp": "IP Camera",
+        "cameraBoth": "Both",
+        "ipCameraUrl": "IP Camera URL",
+        "ipCameraUser": "Username",
+        "ipCameraPassword": "Password"
+      },
+      "location": {
+        "paymentConfig": "Payment Configuration",
+        "autoSuspend": "Auto-suspend on Overdue",
+        "autoSuspendDesc": "Suspend users with overdue payments",
+        "overdueDays": "Overdue Days",
+        "overdueDaysDesc": "Days before suspension",
+        "overduePayments": "Overdue Payments",
+        "overduePaymentsDesc": "Amount to suspend",
+        "paymentReminders": "Payment Reminders",
+        "paymentRemindersDesc": "Send notifications",
+        "accessControl": "Access Control",
+        "visitorPreregistration": "Visitor Pre-registration",
+        "visitorPreregistrationDesc": "Allow pre-registration",
+        "maxActiveQr": "Active QR per User",
+        "maxActiveQrDesc": "Maximum allowed",
+        "qrValidity": "QR Validity (hours)",
+        "qrValidityDesc": "Default duration",
+        "requireId": "Require ID",
+        "requireIdDesc": "Require identification",
+        "communication": "Communication",
+        "announcements": "Announcements",
+        "announcementsDesc": "Announcement system",
+        "emergencyAlerts": "Emergency Alerts",
+        "emergencyAlertsDesc": "Panic button",
+        "amenities": "Amenities",
+        "reservations": "Reservations",
+        "reservationsDesc": "Common areas",
+        "maxReservations": "Reservations/Week",
+        "maxReservationsDesc": "Maximum per user"
+      },
+      "users": {
+        "overdueAlert": "{{count}} users with overdue payments",
+        "total": "Total",
+        "active": "Active",
+        "suspended": "Suspended",
+        "overdue": "overdue",
+        "reason": "Reason",
+        "noUsers": "No users"
+      },
+      "blacklist": {
+        "addToBlacklist": "Add to Blacklist",
+        "removeTitle": "Remove",
+        "removeConfirm": "Remove from blacklist?",
+        "emptyTitle": "Empty blacklist",
+        "emptySubtitle": "No blocked visitors",
+        "form": {
+          "name": "Name",
+          "namePlaceholder": "Visitor name",
+          "phone": "Phone",
+          "idNumber": "ID Number",
+          "idPlaceholder": "ID / DNI",
+          "reason": "Reason",
+          "reasonPlaceholder": "Reason for adding...",
+          "notes": "Additional Notes",
+          "notesPlaceholder": "Additional notes..."
+        }
+      },
+      "suspendModal": {
+        "title": "Suspend User",
+        "reason": "Suspension Reason",
+        "message": "Message for User (optional)",
+        "messagePlaceholder": "Message the user will see..."
+      },
+      "historyModal": {
+        "title": "History",
+        "suspended": "Suspended",
+        "reactivated": "Reactivated",
+        "by": "By",
+        "noHistory": "No history"
+      },
+      "success": {
+        "saved": "Settings saved",
+        "userSuspended": "User suspended",
+        "userReactivated": "User reactivated",
+        "usersSuspended": "Users suspended",
+        "addedToBlacklist": "Added to blacklist",
+        "removedFromBlacklist": "Removed from blacklist"
+      },
+      "errors": {
+        "saveFailed": "Could not save",
+        "suspendFailed": "Could not suspend",
+        "reactivateFailed": "Could not reactivate",
+        "operationFailed": "Could not complete",
+        "reasonRequired": "Reason is required",
+        "addFailed": "Could not add",
+        "removeFailed": "Could not remove"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "accessDenied": "Access Denied",
+      "noPermissions": "You don't have permissions",
+      "select": "Select",
+      "registered": "{{count}} registered",
+      "searchPlaceholder": "Search by name, email or unit...",
+      "noUsers": "No users",
+      "inLocation": "in {{name}}",
+      "addUser": "Add User",
+      "noInvitations": "No pending invitations",
+      "createInvitationHint": "Create an invitation to add users",
+      "newInvitation": "New Invitation",
+      "unit": "Unit",
+      "expires": "Expires",
+      "share": "Share",
+      "copy": "Copy",
+      "copied": "Copied",
+      "codeCopied": "Code copied to clipboard",
+      "selectCommunity": "Select Community",
+      "userDetail": "User Detail",
+      "changeRole": "Change Role",
+      "changeRoleTitle": "Change Role",
+      "changeRoleConfirm": "Change {{name}}'s role to {{role}}?",
+      "activateUserTitle": "Activate User",
+      "deactivateUserTitle": "Deactivate User",
+      "toggleStatusConfirm": "{{action}} {{name}}?",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "activateUser": "Activate User",
+      "deactivateUser": "Deactivate User",
+      "cancelInvitationTitle": "Cancel Invitation",
+      "cancelInvitationConfirm": "Are you sure you want to cancel this invitation?",
+      "yesCancel": "Yes, cancel",
+      "create": "Create",
+      "invite": "Invite",
+      "shareMessage": "You've been invited to ISSY!\n\nUse this code to register: {{code}}\n\nOr use this link: {{link}}",
+      "tabs": {
+        "users": "Users",
+        "invitations": "Invitations"
+      },
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "units": "Units",
+        "pending": "Pending"
+      },
+      "roles": {
+        "resident": "Resident",
+        "guard": "Guard",
+        "admin": "Admin",
+        "administrator": "Administrator",
+        "superadmin": "Super Admin",
+        "host": "Host",
+        "tenant": "Tenant",
+        "owner": "Owner"
+      },
+      "detail": {
+        "phone": "Phone",
+        "unit": "Unit",
+        "currentRole": "Current Role",
+        "status": "Status",
+        "active": "Active",
+        "inactive": "Inactive",
+        "notRegistered": "Not registered",
+        "notAssigned": "Not assigned"
+      },
+      "form": {
+        "location": "Location",
+        "method": "Method",
+        "invitationCode": "Invitation code",
+        "createDirect": "Create Direct",
+        "youDefinePassword": "You define password",
+        "role": "Role",
+        "unitNumber": "Unit Number (optional)",
+        "unitPlaceholder": "Ex: A-101, House 5",
+        "nameRequired": "Name *",
+        "nameOptional": "Name (optional)",
+        "namePlaceholder": "User name",
+        "guardNamePlaceholder": "Ex: Main Gate, North Gate",
+        "emailRequired": "Email *",
+        "emailOptional": "Email (optional)",
+        "emailPlaceholder": "email@example.com",
+        "phoneOptional": "Phone (optional)",
+        "password": "Password",
+        "passwordPlaceholder": "Minimum 6 characters",
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Repeat password",
+        "directNote": "The user will be created immediately. Share the credentials securely.",
+        "inviteNote": "A unique code will be generated that you can share. The invitation expires in 7 days."
+      },
+      "success": {
+        "roleUpdated": "Role updated",
+        "userActivated": "User activated",
+        "userDeactivated": "User deactivated",
+        "userCreatedTitle": "✅ User Created",
+        "userCreatedMessage": "User \"{{name}}\" was created successfully.\n\nEmail: {{email}}\n\nShare the credentials with the user.",
+        "invitationCreated": "Invitation Created",
+        "invitationCreatedMessage": "Code: {{code}}\n\nShare this code with the user."
+      },
+      "errors": {
+        "nameRequired": "Name is required",
+        "emailRequired": "Email is required",
+        "passwordRequired": "Password is required",
+        "passwordLength": "Password must be at least 6 characters",
+        "passwordMismatch": "Passwords don't match",
+        "roleUpdateFailed": "Could not update role",
+        "statusUpdateFailed": "Could not update status",
+        "createUserFailed": "Could not create user",
+        "createInvitationFailed": "Could not create invitation",
+        "cancelFailed": "Could not cancel"
+      }
+    }
+  },
+  "accountSuspended": {
+    "contactAdmin": "Contact Administration",
+    "logout": "Log Out",
+    "badges": {
+      "unpaid": "Unpaid",
+      "movedOut": "No longer resides",
+      "ruleViolation": "Rule Violation",
+      "adminSuspended": "Administrative Suspension"
+    },
+    "reasons": {
+      "unpaid": {
+        "title": "Account Suspended for Non-Payment",
+        "description": "Your account has been suspended due to pending payments. To reactivate your account, please pay the outstanding amounts.",
+        "action": "View Pending Payments"
+      },
+      "movedOut": {
+        "title": "Account Deactivated",
+        "description": "Your account has been deactivated because you no longer reside at this location. If this is an error, contact administration."
+      },
+      "ruleViolation": {
+        "title": "Account Suspended",
+        "description": "Your account has been suspended for rule violation. Contact administration for more information."
+      },
+      "adminSuspended": {
+        "title": "Account Suspended",
+        "description": "Your account has been suspended by the administrator. Contact administration for more information."
+      },
+      "default": {
+        "title": "Account Suspended",
+        "description": "Your account has been suspended. Contact administration for more information."
+      }
+    },
+    "infoBox": {
+      "title": "What does this mean?",
+      "subtitle": "While your account is suspended:",
+      "item1": "You won't be able to generate QR codes for visitors",
+      "item2": "Your existing QR codes are blocked",
+      "item3": "You won't be able to access certain features",
+      "reactivate": "To reactivate your account, contact your community administration."
+    }
+  },
+  "editProfile": {
+    "title": "Edit Profile",
+    "permissionRequired": "Permission required",
+    "galleryAccess": "We need access to your gallery",
+    "saveChanges": "Save Changes",
+    "changePassword": "Change Password",
+    "tabs": {
+      "info": "Info",
+      "password": "Password",
+      "security": "Security"
+    },
+    "form": {
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "minChars": "Minimum 6 characters",
+      "repeatPassword": "Repeat password"
+    },
+    "security": {
+      "biometric": "Biometrics",
+      "biometricDescription": "Use {{type}} to sign in faster without typing your password.",
+      "biometricUnavailable": "Biometric authentication is not available on this device.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "canUse": "You can use {{type}} to sign in",
+      "tapToEnable": "Tap the switch to enable",
+      "setupBiometric": "Set up Face ID or Touch ID in your device settings to use this feature.",
+      "info1": "Your biometric data never leaves your device",
+      "info2": "Credentials are stored securely",
+      "info3": "You can always use your password as an alternative"
+    },
+    "biometric": {
+      "activated": "Activated!",
+      "activatedMessage": "{{type}} has been activated successfully.",
+      "deactivateTitle": "Deactivate {{type}}",
+      "deactivateConfirm": "Are you sure you want to deactivate quick login?",
+      "deactivate": "Deactivate",
+      "deactivated": "Deactivated",
+      "deactivatedMessage": "{{type}} has been deactivated."
+    },
+    "success": {
+      "profileUpdated": "Profile updated",
+      "passwordUpdated": "Password updated"
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "updateFailed": "Could not update",
+      "passwordLength": "Password must be at least 6 characters",
+      "passwordMismatch": "Passwords don't match",
+      "passwordChangeFailed": "Could not change password",
+      "biometricActivateFailed": "Could not activate biometrics",
+      "biometricConfigFailed": "An error occurred while changing settings"
+    }
+  },
+  "finances": {
+    "title": "My Finances",
+    "loading": "Loading finances...",
+    "new": "New",
+    "register": "Register",
+    "contribute": "Contribute",
+    "registerInvoice": "Register invoice",
+    "createBudget": "Create budget",
+    "invoiceAlert": "{{count}} invoice(s) due soon",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "invoices": "Invoices",
+      "budget": "Budget"
+    },
+    "stats": {
+      "streak": "Streak",
+      "level": "Lv.{{level}}",
+      "xpProgress": "{{current}}/100 XP to Lv.{{nextLevel}}"
+    },
+    "balance": {
+      "monthBalance": "Monthly Balance",
+      "income": "Income",
+      "expenses": "Expenses"
+    },
+    "quickActions": {
+      "income": "Income",
+      "expense": "Expense",
+      "goal": "Goal"
+    },
+    "sections": {
+      "tipsForYou": "Tips for you",
+      "myGoals": "My Goals",
+      "latestTransactions": "Latest Transactions",
+      "pendingInvoices": "Pending Invoices",
+      "myBudgets": "My Budgets"
+    },
+    "empty": {
+      "noGoals": "No goals yet",
+      "createGoalHint": "Create a goal to start saving",
+      "noTransactions": "No transactions",
+      "noInvoices": "No pending invoices",
+      "noBudgets": "No budgets",
+      "createBudgetHint": "Create spending limits by category"
+    },
+    "budget": {
+      "available": "Available: {{amount}}",
+      "exceeded": "Exceeded: {{amount}}",
+      "statusExceeded": "⚠️ Exceeded",
+      "statusWarning": "⚡ Caution",
+      "statusOk": "✓ On track",
+      "deleteHint": "💡 Long press to delete"
+    },
+    "premium": {
+      "featureTitle": "Premium Feature",
+      "invoicesFeature": "Manage your invoices with reminders",
+      "budgetsFeature": "Create budgets and control your expenses"
+    },
+    "modals": {
+      "newIncome": "New Income",
+      "newExpense": "New Expense",
+      "newGoal": "New Goal",
+      "contributeTo": "Contribute to {{name}}",
+      "newInvoice": "New Invoice",
+      "newBudget": "New Budget"
+    },
+    "form": {
+      "amount": "Amount",
+      "descriptionOptional": "Description (optional)",
+      "goalName": "Goal name",
+      "targetAmount": "Target amount",
+      "contributionAmount": "Amount to contribute",
+      "vendor": "Vendor / Company",
+      "categoryExample": "Category (e.g. Water, Electric)",
+      "dueDate": "Due date (YYYY-MM-DD)",
+      "budgetCategory": "Category (e.g. Food)",
+      "monthlyLimit": "Monthly limit"
+    },
+    "invoiceDetail": {
+      "amount": "Amount",
+      "dueDate": "Due date",
+      "markAsPaid": "Mark as Paid"
+    },
+    "deleteBudget": {
+      "title": "Delete",
+      "confirm": "Delete this budget?"
+    },
+    "upgrade": {
+      "paymentRequired": "💳 Payment Method Required",
+      "addPaymentMethod": "You need to add a payment method to subscribe to the Premium plan.",
+      "addCard": "Add Card",
+      "confirmTitle": "💎 Confirm Subscription",
+      "confirmMessage": "Do you want to subscribe to {{plan}} plan using your card ending in {{lastFour}}?",
+      "subscribe": "Subscribe",
+      "unlockAll": "Unlock Everything",
+      "getControl": "Get full control of your personal finances",
+      "popular": "POPULAR",
+      "bestValue": "BEST VALUE",
+      "month": "month",
+      "yearlyPrice": "${{price}}/year (save {{save}}%)",
+      "getPremium": "Get Premium",
+      "getPro": "Get Pro",
+      "maybeLater": "Maybe later",
+      "features": {
+        "unlimitedTransactions": "Unlimited transactions",
+        "unlimitedGoals": "Unlimited savings goals",
+        "categoryBudgets": "Category budgets",
+        "invoiceManagement": "Invoice management",
+        "personalizedTips": "Personalized tips",
+        "allPremium": "Everything in Premium",
+        "advancedReports": "Advanced reports",
+        "exportExcelPdf": "Export to Excel/PDF",
+        "smartAlerts": "Smart alerts",
+        "prioritySupport": "Priority support"
+      }
+    },
+    "success": {
+      "transactionTitle": "✅ Success",
+      "transactionRegistered": "Transaction registered",
+      "goalTitle": "🎯 Success",
+      "goalCreated": "Goal created",
+      "contributionTitle": "💰 Success",
+      "contributionAdded": "Contribution added",
+      "invoiceTitle": "🧾 Success",
+      "invoiceRegistered": "Invoice registered",
+      "paidTitle": "✅ Paid",
+      "invoicePaid": "Invoice marked as paid",
+      "budgetTitle": "📊 Success",
+      "budgetCreated": "Budget created",
+      "congratsTitle": "🎉 Congratulations!",
+      "subscriptionActivated": "Your subscription has been activated successfully."
+    },
+    "errors": {
+      "amountCategoryRequired": "Amount and category are required",
+      "registerFailed": "Could not register",
+      "transactionError": "Error registering transaction",
+      "goalNameAmountRequired": "Name and target amount are required",
+      "createGoalFailed": "Could not create goal",
+      "goalError": "Error creating goal",
+      "validAmountRequired": "Enter a valid amount",
+      "contributionFailed": "Could not add contribution",
+      "contributionError": "Error adding contribution",
+      "vendorAmountRequired": "Vendor and amount are required",
+      "invoiceError": "Error registering invoice",
+      "markPaidError": "Error marking as paid",
+      "categoryAmountRequired": "Category and amount are required",
+      "createFailed": "Could not create",
+      "budgetError": "Error creating budget",
+      "planNotFound": "Plan not found",
+      "subscriptionFailed": "Could not process subscription",
+      "subscriptionError": "Error processing subscription",
+      "paymentMethodsError": "Error verifying payment methods"
+    }
+  },
+  "incidentDetail": {
+    "title": "Detail",
+    "loading": "Loading incident...",
+    "notFound": "Incident not found",
+    "noDescription": "No description",
+    "noComments": "No comments yet",
+    "user": "User",
+    "addCommentPlaceholder": "Add comment...",
+    "status": {
+      "reported": "Reported",
+      "inProgress": "In Progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "types": {
+      "security": "Security",
+      "theft": "Theft",
+      "vandalism": "Vandalism",
+      "noiseComplaint": "Noise",
+      "parkingViolation": "Parking",
+      "maintenance": "Maintenance",
+      "cleaning": "Cleaning",
+      "lighting": "Lighting",
+      "water": "Water",
+      "elevator": "Elevator",
+      "other": "Other"
+    },
+    "sections": {
+      "description": "Description",
+      "details": "Details",
+      "progress": "Progress",
+      "comments": "Comments"
+    },
+    "details": {
+      "reportDate": "Report date",
+      "location": "Location",
+      "resolved": "Resolved",
+      "resolutionNotes": "Resolution notes"
+    },
+    "errors": {
+      "loadFailed": "Could not load incident",
+      "loadError": "An error occurred while loading the incident",
+      "commentFailed": "Could not add comment",
+      "commentError": "An error occurred while adding the comment"
+    }
+  },
+  "splash": {
+    "subtitle": "Resident App"
+  },
+  "joinCommunity": {
+    "title": "Join Community",
+    "enterCode": "Enter your invitation code",
+    "enterCodeHint": "Request a code from your administrator or use the invitation link they shared with you",
+    "codePlaceholder": "Ex: ABC123",
+    "validInvitation": "Valid Invitation",
+    "role": "Role",
+    "resident": "Resident",
+    "unit": "Unit",
+    "expires": "Expires",
+    "joinTo": "Join {{name}}",
+    "types": {
+      "residential": "Residential",
+      "commercial": "Commercial",
+      "industrial": "Industrial",
+      "office": "Office",
+      "community": "Community"
+    },
+    "help": {
+      "title": "Don't have a code?",
+      "text": "Contact the administrator of the community you want to join. They can generate a code or invitation link from the admin panel."
+    },
+    "success": {
+      "title": "Welcome!",
+      "joined": "You have joined {{name}}",
+      "continue": "Continue"
+    },
+    "errors": {
+      "enterCode": "Enter an invitation code",
+      "invalidCode": "Invalid or expired code"
+    }
+  },
+  "mySubscription": {
+    "title": "My Subscriptions",
+    "loading": "Loading subscriptions...",
+    "plan": "Plan",
+    "month": "month",
+    "freeTrial": "Free Trial",
+    "trial": "TRIAL",
+    "active": "ACTIVE",
+    "daysRemaining": "{{days}} days remaining of trial",
+    "nextBill": "Next bill",
+    "method": "Method",
+    "noCard": "No card",
+    "changePlan": "Change Plan",
+    "availableServices": "Available Services",
+    "exploreServices": "Explore our premium services",
+    "inTrialPeriod": "In trial period",
+    "activeSubscription": "Active subscription",
+    "available": "Available",
+    "try": "Try",
+    "paymentMethods": "Payment Methods",
+    "cardsSaved": "{{count}} card(s) saved",
+    "addPaymentMethod": "Add payment method",
+    "choosePlan": "Choose the plan that best suits you",
+    "freeDays": "{{days}} days free",
+    "yearlyPrice": "or ${{price}}/year (save 2 months)",
+    "tryFree": "Try Free",
+    "subscribe": "Subscribe",
+    "noPlansAvailable": "No plans available",
+    "confirmSubscription": "Confirm Subscription",
+    "paymentMethodTitle": "Payment method",
+    "change": "Change",
+    "addCard": "Add card",
+    "pay": "Pay ${{amount}}",
+    "securePayment": "Secure payment processed by Clinpays",
+    "verticals": {
+      "access": "Access Control",
+      "pms": "Property Manager",
+      "panic": "Panic Button",
+      "finance": "Personal Finances",
+      "marketplace": "Marketplace"
+    },
+    "noPaymentMethod": {
+      "title": "No payment method",
+      "message": "You need to add a card before subscribing",
+      "addCard": "Add Card"
+    },
+    "cancelSubscription": {
+      "title": "Cancel Subscription",
+      "message": "Are you sure? You will lose access at the end of the current period.",
+      "confirm": "Yes, Cancel",
+      "successTitle": "Subscription Cancelled",
+      "successMessage": "Your access will continue until the end of the period"
+    },
+    "success": {
+      "title": "Success!",
+      "trialActivated": "Free trial activated!",
+      "subscriptionActivated": "Subscription activated"
+    },
+    "errors": {
+      "trialFailed": "Could not activate trial",
+      "noPaymentMethod": "No payment method available",
+      "paymentFailed": "Could not process payment"
+    }
+  },
+  "myUnit": {
+    "title": "My Unit",
+    "loading": "Loading communities...",
+    "activeLocation": "Active Location",
+    "otherCommunities": "Other Communities",
+    "noAddress": "No address",
+    "suspended": "Suspended",
+    "activeBadge": "Active",
+    "contactAdmin": "Contact administration for more information",
+    "switch": "Switch",
+    "joinAnother": "Join another community",
+    "roles": {
+      "admin": "Administrator",
+      "guard": "Guard",
+      "resident": "Resident",
+      "employee": "Employee"
+    },
+    "details": {
+      "myRole": "My Role",
+      "unit": "Unit",
+      "memberSince": "Member since"
+    },
+    "empty": {
+      "title": "No communities",
+      "text": "Join a community with an invitation code",
+      "joinButton": "Join Community"
+    },
+    "switchSuccess": {
+      "title": "Done!",
+      "message": "You are now in {{name}}"
+    }
+  },
+  "pms": {
+    "title": "Property Manager",
+    "units": "units",
+    "occupied": "occupied",
+    "tabs": {
+      "dashboard": "Home",
+      "properties": "Properties",
+      "tenants": "Tenants",
+      "payments": "Payments",
+      "maintenance": "Maint."
+    },
+    "dashboard": {
+      "properties": "Properties",
+      "tenants": "Tenants",
+      "income": "Income/Month",
+      "pending": "Pending",
+      "occupancyRate": "Occupancy Rate",
+      "quickActions": "Quick Actions",
+      "property": "Property",
+      "collect": "Collect",
+      "tickets": "Tickets",
+      "alerts": "Alerts"
+    },
+    "alerts": {
+      "expiringLeases": "{{count}} expiring leases",
+      "overduePayments": "{{count}} overdue payments"
+    },
+    "properties": {
+      "newProperty": "New Property",
+      "empty": "No properties",
+      "emptyHint": "Add your first property"
+    },
+    "propertyTypes": {
+      "apartment": "Apartment",
+      "apt": "Apt",
+      "house": "House",
+      "commercial": "Commercial"
+    },
+    "tenants": {
+      "empty": "No tenants",
+      "emptyHint": "Add tenants from properties",
+      "active": "Active",
+      "inactive": "Inactive",
+      "unassigned": "Unassigned"
+    },
+    "payments": {
+      "collected": "Collected",
+      "pending": "Pending",
+      "empty": "No payments registered",
+      "tenant": "Tenant",
+      "monthlyRent": "Monthly rent",
+      "recordPayment": "Record Payment"
+    },
+    "maintenance": {
+      "empty": "No maintenance tickets",
+      "allGood": "Everything is in order"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "ticketStatus": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "open": "Open"
+    },
+    "modal": {
+      "newProperty": "New Property",
+      "name": "Name",
+      "namePlaceholder": "Ex: Central Building",
+      "address": "Address",
+      "addressPlaceholder": "Ex: Main Ave #123",
+      "propertyType": "Property Type"
+    },
+    "delete": {
+      "title": "Delete",
+      "message": "Delete this property?"
+    },
+    "success": {
+      "propertyCreated": "Property created",
+      "paymentRecorded": "Payment recorded"
+    },
+    "errors": {
+      "completeFields": "Complete all fields"
+    }
+  },
+  "adminMenu": {
+    "announcements": "Announcements",
+    "announcementsDesc": "Create and manage announcements",
+    "community": "Community",
+    "communityDesc": "Manage residents and members",
+    "commonAreas": "Common Areas",
+    "commonAreasDesc": "Manage reservable spaces",
+    "reservationsAdmin": "Reservations",
+    "reservationsAdminDesc": "Approve and manage bookings",
+    "incidents": "Incidents",
+    "incidentsDesc": "View and resolve reports",
+    "paymentManager": "Payments",
+    "paymentManagerDesc": "Manage fees and charges",
+    "expenses": "Expenses",
+    "expensesDesc": "Control disbursements",
+    "users": "Users",
+    "usersDesc": "Manage roles and access",
+    "settings": "Settings",
+    "settingsDesc": "Location configuration",
+    "guardShifts": "Guard App",
+    "guardShiftsDesc": "Access control config",
+    "gates": "Gates",
+    "gatesDesc": "Entry points management",
+    "accessReports": "Access Reports",
+    "accessReportsDesc": "Audit and history",
+    "reports": "Reports",
+    "reportsDesc": "Statistics and metrics"
+  },
+  "services": {
+    "servicesTitle": "Services",
+    "servicesDesc": "All your community services",
+    "access": "Access Control",
+    "accessDesc": "Manage visitors and QR codes",
+    "announcements": "Announcements",
+    "announcementsDesc": "Community news and updates",
+    "reservations": "Reservations",
+    "reservationsDesc": "Book common areas",
+    "payments": "Payments",
+    "paymentsDesc": "Pay fees and charges",
+    "finances": "My Finances",
+    "financesDesc": "Track your expenses",
+    "pms": "Property Manager",
+    "pmsDesc": "Manage your properties",
+    "marketplace": "Marketplace",
+    "marketplaceDesc": "Buy and sell in your community"
+  }
+}

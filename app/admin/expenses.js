@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,18 +46,22 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const EXPENSE_CATEGORIES = [
-  { value: 'maintenance', label: 'Mantenimiento', icon: 'construct', color: COLORS.warning },
-  { value: 'utilities', label: 'Servicios', icon: 'bulb', color: COLORS.blue },
-  { value: 'security', label: 'Seguridad', icon: 'shield-checkmark', color: COLORS.purple },
-  { value: 'cleaning', label: 'Limpieza', icon: 'sparkles', color: COLORS.success },
-  { value: 'administration', label: 'Administración', icon: 'document-text', color: COLORS.textSecondary },
-  { value: 'other', label: 'Otros', icon: 'cube', color: COLORS.pink },
+const getExpenseCategories = (t) => [
+  { value: 'maintenance', label: t('admin.expenses.categories.maintenance'), icon: 'construct', color: COLORS.warning },
+  { value: 'utilities', label: t('admin.expenses.categories.utilities'), icon: 'bulb', color: COLORS.blue },
+  { value: 'security', label: t('admin.expenses.categories.security'), icon: 'shield-checkmark', color: COLORS.purple },
+  { value: 'cleaning', label: t('admin.expenses.categories.cleaning'), icon: 'sparkles', color: COLORS.success },
+  { value: 'administration', label: t('admin.expenses.categories.administration'), icon: 'document-text', color: COLORS.textSecondary },
+  { value: 'other', label: t('admin.expenses.categories.other'), icon: 'cube', color: COLORS.pink },
 ];
 
 export default function AdminExpenses() {
+  const { t } = useTranslation();
   const { user, profile } = useAuth();
   const router = useRouter();
+  
+  // i18n config
+  const EXPENSE_CATEGORIES = getExpenseCategories(t);
   
   const [expenses, setExpenses] = useState([]);
   const [stats, setStats] = useState(null);
@@ -80,7 +85,7 @@ export default function AdminExpenses() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.expenses.accessDenied'), t('admin.expenses.noPermissions'));
       router.back();
       return;
     }
@@ -156,11 +161,11 @@ export default function AdminExpenses() {
 
   const handleSubmit = async () => {
     if (!formData.description.trim()) {
-      Alert.alert('Error', 'Ingresa una descripción');
+      Alert.alert(t('common.error'), t('admin.expenses.errors.enterDescription'));
       return;
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      Alert.alert('Error', 'Ingresa un monto válido');
+      Alert.alert(t('common.error'), t('admin.expenses.errors.enterValidAmount'));
       return;
     }
 
@@ -188,14 +193,14 @@ export default function AdminExpenses() {
       const data = await response.json();
       
       if (response.ok && data.success !== false) {
-        Alert.alert('Éxito', editingExpense ? 'Gasto actualizado' : 'Gasto registrado');
+        Alert.alert(t('common.success'), editingExpense ? t('admin.expenses.success.updated') : t('admin.expenses.success.registered'));
         setShowModal(false);
         fetchData();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo guardar');
+        Alert.alert(t('common.error'), data.error || t('admin.expenses.errors.saveFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar');
+      Alert.alert(t('common.error'), t('admin.expenses.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -203,12 +208,12 @@ export default function AdminExpenses() {
 
   const handleDelete = (expense) => {
     Alert.alert(
-      'Eliminar Gasto',
-      `¿Eliminar "${expense.description}"?`,
+      t('admin.expenses.deleteExpense'),
+      t('admin.expenses.deleteConfirm', { description: expense.description }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -217,10 +222,10 @@ export default function AdminExpenses() {
                 method: 'DELETE',
                 headers,
               });
-              Alert.alert('Éxito', 'Gasto eliminado');
+              Alert.alert(t('common.success'), t('admin.expenses.success.deleted'));
               fetchData();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar');
+              Alert.alert(t('common.error'), t('admin.expenses.errors.deleteFailed'));
             }
           }
         }
@@ -249,7 +254,7 @@ export default function AdminExpenses() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando gastos...</Text>
+          <Text style={styles.loadingText}>{t('admin.expenses.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -263,7 +268,7 @@ export default function AdminExpenses() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Gastos</Text>
+          <Text style={styles.headerTitle}>{t('admin.expenses.title')}</Text>
           <Text style={styles.headerSubtitle}>Control financiero</Text>
         </View>
         <TouchableOpacity onPress={handleCreate} style={styles.addButton}>
@@ -285,7 +290,7 @@ export default function AdminExpenses() {
         {/* Balance Card */}
         {balance && (
           <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Balance del Mes</Text>
+            <Text style={styles.balanceLabel}>{t('admin.expenses.monthBalance.title')}</Text>
             <Text style={[
               styles.balanceValue,
               { color: (balance.balance || balance.net || 0) >= 0 ? COLORS.success : COLORS.danger }
@@ -297,7 +302,7 @@ export default function AdminExpenses() {
                 <View style={styles.balanceItemIcon}>
                   <Ionicons name="trending-up" size={16} color={COLORS.success} />
                 </View>
-                <Text style={styles.balanceItemLabel}>Ingresos</Text>
+                <Text style={styles.balanceItemLabel}>{t('admin.expenses.monthBalance.income')}</Text>
                 <Text style={[styles.balanceItemValue, { color: COLORS.success }]}>
                   +{formatCurrency(balance.income || balance.total_income || 0)}
                 </Text>
@@ -307,7 +312,7 @@ export default function AdminExpenses() {
                 <View style={styles.balanceItemIcon}>
                   <Ionicons name="trending-down" size={16} color={COLORS.danger} />
                 </View>
-                <Text style={styles.balanceItemLabel}>Gastos</Text>
+                <Text style={styles.balanceItemLabel}>{t('admin.expenses.monthBalance.expenses')}</Text>
                 <Text style={[styles.balanceItemValue, { color: COLORS.danger }]}>
                   -{formatCurrency(balance.expenses || balance.total_expenses || 0)}
                 </Text>
@@ -318,15 +323,15 @@ export default function AdminExpenses() {
 
         {/* Expenses List */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Gastos Recientes</Text>
-          <Text style={styles.sectionCount}>{expenses.length} registros</Text>
+          <Text style={styles.sectionTitle}>{t('admin.expenses.recentExpenses')}</Text>
+          <Text style={styles.sectionCount}>{expenses.length} {t('admin.expenses.records')}</Text>
         </View>
         
         {expenses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="receipt-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>No hay gastos</Text>
-            <Text style={styles.emptySubtitle}>Registra tu primer gasto</Text>
+            <Text style={styles.emptyTitle}>{t('admin.expenses.empty.noExpenses')}</Text>
+            <Text style={styles.emptySubtitle}>{t('admin.expenses.empty.registerFirst')}</Text>
           </View>
         ) : (
           expenses.map((expense) => {
@@ -373,34 +378,34 @@ export default function AdminExpenses() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {editingExpense ? 'Editar Gasto' : 'Nuevo Gasto'}
+              {editingExpense ? t('admin.expenses.editExpense') : t('admin.expenses.newExpense')}
             </Text>
             <TouchableOpacity onPress={handleSubmit} disabled={saving}>
               {saving ? (
                 <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
-                <Text style={styles.modalSave}>Guardar</Text>
+                <Text style={styles.modalSave}>{t('common.save')}</Text>
               )}
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Descripción *</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.description')} *</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
-                placeholder="Ej: Reparación de bomba"
+                placeholder={t('admin.expenses.form.descriptionPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Monto (L) *</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.amount')} *</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.amount}
@@ -412,7 +417,7 @@ export default function AdminExpenses() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Categoría</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.category')}</Text>
               <View style={styles.categoriesGrid}>
                 {EXPENSE_CATEGORIES.map((cat) => {
                   const isSelected = formData.category === cat.value;
@@ -446,7 +451,7 @@ export default function AdminExpenses() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Fecha</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.date')}</Text>
               <TextInput
                 style={styles.formInput}
                 value={formData.date}
@@ -457,12 +462,12 @@ export default function AdminExpenses() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Notas</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.notes')}</Text>
               <TextInput
                 style={[styles.formInput, styles.textArea]}
                 value={formData.notes}
                 onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                placeholder="Notas adicionales..."
+                placeholder={t('admin.expenses.form.notesPlaceholder')}
                 placeholderTextColor={COLORS.textMuted}
                 multiline
                 textAlignVertical="top"

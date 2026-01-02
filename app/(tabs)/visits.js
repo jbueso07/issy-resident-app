@@ -1,7 +1,7 @@
 // app/(tabs)/visits.js
 // ISSY Resident App - Visits Screen (ProHome Dark Style)
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
@@ -63,23 +64,9 @@ const COLORS = {
   gradientEnd: '#AAFF00',
 };
 
-// Tipos de QR
-const QR_TYPES = [
-  { id: 'single', label: 'Uso Único', icon: 'flash-outline', color: COLORS.coral },
-  { id: 'temporary', label: 'Temporal', icon: 'calendar-outline', color: COLORS.purple },
-  { id: 'frequent', label: 'Permanente', icon: 'infinite-outline', color: COLORS.lime },
-];
+// QR types - defined dynamically in component with translations
 
-// Días de la semana
-const WEEKDAYS = [
-  { id: 1, label: 'Lun', fullLabel: 'Lunes', backendName: 'monday', short: 'L' },
-  { id: 2, label: 'Mar', fullLabel: 'Martes', backendName: 'tuesday', short: 'M' },
-  { id: 3, label: 'Mié', fullLabel: 'Miércoles', backendName: 'wednesday', short: 'M' },
-  { id: 4, label: 'Jue', fullLabel: 'Jueves', backendName: 'thursday', short: 'J' },
-  { id: 5, label: 'Vie', fullLabel: 'Viernes', backendName: 'friday', short: 'V' },
-  { id: 6, label: 'Sáb', fullLabel: 'Sábado', backendName: 'saturday', short: 'S' },
-  { id: 0, label: 'Dom', fullLabel: 'Domingo', backendName: 'sunday', short: 'D' },
-];
+// Weekdays - defined dynamically in component with translations
 
 const WEEKDAYS_MAP = {
   'monday': 'L', 'tuesday': 'M', 'wednesday': 'M', 'thursday': 'J',
@@ -93,13 +80,7 @@ const DURATIONS = [
   { value: 24, label: '24 hrs' },
 ];
 
-// Helpers
-const daysToBackendFormat = (dayIds) => {
-  return dayIds.map(id => {
-    const day = WEEKDAYS.find(w => w.id === id);
-    return day ? day.backendName : null;
-  }).filter(Boolean);
-};
+// Helper moved inside component
 
 const formatTimeForBackend = (date) => {
   const hours = date.getHours().toString().padStart(2, '0');
@@ -109,7 +90,35 @@ const formatTimeForBackend = (date) => {
 
 export default function Visits() {
   const { profile } = useAuth();
+  const { t, language } = useTranslation();
   const qrRef = useRef(null);
+
+  // Dynamic QR types with translations
+  const QR_TYPES = useMemo(() => [
+    { id: 'single', label: t('visits.qrTypes.single'), icon: 'flash-outline', color: COLORS.coral },
+    { id: 'temporary', label: t('visits.qrTypes.temporary'), icon: 'calendar-outline', color: COLORS.purple },
+    { id: 'frequent', label: t('visits.qrTypes.frequent'), icon: 'infinite-outline', color: COLORS.lime },
+  ], [t, language]);
+
+  // Dynamic weekdays with translations
+  const WEEKDAYS = useMemo(() => [
+    { id: 1, label: t('visits.weekdays.mon'), fullLabel: t('visits.weekdays.monday'), backendName: 'monday', short: 'L' },
+    { id: 2, label: t('visits.weekdays.tue'), fullLabel: t('visits.weekdays.tuesday'), backendName: 'tuesday', short: 'M' },
+    { id: 3, label: t('visits.weekdays.wed'), fullLabel: t('visits.weekdays.wednesday'), backendName: 'wednesday', short: 'M' },
+    { id: 4, label: t('visits.weekdays.thu'), fullLabel: t('visits.weekdays.thursday'), backendName: 'thursday', short: 'J' },
+    { id: 5, label: t('visits.weekdays.fri'), fullLabel: t('visits.weekdays.friday'), backendName: 'friday', short: 'V' },
+    { id: 6, label: t('visits.weekdays.sat'), fullLabel: t('visits.weekdays.saturday'), backendName: 'saturday', short: 'S' },
+    { id: 0, label: t('visits.weekdays.sun'), fullLabel: t('visits.weekdays.sunday'), backendName: 'sunday', short: 'D' },
+  ], [t, language]);
+
+  // Helper to convert day ids to backend format
+  const daysToBackendFormat = useCallback((dayIds) => {
+    return dayIds.map(id => {
+      const day = WEEKDAYS.find(w => w.id === id);
+      return day ? day.backendName : null;
+    }).filter(Boolean);
+  }, [WEEKDAYS]);
+
   const cardRef = useRef(null);
 
   // Lista de QRs
@@ -238,15 +247,15 @@ export default function Visits() {
 
   const handleCreateQR = async () => {
     if (!visitorName.trim()) {
-      Alert.alert('Error', 'Ingresa el nombre del visitante');
+      Alert.alert('Error', t('visits.errors.visitorNameRequired'));
       return;
     }
     if (!visitorPhone.trim()) {
-      Alert.alert('Error', 'Ingresa el número de teléfono');
+      Alert.alert('Error', t('visits.errors.phoneRequired'));
       return;
     }
     if ((qrType === 'temporary' || qrType === 'frequent') && selectedDays.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un día de acceso');
+      Alert.alert('Error', t('visits.errors.selectDays'));
       return;
     }
 
@@ -292,16 +301,16 @@ export default function Visits() {
     const result = await generateQRCode(qrData);
 
     if (result.success) {
-      Alert.alert('¡Listo!', 'Código QR generado exitosamente');
+      Alert.alert(t('visits.success.title'), t('visits.success.message'));
       setShowCreateModal(false);
       resetForm();
       loadQRCodes();
     } else {
-      Alert.alert('Error', result.error || 'No se pudo generar el QR');
+      Alert.alert('Error', result.error || t('visits.errors.generateError'));
     }
   } catch (error) {
     console.error('Error generating QR:', error);
-    Alert.alert('Error', 'Ocurrió un error al generar el QR');
+    Alert.alert('Error', t('visits.errors.generateError'));
   } finally {
     setLoading(false);
   }
@@ -311,19 +320,19 @@ const handleDeleteQR = async (qr, e) => {
   if (e) e.stopPropagation();
 
   Alert.alert(
-    'Eliminar QR',
-    `¿Estás seguro de eliminar el QR de ${qr.visitor_name}?`,
+    t('visits.deleteQR'),
+    t('visits.deleteConfirm', { name: qr.visitor_name }),
     [
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Eliminar',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           const result = await deleteQRCode(qr.id);
           if (result.success) {
             loadQRCodes();
           } else {
-            Alert.alert('Error', 'No se pudo eliminar el QR');
+            Alert.alert('Error', t('visits.errors.deleteError'));
           }
         },
       },
@@ -333,7 +342,7 @@ const handleDeleteQR = async (qr, e) => {
 
 const handleShareQRImage = async (qr) => {
   if (!cardRef.current) {
-    Alert.alert('Error', 'No se pudo capturar la imagen. Intenta de nuevo.');
+    Alert.alert('Error', t('visits.errors.captureError'));
     return;
   }
 
@@ -353,11 +362,11 @@ const handleShareQRImage = async (qr) => {
         UTI: 'public.png',
       });
     } else {
-      Alert.alert('Error', 'No se puede compartir en este dispositivo');
+      Alert.alert('Error', t('visits.errors.shareError'));
     }
   } catch (error) {
     console.error('Error sharing image:', error);
-    Alert.alert('Error', 'No se pudo compartir la imagen. Intenta de nuevo.');
+    Alert.alert('Error', t('visits.errors.shareError'));
   } finally {
     setSharingImage(false);
   }
@@ -442,17 +451,17 @@ const isQRActive = (qr) => {
 // Texto de validez para la lista de cards
 const getCardValidityText = (qr) => {
   if (qr.qr_type === 'single') {
-    return `Válido: ${formatValidDate(qr.valid_until)}`;
+    return `${t('visits.status.valid')}: ${formatValidDate(qr.valid_until)}`;
   } else if (qr.qr_type === 'temporary') {
-    return `Válido: ${formatDateShort(qr.valid_from)} - ${formatDateShort(qr.valid_until)}`;
+    return `${t('visits.status.valid')}: ${formatDateShort(qr.valid_from)} - ${formatDateShort(qr.valid_until)}`;
   } else if (qr.qr_type === 'frequent') {
-    return 'Válido: Permanente';
+    return `${t('visits.status.valid')}: ${t('visits.status.permanent')}`;
   }
   return '';
 };
 
 const getTimeText = (qr) => {
-  if (qr.is_24_7) return '24 Horas';
+  if (qr.is_24_7) return t('visits.access247');
   if (qr.access_time_start && qr.access_time_end) {
     return `${formatTimeFromString(qr.access_time_start)} - ${formatTimeFromString(qr.access_time_end)}`;
   }
@@ -464,7 +473,7 @@ const getTimeText = (qr) => {
       hour12: true,
     });
   }
-  return '24 Horas';
+  return t('visits.access247');
 };
 
 // Obtener días activos como array booleano
@@ -519,11 +528,11 @@ const renderQRCard = (qr) => {
               end={{ x: 1, y: 0 }}
               style={styles.statusBadge}
             >
-              <Text style={[styles.statusBadgeText, { color: COLORS.textDark }]} maxFontSizeMultiplier={1.2}>ACTIVO</Text>
+              <Text style={[styles.statusBadgeText, { color: COLORS.textDark }]} maxFontSizeMultiplier={1.2}>{t('visits.status.active')}</Text>
             </LinearGradient>
           ) : (
             <View style={[styles.statusBadge, { backgroundColor: COLORS.bgCardAlt }]}>
-              <Text style={styles.statusBadgeText} maxFontSizeMultiplier={1.2}>EXPIRADO</Text>
+              <Text style={styles.statusBadgeText} maxFontSizeMultiplier={1.2}>{t('visits.status.expired')}</Text>
             </View>
           )}
         </View>
@@ -544,7 +553,7 @@ const renderQRCard = (qr) => {
             }}
           >
             <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
-            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>Ver QR</Text>
+            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
           </TouchableOpacity>
 
           {/* Delete button */}
@@ -578,8 +587,8 @@ return (
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title} maxFontSizeMultiplier={1.2}>Accesos</Text>
-          <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>Gestiona todos tus accesos</Text>
+          <Text style={styles.title} maxFontSizeMultiplier={1.2}>{t('visits.title')}</Text>
+          <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>{t('visits.subtitle')}</Text>
         </View>
 
         {/* Tabs */}
@@ -613,12 +622,12 @@ return (
                 style={styles.createButtonGradient}
               >
                 <Ionicons name="add-circle" size={24} color={COLORS.textDark} />
-                <Text style={styles.createButtonText} maxFontSizeMultiplier={1.2}>Crear código para visitante</Text>
+                <Text style={styles.createButtonText} maxFontSizeMultiplier={1.2}>{t('visits.createButton')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
             {/* QR List Section */}
-            <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>Códigos activos</Text>
+            <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>{t('visits.activeCodes')}</Text>
 
             {loadingQRs ? (
               <View style={styles.loadingContainer}>
@@ -629,8 +638,8 @@ return (
                 <View style={styles.emptyIconBox}>
                   <Ionicons name="qr-code-outline" size={48} color={COLORS.textMuted} />
                 </View>
-                <Text style={styles.emptyText} maxFontSizeMultiplier={1.2}>No has generado códigos QR</Text>
-                <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>Toca el botón de arriba para crear uno</Text>
+                <Text style={styles.emptyText} maxFontSizeMultiplier={1.2}>{t('visits.empty.title')}</Text>
+                <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
               </View>
             ) : (
               qrCodes.map((qr) => renderQRCard(qr))
@@ -660,15 +669,15 @@ return (
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>Cancelar</Text>
+              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Nuevo Código QR</Text>
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>{t('visits.newQRCode')}</Text>
             <View style={{ width: scale(60) }} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* QR Type Selector */}
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Tipo de Código QR</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.qrType')}</Text>
             <View style={styles.typeSelector}>
               {QR_TYPES.map((type) => {
                 const isSelected = qrType === type.id;
@@ -699,20 +708,20 @@ return (
             </View>
 
             {/* Visitor Info */}
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Nombre del Visitante *</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorName')} *</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ingresa el nombre completo"
+              placeholder={t('visits.visitorNamePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               value={visitorName}
               onChangeText={setVisitorName}
               maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Número de Teléfono *</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')} *</Text>
             <TextInput
               style={styles.input}
-              placeholder="+504 1234-5678"
+              placeholder={t('visits.visitorPhonePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               value={visitorPhone}
               onChangeText={setVisitorPhone}
@@ -720,10 +729,10 @@ return (
               maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Número de Identidad (Opcional)</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorId')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Identidad o pasaporte"
+              placeholder={t('visits.visitorIdPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               value={visitorId}
               onChangeText={setVisitorId}
@@ -733,19 +742,19 @@ return (
             {/* SINGLE QR OPTIONS */}
             {qrType === 'single' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Fecha de Visita *</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitDate')} *</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
                   <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(visitDate)}</Text>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Hora de Inicio</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.startTime')}</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowTimePicker(true)}>
                   <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(visitTime)}</Text>
                   <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Duración del Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.duration')}</Text>
                 <View style={styles.durationSelector}>
                   {DURATIONS.map((d) => (
                     <TouchableOpacity
@@ -765,7 +774,7 @@ return (
             {/* TEMPORARY QR OPTIONS */}
             {qrType === 'temporary' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Rango de Fechas *</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.dateRange')} *</Text>
                 <View style={styles.dateRangeRow}>
                   <TouchableOpacity
                     style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
@@ -783,12 +792,12 @@ return (
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Horario de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
                     {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Acceso 24/7</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
@@ -810,12 +819,12 @@ return (
                   </View>
                 )}
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Días de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
                     {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Todos los días</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -838,12 +847,12 @@ return (
             {/* FREQUENT/PERMANENT QR OPTIONS */}
             {qrType === 'frequent' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Horario de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
                     {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Acceso 24/7</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
@@ -865,12 +874,12 @@ return (
                   </View>
                 )}
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Días de Acceso</Text>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
                     {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>Todos los días</Text>
+                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -896,7 +905,7 @@ return (
                 style={styles.cancelButton}
                 onPress={() => setShowCreateModal(false)}
               >
-                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>Cancelar</Text>
+                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.generateButton, loading && styles.buttonDisabled]}
@@ -908,7 +917,7 @@ return (
                 ) : (
                   <>
                     <Ionicons name="qr-code" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
-                    <Text style={styles.generateButtonText} maxFontSizeMultiplier={1.2}>Generar QR</Text>
+                    <Text style={styles.generateButtonText} maxFontSizeMultiplier={1.2}>{t('visits.generateQR')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1018,7 +1027,7 @@ return (
                   <Text style={styles.shareableVisitorName} maxFontSizeMultiplier={1.2}>{selectedQR.visitor_name}</Text>
                   <Text style={styles.shareableCommunity} maxFontSizeMultiplier={1.2}>{communityName}</Text>
                   <Text style={styles.shareableAuthorized} maxFontSizeMultiplier={1.2}>
-                    Autoriza: <Text style={styles.shareableHostName}>{hostName}</Text>
+                    {t('visits.authorizedBy')}: <Text style={styles.shareableHostName}>{hostName}</Text>
                   </Text>
                 </View>
 
@@ -1056,12 +1065,12 @@ return (
 
                   {/* Manual Code */}
                   <View style={styles.manualCodeSection}>
-                    <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>CÓDIGO MANUAL</Text>
+                    <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
                     <Text style={styles.manualCode} maxFontSizeMultiplier={1.2}>
                       {(selectedQR.qr_code || selectedQR.id).substring(0, 10).toUpperCase()}
                     </Text>
                   </View>
-                  <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>Mostrar al guardia</Text>
+                  <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>
                 </View>
 
                 {/* Info Cards */}
@@ -1072,21 +1081,21 @@ return (
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="time-outline" size={16} color="#1A3D4D" />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>HORARIO</Text>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="home-outline" size={16} color="#1A3D4D" />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>CASA</Text>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="calendar-outline" size={16} color="#1A3D4D" />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>FECHA</Text>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
                     </View>
                   </View>
@@ -1095,7 +1104,7 @@ return (
                   <>
                     {/* Fila de días */}
                     <View style={styles.daysRowCard}>
-                      <Text style={styles.daysRowLabel} maxFontSizeMultiplier={1.2}>DÍAS DE ACCESO</Text>
+                      <Text style={styles.daysRowLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDaysLabel')}</Text>
                       <View style={styles.daysRowPills}>
                         {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => {
                           const activeDays = getActiveDays(selectedQR);
@@ -1123,24 +1132,24 @@ return (
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="time-outline" size={16} color="#1A3D4D" />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>HORARIO</Text>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="home-outline" size={16} color="#1A3D4D" />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>CASA</Text>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="checkmark-circle-outline" size={16} color="#1A3D4D" />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>VÁLIDO</Text>
+                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.valid')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>
                           {selectedQR.qr_type === 'frequent'
-                            ? 'Siempre'
+                            ? t('visits.always')
                             : `${formatDateShort(selectedQR.valid_from)} - ${formatDateShort(selectedQR.valid_until)}`
                           }
                         </Text>
@@ -1172,7 +1181,7 @@ return (
                 ) : (
                   <>
                     <Ionicons name="share-outline" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
-                    <Text style={styles.shareButtonPrimaryText} maxFontSizeMultiplier={1.2}>Compartir QR</Text>
+                    <Text style={styles.shareButtonPrimaryText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1182,7 +1191,7 @@ return (
                 style={styles.closeModalButton}
                 onPress={() => setShowQRModal(false)}
               >
-                <Text style={styles.closeModalButtonText} maxFontSizeMultiplier={1.2}>Cerrar</Text>
+                <Text style={styles.closeModalButtonText} maxFontSizeMultiplier={1.2}>{t('visits.close')}</Text>
               </TouchableOpacity>
             </>
           )}

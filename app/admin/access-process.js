@@ -1,5 +1,5 @@
 // app/admin/access-process.js
-// ISSY Resident App - Admin: Procesos de Acceso (ProHome Dark Theme)
+// ISSY Resident App - Admin: Procesos de Acceso (ProHome Dark Theme) + i18n
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -40,117 +41,8 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const ACCESS_PROCESSES = [
-  {
-    id: 'no_data',
-    title: 'Sin datos adicionales',
-    description: 'Solo validar QR',
-    time: '2-3 segundos',
-    photos: 0,
-    requiresId: false,
-    requiresPlate: false,
-    icon: 'flash',
-  },
-  {
-    id: 'photo_1',
-    title: 'Capturar 1 Fotografía',
-    description: 'Foto del visitante',
-    time: '5-10 segundos',
-    photos: 1,
-    requiresId: false,
-    requiresPlate: false,
-    icon: 'camera',
-  },
-  {
-    id: 'photo_2',
-    title: 'Capturar 2 Fotografías',
-    description: 'Foto frontal y lateral',
-    time: '10-15 segundos',
-    photos: 2,
-    requiresId: false,
-    requiresPlate: false,
-    icon: 'images',
-  },
-  {
-    id: 'photo_3',
-    title: 'Capturar 3 Fotografías',
-    description: 'Múltiples ángulos',
-    time: '20-25 segundos',
-    photos: 3,
-    requiresId: false,
-    requiresPlate: false,
-    icon: 'albums',
-  },
-  {
-    id: 'photo_1_id',
-    title: 'Capturar 1 Foto + # de Identificación',
-    description: 'Foto y número de ID',
-    time: '15-20 segundos',
-    photos: 1,
-    requiresId: true,
-    requiresPlate: false,
-    icon: 'id-card',
-  },
-  {
-    id: 'photo_1_id_plate',
-    title: '1 Foto + # de Identidad + Placa (si aplica)',
-    description: 'Foto, ID y placa del vehículo',
-    time: '40-50 segundos',
-    photos: 1,
-    requiresId: true,
-    requiresPlate: true,
-    icon: 'car',
-  },
-  {
-    id: 'photo_2_id_plate',
-    title: '2 Fotos + # de Identidad + Placa (si aplica)',
-    description: 'Fotos, ID y placa del vehículo',
-    time: '50-55 segundos',
-    photos: 2,
-    requiresId: true,
-    requiresPlate: true,
-    icon: 'car-sport',
-  },
-  {
-    id: 'full',
-    title: '3 Fotos + # de Identidad + Placa (si aplica)',
-    description: 'Captura completa de datos',
-    time: '60-70 segundos',
-    photos: 3,
-    requiresId: true,
-    requiresPlate: true,
-    icon: 'shield-checkmark',
-  },
-];
-
-const SECURITY_PREFERENCES = [
-  {
-    id: 'require_exit_registration',
-    title: 'Debe marcar salida',
-    description: 'Registrar cuando el visitante sale',
-    icon: 'log-out',
-  },
-  {
-    id: 'require_companion',
-    title: 'Ir siempre acompañado',
-    description: 'Visitante debe ir con residente',
-    icon: 'people',
-  },
-  {
-    id: 'use_qr_for_residents',
-    title: 'Usar QR para acceso de residentes',
-    description: 'Residentes usan QR para entrar',
-    icon: 'qr-code',
-  },
-  {
-    id: 'can_request_resident_approval',
-    title: 'Requiere aprobación del residente',
-    description: 'Visitantes necesitan autorización',
-    icon: 'checkmark-circle',
-  },
-];
-
 export default function AccessProcessScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const router = useRouter();
   const locationId = params.locationId;
@@ -165,12 +57,124 @@ export default function AccessProcessScreen() {
     can_request_resident_approval: true,
   });
 
+  // Access processes with translations
+  const ACCESS_PROCESSES = [
+    {
+      id: 'no_data',
+      title: t('admin.accessProcess.processes.noData.title'),
+      description: t('admin.accessProcess.processes.noData.description'),
+      time: t('admin.accessProcess.processes.noData.time'),
+      photos: 0,
+      requiresId: false,
+      requiresPlate: false,
+      icon: 'flash',
+    },
+    {
+      id: 'photo_1',
+      title: t('admin.accessProcess.processes.photo1.title'),
+      description: t('admin.accessProcess.processes.photo1.description'),
+      time: t('admin.accessProcess.processes.photo1.time'),
+      photos: 1,
+      requiresId: false,
+      requiresPlate: false,
+      icon: 'camera',
+    },
+    {
+      id: 'photo_2',
+      title: t('admin.accessProcess.processes.photo2.title'),
+      description: t('admin.accessProcess.processes.photo2.description'),
+      time: t('admin.accessProcess.processes.photo2.time'),
+      photos: 2,
+      requiresId: false,
+      requiresPlate: false,
+      icon: 'images',
+    },
+    {
+      id: 'photo_3',
+      title: t('admin.accessProcess.processes.photo3.title'),
+      description: t('admin.accessProcess.processes.photo3.description'),
+      time: t('admin.accessProcess.processes.photo3.time'),
+      photos: 3,
+      requiresId: false,
+      requiresPlate: false,
+      icon: 'albums',
+    },
+    {
+      id: 'photo_1_id',
+      title: t('admin.accessProcess.processes.photo1Id.title'),
+      description: t('admin.accessProcess.processes.photo1Id.description'),
+      time: t('admin.accessProcess.processes.photo1Id.time'),
+      photos: 1,
+      requiresId: true,
+      requiresPlate: false,
+      icon: 'id-card',
+    },
+    {
+      id: 'photo_1_id_plate',
+      title: t('admin.accessProcess.processes.photo1IdPlate.title'),
+      description: t('admin.accessProcess.processes.photo1IdPlate.description'),
+      time: t('admin.accessProcess.processes.photo1IdPlate.time'),
+      photos: 1,
+      requiresId: true,
+      requiresPlate: true,
+      icon: 'car',
+    },
+    {
+      id: 'photo_2_id_plate',
+      title: t('admin.accessProcess.processes.photo2IdPlate.title'),
+      description: t('admin.accessProcess.processes.photo2IdPlate.description'),
+      time: t('admin.accessProcess.processes.photo2IdPlate.time'),
+      photos: 2,
+      requiresId: true,
+      requiresPlate: true,
+      icon: 'car-sport',
+    },
+    {
+      id: 'full',
+      title: t('admin.accessProcess.processes.full.title'),
+      description: t('admin.accessProcess.processes.full.description'),
+      time: t('admin.accessProcess.processes.full.time'),
+      photos: 3,
+      requiresId: true,
+      requiresPlate: true,
+      icon: 'shield-checkmark',
+    },
+  ];
+
+  // Security preferences with translations
+  const SECURITY_PREFERENCES = [
+    {
+      id: 'require_exit_registration',
+      title: t('admin.accessProcess.preferences.exitRegistration.title'),
+      description: t('admin.accessProcess.preferences.exitRegistration.description'),
+      icon: 'log-out',
+    },
+    {
+      id: 'require_companion',
+      title: t('admin.accessProcess.preferences.companion.title'),
+      description: t('admin.accessProcess.preferences.companion.description'),
+      icon: 'people',
+    },
+    {
+      id: 'use_qr_for_residents',
+      title: t('admin.accessProcess.preferences.qrResidents.title'),
+      description: t('admin.accessProcess.preferences.qrResidents.description'),
+      icon: 'qr-code',
+    },
+    {
+      id: 'can_request_resident_approval',
+      title: t('admin.accessProcess.preferences.residentApproval.title'),
+      description: t('admin.accessProcess.preferences.residentApproval.description'),
+      icon: 'checkmark-circle',
+    },
+  ];
+
   useEffect(() => {
     if (locationId) {
       fetchSettings();
     } else {
       setLoading(false);
-      Alert.alert('Error', 'No se encontró la ubicación');
+      Alert.alert(t('common.error'), t('admin.accessProcess.errors.locationNotFound'));
     }
   }, [locationId]);
 
@@ -206,7 +210,6 @@ export default function AccessProcessScreen() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-      // Don't show alert, just use defaults
     } finally {
       setLoading(false);
     }
@@ -227,15 +230,15 @@ export default function AccessProcessScreen() {
       });
 
       if (response.ok) {
-        Alert.alert('Éxito', 'Configuración guardada correctamente', [
+        Alert.alert(t('common.success'), t('admin.accessProcess.success.saved'), [
           { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
-        Alert.alert('Error', 'No se pudo guardar la configuración');
+        Alert.alert(t('common.error'), t('admin.accessProcess.errors.saveFailed'));
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      Alert.alert('Error', 'No se pudo guardar la configuración');
+      Alert.alert(t('common.error'), t('admin.accessProcess.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -256,14 +259,14 @@ export default function AccessProcessScreen() {
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Procesos de Acceso</Text>
-            <Text style={styles.headerSubtitle}>Configuración de captura</Text>
+            <Text style={styles.headerTitle}>{t('admin.accessProcess.title')}</Text>
+            <Text style={styles.headerSubtitle}>{t('admin.accessProcess.subtitle')}</Text>
           </View>
           <View style={{ width: scale(40) }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -277,8 +280,8 @@ export default function AccessProcessScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Procesos de Acceso</Text>
-          <Text style={styles.headerSubtitle}>Configuración de captura</Text>
+          <Text style={styles.headerTitle}>{t('admin.accessProcess.title')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.accessProcess.subtitle')}</Text>
         </View>
         <View style={{ width: scale(40) }} />
       </View>
@@ -292,10 +295,10 @@ export default function AccessProcessScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="camera" size={20} color={COLORS.lime} />
-            <Text style={styles.sectionTitle}>Proceso de Acceso</Text>
+            <Text style={styles.sectionTitle}>{t('admin.accessProcess.processSection')}</Text>
           </View>
           <Text style={styles.sectionSubtitle}>
-            Selecciona qué datos capturar al registrar visitantes
+            {t('admin.accessProcess.processDescription')}
           </Text>
           
           {ACCESS_PROCESSES.map((process) => {
@@ -317,7 +320,7 @@ export default function AccessProcessScreen() {
                   <Ionicons 
                     name={process.icon} 
                     size={20} 
-                    color={isSelected ? COLORS.background : COLORS.textSecondary} 
+                    color={isSelected ? COLORS.background : COLORS.textMuted} 
                   />
                 </View>
                 
@@ -329,35 +332,33 @@ export default function AccessProcessScreen() {
                     {process.title}
                   </Text>
                   <View style={styles.processTime}>
-                    <Ionicons name="time" size={14} color={COLORS.textMuted} />
-                    <Text style={styles.processTimeText}>
-                      Tiempo aprox: {process.time}
-                    </Text>
+                    <Ionicons name="time-outline" size={12} color={COLORS.textMuted} />
+                    <Text style={styles.processTimeText}>{process.time}</Text>
                   </View>
-                  
-                  {/* Tags */}
                   <View style={styles.processTags}>
                     {process.photos > 0 && (
                       <View style={styles.tag}>
-                        <Ionicons name="camera" size={10} color={COLORS.teal} />
-                        <Text style={styles.tagText}>{process.photos} foto{process.photos > 1 ? 's' : ''}</Text>
+                        <Ionicons name="camera" size={10} color={COLORS.textSecondary} />
+                        <Text style={styles.tagText}>
+                          {process.photos} {process.photos === 1 ? t('admin.accessProcess.tags.photo') : t('admin.accessProcess.tags.photos')}
+                        </Text>
                       </View>
                     )}
                     {process.requiresId && (
                       <View style={styles.tag}>
-                        <Ionicons name="id-card" size={10} color={COLORS.purple} />
-                        <Text style={styles.tagText}>ID</Text>
+                        <Ionicons name="id-card" size={10} color={COLORS.textSecondary} />
+                        <Text style={styles.tagText}>{t('admin.accessProcess.tags.id')}</Text>
                       </View>
                     )}
                     {process.requiresPlate && (
                       <View style={styles.tag}>
-                        <Ionicons name="car" size={10} color={COLORS.warning} />
-                        <Text style={styles.tagText}>Placa</Text>
+                        <Ionicons name="car" size={10} color={COLORS.textSecondary} />
+                        <Text style={styles.tagText}>{t('admin.accessProcess.tags.plate')}</Text>
                       </View>
                     )}
                   </View>
                 </View>
-
+                
                 <View style={[
                   styles.radio,
                   isSelected && styles.radioSelected,
@@ -374,8 +375,8 @@ export default function AccessProcessScreen() {
         {/* Security Preferences Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="shield" size={20} color={COLORS.purple} />
-            <Text style={styles.sectionTitle}>Preferencias de Seguridad</Text>
+            <Ionicons name="shield-checkmark" size={20} color={COLORS.teal} />
+            <Text style={styles.sectionTitle}>{t('admin.accessProcess.preferencesSection')}</Text>
           </View>
           
           {SECURITY_PREFERENCES.map((pref) => {
@@ -436,7 +437,7 @@ export default function AccessProcessScreen() {
           ) : (
             <>
               <Ionicons name="save" size={20} color={COLORS.background} />
-              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+              <Text style={styles.saveButtonText}>{t('admin.accessProcess.saveChanges')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -460,8 +461,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: scale(14),
   },
-  
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -490,16 +489,12 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
-  
-  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: scale(16),
   },
-  
-  // Section
   section: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
@@ -527,8 +522,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     paddingBottom: scale(12),
   },
-  
-  // Process Option
   processOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -607,8 +600,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.lime,
     backgroundColor: COLORS.lime,
   },
-  
-  // Preference Row
   preferenceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -658,8 +649,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.lime,
     borderColor: COLORS.lime,
   },
-  
-  // Footer
   footer: {
     position: 'absolute',
     bottom: 0,

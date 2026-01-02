@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { getMyPayments } from '../../src/services/api';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -46,6 +47,7 @@ const COLORS = {
 export default function Payments() {
   const router = useRouter();
   const { profile } = useAuth();
+  const { t, language } = useTranslation();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,11 +91,11 @@ export default function Payments() {
   };
 
   const handlePayAll = () => {
-    Alert.alert('Pagar Todo', 'Funcionalidad de pago próximamente disponible');
+    Alert.alert(t('payments.payAll'), t('payments.comingSoon'));
   };
 
   const handlePaySingle = (payment) => {
-    Alert.alert('Pagar', `Pagar ${formatCurrency(payment.amount || payment.rent_amount)}`);
+    Alert.alert(t('payments.pay'), `${t('payments.pay')} ${formatCurrency(payment.amount || payment.rent_amount)}`);
   };
 
   const handleGoToMethods = () => {
@@ -124,7 +126,7 @@ export default function Payments() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando pagos...</Text>
+          <Text style={styles.loadingText}>{t('payments.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -147,8 +149,8 @@ export default function Payments() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Mis Pagos</Text>
-            <Text style={styles.subtitle}>Gestiona tus pagos de comunidad</Text>
+            <Text style={styles.title}>{t('payments.title')}</Text>
+            <Text style={styles.subtitle}>{t('payments.subtitle')}</Text>
           </View>
           <TouchableOpacity style={styles.methodsBtn} onPress={handleGoToMethods}>
             <Ionicons name="card-outline" size={22} color={COLORS.textPrimary} />
@@ -163,10 +165,10 @@ export default function Payments() {
           </View>
           <View style={styles.balanceContent}>
             <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>Saldo Pendiente</Text>
+              <Text style={styles.balanceLabel}>{t('payments.pendingBalance')}</Text>
               <Text style={styles.balanceAmount}>{formatCurrency(totalPending)}</Text>
               <Text style={styles.balanceCount}>
-                {pendingPayments.length} {pendingPayments.length === 1 ? 'pago pendiente' : 'pagos pendientes'}
+                {pendingPayments.length} {pendingPayments.length === 1 ? t('payments.pendingPayment') : t('payments.pendingPayments')}
               </Text>
             </View>
             
@@ -176,7 +178,7 @@ export default function Payments() {
                 onPress={handlePayAll}
                 activeOpacity={0.8}
               >
-                <Text style={styles.payAllButtonText}>Pagar</Text>
+                <Text style={styles.payAllButtonText}>{t('payments.pay')}</Text>
                 <View style={styles.payAllArrow}>
                   <Ionicons name="arrow-forward" size={16} color={COLORS.background} />
                 </View>
@@ -197,7 +199,7 @@ export default function Payments() {
               color={activeTab === 'pending' ? COLORS.background : COLORS.textSecondary} 
             />
             <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
-              Pendientes
+              {t('payments.tabs.pending')}
             </Text>
             {pendingPayments.length > 0 && (
               <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgeActive]}>
@@ -218,7 +220,7 @@ export default function Payments() {
               color={activeTab === 'history' ? COLORS.background : COLORS.textSecondary} 
             />
             <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
-              Historial
+              {t('payments.tabs.history')}
             </Text>
           </TouchableOpacity>
           
@@ -232,7 +234,7 @@ export default function Payments() {
               color={activeTab === 'card' ? COLORS.background : COLORS.textSecondary} 
             />
             <Text style={[styles.tabText, activeTab === 'card' && styles.tabTextActive]}>
-              Tarjetas
+              {t('payments.tabs.cards')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -243,11 +245,11 @@ export default function Payments() {
             <View style={styles.emptyIconBox}>
               <Ionicons name="card-outline" size={48} color={COLORS.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>Métodos de Pago</Text>
-            <Text style={styles.emptyText}>Agrega tus tarjetas para pagar más rápido</Text>
+            <Text style={styles.emptyTitle}>{t('payments.paymentMethods')}</Text>
+            <Text style={styles.emptyText}>{t('payments.addCardsText')}</Text>
             <TouchableOpacity style={styles.emptyButton} onPress={handleGoToMethods}>
               <Ionicons name="add" size={20} color={COLORS.textPrimary} />
-              <Text style={styles.emptyButtonText}>Agregar Tarjeta</Text>
+              <Text style={styles.emptyButtonText}>{t('payments.addCard')}</Text>
             </TouchableOpacity>
           </View>
         ) : currentPayments.length === 0 ? (
@@ -260,12 +262,12 @@ export default function Payments() {
               />
             </View>
             <Text style={styles.emptyTitle}>
-              {activeTab === 'pending' ? '¡Todo al día!' : 'Sin historial'}
+              {activeTab === 'pending' ? t('payments.empty.upToDate') : t('payments.empty.noHistory')}
             </Text>
             <Text style={styles.emptyText}>
               {activeTab === 'pending' 
-                ? 'No tienes pagos pendientes' 
-                : 'No hay pagos realizados'}
+                ? t('payments.empty.noPending')
+                : t('payments.empty.noPayments')}
             </Text>
           </View>
         ) : (

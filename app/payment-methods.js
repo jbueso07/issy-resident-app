@@ -1,5 +1,5 @@
 // app/payment-methods.js
-// ISSY Resident App - Métodos de Pago (Clinpays) - ProHome Dark Theme
+// ISSY Resident App - Métodos de Pago (Clinpays) - ProHome Dark Theme + i18n
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../src/context/AuthContext';
+import { useTranslation } from '../src/hooks/useTranslation';
 import { 
   getPaymentMethods, 
   addPaymentMethod, 
@@ -55,6 +56,7 @@ const COLORS = {
 export default function PaymentMethodsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,23 +135,23 @@ export default function PaymentMethodsScreen() {
     const cleanNumber = cardNumber.replace(/\D/g, '');
     
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Error', 'Ingresa nombre y apellido');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.nameRequired'));
       return;
     }
     if (cleanNumber.length < 15) {
-      Alert.alert('Error', 'Número de tarjeta inválido');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.invalidCard'));
       return;
     }
     if (!expMonth || !expYear || parseInt(expMonth) > 12 || parseInt(expMonth) < 1) {
-      Alert.alert('Error', 'Fecha de expiración inválida');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.invalidExpiry'));
       return;
     }
     if (cvv.length < 3) {
-      Alert.alert('Error', 'CVV inválido');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.invalidCvv'));
       return;
     }
     if (!idNumber.trim()) {
-      Alert.alert('Error', 'Ingresa tu número de identidad');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.idRequired'));
       return;
     }
 
@@ -170,15 +172,15 @@ export default function PaymentMethodsScreen() {
       });
 
       if (result.success) {
-        Alert.alert('¡Éxito!', 'Tarjeta agregada correctamente');
+        Alert.alert(t('common.success'), t('paymentMethods.success.added'));
         setAddModalVisible(false);
         resetForm();
         fetchCards();
       } else {
-        Alert.alert('Error', result.error || 'No se pudo agregar la tarjeta');
+        Alert.alert(t('common.error'), result.error || t('paymentMethods.errors.addFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error al agregar la tarjeta');
+      Alert.alert(t('common.error'), t('paymentMethods.errors.addFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -186,20 +188,20 @@ export default function PaymentMethodsScreen() {
 
   const handleDeleteCard = (card) => {
     Alert.alert(
-      'Eliminar Tarjeta',
-      `¿Eliminar tarjeta terminada en ${card.last_four || card.lastFour}?`,
+      t('paymentMethods.deleteTitle'),
+      t('paymentMethods.deleteMessage', { lastFour: card.last_four || card.lastFour }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         { 
-          text: 'Eliminar', 
+          text: t('common.delete'), 
           style: 'destructive',
           onPress: async () => {
             const result = await deletePaymentMethod(card.id);
             if (result.success) {
-              Alert.alert('Eliminada', 'La tarjeta ha sido eliminada');
+              Alert.alert(t('paymentMethods.success.deleted'), t('paymentMethods.success.deletedMessage'));
               fetchCards();
             } else {
-              Alert.alert('Error', result.error || 'No se pudo eliminar');
+              Alert.alert(t('common.error'), result.error || t('paymentMethods.errors.deleteFailed'));
             }
           }
         },
@@ -214,7 +216,7 @@ export default function PaymentMethodsScreen() {
     if (result.success) {
       fetchCards();
     } else {
-      Alert.alert('Error', result.error || 'No se pudo establecer como predeterminada');
+      Alert.alert(t('common.error'), result.error || t('paymentMethods.errors.setDefaultFailed'));
     }
   };
 
@@ -222,7 +224,7 @@ export default function PaymentMethodsScreen() {
     const brand = item.brand?.toLowerCase() || 'generic';
     const colors = getCardColor(brand);
     const lastFour = item.last_four || item.lastFour || '****';
-    const holderName = item.card_holder || item.cardHolder || `${item.firstName || ''} ${item.lastName || ''}`.trim() || 'TITULAR';
+    const holderName = item.card_holder || item.cardHolder || `${item.firstName || ''} ${item.lastName || ''}`.trim() || t('paymentMethods.cardHolder');
 
     return (
       <TouchableOpacity
@@ -246,11 +248,11 @@ export default function PaymentMethodsScreen() {
 
           <View style={styles.cardBottom}>
             <View>
-              <Text style={styles.cardLabel}>TITULAR</Text>
+              <Text style={styles.cardLabel}>{t('paymentMethods.cardHolder').toUpperCase()}</Text>
               <Text style={styles.cardValue}>{holderName.toUpperCase()}</Text>
             </View>
             <View>
-              <Text style={styles.cardLabel}>VENCE</Text>
+              <Text style={styles.cardLabel}>{t('paymentMethods.expires').toUpperCase()}</Text>
               <Text style={styles.cardValue}>
                 {item.exp_month || item.expiryMonth || '00'}/{String(item.exp_year || item.expiryYear || '00').slice(-2)}
               </Text>
@@ -260,7 +262,7 @@ export default function PaymentMethodsScreen() {
           {item.is_default && (
             <View style={styles.defaultBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
-              <Text style={styles.defaultBadgeText}>Predeterminada</Text>
+              <Text style={styles.defaultBadgeText}>{t('paymentMethods.default')}</Text>
             </View>
           )}
         </LinearGradient>
@@ -273,20 +275,18 @@ export default function PaymentMethodsScreen() {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="card-outline" size={64} color={COLORS.textMuted} />
       </View>
-      <Text style={styles.emptyTitle}>Sin tarjetas</Text>
-      <Text style={styles.emptySubtitle}>
-        Agrega un método de pago para realizar transacciones
-      </Text>
+      <Text style={styles.emptyTitle}>{t('paymentMethods.empty.title')}</Text>
+      <Text style={styles.emptySubtitle}>{t('paymentMethods.empty.subtitle')}</Text>
       <TouchableOpacity style={styles.emptyButton} onPress={() => setAddModalVisible(true)}>
         <Ionicons name="add" size={20} color={COLORS.textPrimary} />
-        <Text style={styles.emptyButtonText}>Agregar Tarjeta</Text>
+        <Text style={styles.emptyButtonText}>{t('paymentMethods.addCard')}</Text>
       </TouchableOpacity>
     </View>
   );
 
   const cardBrand = getCardBrand(cardNumber);
   const previewColors = getCardColor(cardBrand);
-  const displayName = `${firstName} ${lastName}`.trim() || 'NOMBRE APELLIDO';
+  const displayName = `${firstName} ${lastName}`.trim() || t('paymentMethods.namePlaceholder');
   const displayExpiry = expMonth && expYear 
     ? `${expMonth.padStart(2, '0')}/${expYear.length === 4 ? expYear.slice(-2) : expYear}` 
     : 'MM/YY';
@@ -296,7 +296,7 @@ export default function PaymentMethodsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando tarjetas...</Text>
+          <Text style={styles.loadingText}>{t('paymentMethods.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -309,7 +309,7 @@ export default function PaymentMethodsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Métodos de Pago</Text>
+        <Text style={styles.headerTitle}>{t('paymentMethods.title')}</Text>
         <TouchableOpacity style={styles.addButton} onPress={() => setAddModalVisible(true)}>
           <Ionicons name="add" size={24} color={COLORS.lime} />
         </TouchableOpacity>
@@ -318,9 +318,7 @@ export default function PaymentMethodsScreen() {
       {/* Security info */}
       <View style={styles.securityInfo}>
         <Ionicons name="shield-checkmark" size={20} color={COLORS.green} />
-        <Text style={styles.securityText}>
-          Tus tarjetas están protegidas con encriptación de grado bancario
-        </Text>
+        <Text style={styles.securityText}>{t('paymentMethods.securityInfo')}</Text>
       </View>
 
       {/* Cards list */}
@@ -336,7 +334,7 @@ export default function PaymentMethodsScreen() {
         showsVerticalScrollIndicator={false}
         ListFooterComponent={
           cards.length > 0 ? (
-            <Text style={styles.hint}>Mantén presionada una tarjeta para eliminarla</Text>
+            <Text style={styles.hint}>{t('paymentMethods.hint')}</Text>
           ) : null
         }
       />
@@ -362,7 +360,7 @@ export default function PaymentMethodsScreen() {
               
               {/* Modal Header */}
               <View style={styles.modalHeader}>
-                <Text style={styles.modalHeaderTitle}>Agregar Tarjeta</Text>
+                <Text style={styles.modalHeaderTitle}>{t('paymentMethods.addCard')}</Text>
                 <TouchableOpacity style={styles.modalCloseButton} onPress={() => { setAddModalVisible(false); resetForm(); }}>
                   <Ionicons name="close" size={24} color={COLORS.textPrimary} />
                 </TouchableOpacity>
@@ -379,11 +377,11 @@ export default function PaymentMethodsScreen() {
                     <Text style={styles.cardNumber}>{cardNumber || '•••• •••• •••• ••••'}</Text>
                     <View style={styles.cardBottom}>
                       <View>
-                        <Text style={styles.cardLabel}>TITULAR</Text>
+                        <Text style={styles.cardLabel}>{t('paymentMethods.cardHolder').toUpperCase()}</Text>
                         <Text style={styles.cardValue}>{displayName.toUpperCase()}</Text>
                       </View>
                       <View>
-                        <Text style={styles.cardLabel}>VENCE</Text>
+                        <Text style={styles.cardLabel}>{t('paymentMethods.expires').toUpperCase()}</Text>
                         <Text style={styles.cardValue}>{displayExpiry}</Text>
                       </View>
                     </View>
@@ -393,7 +391,7 @@ export default function PaymentMethodsScreen() {
                 {/* Form */}
                 <View style={styles.row}>
                   <View style={[styles.formGroup, { flex: 1, marginRight: scale(6) }]}>
-                    <Text style={styles.formLabel}>Nombre</Text>
+                    <Text style={styles.formLabel}>{t('paymentMethods.form.firstName')}</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={styles.input}
@@ -406,7 +404,7 @@ export default function PaymentMethodsScreen() {
                     </View>
                   </View>
                   <View style={[styles.formGroup, { flex: 1, marginLeft: scale(6) }]}>
-                    <Text style={styles.formLabel}>Apellido</Text>
+                    <Text style={styles.formLabel}>{t('paymentMethods.form.lastName')}</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={styles.input}
@@ -421,7 +419,7 @@ export default function PaymentMethodsScreen() {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Número de Tarjeta</Text>
+                  <Text style={styles.formLabel}>{t('paymentMethods.form.cardNumber')}</Text>
                   <View style={styles.inputContainer}>
                     <Ionicons name="card-outline" size={20} color={COLORS.textMuted} />
                     <TextInput
@@ -438,7 +436,7 @@ export default function PaymentMethodsScreen() {
 
                 <View style={styles.row}>
                   <View style={[styles.formGroup, { flex: 1, marginRight: scale(6) }]}>
-                    <Text style={styles.formLabel}>Mes</Text>
+                    <Text style={styles.formLabel}>{t('paymentMethods.form.month')}</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={styles.input}
@@ -452,7 +450,7 @@ export default function PaymentMethodsScreen() {
                     </View>
                   </View>
                   <View style={[styles.formGroup, { flex: 1, marginHorizontal: scale(6) }]}>
-                    <Text style={styles.formLabel}>Año</Text>
+                    <Text style={styles.formLabel}>{t('paymentMethods.form.year')}</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={styles.input}
@@ -483,7 +481,7 @@ export default function PaymentMethodsScreen() {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Número de Identidad</Text>
+                  <Text style={styles.formLabel}>{t('paymentMethods.form.idNumber')}</Text>
                   <View style={styles.inputContainer}>
                     <Ionicons name="id-card-outline" size={20} color={COLORS.textMuted} />
                     <TextInput
@@ -497,7 +495,7 @@ export default function PaymentMethodsScreen() {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Teléfono (opcional)</Text>
+                  <Text style={styles.formLabel}>{t('paymentMethods.form.phone')}</Text>
                   <View style={styles.inputContainer}>
                     <Ionicons name="call-outline" size={20} color={COLORS.textMuted} />
                     <TextInput
@@ -522,7 +520,7 @@ export default function PaymentMethodsScreen() {
                   ) : (
                     <>
                       <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.background} />
-                      <Text style={styles.saveButtonText}>Guardar Tarjeta</Text>
+                      <Text style={styles.saveButtonText}>{t('paymentMethods.saveCard')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -530,9 +528,7 @@ export default function PaymentMethodsScreen() {
                 {/* Security Note */}
                 <View style={styles.securityNote}>
                   <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
-                  <Text style={styles.securityNoteText}>
-                    Tu información está encriptada y segura. Nunca almacenamos el CVV.
-                  </Text>
+                  <Text style={styles.securityNoteText}>{t('paymentMethods.securityNote')}</Text>
                 </View>
 
                 <View style={{ height: scale(40) }} />

@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,23 +53,26 @@ const COLORS = {
   border: 'rgba(255,255,255,0.1)',
 };
 
-const ROLES = {
-  resident: { label: 'Residente', icon: 'home', color: COLORS.success },
-  guard: { label: 'Guardia', icon: 'shield-checkmark', color: COLORS.blue },
-  admin: { label: 'Admin', icon: 'settings', color: COLORS.purple },
-  superadmin: { label: 'Super Admin', icon: 'star', color: COLORS.danger },
-  host: { label: 'Anfitrión', icon: 'person', color: COLORS.teal },
-  tenant: { label: 'Inquilino', icon: 'key', color: COLORS.pink },
-  owner: { label: 'Propietario', icon: 'business', color: COLORS.lime },
-};
+const getRoles = (t) => ({
+  resident: { label: t('admin.users.roles.resident'), icon: 'home', color: COLORS.success },
+  guard: { label: t('admin.users.roles.guard'), icon: 'shield-checkmark', color: COLORS.blue },
+  admin: { label: t('admin.users.roles.admin'), icon: 'settings', color: COLORS.purple },
+  superadmin: { label: t('admin.users.roles.superadmin'), icon: 'star', color: COLORS.danger },
+  host: { label: t('admin.users.roles.host'), icon: 'person', color: COLORS.teal },
+  tenant: { label: t('admin.users.roles.tenant'), icon: 'key', color: COLORS.pink },
+  owner: { label: t('admin.users.roles.owner'), icon: 'business', color: COLORS.lime },
+});
 
-const INVITE_ROLES = {
-  resident: { label: 'Residente', icon: 'home', color: COLORS.success },
-  guard: { label: 'Guardia', icon: 'shield-checkmark', color: COLORS.blue },
-  admin: { label: 'Administrador', icon: 'settings', color: COLORS.purple },
-};
+const getInviteRoles = (t) => ({
+  resident: { label: t('admin.users.roles.resident'), icon: 'home', color: COLORS.success },
+  guard: { label: t('admin.users.roles.guard'), icon: 'shield-checkmark', color: COLORS.blue },
+  admin: { label: t('admin.users.roles.administrator'), icon: 'settings', color: COLORS.purple },
+});
 
 export default function AdminUsers() {
+  const { t } = useTranslation();
+  const ROLES = getRoles(t);
+  const INVITE_ROLES = getInviteRoles(t);
   const { user, profile, isSuperAdmin } = useAuth();
   const router = useRouter();
   
@@ -112,7 +116,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.users.accessDenied'), t('admin.users.noPermissions'));
       router.back();
       return;
     }
@@ -239,12 +243,12 @@ export default function AdminUsers() {
     if (!selectedUser || !selectedUser.membership_id) return;
     
     Alert.alert(
-      'Cambiar Rol',
-      `¿Cambiar rol de ${selectedUser.name || selectedUser.full_name} a ${ROLES[newRole]?.label || newRole}?`,
+      t('admin.users.changeRoleTitle'),
+      t('admin.users.changeRoleConfirm', { name: selectedUser.name || selectedUser.full_name, role: ROLES[newRole]?.label || newRole }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirmar',
+          text: t('common.confirm'),
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
@@ -258,14 +262,14 @@ export default function AdminUsers() {
               );
               
               if (response.ok) {
-                Alert.alert('Éxito', 'Rol actualizado');
+                Alert.alert(t('common.success'), t('admin.users.success.roleUpdated'));
                 setSelectedUser({ ...selectedUser, role: newRole });
                 fetchData();
               } else {
-                Alert.alert('Error', 'No se pudo actualizar el rol');
+                Alert.alert(t('common.error'), t('admin.users.errors.roleUpdateFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo actualizar el rol');
+              Alert.alert(t('common.error'), t('admin.users.errors.roleUpdateFailed'));
             }
           }
         }
@@ -278,12 +282,12 @@ export default function AdminUsers() {
     
     const newStatus = !selectedUser.is_active;
     Alert.alert(
-      newStatus ? 'Activar Usuario' : 'Desactivar Usuario',
-      `¿${newStatus ? 'Activar' : 'Desactivar'} a ${selectedUser.name || selectedUser.full_name}?`,
+      newStatus ? t('admin.users.activateUserTitle') : t('admin.users.deactivateUserTitle'),
+      t('admin.users.toggleStatusConfirm', { action: newStatus ? t('admin.users.activate') : t('admin.users.deactivate'), name: selectedUser.name || selectedUser.full_name }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirmar',
+          text: t('common.confirm'),
           style: newStatus ? 'default' : 'destructive',
           onPress: async () => {
             try {
@@ -298,15 +302,15 @@ export default function AdminUsers() {
               );
               
               if (response.ok) {
-                Alert.alert('Éxito', `Usuario ${newStatus ? 'activado' : 'desactivado'}`);
+                Alert.alert(t('common.success'), newStatus ? t('admin.users.success.userActivated') : t('admin.users.success.userDeactivated'));
                 setSelectedUser({ ...selectedUser, is_active: newStatus });
                 fetchData();
                 setShowModal(false);
               } else {
-                Alert.alert('Error', 'No se pudo actualizar el estado');
+                Alert.alert(t('common.error'), t('admin.users.errors.statusUpdateFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo actualizar el estado');
+              Alert.alert(t('common.error'), t('admin.users.errors.statusUpdateFailed'));
             }
           }
         }
@@ -318,23 +322,23 @@ export default function AdminUsers() {
   const handleCreateDirectUser = async () => {
     // Validaciones
     if (!inviteForm.expected_name?.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      Alert.alert(t('common.error'), t('admin.users.errors.nameRequired'));
       return;
     }
     if (!inviteForm.expected_email?.trim()) {
-      Alert.alert('Error', 'El email es requerido');
+      Alert.alert(t('common.error'), t('admin.users.errors.emailRequired'));
       return;
     }
     if (!inviteForm.password?.trim()) {
-      Alert.alert('Error', 'La contraseña es requerida');
+      Alert.alert(t('common.error'), t('admin.users.errors.passwordRequired'));
       return;
     }
     if (inviteForm.password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('common.error'), t('admin.users.errors.passwordLength'));
       return;
     }
     if (inviteForm.password !== inviteForm.confirm_password) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('common.error'), t('admin.users.errors.passwordMismatch'));
       return;
     }
 
@@ -361,19 +365,19 @@ export default function AdminUsers() {
 
       if (response.ok && (data.success !== false)) {
         Alert.alert(
-          '✅ Usuario Creado',
-          `Se creó el usuario "${inviteForm.expected_name}" correctamente.\n\nEmail: ${inviteForm.expected_email}\n\nComparte las credenciales con el usuario.`,
+          t('admin.users.success.userCreatedTitle'),
+          t('admin.users.success.userCreatedMessage', { name: inviteForm.expected_name, email: inviteForm.expected_email }),
           [{ text: 'OK' }]
         );
         setShowInviteModal(false);
         resetInviteForm();
         fetchData();
       } else {
-        Alert.alert('Error', data.error || data.message || 'No se pudo crear el usuario');
+        Alert.alert(t('common.error'), data.error || data.message || t('admin.users.errors.createUserFailed'));
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      Alert.alert('Error', 'No se pudo crear el usuario');
+      Alert.alert(t('common.error'), t('admin.users.errors.createUserFailed'));
     } finally {
       setInviteLoading(false);
     }
@@ -408,11 +412,11 @@ export default function AdminUsers() {
 
       if (response.ok && data.success !== false) {
         Alert.alert(
-          'Invitación Creada',
-          `Código: ${data.data?.code || data.code}\n\nComparte este código con el usuario.`,
+          t('admin.users.success.invitationCreated'),
+          t('admin.users.success.invitationCreatedMessage', { code: data.data?.code || data.code }),
           [
             {
-              text: 'Compartir',
+              text: t('admin.users.share'),
               onPress: () => handleShareInvitation(data.data || data),
             },
             { text: 'OK' }
@@ -422,10 +426,10 @@ export default function AdminUsers() {
         resetInviteForm();
         fetchData();
       } else {
-        Alert.alert('Error', data.error || 'No se pudo crear la invitación');
+        Alert.alert(t('common.error'), data.error || t('admin.users.errors.createInvitationFailed'));
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear la invitación');
+      Alert.alert(t('common.error'), t('admin.users.errors.createInvitationFailed'));
     } finally {
       setInviteLoading(false);
     }
@@ -434,7 +438,7 @@ export default function AdminUsers() {
   const handleShareInvitation = async (invitation) => {
     try {
       await Share.share({
-        message: `¡Te han invitado a ISSY!\n\nUsa este código para registrarte: ${invitation.code}\n\nO usa este link: ${invitation.invitation_link || `https://app.joinissy.com/invite/${invitation.code}`}`,
+        message: t('admin.users.shareMessage', { code: invitation.code, link: invitation.invitation_link || `https://app.joinissy.com/invite/${invitation.code}` }),
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -443,12 +447,12 @@ export default function AdminUsers() {
 
   const handleCancelInvitation = async (invitationId) => {
     Alert.alert(
-      'Cancelar Invitación',
-      '¿Estás seguro de cancelar esta invitación?',
+      t('admin.users.cancelInvitationTitle'),
+      t('admin.users.cancelInvitationConfirm'),
       [
-        { text: 'No', style: 'cancel' },
+        { text: t('common.no'), style: 'cancel' },
         {
-          text: 'Sí, cancelar',
+          text: t('admin.users.yesCancel'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -459,7 +463,7 @@ export default function AdminUsers() {
               });
               fetchData();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cancelar');
+              Alert.alert(t('common.error'), t('admin.users.errors.cancelFailed'));
             }
           }
         }
@@ -482,7 +486,7 @@ export default function AdminUsers() {
 
   const copyToClipboard = (text) => {
     Clipboard.setString(text);
-    Alert.alert('Copiado', 'Código copiado al portapapeles');
+    Alert.alert(t('admin.users.copied'), t('admin.users.codeCopied'));
   };
 
   const filteredUsers = users.filter(usr => {
@@ -503,7 +507,7 @@ export default function AdminUsers() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -517,7 +521,7 @@ export default function AdminUsers() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Usuarios</Text>
+          <Text style={styles.headerTitle}>{t('admin.users.title')}</Text>
           {isSuperAdminUser && locations.length > 1 ? (
             <TouchableOpacity 
               style={styles.locationSelector}
@@ -525,13 +529,13 @@ export default function AdminUsers() {
             >
               <Ionicons name="location" size={14} color={COLORS.teal} />
               <Text style={styles.locationText} numberOfLines={1}>
-                {currentLocation?.name || 'Seleccionar'}
+                {currentLocation?.name || t('admin.users.select')}
               </Text>
               <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
             </TouchableOpacity>
           ) : (
             <Text style={styles.headerSubtitle}>
-              {currentLocation?.name || `${users.length} registrados`}
+              {currentLocation?.name || t('admin.users.registered', { count: users.length })}
             </Text>
           )}
         </View>
@@ -555,7 +559,7 @@ export default function AdminUsers() {
             color={activeTab === 'users' ? COLORS.background : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'users' && styles.tabTextActive]}>
-            Usuarios ({users.length})
+            {t('admin.users.tabs.users')} ({users.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -568,7 +572,7 @@ export default function AdminUsers() {
             color={activeTab === 'invitations' ? COLORS.background : COLORS.textSecondary} 
           />
           <Text style={[styles.tabText, activeTab === 'invitations' && styles.tabTextActive]}>
-            Invitaciones ({invitations.length})
+            {t('admin.users.tabs.invitations')} ({invitations.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -581,7 +585,7 @@ export default function AdminUsers() {
             style={styles.searchInput}
             value={searchTerm}
             onChangeText={setSearchTerm}
-            placeholder="Buscar por nombre, email o unidad..."
+            placeholder={t('admin.users.searchPlaceholder')}
             placeholderTextColor={COLORS.textMuted}
           />
         </View>
@@ -608,28 +612,28 @@ export default function AdminUsers() {
                   <Text style={[styles.statValue, { color: COLORS.teal }]}>
                     {stats.totalMembers || stats.total || users.length}
                   </Text>
-                  <Text style={styles.statLabel}>Total</Text>
+                  <Text style={styles.statLabel}>{t('admin.users.stats.total')}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
                   <Text style={[styles.statValue, { color: COLORS.success }]}>
                     {stats.activeMembers || stats.active || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Activos</Text>
+                  <Text style={styles.statLabel}>{t('admin.users.stats.active')}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <Ionicons name="home" size={20} color={COLORS.purple} />
                   <Text style={[styles.statValue, { color: COLORS.purple }]}>
                     {stats.totalHouseholds || stats.units || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Unidades</Text>
+                  <Text style={styles.statLabel}>{t('admin.users.stats.units')}</Text>
                 </View>
                 <View style={styles.statCard}>
                   <Ionicons name="time" size={20} color={COLORS.warning} />
                   <Text style={[styles.statValue, { color: COLORS.warning }]}>
                     {stats.pendingInvitations || invitations.length || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Pendientes</Text>
+                  <Text style={styles.statLabel}>{t('admin.users.stats.pending')}</Text>
                 </View>
               </View>
             )}
@@ -638,16 +642,16 @@ export default function AdminUsers() {
             {filteredUsers.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>No hay usuarios</Text>
+                <Text style={styles.emptyTitle}>{t('admin.users.noUsers')}</Text>
                 <Text style={styles.emptySubtitle}>
-                  {currentLocation ? `en ${currentLocation.name}` : ''}
+                  {currentLocation ? t('admin.users.inLocation', { name: currentLocation.name }) : ''}
                 </Text>
                 <TouchableOpacity 
                   style={styles.emptyButton}
                   onPress={() => setShowInviteModal(true)}
                 >
                   <Ionicons name="person-add" size={18} color={COLORS.background} />
-                  <Text style={styles.emptyButtonText}>Agregar Usuario</Text>
+                  <Text style={styles.emptyButtonText}>{t('admin.users.addUser')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -700,16 +704,16 @@ export default function AdminUsers() {
             {invitations.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="mail-outline" size={64} color={COLORS.textMuted} />
-                <Text style={styles.emptyTitle}>Sin invitaciones pendientes</Text>
+                <Text style={styles.emptyTitle}>{t('admin.users.noInvitations')}</Text>
                 <Text style={styles.emptySubtitle}>
-                  Crea una invitación para agregar usuarios
+                  {t('admin.users.createInvitationHint')}
                 </Text>
                 <TouchableOpacity 
                   style={styles.emptyButton}
                   onPress={() => setShowInviteModal(true)}
                 >
                   <Ionicons name="add" size={18} color={COLORS.background} />
-                  <Text style={styles.emptyButtonText}>Nueva Invitación</Text>
+                  <Text style={styles.emptyButtonText}>{t('admin.users.newInvitation')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -742,12 +746,12 @@ export default function AdminUsers() {
                     {inv.unit_number && (
                       <View style={styles.invitationInfoRow}>
                         <Ionicons name="home" size={14} color={COLORS.textSecondary} />
-                        <Text style={styles.invitationInfo}>Unidad: {inv.unit_number}</Text>
+                        <Text style={styles.invitationInfo}>{t('admin.users.unit')}: {inv.unit_number}</Text>
                       </View>
                     )}
                     
                     <Text style={styles.invitationExpires}>
-                      Expira: {new Date(inv.expires_at).toLocaleDateString()}
+                      {t('admin.users.expires')}: {new Date(inv.expires_at).toLocaleDateString()}
                     </Text>
                     
                     <View style={styles.invitationActions}>
@@ -756,14 +760,14 @@ export default function AdminUsers() {
                         onPress={() => handleShareInvitation(inv)}
                       >
                         <Ionicons name="share-social" size={16} color={COLORS.teal} />
-                        <Text style={styles.shareButtonText}>Compartir</Text>
+                        <Text style={styles.shareButtonText}>{t('admin.users.share')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.copyButton}
                         onPress={() => copyToClipboard(inv.code)}
                       >
                         <Ionicons name="copy" size={16} color={COLORS.textSecondary} />
-                        <Text style={styles.copyButtonText}>Copiar</Text>
+                        <Text style={styles.copyButtonText}>{t('admin.users.copy')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.cancelButton}
@@ -792,9 +796,9 @@ export default function AdminUsers() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
-              <Text style={styles.modalCancel}>Cerrar</Text>
+              <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Seleccionar Comunidad</Text>
+            <Text style={styles.modalTitle}>{t('admin.users.selectCommunity')}</Text>
             <View style={{ width: 50 }} />
           </View>
 
@@ -842,9 +846,9 @@ export default function AdminUsers() {
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>Cerrar</Text>
+              <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Detalle de Usuario</Text>
+            <Text style={styles.modalTitle}>{t('admin.users.userDetail')}</Text>
             <View style={{ width: 50 }} />
           </View>
 
@@ -863,17 +867,17 @@ export default function AdminUsers() {
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Teléfono</Text>
-                <Text style={styles.detailValue}>{selectedUser.phone || 'No registrado'}</Text>
+                <Text style={styles.detailLabel}>{t('admin.users.detail.phone')}</Text>
+                <Text style={styles.detailValue}>{selectedUser.phone || t('admin.users.detail.notRegistered')}</Text>
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Unidad</Text>
-                <Text style={styles.detailValue}>{selectedUser.unit_number || 'No asignada'}</Text>
+                <Text style={styles.detailLabel}>{t('admin.users.detail.unit')}</Text>
+                <Text style={styles.detailValue}>{selectedUser.unit_number || t('admin.users.detail.notAssigned')}</Text>
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Rol Actual</Text>
+                <Text style={styles.detailLabel}>{t('admin.users.detail.currentRole')}</Text>
                 <View style={[styles.roleBadge, { backgroundColor: getRoleInfo(selectedUser.role).color + '20' }]}>
                   <Ionicons name={getRoleInfo(selectedUser.role).icon} size={14} color={getRoleInfo(selectedUser.role).color} />
                   <Text style={[styles.roleBadgeText, { color: getRoleInfo(selectedUser.role).color }]}>
@@ -883,7 +887,7 @@ export default function AdminUsers() {
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={styles.detailLabel}>Estado</Text>
+                <Text style={styles.detailLabel}>{t('admin.users.detail.status')}</Text>
                 <View style={[
                   styles.statusBadge,
                   { backgroundColor: selectedUser.is_active ? COLORS.success + '20' : COLORS.danger + '20' }
@@ -897,7 +901,7 @@ export default function AdminUsers() {
                     styles.statusBadgeText,
                     { color: selectedUser.is_active ? COLORS.success : COLORS.danger }
                   ]}>
-                    {selectedUser.is_active ? 'Activo' : 'Inactivo'}
+                    {selectedUser.is_active ? t('admin.users.detail.active') : t('admin.users.detail.inactive')}
                   </Text>
                 </View>
               </View>
@@ -905,7 +909,7 @@ export default function AdminUsers() {
               {/* Cambiar Rol */}
               {isSuperAdminUser && selectedUser.user_id !== user?.id && (
                 <View style={styles.roleSection}>
-                  <Text style={styles.roleSectionTitle}>Cambiar Rol</Text>
+                  <Text style={styles.roleSectionTitle}>{t('admin.users.changeRole')}</Text>
                   <View style={styles.roleButtons}>
                     {Object.entries(ROLES).filter(([key]) => !['superadmin'].includes(key)).map(([key, info]) => (
                       <TouchableOpacity
@@ -954,7 +958,7 @@ export default function AdminUsers() {
                     styles.toggleButtonText,
                     { color: selectedUser.is_active ? COLORS.danger : COLORS.success }
                   ]}>
-                    {selectedUser.is_active ? 'Desactivar Usuario' : 'Activar Usuario'}
+                    {selectedUser.is_active ? t('admin.users.deactivateUser') : t('admin.users.activateUser')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -989,9 +993,9 @@ export default function AdminUsers() {
                     setShowInviteModal(false);
                     resetInviteForm();
                   }}>
-                    <Text style={styles.modalCancel}>Cancelar</Text>
+                    <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
-                  <Text style={styles.modalTitle}>Agregar Usuario</Text>
+                  <Text style={styles.modalTitle}>{t('admin.users.addUser')}</Text>
                   <TouchableOpacity 
                     onPress={handleCreateInvitation}
                     disabled={inviteLoading}
@@ -1000,7 +1004,7 @@ export default function AdminUsers() {
                       <ActivityIndicator size="small" color={COLORS.lime} />
                     ) : (
                       <Text style={styles.modalSave}>
-                        {createMethod === 'direct' ? 'Crear' : 'Invitar'}
+                        {createMethod === 'direct' ? t('admin.users.create') : t('admin.users.invite')}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -1015,13 +1019,13 @@ export default function AdminUsers() {
                     <View style={styles.inviteLocationBanner}>
                       <Ionicons name="location" size={16} color={COLORS.teal} />
                       <Text style={styles.inviteLocationText}>
-                        Ubicación: {currentLocation.name}
+                        {t('admin.users.form.location')}: {currentLocation.name}
                       </Text>
                     </View>
                   )}
 
                   {/* NUEVO: Selector de Método */}
-                  <Text style={styles.inputLabel}>Método *</Text>
+                  <Text style={styles.inputLabel}>{t('admin.users.form.method')} *</Text>
                   <View style={styles.methodSelector}>
                     <TouchableOpacity
                       style={[
@@ -1039,10 +1043,10 @@ export default function AdminUsers() {
                         styles.methodOptionText,
                         createMethod === 'invite' && styles.methodOptionTextActive
                       ]}>
-                        Invitar
+                        {t('admin.users.invite')}
                       </Text>
                       <Text style={styles.methodOptionSubtext}>
-                        Código de invitación
+                        {t('admin.users.form.invitationCode')}
                       </Text>
                     </TouchableOpacity>
                     
@@ -1062,16 +1066,16 @@ export default function AdminUsers() {
                         styles.methodOptionText,
                         createMethod === 'direct' && styles.methodOptionTextActive
                       ]}>
-                        Crear Directo
+                        {t('admin.users.form.createDirect')}
                       </Text>
                       <Text style={styles.methodOptionSubtext}>
-                        Tú defines contraseña
+                        {t('admin.users.form.youDefinePassword')}
                       </Text>
                     </TouchableOpacity>
                   </View>
 
                   {/* Role Selection */}
-                  <Text style={styles.inputLabel}>Rol *</Text>
+                  <Text style={styles.inputLabel}>{t('admin.users.form.role')} *</Text>
                   <View style={styles.roleSelector}>
                     {Object.entries(INVITE_ROLES).map(([key, info]) => (
                       <TouchableOpacity
@@ -1103,12 +1107,12 @@ export default function AdminUsers() {
                   {/* Unit Number (solo para residentes) */}
                   {inviteForm.role !== 'guard' && (
                     <>
-                      <Text style={styles.inputLabel}>Número de Unidad (opcional)</Text>
+                      <Text style={styles.inputLabel}>{t('admin.users.form.unitNumber')}</Text>
                       <TextInput
                         style={styles.input}
                         value={inviteForm.unit_number}
                         onChangeText={(text) => setInviteForm({...inviteForm, unit_number: text})}
-                        placeholder="Ej: A-101, Casa 5"
+                        placeholder={t('admin.users.form.unitPlaceholder')}
                         placeholderTextColor={COLORS.textMuted}
                       />
                     </>
@@ -1116,32 +1120,32 @@ export default function AdminUsers() {
 
                   {/* Name */}
                   <Text style={styles.inputLabel}>
-                    {createMethod === 'direct' ? 'Nombre *' : 'Nombre (opcional)'}
+                    {createMethod === 'direct' ? t('admin.users.form.nameRequired') : t('admin.users.form.nameOptional')}
                   </Text>
                   <TextInput
                     style={styles.input}
                     value={inviteForm.expected_name}
                     onChangeText={(text) => setInviteForm({...inviteForm, expected_name: text})}
-                    placeholder={inviteForm.role === 'guard' ? 'Ej: Caseta Principal, Portón Norte' : 'Nombre del usuario'}
+                    placeholder={inviteForm.role === 'guard' ? t('admin.users.form.guardNamePlaceholder') : t('admin.users.form.namePlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                   />
 
                   {/* Email */}
                   <Text style={styles.inputLabel}>
-                    {createMethod === 'direct' ? 'Email *' : 'Email (opcional)'}
+                    {createMethod === 'direct' ? t('admin.users.form.emailRequired') : t('admin.users.form.emailOptional')}
                   </Text>
                   <TextInput
                     style={styles.input}
                     value={inviteForm.expected_email}
                     onChangeText={(text) => setInviteForm({...inviteForm, expected_email: text})}
-                    placeholder="email@ejemplo.com"
+                    placeholder={t('admin.users.form.emailPlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
 
                   {/* Phone */}
-                  <Text style={styles.inputLabel}>Teléfono (opcional)</Text>
+                  <Text style={styles.inputLabel}>{t('admin.users.form.phoneOptional')}</Text>
                   <TextInput
                     style={styles.input}
                     value={inviteForm.expected_phone}
@@ -1154,22 +1158,22 @@ export default function AdminUsers() {
                   {/* CAMPOS DE CONTRASEÑA (solo para crear directo) */}
                   {createMethod === 'direct' && (
                     <>
-                      <Text style={styles.inputLabel}>Contraseña *</Text>
+                      <Text style={styles.inputLabel}>{t('admin.users.form.password')} *</Text>
                       <TextInput
                         style={styles.input}
                         value={inviteForm.password}
                         onChangeText={(text) => setInviteForm({...inviteForm, password: text})}
-                        placeholder="Mínimo 6 caracteres"
+                        placeholder={t('admin.users.form.passwordPlaceholder')}
                         placeholderTextColor={COLORS.textMuted}
                         secureTextEntry
                       />
 
-                      <Text style={styles.inputLabel}>Confirmar Contraseña *</Text>
+                      <Text style={styles.inputLabel}>{t('admin.users.form.confirmPassword')} *</Text>
                       <TextInput
                         style={styles.input}
                         value={inviteForm.confirm_password}
                         onChangeText={(text) => setInviteForm({...inviteForm, confirm_password: text})}
-                        placeholder="Repetir contraseña"
+                        placeholder={t('admin.users.form.confirmPasswordPlaceholder')}
                         placeholderTextColor={COLORS.textMuted}
                         secureTextEntry
                       />
@@ -1181,8 +1185,8 @@ export default function AdminUsers() {
                     <Ionicons name="information-circle" size={20} color={COLORS.teal} />
                     <Text style={styles.inviteNoteText}>
                       {createMethod === 'direct' 
-                        ? 'El usuario se creará inmediatamente. Comparte las credenciales de forma segura.'
-                        : 'Se generará un código único que podrás compartir. La invitación expira en 7 días.'
+                        ? t('admin.users.form.directNote')
+                        : t('admin.users.form.inviteNote')
                       }
                     </Text>
                   </View>

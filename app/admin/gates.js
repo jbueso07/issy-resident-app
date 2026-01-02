@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,6 +49,7 @@ const COLORS = {
 };
 
 export default function AdminGates() {
+  const { t } = useTranslation();
   const { user, profile, isSuperAdmin } = useAuth();
   const router = useRouter();
   
@@ -74,7 +76,7 @@ export default function AdminGates() {
 
   useEffect(() => {
     if (!isAdmin) {
-      Alert.alert('Acceso Denegado', 'No tienes permisos');
+      Alert.alert(t('admin.gates.accessDenied'), t('admin.gates.noPermissions'));
       router.back();
       return;
     }
@@ -169,7 +171,7 @@ export default function AdminGates() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      Alert.alert(t('common.error'), t('admin.gates.errors.nameRequired'));
       return;
     }
 
@@ -188,12 +190,12 @@ export default function AdminGates() {
         });
         
         if (response.ok) {
-          Alert.alert('Éxito', 'Puerta actualizada');
+          Alert.alert(t('common.success'), t('admin.gates.success.updated'));
           handleCloseModal();
           fetchGates();
         } else {
           const data = await response.json();
-          Alert.alert('Error', data.error || 'No se pudo actualizar');
+          Alert.alert(t('common.error'), data.error || t('admin.gates.errors.updateFailed'));
         }
       } else {
         const response = await fetch(`${API_URL}/gates`, {
@@ -207,17 +209,17 @@ export default function AdminGates() {
         });
         
         if (response.ok) {
-          Alert.alert('Éxito', 'Puerta creada');
+          Alert.alert(t('common.success'), t('admin.gates.success.created'));
           handleCloseModal();
           fetchGates();
         } else {
           const data = await response.json();
-          Alert.alert('Error', data.error || 'No se pudo crear');
+          Alert.alert(t('common.error'), data.error || t('admin.gates.errors.createFailed'));
         }
       }
     } catch (error) {
       console.error('Error saving gate:', error);
-      Alert.alert('Error', 'No se pudo guardar');
+      Alert.alert(t('common.error'), t('admin.gates.errors.saveFailed'));
     } finally {
       setFormLoading(false);
     }
@@ -242,12 +244,12 @@ export default function AdminGates() {
 
   const handleDelete = async (gate) => {
     Alert.alert(
-      'Eliminar Puerta',
-      `¿Estás seguro de eliminar "${gate.name}"?`,
+      t('admin.gates.deleteGate'),
+      t('admin.gates.deleteConfirm', { name: gate.name }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -260,10 +262,10 @@ export default function AdminGates() {
               if (response.ok) {
                 fetchGates();
               } else {
-                Alert.alert('Error', 'No se pudo eliminar');
+                Alert.alert(t('common.error'), t('admin.gates.errors.deleteFailed'));
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar');
+              Alert.alert(t('common.error'), t('admin.gates.errors.deleteFailed'));
             }
           }
         }
@@ -278,7 +280,7 @@ export default function AdminGates() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>Cargando puertas...</Text>
+          <Text style={styles.loadingText}>{t('admin.gates.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -292,7 +294,7 @@ export default function AdminGates() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Puertas de Acceso</Text>
+          <Text style={styles.headerTitle}>{t('admin.gates.title')}</Text>
           {isSuperAdminUser && locations.length > 1 ? (
             <TouchableOpacity 
               style={styles.locationSelector}
@@ -300,7 +302,7 @@ export default function AdminGates() {
             >
               <Ionicons name="location" size={14} color={COLORS.teal} />
               <Text style={styles.locationText} numberOfLines={1}>
-                {currentLocation?.name || 'Seleccionar'}
+                {currentLocation?.name || t('common.select')}
               </Text>
               <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
             </TouchableOpacity>
@@ -328,7 +330,7 @@ export default function AdminGates() {
         {gates.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="business-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>Sin puertas registradas</Text>
+            <Text style={styles.emptyTitle}>{t('admin.gates.empty.noGates')}</Text>
             <Text style={styles.emptySubtitle}>
               Agrega puertas de acceso para tu comunidad
             </Text>
@@ -369,11 +371,11 @@ export default function AdminGates() {
                         styles.statusText,
                         { color: gate.is_active ? COLORS.success : COLORS.danger }
                       ]}>
-                        {gate.is_active ? 'Activa' : 'Inactiva'}
+                        {gate.is_active ? t('admin.gates.status.active') : t('admin.gates.status.inactive')}
                       </Text>
                     </View>
                     {gate.code && (
-                      <Text style={styles.gateCode}>Código: {gate.code}</Text>
+                      <Text style={styles.gateCode}>{t('admin.gates.code')}: {gate.code}</Text>
                     )}
                   </View>
                 </View>
@@ -416,7 +418,7 @@ export default function AdminGates() {
                     styles.actionButtonText, 
                     { color: gate.is_active ? COLORS.warning : COLORS.success }
                   ]}>
-                    {gate.is_active ? 'Desactivar' : 'Activar'}
+                    {gate.is_active ? t('admin.gates.deactivate') : t('admin.gates.activate')}
                   </Text>
                 </TouchableOpacity>
                 
@@ -425,7 +427,7 @@ export default function AdminGates() {
                   onPress={() => handleDelete(gate)}
                 >
                   <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-                  <Text style={[styles.actionButtonText, { color: COLORS.danger }]}>Eliminar</Text>
+                  <Text style={[styles.actionButtonText, { color: COLORS.danger }]}>{t('common.delete')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -451,36 +453,36 @@ export default function AdminGates() {
               <View style={{ flex: 1 }}>
                 <View style={styles.modalHeader}>
                   <TouchableOpacity onPress={handleCloseModal}>
-                    <Text style={styles.modalCancel}>Cancelar</Text>
+                    <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                   <Text style={styles.modalTitle}>
-                    {editingGate ? 'Editar Puerta' : 'Nueva Puerta'}
+                    {editingGate ? t('admin.gates.editGate') : t('admin.gates.newGate')}
                   </Text>
                   <TouchableOpacity onPress={handleSubmit} disabled={formLoading}>
                     {formLoading ? (
                       <ActivityIndicator size="small" color={COLORS.lime} />
                     ) : (
-                      <Text style={styles.modalSave}>Guardar</Text>
+                      <Text style={styles.modalSave}>{t('common.save')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
-                  <Text style={styles.inputLabel}>Nombre *</Text>
+                  <Text style={styles.inputLabel}>{t('admin.gates.form.name')} *</Text>
                   <TextInput
                     style={styles.input}
                     value={formData.name}
                     onChangeText={(text) => setFormData({...formData, name: text})}
-                    placeholder="Ej: Portón Principal, Caseta Norte"
+                    placeholder={t('admin.gates.form.namePlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                   />
 
-                  <Text style={styles.inputLabel}>Descripción (opcional)</Text>
+                  <Text style={styles.inputLabel}>{t('admin.gates.form.description')}</Text>
                   <TextInput
                     style={[styles.input, styles.textArea]}
                     value={formData.description}
                     onChangeText={(text) => setFormData({...formData, description: text})}
-                    placeholder="Descripción o notas adicionales"
+                    placeholder={t('admin.gates.form.descriptionPlaceholder')}
                     placeholderTextColor={COLORS.textMuted}
                     multiline
                     numberOfLines={3}
@@ -489,8 +491,7 @@ export default function AdminGates() {
                   <View style={styles.infoNote}>
                     <Ionicons name="information-circle" size={20} color={COLORS.teal} />
                     <Text style={styles.infoNoteText}>
-                      Las puertas permiten organizar los accesos por ubicación específica. 
-                      Los guardias pueden seleccionar su puerta al registrar turnos.
+                      {t('admin.gates.infoNote')}
                     </Text>
                   </View>
                 </ScrollView>
@@ -505,7 +506,7 @@ export default function AdminGates() {
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Seleccionar Ubicación</Text>
+              <Text style={styles.pickerTitle}>{t('admin.gates.selectLocation')}</Text>
               <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>

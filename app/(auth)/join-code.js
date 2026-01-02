@@ -1,5 +1,5 @@
 // app/(auth)/join-code.js
-// ISSY Resident App - Join with Invitation Code
+// ISSY Resident App - Join with Invitation Code + i18n
 
 import { useState } from 'react';
 import {
@@ -14,8 +14,10 @@ import {
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTranslation } from '../../src/hooks/useTranslation';
 
 export default function JoinCode() {
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [invitationData, setInvitationData] = useState(null);
@@ -25,7 +27,7 @@ export default function JoinCode() {
 
   const handleVerifyCode = async () => {
     if (!code.trim()) {
-      Alert.alert('Error', 'Por favor ingresa un código');
+      Alert.alert(t('common.error'), t('auth.joinCode.enterCode'));
       return;
     }
 
@@ -37,7 +39,7 @@ export default function JoinCode() {
       setInvitationData(result.data);
       setStep('preview');
     } else {
-      Alert.alert('Código Inválido', result.error || 'El código no existe o ya fue usado');
+      Alert.alert(t('auth.joinCode.invalidCode'), result.error || t('auth.joinCode.codeNotExist'));
     }
   };
 
@@ -53,30 +55,30 @@ export default function JoinCode() {
     setLoading(false);
 
     if (result.success) {
-      Alert.alert('¡Listo!', 'Te has unido exitosamente', [
+      Alert.alert(t('auth.joinCode.success'), t('auth.joinCode.joinedSuccessfully'), [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
       ]);
     } else {
-      Alert.alert('Error', result.error || 'No se pudo aceptar la invitación');
+      Alert.alert(t('common.error'), result.error || t('auth.joinCode.acceptFailed'));
     }
   };
 
   const getInvitationTypeLabel = (type) => {
     switch (type) {
-      case 'organization': return 'Comunidad';
-      case 'rental': return 'Inquilino';
-      default: return 'Invitación';
+      case 'organization': return t('auth.joinCode.types.community');
+      case 'rental': return t('auth.joinCode.types.tenant');
+      default: return t('auth.joinCode.types.invitation');
     }
   };
 
   const getRoleLabel = (role) => {
     switch (role) {
-      case 'admin': return 'Administrador';
-      case 'guard': return 'Guardia';
-      case 'resident': return 'Residente';
-      case 'owner': return 'Propietario';
-      case 'employee': return 'Empleado';
-      default: return 'Residente';
+      case 'admin': return t('auth.joinCode.roles.admin');
+      case 'guard': return t('auth.joinCode.roles.guard');
+      case 'resident': return t('auth.joinCode.roles.resident');
+      case 'owner': return t('auth.joinCode.roles.owner');
+      case 'employee': return t('auth.joinCode.roles.employee');
+      default: return t('auth.joinCode.roles.resident');
     }
   };
 
@@ -87,7 +89,7 @@ export default function JoinCode() {
         <View style={styles.content}>
           <Link href="/(auth)/login" asChild>
             <TouchableOpacity style={styles.backButton}>
-              <Text style={styles.backButtonText}>← Volver</Text>
+              <Text style={styles.backButtonText}>← {t('common.back')}</Text>
             </TouchableOpacity>
           </Link>
 
@@ -95,15 +97,13 @@ export default function JoinCode() {
             <Text style={styles.icon}>🔑</Text>
           </View>
 
-          <Text style={styles.title}>Código de Invitación</Text>
-          <Text style={styles.subtitle}>
-            Ingresa el código que te proporcionó tu administrador
-          </Text>
+          <Text style={styles.title}>{t('auth.joinCode.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.joinCode.subtitle')}</Text>
 
           <View style={styles.codeInputContainer}>
             <TextInput
               style={styles.codeInput}
-              placeholder="Ej: ABC123"
+              placeholder={t('auth.joinCode.placeholder')}
               placeholderTextColor="#9CA3AF"
               value={code}
               onChangeText={(text) => setCode(text.toUpperCase())}
@@ -122,13 +122,11 @@ export default function JoinCode() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Verificar Código</Text>
+              <Text style={styles.buttonText}>{t('auth.joinCode.verifyCode')}</Text>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.hint}>
-            El código es único y puede ser usado una sola vez
-          </Text>
+          <Text style={styles.hint}>{t('auth.joinCode.codeHint')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -146,19 +144,19 @@ export default function JoinCode() {
               setInvitationData(null);
             }}
           >
-            <Text style={styles.backButtonText}>← Cambiar código</Text>
+            <Text style={styles.backButtonText}>← {t('auth.joinCode.changeCode')}</Text>
           </TouchableOpacity>
 
           <View style={styles.iconContainer}>
             <Text style={styles.icon}>✅</Text>
           </View>
 
-          <Text style={styles.title}>¡Código Válido!</Text>
+          <Text style={styles.title}>{t('auth.joinCode.validCode')}</Text>
 
           {/* Invitation Details Card */}
           <View style={styles.detailsCard}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Tipo:</Text>
+              <Text style={styles.detailLabel}>{t('auth.joinCode.type')}:</Text>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
                   {getInvitationTypeLabel(invitationData?.invitation_type || invitationData?.type)}
@@ -168,42 +166,42 @@ export default function JoinCode() {
 
             {invitationData?.organization?.name && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Comunidad:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.community')}:</Text>
                 <Text style={styles.detailValue}>{invitationData.organization.name}</Text>
               </View>
             )}
 
             {invitationData?.location?.name && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Ubicación:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.location')}:</Text>
                 <Text style={styles.detailValue}>{invitationData.location.name}</Text>
               </View>
             )}
 
             {invitationData?.role && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Rol:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.role')}:</Text>
                 <Text style={styles.detailValue}>{getRoleLabel(invitationData.role)}</Text>
               </View>
             )}
 
             {invitationData?.property?.name && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Propiedad:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.property')}:</Text>
                 <Text style={styles.detailValue}>{invitationData.property.name}</Text>
               </View>
             )}
 
             {invitationData?.unit?.unit_number && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Unidad:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.unit')}:</Text>
                 <Text style={styles.detailValue}>{invitationData.unit.unit_number}</Text>
               </View>
             )}
 
             {invitationData?.invited_by?.name && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Invitado por:</Text>
+                <Text style={styles.detailLabel}>{t('auth.joinCode.invitedBy')}:</Text>
                 <Text style={styles.detailValue}>{invitationData.invited_by.name}</Text>
               </View>
             )}
@@ -219,7 +217,7 @@ export default function JoinCode() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>
-                {isAuthenticated ? 'Aceptar Invitación' : 'Continuar'}
+                {isAuthenticated ? t('auth.joinCode.acceptInvitation') : t('common.next')}
               </Text>
             )}
           </TouchableOpacity>
@@ -237,21 +235,19 @@ export default function JoinCode() {
             <Text style={styles.icon}>👤</Text>
           </View>
 
-          <Text style={styles.title}>Inicia Sesión</Text>
-          <Text style={styles.subtitle}>
-            Para aceptar la invitación necesitas una cuenta
-          </Text>
+          <Text style={styles.title}>{t('auth.login')}</Text>
+          <Text style={styles.subtitle}>{t('auth.joinCode.needAccount')}</Text>
 
           <View style={styles.authOptions}>
             <Link href={`/(auth)/login?code=${code}`} asChild>
               <TouchableOpacity style={styles.button}>
-                <Text style={styles.buttonText}>Iniciar Sesión</Text>
+                <Text style={styles.buttonText}>{t('auth.login')}</Text>
               </TouchableOpacity>
             </Link>
 
             <Link href={`/(auth)/register?code=${code}`} asChild>
               <TouchableOpacity style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Crear Cuenta Nueva</Text>
+                <Text style={styles.secondaryButtonText}>{t('auth.joinCode.createNewAccount')}</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -260,7 +256,7 @@ export default function JoinCode() {
             style={styles.backButton}
             onPress={() => setStep('input')}
           >
-            <Text style={styles.backButtonText}>← Usar otro código</Text>
+            <Text style={styles.backButtonText}>← {t('auth.joinCode.useAnotherCode')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

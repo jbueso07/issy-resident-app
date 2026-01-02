@@ -12,6 +12,7 @@ import {
   getMySubscriptions, getVerticalPlans, startTrial,
   subscribeToPlan, cancelSubscription, getPaymentMethods
 } from '../src/services/api';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -34,15 +35,17 @@ const COLORS = {
   yellow: '#F59E0B',
 };
 
-const VERTICALS = {
-  access: { name: 'Control de Acceso', icon: '🔐', color: '#7C3AED' },
-  pms: { name: 'Gestor de Propiedades', icon: '🏘️', color: '#1E3A8A' },
-  panic: { name: 'Botón de Pánico', icon: '🚨', color: '#DC2626' },
-  finance: { name: 'Finanzas Personales', icon: '💰', color: '#059669' },
-  marketplace: { name: 'Marketplace', icon: '🛒', color: '#F59E0B' },
-};
+const getVerticals = (t) => ({
+  access: { name: t('mySubscription.verticals.access'), icon: '🔐', color: '#7C3AED' },
+  pms: { name: t('mySubscription.verticals.pms'), icon: '🏘️', color: '#1E3A8A' },
+  panic: { name: t('mySubscription.verticals.panic'), icon: '🚨', color: '#DC2626' },
+  finance: { name: t('mySubscription.verticals.finance'), icon: '💰', color: '#059669' },
+  marketplace: { name: t('mySubscription.verticals.marketplace'), icon: '🛒', color: '#F59E0B' },
+});
 
 export default function MySubscriptionScreen() {
+  const { t } = useTranslation();
+  const VERTICALS = getVerticals(t);
   const router = useRouter();
   const { user } = useAuth();
   
@@ -95,22 +98,22 @@ export default function MySubscriptionScreen() {
     setProcessing(false);
     
     if (res.success) {
-      Alert.alert('¡Éxito!', res.message || '¡Prueba gratuita activada!');
+      Alert.alert(t('mySubscription.success.title'), res.message || t('mySubscription.success.trialActivated'));
       setShowPlansModal(false);
       loadData();
     } else {
-      Alert.alert('Error', res.error || 'No se pudo activar la prueba');
+      Alert.alert(t('common.error'), res.error || t('mySubscription.errors.trialFailed'));
     }
   };
 
   const handleSelectPlanForPayment = (plan) => {
     if (paymentMethods.length === 0) {
       Alert.alert(
-        'Sin método de pago',
-        'Necesitas agregar una tarjeta antes de suscribirte',
+        t('mySubscription.noPaymentMethod.title'),
+        t('mySubscription.noPaymentMethod.message'),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Agregar Tarjeta', onPress: () => router.push('/payment-methods') }
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('mySubscription.noPaymentMethod.addCard'), onPress: () => router.push('/payment-methods') }
         ]
       );
       return;
@@ -122,7 +125,7 @@ export default function MySubscriptionScreen() {
   const handleSubscribe = async (billingPeriod = 'monthly') => {
     const defaultCard = paymentMethods.find(c => c.is_default) || paymentMethods[0];
     if (!defaultCard) {
-      Alert.alert('Error', 'No hay método de pago disponible');
+      Alert.alert(t('common.error'), t('mySubscription.errors.noPaymentMethod'));
       return;
     }
 
@@ -131,29 +134,29 @@ export default function MySubscriptionScreen() {
     setProcessing(false);
 
     if (res.success) {
-      Alert.alert('¡Éxito!', res.message || 'Suscripción activada');
+      Alert.alert(t('mySubscription.success.title'), res.message || t('mySubscription.success.subscriptionActivated'));
       setShowPaymentModal(false);
       setShowPlansModal(false);
       setSelectedPlan(null);
       loadData();
     } else {
-      Alert.alert('Error', res.error || 'No se pudo procesar el pago');
+      Alert.alert(t('common.error'), res.error || t('mySubscription.errors.paymentFailed'));
     }
   };
 
   const handleCancelSubscription = (subscription) => {
     Alert.alert(
-      'Cancelar Suscripción',
-      '¿Estás seguro? Perderás acceso al finalizar el período actual.',
+      t('mySubscription.cancelSubscription.title'),
+      t('mySubscription.cancelSubscription.message'),
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Sí, Cancelar', style: 'destructive', onPress: async () => {
+        { text: t('common.no'), style: 'cancel' },
+        { text: t('mySubscription.cancelSubscription.confirm'), style: 'destructive', onPress: async () => {
           const res = await cancelSubscription(subscription.id, 'User requested');
           if (res.success) {
-            Alert.alert('Suscripción Cancelada', 'Tu acceso continuará hasta el final del período');
+            Alert.alert(t('mySubscription.cancelSubscription.successTitle'), t('mySubscription.cancelSubscription.successMessage'));
             loadData();
           } else {
-            Alert.alert('Error', res.error);
+            Alert.alert(t('common.error'), res.error);
           }
         }}
       ]
@@ -181,7 +184,7 @@ export default function MySubscriptionScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>Cargando suscripciones...</Text>
+          <Text style={styles.loadingText}>{t('mySubscription.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -194,7 +197,7 @@ export default function MySubscriptionScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis Suscripciones</Text>
+        <Text style={styles.headerTitle}>{t('mySubscription.title')}</Text>
         <View style={{ width: scale(40) }} />
       </View>
 
@@ -212,13 +215,13 @@ export default function MySubscriptionScreen() {
             <View key={sub.id} style={styles.activeCard}>
               <View style={[styles.activeHeader, { backgroundColor: vertical.color || COLORS.purple }]}>
                 <Text style={styles.activeIcon}>{vertical.icon}</Text>
-                <Text style={styles.activePlan}>{sub.plan?.name || 'Plan'}</Text>
+                <Text style={styles.activePlan}>{sub.plan?.name || t('mySubscription.plan')}</Text>
                 <Text style={styles.activePrice}>
-                  {sub.status === 'trial' ? 'Prueba Gratuita' : `$${sub.plan?.price_monthly}/mes`}
+                  {sub.status === 'trial' ? t('mySubscription.freeTrial') : `$${sub.plan?.price_monthly}/${t('mySubscription.month')}`}
                 </Text>
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusText}>
-                    {sub.status === 'trial' ? '🎁 TRIAL' : '✓ ACTIVO'}
+                    {sub.status === 'trial' ? `🎁 ${t('mySubscription.trial')}` : `✓ ${t('mySubscription.active')}`}
                   </Text>
                 </View>
               </View>
@@ -228,14 +231,14 @@ export default function MySubscriptionScreen() {
                   <View style={styles.trialAlert}>
                     <Ionicons name="time-outline" size={18} color={COLORS.yellow} />
                     <Text style={styles.trialText}>
-                      {daysLeft} días restantes de prueba
+                      {t('mySubscription.daysRemaining', { days: daysLeft })}
                     </Text>
                   </View>
                 )}
                 
                 <View style={styles.activeInfo}>
                   <View>
-                    <Text style={styles.infoLabel}>Próxima factura</Text>
+                    <Text style={styles.infoLabel}>{t('mySubscription.nextBill')}</Text>
                     <Text style={styles.infoValue}>
                       {sub.current_period_end 
                         ? new Date(sub.current_period_end).toLocaleDateString('es', { day: 'numeric', month: 'short' })
@@ -244,11 +247,11 @@ export default function MySubscriptionScreen() {
                     </Text>
                   </View>
                   <View>
-                    <Text style={styles.infoLabel}>Método</Text>
+                    <Text style={styles.infoLabel}>{t('mySubscription.method')}</Text>
                     <Text style={styles.infoValue}>
                       {paymentMethods.find(c => c.is_default)?.last_four 
                         ? `•••• ${paymentMethods.find(c => c.is_default).last_four}`
-                        : 'Sin tarjeta'
+                        : t('mySubscription.noCard')
                       }
                     </Text>
                   </View>
@@ -256,10 +259,10 @@ export default function MySubscriptionScreen() {
                 
                 <View style={styles.activeActions}>
                   <TouchableOpacity style={styles.upgradeBtn}>
-                    <Text style={styles.upgradeBtnText}>Cambiar Plan</Text>
+                    <Text style={styles.upgradeBtnText}>{t('mySubscription.changePlan')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancelSubscription(sub)}>
-                    <Text style={styles.cancelBtnText}>Cancelar</Text>
+                    <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -269,8 +272,8 @@ export default function MySubscriptionScreen() {
 
         {/* Available Services */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
-          <Text style={styles.sectionSubtitle}>Explora nuestros servicios premium</Text>
+          <Text style={styles.sectionTitle}>{t('mySubscription.availableServices')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('mySubscription.exploreServices')}</Text>
           
           {Object.entries(VERTICALS).map(([key, vertical]) => {
             const activeSub = getVerticalSubscription(key);
@@ -289,8 +292,8 @@ export default function MySubscriptionScreen() {
                   <Text style={styles.serviceName}>{vertical.name}</Text>
                   <Text style={styles.serviceStatus}>
                     {activeSub 
-                      ? (activeSub.status === 'trial' ? 'En período de prueba' : 'Suscripción activa')
-                      : 'Disponible'
+                      ? (activeSub.status === 'trial' ? t('mySubscription.inTrialPeriod') : t('mySubscription.activeSubscription'))
+                      : t('mySubscription.available')
                     }
                   </Text>
                 </View>
@@ -300,7 +303,7 @@ export default function MySubscriptionScreen() {
                   </View>
                 ) : (
                   <View style={[styles.tryBadge, { backgroundColor: vertical.color }]}>
-                    <Text style={styles.tryText}>Probar</Text>
+                    <Text style={styles.tryText}>{t('mySubscription.try')}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -314,11 +317,11 @@ export default function MySubscriptionScreen() {
             <Ionicons name="card-outline" size={22} color={COLORS.purple} />
           </View>
           <View style={styles.linkInfo}>
-            <Text style={styles.linkTitle}>Métodos de Pago</Text>
+            <Text style={styles.linkTitle}>{t('mySubscription.paymentMethods')}</Text>
             <Text style={styles.linkSubtitle}>
               {paymentMethods.length > 0 
-                ? `${paymentMethods.length} tarjeta(s) guardada(s)`
-                : 'Agregar método de pago'
+                ? t('mySubscription.cardsSaved', { count: paymentMethods.length })
+                : t('mySubscription.addPaymentMethod')
               }
             </Text>
           </View>
@@ -343,7 +346,7 @@ export default function MySubscriptionScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={styles.plansSubtitle}>Elige el plan que mejor se adapte a ti</Text>
+              <Text style={styles.plansSubtitle}>{t('mySubscription.choosePlan')}</Text>
 
               {getPlansForVertical().map((plan) => (
                 <View key={plan.id} style={styles.planCard}>
@@ -351,18 +354,18 @@ export default function MySubscriptionScreen() {
                     <Text style={styles.planName}>{plan.name}</Text>
                     {plan.trial_days > 0 && (
                       <View style={styles.trialBadge}>
-                        <Text style={styles.trialBadgeText}>{plan.trial_days} días gratis</Text>
+                        <Text style={styles.trialBadgeText}>{t('mySubscription.freeDays', { days: plan.trial_days })}</Text>
                       </View>
                     )}
                   </View>
                   
                   <View style={styles.planPricing}>
                     <Text style={styles.planPrice}>${plan.price_monthly}</Text>
-                    <Text style={styles.planPeriod}>/mes</Text>
+                    <Text style={styles.planPeriod}>/{t('mySubscription.month')}</Text>
                   </View>
                   {plan.price_yearly && (
                     <Text style={styles.yearlyPrice}>
-                      o ${plan.price_yearly}/año (ahorra 2 meses)
+                      {t('mySubscription.yearlyPrice', { price: plan.price_yearly })}
                     </Text>
                   )}
 
@@ -385,7 +388,7 @@ export default function MySubscriptionScreen() {
                         {processing ? (
                           <ActivityIndicator color={COLORS.textPrimary} size="small" />
                         ) : (
-                          <Text style={styles.trialBtnText}>Probar Gratis</Text>
+                          <Text style={styles.trialBtnText}>{t('mySubscription.tryFree')}</Text>
                         )}
                       </TouchableOpacity>
                     )}
@@ -393,7 +396,7 @@ export default function MySubscriptionScreen() {
                       style={styles.subscribeBtn}
                       onPress={() => handleSelectPlanForPayment(plan)}
                     >
-                      <Text style={styles.subscribeBtnText}>Suscribirse</Text>
+                      <Text style={styles.subscribeBtnText}>{t('mySubscription.subscribe')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -402,7 +405,7 @@ export default function MySubscriptionScreen() {
               {getPlansForVertical().length === 0 && (
                 <View style={styles.noPlans}>
                   <Ionicons name="cube-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.noPlansText}>No hay planes disponibles</Text>
+                  <Text style={styles.noPlansText}>{t('mySubscription.noPlansAvailable')}</Text>
                 </View>
               )}
             </ScrollView>
@@ -416,7 +419,7 @@ export default function MySubscriptionScreen() {
           <View style={styles.paymentModalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirmar Suscripción</Text>
+              <Text style={styles.modalTitle}>{t('mySubscription.confirmSubscription')}</Text>
               <TouchableOpacity onPress={() => { setShowPaymentModal(false); setSelectedPlan(null); }}>
                 <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
@@ -427,17 +430,17 @@ export default function MySubscriptionScreen() {
                 <>
                   <View style={styles.summaryCard}>
                     <Text style={styles.summaryPlan}>{selectedPlan.name}</Text>
-                    <Text style={styles.summaryPrice}>${selectedPlan.price_monthly}/mes</Text>
+                    <Text style={styles.summaryPrice}>${selectedPlan.price_monthly}/{t('mySubscription.month')}</Text>
                   </View>
 
-                  <Text style={styles.paymentTitle}>Método de pago</Text>
+                  <Text style={styles.paymentTitle}>{t('mySubscription.paymentMethodTitle')}</Text>
                   {paymentMethods.length > 0 ? (
                     <View style={styles.selectedCard}>
                       <Text style={styles.selectedCardText}>
                         💳 •••• {paymentMethods.find(c => c.is_default)?.last_four || paymentMethods[0]?.last_four}
                       </Text>
                       <TouchableOpacity onPress={() => router.push('/payment-methods')}>
-                        <Text style={styles.changeCardText}>Cambiar</Text>
+                        <Text style={styles.changeCardText}>{t('mySubscription.change')}</Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -445,7 +448,7 @@ export default function MySubscriptionScreen() {
                       style={styles.addCardBtn}
                       onPress={() => router.push('/payment-methods')}
                     >
-                      <Text style={styles.addCardBtnText}>+ Agregar tarjeta</Text>
+                      <Text style={styles.addCardBtnText}>+ {t('mySubscription.addCard')}</Text>
                     </TouchableOpacity>
                   )}
 
@@ -457,12 +460,12 @@ export default function MySubscriptionScreen() {
                     {processing ? (
                       <ActivityIndicator color={COLORS.background} />
                     ) : (
-                      <Text style={styles.payBtnText}>Pagar ${selectedPlan.price_monthly}</Text>
+                      <Text style={styles.payBtnText}>{t('mySubscription.pay', { amount: selectedPlan.price_monthly })}</Text>
                     )}
                   </TouchableOpacity>
 
                   <Text style={styles.secureNote}>
-                    🔒 Pago seguro procesado por Clinpays
+                    🔒 {t('mySubscription.securePayment')}
                   </Text>
                 </>
               )}
