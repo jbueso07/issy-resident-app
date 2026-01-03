@@ -371,7 +371,7 @@ const { expoPushToken } = useNotifications();
 
   const loadProfile = async (authToken) => {
     try {
-      const response = await fetch(`${API_URL}/auth/me`), {
+      const response = await fetch(`${API_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
@@ -738,7 +738,7 @@ const { expoPushToken } = useNotifications();
       }
 
       // Try to validate current token
-      const response = await fetch(`${API_URL}/auth/me`), {
+      const response = await fetch(`${API_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${currentToken}`,
           'Content-Type': 'application/json',
@@ -756,7 +756,7 @@ const { expoPushToken } = useNotifications();
         return { success: false, error: 'No hay refresh token' };
       }
 
-      const refreshResponse = await fetch(`${API_URL}/auth/refresh-token`), {
+      const refreshResponse = await fetch(`${API_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

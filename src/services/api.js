@@ -29,7 +29,7 @@ const refreshToken = async () => {
         throw new Error('No refresh token available');
       }
 
-      const response = await fetch(`${API_URL}/auth/refresh`, {
+      const response = await fetch(`${API_URL}/auth/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
