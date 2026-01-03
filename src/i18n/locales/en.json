@@ -344,7 +344,8 @@
     "logout": "Log Out",
     "logoutConfirm": "Are you sure you want to log out?",
     "roleAdmin": "Administrator",
-    "roleResident": "Resident"
+    "roleResident": "Resident",
+    "language": "Language"
   },
   "announcements": {
     "title": "Announcements",
@@ -496,7 +497,8 @@
     "contact": {
       "quickResponse": "Quick response",
       "email": "Email",
-      "call": "Call"
+      "call": "Call",
+      "website": "Website"
     },
     "faq": {
       "qrCode": {

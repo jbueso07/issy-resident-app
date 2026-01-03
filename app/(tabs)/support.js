@@ -51,28 +51,20 @@ export default function Support() {
   // Opciones de contacto traducidas
   const CONTACT_OPTIONS = [
     {
-      id: 'whatsapp',
-      icon: '💬',
-      title: 'WhatsApp',
-      subtitle: t('support.contact.quickResponse'),
-      action: () => Linking.openURL('https://wa.me/50433960908'),
-      color: '#25D366',
-    },
-    {
       id: 'email',
       icon: '✉️',
       title: t('support.contact.email'),
-      subtitle: 'soporte@joinissy.com',
-      action: () => Linking.openURL('mailto:soporte@joinissy.com'),
+      subtitle: 'info@joinissy.com',
+      action: () => Linking.openURL('mailto:info@joinissy.com'),
       color: '#6366F1',
     },
     {
-      id: 'call',
-      icon: '📞',
-      title: t('support.contact.call'),
-      subtitle: '+504 3396-0908',
-      action: () => Linking.openURL('tel:+50433960908'),
-      color: '#FC6447',
+      id: 'web',
+      icon: '🌐',
+      title: t('support.contact.website'),
+      subtitle: 'joinissy.com',
+      action: () => Linking.openURL('https://joinissy.com'),
+      color: '#00BFA6',
     },
   ];
 

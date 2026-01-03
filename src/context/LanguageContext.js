@@ -10,8 +10,8 @@ const LANGUAGE_KEY = 'user_language';
 export const languages = [
   { code: 'es', name: 'Español', flag: '🇪🇸' },
   { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
+  // { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  // { code: 'pt', name: 'Português', flag: '🇧🇷' },
 ];
 
 const LanguageContext = createContext({});

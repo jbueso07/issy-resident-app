@@ -658,7 +658,8 @@
     "contact": {
       "quickResponse": "Respuesta rápida",
       "email": "Email",
-      "call": "Llamar"
+      "call": "Llamar",
+      "website": "Sitio Web"
     },
     "faq": {
       "qrCode": {
