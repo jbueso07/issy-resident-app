@@ -323,32 +323,28 @@ const { expoPushToken } = useNotifications();
 
   const checkSession = async () => {
     try {
-      // First check if biometric is enabled and try that
+      // Check if biometric is enabled
       const biometricEnabledCheck = await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY);
-
-      if (biometricEnabledCheck === 'true' && biometricAvailable) {
+      const hasBiometricEnabled = biometricEnabledCheck === 'true';
+      
+      // If biometric is enabled, don't auto-login - require biometric auth
+      if (hasBiometricEnabled) {
         const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
         if (storedToken) {
-          // We have biometric credentials, but don't auto-authenticate
-          // User will need to trigger biometric auth from login screen
-          console.log('Biometric credentials available');
+          console.log('Biometric enabled - waiting for user to authenticate');
+          setBiometricEnabled(true);
+          setLoading(false);
+          return; // User must use biometric button
         }
       }
-
-      // Check for regular session
+      
+      // Only auto-login if biometric is NOT enabled
       const savedToken = await AsyncStorage.getItem('token');
-
       if (savedToken) {
         setToken(savedToken);
         const result = await loadProfile(savedToken);
         if (result.success) {
           hasBeenAuthenticated.current = true;
-
-          // Update secure store with current token if biometric enabled
-          if (biometricEnabled) {
-            await SecureStore.setItemAsync(SECURE_TOKEN_KEY, savedToken);
-          }
-
           setLoading(false);
           return;
         }
