@@ -470,9 +470,16 @@ export default function Home() {
           {/* Header con Avatar y Campana */}
           <View style={styles.homeHeader}>
             <View style={styles.homeHeaderLeft}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
-              </View>
+              {(user?.avatar_url || user?.profile_photo_url) ? (
+                <Image 
+                  source={{ uri: user?.avatar_url || user?.profile_photo_url }} 
+                  style={styles.avatarImage} 
+                />
+              ) : (
+                <View style={styles.avatarCircle}>
+                  <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
+                </View>
+              )}
               <View>
                 <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
                 <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
@@ -549,9 +556,16 @@ export default function Home() {
         {/* Header con Avatar y Campana */}
         <View style={styles.homeHeader}>
           <View style={styles.homeHeaderLeft}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
-            </View>
+            {(user?.avatar_url || user?.profile_photo_url) ? (
+              <Image 
+                source={{ uri: user?.avatar_url || user?.profile_photo_url }} 
+                style={styles.avatarImage} 
+              />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
+              </View>
+            )}
             <View>
               <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
               <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
@@ -829,6 +843,14 @@ const styles = StyleSheet.create({
     fontSize: scale(20),
     fontWeight: '700',
     color: COLORS.textDark,
+  },
+  // ESTILO AGREGADO PARA MOSTRAR LA FOTO DE PERFIL
+  avatarImage: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+    borderWidth: 2,
+    borderColor: COLORS.teal,
   },
   greetingText: {
     fontSize: scale(18),

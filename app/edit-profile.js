@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { updateUserProfile, changePassword } from '../src/services/api';
+import { updateUserProfile, changePassword, uploadAvatar } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -48,6 +48,7 @@ export default function EditProfileScreen() {
   } = useAuth();
   
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
   const [biometricLoading, setBiometricLoading] = useState(false);
   
@@ -55,6 +56,7 @@ export default function EditProfileScreen() {
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [avatar, setAvatar] = useState(user?.avatar_url || user?.profile_photo_url || null);
+  const [newAvatarUri, setNewAvatarUri] = useState(null); // URI local de nueva imagen
   
   // Password form
   const [newPassword, setNewPassword] = useState('');
@@ -69,14 +71,16 @@ export default function EditProfileScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
 
     if (!result.canceled) {
-      setAvatar(result.assets[0].uri);
+      const uri = result.assets[0].uri;
+      setAvatar(uri);
+      setNewAvatarUri(uri); // Guardar para subir después
     }
   };
 
@@ -87,16 +91,46 @@ export default function EditProfileScreen() {
     }
 
     setLoading(true);
-    const res = await updateUserProfile({ name, phone });
-    setLoading(false);
+    
+    try {
+      let avatarUrl = avatar;
 
-    if (res.success) {
-      Alert.alert(t('common.success'), t('editProfile.success.profileUpdated'));
-      if (refreshUser) refreshUser();
-      if (refreshProfile) refreshProfile();
-      router.back();
-    } else {
-      Alert.alert(t('common.error'), res.error || t('editProfile.errors.updateFailed'));
+      // Si hay nueva imagen, subirla primero
+      if (newAvatarUri) {
+        setUploadingImage(true);
+        const uploadResult = await uploadAvatar(newAvatarUri, user?.id);
+        setUploadingImage(false);
+        
+        if (uploadResult.success) {
+          avatarUrl = uploadResult.url;
+        } else {
+          Alert.alert(t('common.error'), 'Error al subir la imagen');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Actualizar perfil con todos los datos
+      const res = await updateUserProfile({ 
+        name, 
+        phone,
+        profile_photo_url: avatarUrl
+      });
+      
+      setLoading(false);
+
+      if (res.success) {
+        setNewAvatarUri(null); // Limpiar
+        Alert.alert(t('common.success'), t('editProfile.success.profileUpdated'));
+        if (refreshUser) refreshUser();
+        if (refreshProfile) refreshProfile();
+        router.back();
+      } else {
+        Alert.alert(t('common.error'), res.error || t('editProfile.errors.updateFailed'));
+      }
+    } catch (error) {
+      setLoading(false);
+      Alert.alert(t('common.error'), error.message || t('editProfile.errors.updateFailed'));
     }
   };
 
@@ -210,8 +244,12 @@ export default function EditProfileScreen() {
         {activeTab === 'info' ? (
           <View style={styles.section}>
             {/* Avatar */}
-            <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage}>
-              {avatar ? (
+            <TouchableOpacity style={styles.avatarContainer} onPress={handlePickImage} disabled={uploadingImage}>
+              {uploadingImage ? (
+                <View style={styles.avatarPlaceholder}>
+                  <ActivityIndicator color={COLORS.lime} size="large" />
+                </View>
+              ) : avatar ? (
                 <Image source={{ uri: avatar }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
@@ -221,6 +259,11 @@ export default function EditProfileScreen() {
               <View style={styles.avatarEdit}>
                 <Ionicons name="camera" size={16} color={COLORS.background} />
               </View>
+              {newAvatarUri && (
+                <View style={styles.newImageBadge}>
+                  <Text style={styles.newImageBadgeText}>Nueva</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Name */}
@@ -264,7 +307,12 @@ export default function EditProfileScreen() {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color={COLORS.background} />
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={COLORS.background} />
+                  <Text style={[styles.saveBtnText, { marginLeft: 8 }]}>
+                    {uploadingImage ? 'Subiendo imagen...' : 'Guardando...'}
+                  </Text>
+                </View>
               ) : (
                 <Text style={styles.saveBtnText}>{t('editProfile.saveChanges')}</Text>
               )}
@@ -425,11 +473,14 @@ const styles = StyleSheet.create({
   section: { padding: scale(20) },
 
   // Avatar
-  avatarContainer: { alignSelf: 'center', marginBottom: scale(24) },
+  avatarContainer: { alignSelf: 'center', marginBottom: scale(24), position: 'relative' },
   avatar: { width: scale(100), height: scale(100), borderRadius: scale(50) },
   avatarPlaceholder: { width: scale(100), height: scale(100), borderRadius: scale(50), backgroundColor: COLORS.purple, alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: scale(36), fontWeight: '700', color: COLORS.textPrimary },
   avatarEdit: { position: 'absolute', bottom: 0, right: 0, width: scale(32), height: scale(32), borderRadius: scale(16), backgroundColor: COLORS.lime, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: COLORS.background },
+  newImageBadge: { position: 'absolute', top: -5, right: -5, backgroundColor: COLORS.green, paddingHorizontal: scale(8), paddingVertical: scale(2), borderRadius: scale(8) },
+  newImageBadgeText: { color: COLORS.textPrimary, fontSize: scale(10), fontWeight: '600' },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
 
   // Inputs
   inputGroup: { marginBottom: scale(16) },

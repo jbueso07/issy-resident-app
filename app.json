@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F1A1A"
+      "backgroundColor": "#0F1A1E"
     },
     "ios": {
       "supportsTablet": true,
@@ -38,7 +38,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F1A1A"
+        "backgroundColor": "#0F1A1E"
       },
       "package": "com.issy.resident",
       "permissions": [
@@ -80,7 +80,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#D4FE48"
+          "color": "#AAFF00"
         }
       ],
       [

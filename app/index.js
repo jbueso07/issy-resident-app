@@ -1,30 +1,59 @@
-import { useEffect } from 'react';
+// app/index.js
+// ISSY - Animated Splash Screen
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View, ActivityIndicator, StyleSheet, Image, Text } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
-import { useTranslation } from 'react-i18next';
 
 export default function Index() {
-  const { t } = useTranslation();
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [animationDone, setAnimationDone] = useState(false);
+
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!loading) {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(400),
+    ]).start(() => setAnimationDone(true));
+  }, []);
+
+  useEffect(() => {
+    if (!loading && animationDone) {
       if (user) {
         router.replace('/(tabs)/home');
       } else {
         router.replace('/(auth)/login');
       }
     }
-  }, [user, loading]);
+  }, [user, loading, animationDone]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>🏠</Text>
-      <Text style={styles.title}>ISSY</Text>
-      <Text style={styles.subtitle}>{t('splash.subtitle')}</Text>
-      <ActivityIndicator size="large" color="#6366F1" style={styles.loader} />
+      <Animated.Image
+        source={require('../assets/icon.png')}
+        style={[
+          styles.logo,
+          {
+            opacity,
+            transform: [{ scale }],
+          },
+        ]}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -32,25 +61,12 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#0F1A1E',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
   },
   logo: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  loader: {
-    marginTop: 32,
+    width: 160,
+    height: 160,
   },
 });

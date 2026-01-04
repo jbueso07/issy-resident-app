@@ -1699,3 +1699,49 @@ export const regenerateResidentQRSecret = async () => {
     return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
+// ==========================================
+// AGREGAR ESTO AL FINAL DE src/services/api.js
+// ==========================================
+
+import { supabase } from '../config/supabase';
+
+/**
+ * Sube una imagen de avatar a Supabase Storage
+ * @param {string} uri - URI local de la imagen
+ * @param {string} userId - ID del usuario
+ */
+export const uploadAvatar = async (uri, userId) => {
+  try {
+    const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+
+    // Convertir URI a blob
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const arrayBuffer = await new Response(blob).arrayBuffer();
+
+    // Subir a Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, arrayBuffer, {
+        contentType: `image/${fileExt}`,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return { success: false, error: error.message };
+    }
+
+    // Obtener URL pública
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return { success: true, url: urlData.publicUrl };
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    return { success: false, error: error.message };
+  }
+};
