@@ -30,6 +30,17 @@
     "comingSoon": "Coming Soon",
     "comingSoonDesc": "This feature will be available soon"
   },
+  "qr": {
+  "myResidentQR": "My Resident QR",
+  "personalAccess": "Personal access",
+  "live": "LIVE",
+  "newCodeIn": "New code in {{seconds}}s",
+  "house": "House",
+  "notAssigned": "Not assigned",
+  "uniqueCode": "Unique and non-transferable code",
+  "joinCommunityForQR": "Join a community to get your QR",
+  "errorGenerating": "Error generating QR"
+},
   "app": {
     "name": "ISSY",
     "welcome": "Welcome",

@@ -37,6 +37,17 @@
     "noName": "Sin nombre",
     "limit": "Límite"
   },
+  "qr": {
+  "myResidentQR": "Mi QR de Residente",
+  "personalAccess": "Acceso personal",
+  "live": "EN VIVO",
+  "newCodeIn": "Nuevo código en {{seconds}}s",
+  "house": "Casa",
+  "notAssigned": "Sin asignar",
+  "uniqueCode": "Código único e intransferible",
+  "joinCommunityForQR": "Únete a una comunidad para obtener tu QR",
+  "errorGenerating": "Error al generar QR"
+},
   "app": {
     "name": "ISSY",
     "welcome": "Bienvenido",

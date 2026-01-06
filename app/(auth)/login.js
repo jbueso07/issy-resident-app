@@ -75,12 +75,7 @@ export default function Login() {
     setLoading(false);
 
     if (result.success) {
-      const user = result.data?.user;
-      if (user?.location_id) {
-        router.replace('/(tabs)/home');
-      } else {
-        router.replace('/join-community');
-      }
+      router.replace('/(tabs)/home');
     } else {
       Alert.alert(t('common.error'), result.error || t('auth.invalidCredentials'));
     }

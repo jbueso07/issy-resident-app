@@ -112,7 +112,7 @@ export default function Profile() {
 
     setDeleting(true);
     try {
-      await deleteUserAccount(token, password);
+      await deleteUserAccount(password);
       setShowDeleteModal(false);
       Alert.alert(
         t('common.success'),
@@ -200,14 +200,14 @@ export default function Profile() {
     {
       title: t('profile.support'),
       items: [
-        { 
+        ...(user?.location_id ? [{ 
           icon: 'warning-outline', 
           title: t('profile.reportIncident'), 
           subtitle: t('profile.reportIncidentDesc'),
           route: '/incidents',
           color: COLORS.coral,
-        },
-        { 
+        }] : []),
+        {
           icon: 'help-circle-outline', 
           title: t('profile.help'), 
           subtitle: t('profile.helpDesc'),

@@ -70,7 +70,7 @@ const COLORS = {
 };
 
 export default function FinancesScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,7 +113,7 @@ export default function FinancesScreen() {
         getTransactions({ limit: 10 }).catch(() => ({ success: false })),
         getFinanceGoals().catch(() => ({ success: false })),
         getCategories().catch(() => ({ success: false })),
-        getPersonalizedTips().catch(() => ({ success: false })),
+        getPersonalizedTips(i18n.language).catch(() => ({ success: false })),
         getUpcomingInvoices(14).catch(() => ({ success: false })),
         getBudgetsStatus().catch(() => ({ success: false })),
         getFinancePlans().catch(() => ({ success: false })),
@@ -183,7 +183,7 @@ export default function FinancesScreen() {
     if (selectedTip?.id && !selectedTip.id.startsWith('dynamic_')) await sendTipFeedback(selectedTip.id, helpful);
     setShowTipModal(false);
     setSelectedTip(null);
-    const tipsRes = await getPersonalizedTips();
+    const tipsRes = await getPersonalizedTips(i18n.language);
     if (tipsRes.success) setTips(tipsRes.data || []);
   };
 

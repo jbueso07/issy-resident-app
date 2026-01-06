@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Animated, Toucha
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { generateResidentQRData, getSecondsUntilChange, getTimeStep } from '../utils/totp';
+import { useTranslation } from '../hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -10,6 +11,7 @@ const COLORS = { bgPrimary: '#0F1A1E', bgCard: '#1C2E35', bgCardAlt: '#243B44', 
 const TIME_STEP = getTimeStep();
 
 const CompactResidentQR = ({ secret, userId, locationName, houseNumber, fullName, onError }) => {
+  const { t } = useTranslation();
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [remainingSeconds, setRemainingSeconds] = useState(TIME_STEP);
@@ -26,7 +28,7 @@ const CompactResidentQR = ({ secret, userId, locationName, houseNumber, fullName
       progressAnim.setValue(data.remainingSeconds / TIME_STEP);
       Animated.timing(progressAnim, { toValue: 0, duration: data.remainingSeconds * 1000, useNativeDriver: false }).start();
     } catch (error) {
-      onError?.('Error al generar QR');
+      onError?.(t('qr.errorGenerating'));
       setLoading(false);
     }
   };
@@ -48,7 +50,7 @@ const CompactResidentQR = ({ secret, userId, locationName, houseNumber, fullName
   if (!secret || !userId) return (
     <View style={styles.noAccessContainer}>
       <Ionicons name="lock-closed-outline" size={scale(40)} color={COLORS.textMuted} />
-      <Text style={styles.noAccessText}>Únete a una comunidad para obtener tu QR</Text>
+      <Text style={styles.noAccessText}>{t('qr.joinCommunityForQR')}</Text>
     </View>
   );
 
@@ -57,19 +59,51 @@ const CompactResidentQR = ({ secret, userId, locationName, houseNumber, fullName
       <TouchableOpacity style={styles.compactCard} onPress={() => setShowModal(true)} activeOpacity={0.8}>
         <View style={styles.compactLeft}>
           {loading ? <View style={styles.miniQrPlaceholder}><ActivityIndicator size="small" color={COLORS.lime} /></View> : <View style={styles.miniQrWrapper}><QRCode value={qrData?.code || 'LOADING'} size={scale(50)} backgroundColor="#FFFFFF" color="#0F1A1E" /></View>}
-          <View style={styles.compactInfo}><Text style={styles.compactTitle}>Mi QR de Residente</Text><Text style={styles.compactSubtitle}>{houseNumber ? `Casa ${houseNumber}` : locationName}</Text></View>
+          <View style={styles.compactInfo}>
+            <Text style={styles.compactTitle}>{t('qr.myResidentQR')}</Text>
+            <Text style={styles.compactSubtitle}>{houseNumber ? `${t('qr.house')} ${houseNumber}` : locationName}</Text>
+          </View>
         </View>
-        <View style={styles.compactRight}><View style={styles.timerBadge}><Text style={styles.timerBadgeText}>{remainingSeconds}s</Text></View><Ionicons name="expand-outline" size={scale(18)} color={COLORS.textSecondary} /></View>
+        <View style={styles.compactRight}>
+          <View style={styles.timerBadge}><Text style={styles.timerBadgeText}>{remainingSeconds}s</Text></View>
+          <Ionicons name="expand-outline" size={scale(18)} color={COLORS.textSecondary} />
+        </View>
       </TouchableOpacity>
       <Modal visible={showModal} animationType="fade" transparent={true} onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}><View><Text style={styles.modalTitle}>Mi QR de Residente</Text><Text style={styles.modalSubtitle}>Acceso personal</Text></View><View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN VIVO</Text></View></View>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>{t('qr.myResidentQR')}</Text>
+                <Text style={styles.modalSubtitle}>{t('qr.personalAccess')}</Text>
+              </View>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>{t('qr.live')}</Text>
+              </View>
+            </View>
             <View style={styles.qrWrapper}><QRCode value={qrData?.code || 'LOADING'} size={scale(200)} backgroundColor="#FFFFFF" color="#0F1A1E" /></View>
-            <View style={styles.timerContainer}><View style={styles.progressBarBg}><Animated.View style={[styles.progressBar, { width: progressWidth, backgroundColor: getProgressColor() }]} /></View><View style={styles.timerRow}><Ionicons name="time-outline" size={scale(16)} color={COLORS.textSecondary} /><Text style={styles.timerText}>Nuevo código en {remainingSeconds}s</Text></View></View>
-            <View style={styles.infoContainer}><View style={styles.infoRow}><Ionicons name="home-outline" size={scale(16)} color={COLORS.teal} /><Text style={styles.infoText}>{houseNumber ? `Casa ${houseNumber}` : 'Sin asignar'} • {locationName}</Text></View><Text style={styles.userName}>{fullName}</Text></View>
-            <View style={styles.securityNotice}><Ionicons name="shield-checkmark" size={scale(14)} color={COLORS.lime} /><Text style={styles.securityText}>Código único e intransferible</Text></View>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setShowModal(false)}><Text style={styles.closeButtonText}>Cerrar</Text></TouchableOpacity>
+            <View style={styles.timerContainer}>
+              <View style={styles.progressBarBg}><Animated.View style={[styles.progressBar, { width: progressWidth, backgroundColor: getProgressColor() }]} /></View>
+              <View style={styles.timerRow}>
+                <Ionicons name="time-outline" size={scale(16)} color={COLORS.textSecondary} />
+                <Text style={styles.timerText}>{t('qr.newCodeIn', { seconds: remainingSeconds })}</Text>
+              </View>
+            </View>
+            <View style={styles.infoContainer}>
+              <View style={styles.infoRow}>
+                <Ionicons name="home-outline" size={scale(16)} color={COLORS.teal} />
+                <Text style={styles.infoText}>{houseNumber ? `${t('qr.house')} ${houseNumber}` : t('qr.notAssigned')} • {locationName}</Text>
+              </View>
+              <Text style={styles.userName}>{fullName}</Text>
+            </View>
+            <View style={styles.securityNotice}>
+              <Ionicons name="shield-checkmark" size={scale(14)} color={COLORS.lime} />
+              <Text style={styles.securityText}>{t('qr.uniqueCode')}</Text>
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setShowModal(false)}>
+              <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

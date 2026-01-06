@@ -121,17 +121,11 @@ export default function Register() {
       });
 
       if (result.success) {
-        const user = result.data?.user;
-        
-        if (user?.location_id || invitationData) {
-          Alert.alert(t('auth.register.welcome'), t('auth.register.accountCreated'), [
-            { text: 'OK', onPress: () => router.replace('/(tabs)/home') }
-          ]);
-        } else {
-          Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.joinYourCommunity'), [
-            { text: 'OK', onPress: () => router.replace('/join-community') }
-          ]);
-        }
+        Alert.alert(
+          t('auth.register.welcome'), 
+          t('auth.register.accountCreated'), 
+          [{ text: 'OK', onPress: () => router.replace('/(tabs)/home') }]
+        );
       } else {
         Alert.alert(t('common.error'), result.error || t('auth.errors.registerFailed'));
       }

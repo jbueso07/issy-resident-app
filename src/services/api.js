@@ -1236,14 +1236,14 @@ export const cancelSubscription = async (subscriptionId) => {
 // ==========================================
 
 // Alias: getPersonalizedTips -> getTips
-export const getPersonalizedTips = async () => {
+export const getPersonalizedTips = async (language = 'es') => {
   try {
-    const data = await authFetch('/finance/tips/personalized');
+    const data = await authFetch(`/finance/tips/personalized?lang=${language}`);
     return { success: true, data: data.data || data };
   } catch (error) {
     // Fallback to regular tips
     try {
-      const fallbackData = await authFetch('/finance/tips');
+      const fallbackData = await authFetch(`/finance/tips?lang=${language}`);
       return { success: true, data: fallbackData.data || fallbackData || [] };
     } catch (e) {
       console.log('Tips endpoint not available:', error.message);
