@@ -31,16 +31,16 @@
     "comingSoonDesc": "This feature will be available soon"
   },
   "qr": {
-  "myResidentQR": "My Resident QR",
-  "personalAccess": "Personal access",
-  "live": "LIVE",
-  "newCodeIn": "New code in {{seconds}}s",
-  "house": "House",
-  "notAssigned": "Not assigned",
-  "uniqueCode": "Unique and non-transferable code",
-  "joinCommunityForQR": "Join a community to get your QR",
-  "errorGenerating": "Error generating QR"
-},
+    "myResidentQR": "My Resident QR",
+    "personalAccess": "Personal access",
+    "live": "LIVE",
+    "newCodeIn": "New code in {{seconds}}s",
+    "house": "House",
+    "notAssigned": "Not assigned",
+    "uniqueCode": "Unique and non-transferable code",
+    "joinCommunityForQR": "Join a community to get your QR",
+    "errorGenerating": "Error generating QR"
+  },
   "app": {
     "name": "ISSY",
     "welcome": "Welcome",
@@ -220,7 +220,9 @@
       "oneTime": "One time",
       "recurring": "Recurring",
       "temporary": "Temporary",
-      "permanent": "Permanent"
+      "permanent": "Permanent",
+      "single": "One time",
+      "frequent": "Frequent"
     },
     "weekdays": {
       "monday": "Monday",
@@ -229,7 +231,14 @@
       "thursday": "Thursday",
       "friday": "Friday",
       "saturday": "Saturday",
-      "sunday": "Sunday"
+      "sunday": "Sunday",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
     },
     "status": {
       "pending": "Pending",
@@ -237,7 +246,10 @@
       "inProgress": "In progress",
       "completed": "Completed",
       "cancelled": "Cancelled",
-      "expired": "Expired"
+      "expired": "Expired",
+      "active": "Active",
+      "valid": "Valid",
+      "permanent": "Permanent"
     },
     "form": {
       "visitorName": "Visitor name",
@@ -251,7 +263,14 @@
     "errors": {
       "nameRequired": "Name is required",
       "invalidDate": "Invalid date",
-      "createFailed": "Error creating visit"
+      "createFailed": "Error creating visit",
+      "visitorNameRequired": "Name is required",
+      "phoneRequired": "Phone is required",
+      "selectDays": "Select at least one day",
+      "generateError": "Error generating QR",
+      "shareError": "Error sharing",
+      "deleteError": "Error deleting",
+      "captureError": "Error capturing"
     },
     "empty": {
       "title": "No visits",
@@ -260,7 +279,60 @@
     "shareQr": "Share QR",
     "downloadQr": "Download QR",
     "qrValid": "Valid until",
-    "scanToEnter": "Scan to enter"
+    "scanToEnter": "Scan to enter",
+    "subtitle": "Manage your visits",
+    "createButton": "New QR Code",
+    "newQRCode": "New QR Code",
+    "activeCodes": "Active Codes",
+    "generateQR": "Generate QR",
+    "viewQR": "View QR",
+    "shareQR": "Share QR",
+    "deleteQR": "Delete QR",
+    "deleteConfirm": "Delete QR for {{name}}?",
+    "showToGuard": "Show this code to the guard",
+    "manualCode": "Manual code",
+    "close": "Close",
+    "visitorName": "Visitor name",
+    "visitorNamePlaceholder": "Ex: John Doe",
+    "visitorPhone": "Phone",
+    "visitorPhonePlaceholder": "Ex: 9999-9999",
+    "visitorId": "ID",
+    "visitorIdPlaceholder": "Ex: 0801-1990-12345",
+    "qrType": "QR Type",
+    "date": "Date",
+    "dateRange": "Date range",
+    "visitDate": "Visit date",
+    "duration": "Duration",
+    "schedule": "Schedule",
+    "accessSchedule": "Access schedule",
+    "startTime": "Start time",
+    "accessDays": "Access days",
+    "accessDaysLabel": "Allowed days",
+    "allDays": "All days",
+    "access247": "24/7 Access",
+    "always": "Always",
+    "valid": "Valid",
+    "house": "House",
+    "authorizedBy": "Authorized by",
+    "success": {
+      "title": "QR Generated!",
+      "message": "Share the code with your visitor"
+    },
+    "tabs": {
+      "myQR": "My QR",
+      "visitors": "Visitors",
+      "myAccesses": "My Accesses"
+    },
+    "myAccesses": {
+      "title": "My Accesses",
+      "subtitle": "Here you'll see QR codes shared with you to access other locations",
+      "comingSoonTitle": "Coming soon you'll be able to:",
+      "feature1": "Access your workplace with one tap",
+      "feature2": "Enter family members' homes",
+      "feature3": "Use your gym QR",
+      "feature4": "Receive instant invitations",
+      "comingSoon": "COMING SOON"
+    }
   },
   "payments": {
     "title": "Payments",

@@ -331,6 +331,21 @@
     "success": {
       "title": "¡QR Generado!",
       "message": "Comparte el código con tu visitante"
+    },
+    "tabs": {
+      "myQR": "Mi QR",
+      "visitors": "Visitantes",
+      "myAccesses": "Mis Accesos"
+    },
+    "myAccesses": {
+      "title": "Mis Accesos",
+      "subtitle": "Aquí aparecerán los códigos QR que te han compartido para acceder a otras ubicaciones",
+      "comingSoonTitle": "Próximamente podrás:",
+      "feature1": "Acceder a tu empresa con un toque",
+      "feature2": "Entrar a casa de familiares",
+      "feature3": "Usar tu QR del gimnasio",
+      "feature4": "Recibir invitaciones instantáneas",
+      "comingSoon": "PRÓXIMAMENTE"
     }
   },
   "payments": {
