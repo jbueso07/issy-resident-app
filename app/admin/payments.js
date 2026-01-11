@@ -1,5 +1,6 @@
 // app/admin/payments.js
-// ISSY Resident App - Admin: Gestor de Cobros (ProHome Dark Theme)
+// ISSY Admin - Gestor de Cobros Comunitarios (ProHome Dark Theme)
+// Tabs: Cobros | Comprobantes | Configuración
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,6 +15,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Image,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,25 +41,44 @@ const COLORS = {
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
+  blue: '#3B82F6',
   textPrimary: '#FFFFFF',
   textSecondary: '#8E9A9A',
   textMuted: '#5A6666',
   border: 'rgba(255,255,255,0.1)',
 };
 
+// Payment Status Config
 const getPaymentStatus = (t) => ({
-  pending: { label: t('admin.payments.status.pending'), color: COLORS.warning, icon: 'time' },
-  paid: { label: t('admin.payments.status.paid'), color: COLORS.success, icon: 'checkmark-circle' },
-  overdue: { label: t('admin.payments.status.overdue'), color: COLORS.danger, icon: 'alert-circle' },
-  cancelled: { label: t('admin.payments.status.cancelled'), color: COLORS.textMuted, icon: 'close-circle' },
+  pending: { label: t('admin.payments.status.pending', 'Pendiente'), color: COLORS.warning, icon: 'time' },
+  proof_submitted: { label: t('admin.payments.status.proofSubmitted', 'Comprobante enviado'), color: COLORS.blue, icon: 'document-text' },
+  paid: { label: t('admin.payments.status.paid', 'Pagado'), color: COLORS.success, icon: 'checkmark-circle' },
+  overdue: { label: t('admin.payments.status.overdue', 'Vencido'), color: COLORS.danger, icon: 'alert-circle' },
+  rejected: { label: t('admin.payments.status.rejected', 'Rechazado'), color: COLORS.danger, icon: 'close-circle' },
+  cancelled: { label: t('admin.payments.status.cancelled', 'Cancelado'), color: COLORS.textMuted, icon: 'close-circle' },
 });
 
+// Payment Types Config
 const getPaymentTypes = (t) => [
-  { value: 'maintenance', label: t('admin.payments.types.maintenance'), icon: 'home' },
-  { value: 'extraordinary', label: t('admin.payments.types.extraordinary'), icon: 'flash' },
-  { value: 'fine', label: t('admin.payments.types.fine'), icon: 'warning' },
-  { value: 'service', label: t('admin.payments.types.service'), icon: 'construct' },
-  { value: 'other', label: t('admin.payments.types.other'), icon: 'document-text' },
+  { value: 'maintenance', label: t('admin.payments.types.maintenance', 'Mantenimiento'), icon: 'home' },
+  { value: 'extraordinary', label: t('admin.payments.types.extraordinary', 'Extraordinario'), icon: 'flash' },
+  { value: 'fine', label: t('admin.payments.types.fine', 'Multa'), icon: 'warning' },
+  { value: 'service', label: t('admin.payments.types.service', 'Servicio'), icon: 'construct' },
+  { value: 'other', label: t('admin.payments.types.other', 'Otro'), icon: 'document-text' },
+];
+
+// Target Options for charge creation
+const getTargetOptions = (t) => [
+  { value: 'single', label: t('admin.payments.target.single', 'Un residente'), icon: 'person' },
+  { value: 'multiple', label: t('admin.payments.target.multiple', 'Varios residentes'), icon: 'people' },
+  { value: 'all', label: t('admin.payments.target.all', 'Todos los residentes'), icon: 'globe' },
+];
+
+// Payment Methods Options
+const getPaymentMethodOptions = (t) => [
+  { value: 'both', label: t('admin.payments.methods.both', 'Tarjeta y Comprobante'), icon: 'card' },
+  { value: 'card', label: t('admin.payments.methods.cardOnly', 'Solo Tarjeta'), icon: 'card-outline' },
+  { value: 'proof', label: t('admin.payments.methods.proofOnly', 'Solo Comprobante'), icon: 'document-attach' },
 ];
 
 export default function AdminPayments() {
@@ -67,46 +89,80 @@ export default function AdminPayments() {
   // i18n configs
   const PAYMENT_STATUS = getPaymentStatus(t);
   const PAYMENT_TYPES = getPaymentTypes(t);
+  const TARGET_OPTIONS = getTargetOptions(t);
+  const PAYMENT_METHOD_OPTIONS = getPaymentMethodOptions(t);
   
-  const [payments, setPayments] = useState([]);
+  // ============================================
+  // STATE
+  // ============================================
+  
+  // Main tab state
+  const [activeTab, setActiveTab] = useState('charges'); // charges, proofs, settings
+  
+  // Charges tab state
+  const [charges, setCharges] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // Proofs tab state
+  const [pendingProofs, setPendingProofs] = useState([]);
+  const [loadingProofs, setLoadingProofs] = useState(false);
+  const [selectedProof, setSelectedProof] = useState(null);
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [processingProof, setProcessingProof] = useState(false);
+  const [showChargeDetailModal, setShowChargeDetailModal] = useState(false);
+  const [selectedChargeDetail, setSelectedChargeDetail] = useState(null);
+
+  // Settings tab state
+  const [settings, setSettings] = useState({
+    card_payments_enabled: true,
+    proof_payments_enabled: true,
+    bank_name: '',
+    bank_account_number: '',
+    bank_account_name: '',
+    bank_instructions: '',
+  });
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  
+  // Users state (for charge creation)
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
+  const [createStep, setCreateStep] = useState('form'); // 'form' | 'userPicker'
   const [userSearch, setUserSearch] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
   
+  // Form state
   const [formData, setFormData] = useState({
+    target: 'single',
     user_id: '',
     user_name: '',
     payment_type: 'maintenance',
-    concept: '',
+    title: '',
+    description: '',
     amount: '',
     due_date: getDefaultDueDate(),
+    allowed_payment_methods: ['card', 'proof'],
   });
 
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
+
+  // ============================================
+  // HELPERS
+  // ============================================
 
   function getDefaultDueDate() {
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return lastDay.toISOString().split('T')[0];
   }
-
-  useEffect(() => {
-    if (!isAdmin) {
-      Alert.alert(t('admin.payments.accessDenied'), t('admin.payments.noPermissions'));
-      router.back();
-      return;
-    }
-    fetchData();
-  }, [filter]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -116,162 +172,9 @@ export default function AdminPayments() {
     };
   };
 
-  const fetchData = async () => {
-    try {
-      const headers = await getAuthHeaders();
-      const statusParam = filter !== 'all' ? `?status=${filter}` : '';
-      
-      const [paymentsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/api/admin/payments${statusParam}`, { headers }),
-        fetch(`${API_URL}/api/admin/payments/stats`, { headers }),
-      ]);
-
-      const paymentsData = await paymentsRes.json();
-      const statsData = await statsRes.json();
-
-      if (paymentsData.success !== false) {
-        setPayments(paymentsData.data || paymentsData || []);
-      }
-      if (statsData.success !== false) {
-        setStats(statsData.data || statsData);
-      }
-    } catch (error) {
-      console.error('Error fetching payments:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchData();
-  }, [filter]);
-
-  const fetchUsers = async () => {
-    if (users.length > 0) {
-      setShowUserPicker(true);
-      return;
-    }
-
-    setLoadingUsers(true);
-    setShowUserPicker(true);
-
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/admin/users`, { headers });
-      const data = await response.json();
-
-      if (data.success !== false) {
-        setUsers(data.data || data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const handleSelectUser = (selectedUser) => {
-    setFormData({
-      ...formData,
-      user_id: selectedUser.id,
-      user_name: selectedUser.full_name || selectedUser.name || selectedUser.email,
-    });
-    setShowUserPicker(false);
-    setUserSearch('');
-  };
-
-  const handleCreate = () => {
-    setFormData({
-      user_id: '',
-      user_name: '',
-      payment_type: 'maintenance',
-      concept: '',
-      amount: '',
-      due_date: getDefaultDueDate(),
-    });
-    setShowModal(true);
-  };
-
-  const handleMarkPaid = async (payment) => {
-    Alert.alert(
-      t('admin.payments.confirmPayment'),
-      t('admin.payments.markAsPaidConfirm', { concept: payment.concept || t('admin.payments.charge'), amount: payment.amount }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.confirm'),
-          onPress: async () => {
-            try {
-              const headers = await getAuthHeaders();
-              const response = await fetch(`${API_URL}/api/admin/payments/${payment.id}/mark-paid`, {
-                method: 'PUT',
-                headers,
-              });
-
-              if (response.ok) {
-                Alert.alert(t('common.success'), t('admin.payments.success.paymentRegistered'));
-                fetchData();
-              } else {
-                Alert.alert(t('common.error'), t('admin.payments.errors.updateFailed'));
-              }
-            } catch (error) {
-              Alert.alert(t('common.error'), t('admin.payments.errors.updateFailed'));
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.user_id) {
-      Alert.alert(t('common.error'), t('admin.payments.errors.selectResident'));
-      return;
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      Alert.alert(t('common.error'), t('admin.payments.errors.enterValidAmount'));
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const headers = await getAuthHeaders();
-      const payload = {
-        user_id: formData.user_id,
-        payment_type: formData.payment_type,
-        concept: formData.concept || PAYMENT_TYPES.find(t => t.value === formData.payment_type)?.label,
-        amount: parseFloat(formData.amount),
-        due_date: formData.due_date,
-        status: 'pending',
-      };
-
-      const response = await fetch(`${API_URL}/api/admin/payments`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && (data.success !== false)) {
-        Alert.alert(t('common.success'), t('admin.payments.success.chargeCreated'));
-        setShowModal(false);
-        fetchData();
-      } else {
-        Alert.alert(t('common.error'), data.error || data.message || t('admin.payments.errors.createFailed'));
-      }
-    } catch (error) {
-      console.error('Error creating payment:', error);
-      Alert.alert(t('common.error'), t('admin.payments.errors.createFailed'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const formatCurrency = (amount) => {
-    return `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
+  const formatCurrency = (amount, currency = 'HNL') => {
+    const symbol = currency === 'USD' ? '$' : 'L';
+    return `${symbol} ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 2 })}`;
   };
 
   const formatDate = (dateString) => {
@@ -283,13 +186,406 @@ export default function AdminPayments() {
     });
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('es-HN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   const getPaymentTypeLabel = (type) => {
-    return PAYMENT_TYPES.find(t => t.value === type)?.label || type;
+    return PAYMENT_TYPES.find(pt => pt.value === type)?.label || type;
   };
 
   const getPaymentTypeIcon = (type) => {
-    return PAYMENT_TYPES.find(t => t.value === type)?.icon || 'document-text';
+    return PAYMENT_TYPES.find(pt => pt.value === type)?.icon || 'document-text';
   };
+
+  const isOverdue = (dueDate) => {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date();
+  };
+
+  // ============================================
+  // EFFECTS
+  // ============================================
+
+  useEffect(() => {
+    if (!isAdmin) {
+      Alert.alert(
+        t('admin.payments.accessDenied', 'Acceso Denegado'),
+        t('admin.payments.noPermissions', 'No tienes permisos para acceder a esta sección')
+      );
+      router.back();
+      return;
+    }
+    loadTabData();
+  }, [activeTab, filter]);
+
+  const loadTabData = async () => {
+    if (activeTab === 'charges') {
+      await fetchCharges();
+    } else if (activeTab === 'proofs') {
+      await fetchPendingProofs();
+    } else if (activeTab === 'settings') {
+      await fetchSettings();
+    }
+  };
+
+  // ============================================
+  // CHARGES TAB - API CALLS
+  // ============================================
+
+  const fetchCharges = async () => {
+    try {
+      setLoading(true);
+      const headers = await getAuthHeaders();
+      const statusParam = filter !== 'all' ? `?status=${filter}` : '';
+      
+      const [chargesRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/api/community-payments/admin/charges${statusParam}`, { headers }),
+        fetch(`${API_URL}/api/community-payments/admin/stats`, { headers }),
+      ]);
+
+      const chargesData = await chargesRes.json();
+      const statsData = await statsRes.json();
+
+      if (chargesData.success) {
+        setCharges(chargesData.data || []);
+      }
+      if (statsData.success) {
+        setStats(statsData.data);
+      }
+    } catch (error) {
+      console.error('Error fetching charges:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+  // Cerrar modal de crear primero
+  setShowCreateModal(false);
+  
+  if (users.length > 0) {
+    setShowUserPicker(true);
+    return;
+  }
+
+  setLoadingUsers(true);
+  setShowUserPicker(true);
+
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_URL}/api/community-payments/admin/residents`, { headers });
+    const data = await response.json();
+
+    if (data.success) {
+      setUsers(data.data || []);
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error);
+  } finally {
+    setLoadingUsers(false);
+  }
+};
+
+
+
+  const handleCreateCharge = async () => {
+    // Validations
+    if (formData.target === 'single' && !formData.user_id) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.selectResident', 'Selecciona un residente'));
+      return;
+    }
+    if (formData.target === 'multiple' && selectedUsers.length === 0) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.selectResidents', 'Selecciona al menos un residente'));
+      return;
+    }
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.enterValidAmount', 'Ingresa un monto válido'));
+      return;
+    }
+    if (!formData.title) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.enterTitle', 'Ingresa un título para el cobro'));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const headers = await getAuthHeaders();
+      
+      // Determine user_ids based on target
+      let userIds = [];
+      if (formData.target === 'single') {
+        userIds = [formData.user_id];
+      } else if (formData.target === 'multiple') {
+        userIds = selectedUsers.map(u => u.id);
+      }
+      // For 'all', we send empty array and backend handles it
+
+      const payload = {
+        target: formData.target,
+        user_ids: userIds,
+        charge_type: formData.payment_type,
+        title: formData.title || getPaymentTypeLabel(formData.payment_type),
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        currency: 'HNL',
+        due_date: formData.due_date,
+        allowed_payment_methods: formData.allowed_payment_methods,
+      };
+
+      const response = await fetch(`${API_URL}/api/community-payments/admin/charges`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const count = data.data?.charges_created || 1;
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.success.chargesCreated', { count }, `Se crearon ${count} cobro(s) exitosamente`)
+        );
+        setShowCreateModal(false);
+        resetForm();
+        fetchCharges();
+      } else {
+        Alert.alert(t('common.error', 'Error'), data.error || t('admin.payments.errors.createFailed', 'Error al crear cobro'));
+      }
+    } catch (error) {
+      console.error('Error creating charge:', error);
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.createFailed', 'Error al crear cobro'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelCharge = async (charge) => {
+    Alert.alert(
+      t('admin.payments.cancelCharge', 'Cancelar Cobro'),
+      t('admin.payments.cancelChargeConfirm', '¿Estás seguro de cancelar este cobro?'),
+      [
+        { text: t('common.no', 'No'), style: 'cancel' },
+        {
+          text: t('common.yes', 'Sí'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const response = await fetch(`${API_URL}/api/community-payments/admin/charges/${charge.id}`, {
+                method: 'DELETE',
+                headers,
+              });
+
+              if (response.ok) {
+                Alert.alert(t('common.success', 'Éxito'), t('admin.payments.success.chargeCancelled', 'Cobro cancelado'));
+                fetchCharges();
+              }
+            } catch (error) {
+              Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.cancelFailed', 'Error al cancelar'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openChargeDetail = (charge) => {
+    setSelectedChargeDetail(charge);
+setShowChargeDetailModal(true);
+};
+
+  const resetForm = () => {
+    setFormData({
+      target: 'single',
+      user_id: '',
+      user_name: '',
+      payment_type: 'maintenance',
+      title: '',
+      description: '',
+      amount: '',
+      due_date: getDefaultDueDate(),
+      allowed_payment_methods: ['card', 'proof'],
+    });
+    setSelectedUsers([]);
+  };
+
+  // ============================================
+  // PROOFS TAB - API CALLS
+  // ============================================
+
+  const fetchPendingProofs = async () => {
+    try {
+      setLoadingProofs(true);
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/api/community-payments/admin/pending-proofs`, { headers });
+      const data = await response.json();
+
+      if (data.success) {
+        setPendingProofs(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching proofs:', error);
+    } finally {
+      setLoadingProofs(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleVerifyProof = async (proof) => {
+    setProcessingProof(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/community-payments/admin/payments/${proof.id}/verify`, {
+        method: 'POST',
+        headers,
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.success.proofVerified', 'Comprobante verificado exitosamente')
+        );
+        setShowProofModal(false);
+        setSelectedProof(null);
+        fetchPendingProofs();
+      } else {
+        Alert.alert(t('common.error', 'Error'), data.error || t('admin.payments.errors.verifyFailed', 'Error al verificar'));
+      }
+    } catch (error) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.verifyFailed', 'Error al verificar'));
+    } finally {
+      setProcessingProof(false);
+    }
+  };
+
+  const handleRejectProof = async (proof) => {
+    if (!rejectReason.trim()) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.enterRejectReason', 'Ingresa una razón de rechazo'));
+      return;
+    }
+
+    setProcessingProof(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/community-payments/admin/payments/${proof.id}/reject`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason: rejectReason }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.success.proofRejected', 'Comprobante rechazado')
+        );
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+        fetchPendingProofs();
+      } else {
+        Alert.alert(t('common.error', 'Error'), data.error || t('admin.payments.errors.rejectFailed', 'Error al rechazar'));
+      }
+    } catch (error) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.rejectFailed', 'Error al rechazar'));
+    } finally {
+      setProcessingProof(false);
+    }
+  };
+
+  // ============================================
+  // SETTINGS TAB - API CALLS
+  // ============================================
+
+  const fetchSettings = async () => {
+    try {
+      setLoadingSettings(true);
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${API_URL}/api/community-payments/settings`, { headers });
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setSettings({
+          card_payments_enabled: data.data.card_payments_enabled ?? true,
+          proof_payments_enabled: data.data.proof_payments_enabled ?? true,
+          bank_name: data.data.bank_name || '',
+          bank_account_number: data.data.bank_account_number || '',
+          bank_account_name: data.data.bank_account_name || '',
+          bank_instructions: data.data.bank_instructions || '',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/community-payments/admin/settings`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(settings),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.success.settingsSaved', 'Configuración guardada')
+        );
+      } else {
+        Alert.alert(t('common.error', 'Error'), data.error || t('admin.payments.errors.saveFailed', 'Error al guardar'));
+      }
+    } catch (error) {
+      Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.saveFailed', 'Error al guardar'));
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  // ============================================
+  // USER SELECTION HELPERS
+  // ============================================
+
+  const handleSelectUser = (selectedUser) => {
+  if (formData.target === 'single') {
+    setFormData({
+      ...formData,
+      user_id: selectedUser.id,
+      user_name: selectedUser.name || selectedUser.email,
+    });
+    setShowUserPicker(false);
+    setShowCreateModal(true);  // <-- AGREGAR ESTA LÍNEA
+  } else if (formData.target === 'multiple') {
+    const alreadySelected = selectedUsers.find(u => u.id === selectedUser.id);
+    if (alreadySelected) {
+      setSelectedUsers(selectedUsers.filter(u => u.id !== selectedUser.id));
+    } else {
+      setSelectedUsers([...selectedUsers, selectedUser]);
+    }
+  }
+  setUserSearch('');
+};
 
   const filteredUsers = users.filter(u => {
     const searchLower = userSearch.toLowerCase();
@@ -299,12 +595,994 @@ export default function AdminPayments() {
     return name.includes(searchLower) || email.includes(searchLower) || unit.includes(searchLower);
   });
 
-  if (loading) {
+  // ============================================
+  // REFRESH HANDLER
+  // ============================================
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTabData();
+  }, [activeTab, filter]);
+
+  // ============================================
+  // RENDER: MAIN TABS
+  // ============================================
+
+  const renderTabs = () => (
+    <View style={styles.tabsContainer}>
+      <TouchableOpacity
+        style={[styles.mainTab, activeTab === 'charges' && styles.mainTabActive]}
+        onPress={() => setActiveTab('charges')}
+      >
+        <Ionicons 
+          name="receipt-outline" 
+          size={18} 
+          color={activeTab === 'charges' ? COLORS.background : COLORS.textSecondary} 
+        />
+        <Text style={[styles.mainTabText, activeTab === 'charges' && styles.mainTabTextActive]}>
+          {t('admin.payments.tabs.charges', 'Cobros')}
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={[styles.mainTab, activeTab === 'proofs' && styles.mainTabActive]}
+        onPress={() => setActiveTab('proofs')}
+      >
+        <Ionicons 
+          name="document-text-outline" 
+          size={18} 
+          color={activeTab === 'proofs' ? COLORS.background : COLORS.textSecondary} 
+        />
+        <Text style={[styles.mainTabText, activeTab === 'proofs' && styles.mainTabTextActive]}>
+          {t('admin.payments.tabs.proofs', 'Comprobantes')}
+        </Text>
+        {pendingProofs.length > 0 && (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>{pendingProofs.length}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={[styles.mainTab, activeTab === 'settings' && styles.mainTabActive]}
+        onPress={() => setActiveTab('settings')}
+      >
+        <Ionicons 
+          name="settings-outline" 
+          size={18} 
+          color={activeTab === 'settings' ? COLORS.background : COLORS.textSecondary} 
+        />
+        <Text style={[styles.mainTabText, activeTab === 'settings' && styles.mainTabTextActive]}>
+          {t('admin.payments.tabs.settings', 'Config')}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ============================================
+  // RENDER: CHARGES TAB
+  // ============================================
+
+  const renderChargesTab = () => (
+    <>
+      {/* Stats Cards */}
+      {stats && (
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+            <Text style={[styles.statValue, { color: COLORS.success }]}>
+              {formatCurrency(stats.total_collected || 0)}
+            </Text>
+            <Text style={styles.statLabel}>{t('admin.payments.stats.collected', 'Cobrado')}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="time" size={22} color={COLORS.warning} />
+            <Text style={[styles.statValue, { color: COLORS.warning }]}>
+              {formatCurrency(stats.total_pending || 0)}
+            </Text>
+            <Text style={styles.statLabel}>{t('admin.payments.stats.pending', 'Pendiente')}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="hourglass" size={22} color={COLORS.blue} />
+            <Text style={[styles.statValue, { color: COLORS.blue }]}>
+              {stats.pending_proofs || 0}
+            </Text>
+            <Text style={styles.statLabel}>{t('admin.payments.stats.proofs', 'Por verificar')}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Filters */}
+      <ScrollView style={styles.modalContent}>
+
+  {/* ===================== */}
+  {/* STEP: FORM */}
+  {/* ===================== */}
+  {createStep === 'form' && (
+    <>
+      {/* 🔽 AQUÍ SE QUEDA TODO TU FORMULARIO ORIGINAL SIN CAMBIOS 🔽 */}
+      {/* NO BORRES NI MODIFIQUES NADA DEL FORMULARIO */}
+    </>
+  )}
+
+  {/* ===================== */}
+  {/* STEP: USER PICKER */}
+  {/* ===================== */}
+  {createStep === 'userPicker' && (
+    <>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          value={userSearch}
+          onChangeText={setUserSearch}
+          placeholder={t('admin.payments.searchPlaceholder', 'Buscar por nombre, email o unidad...')}
+          placeholderTextColor={COLORS.textMuted}
+        />
+      </View>
+
+      {loadingUsers ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.lime} />
+          <Text style={styles.loadingText}>
+            {t('admin.payments.loadingResidents', 'Cargando residentes...')}
+          </Text>
+        </View>
+      ) : (
+        filteredUsers.map((user) => {
+          const isSelected =
+            formData.target === 'single'
+              ? formData.user_id === user.id
+              : selectedUsers.some(u => u.id === user.id);
+
+          return (
+            <TouchableOpacity
+              key={user.id}
+              style={[styles.userItem, isSelected && styles.userItemSelected]}
+              onPress={() => handleSelectUser(user)}
+            >
+              <View style={styles.userAvatar}>
+                <Text style={styles.userAvatarText}>
+                  {(user.name || user.email || '?')[0].toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{user.name || user.email}</Text>
+                <Text style={styles.userUnit}>
+                  {user.unit_number || user.email}
+                </Text>
+              </View>
+
+              {formData.target === 'multiple' && (
+                <Ionicons
+                  name={isSelected ? 'checkbox' : 'square-outline'}
+                  size={24}
+                  color={isSelected ? COLORS.lime : COLORS.textMuted}
+                />
+              )}
+
+              {formData.target === 'single' && isSelected && (
+                <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
+              )}
+            </TouchableOpacity>
+          );
+        })
+      )}
+
+      <View style={{ height: 100 }} />
+    </>
+  )}
+
+</ScrollView>
+
+
+      {/* Charges List */}
+      {charges.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cash-outline" size={64} color={COLORS.textMuted} />
+          <Text style={styles.emptyTitle}>{t('admin.payments.empty.noCharges', 'No hay cobros')}</Text>
+          <Text style={styles.emptySubtitle}>{t('admin.payments.empty.createFirst', 'Crea tu primer cobro')}</Text>
+        </View>
+      ) : (
+        charges.map((charge) => {
+  // Use display_status from backend, fallback to old logic
+  const status =
+    charge.display_status ||
+    charge.payment_status ||
+    charge.status ||
+    'pending';
+
+  const statusInfo = PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
+  const chargeIsOverdue = status === 'pending' && isOverdue(charge.due_date);
+  const displayStatus = chargeIsOverdue
+    ? PAYMENT_STATUS.overdue
+    : statusInfo;
+
+  // Get user info from payment or charge
+  const payment = charge.payment || charge.payments?.[0];
+  const userName =
+    payment?.user?.name ||
+    payment?.user?.full_name ||
+    charge.user?.name ||
+    charge.user_name ||
+    t('common.user', 'Usuario');
+
+  const userUnit =
+    payment?.user?.unit_number ||
+    charge.user?.unit_number ||
+    '';
+
+  return (
+    <TouchableOpacity
+      key={charge.id}
+      style={styles.chargeCard}
+      onPress={() => openChargeDetail(charge)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardIconContainer}>
+          <Ionicons
+            name={getPaymentTypeIcon(
+              charge.charge_type || charge.payment_type
+            )}
+            size={20}
+            color={COLORS.teal}
+          />
+        </View>
+
+        <View style={styles.cardHeaderLeft}>
+          <Text style={styles.chargeConcept}>
+            {charge.title ||
+              charge.concept ||
+              getPaymentTypeLabel(
+                charge.charge_type || charge.payment_type
+              )}
+          </Text>
+          <Text style={styles.chargeUser}>
+            {userUnit ? `${userUnit} - ${userName}` : userName}
+          </Text>
+        </View>
+
+        <View style={styles.cardHeaderRight}>
+          <Text style={styles.chargeAmount}>
+            {formatCurrency(charge.amount, charge.currency)}
+          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={COLORS.textMuted}
+          />
+        </View>
+      </View>
+
+      <View style={styles.cardFooter}>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: displayStatus.color + '20' },
+          ]}
+        >
+          <Ionicons
+            name={displayStatus.icon}
+            size={14}
+            color={displayStatus.color}
+          />
+          <Text
+            style={[
+              styles.statusText,
+              { color: displayStatus.color },
+            ]}
+          >
+            {displayStatus.label}
+          </Text>
+        </View>
+
+        <View style={styles.dueDateContainer}>
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={COLORS.textSecondary}
+          />
+          <Text style={styles.dueDate}>
+            {formatDate(charge.due_date)}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+})
+
+      )}
+    </>
+  );
+
+  // ============================================
+  // RENDER: PROOFS TAB
+  // ============================================
+
+  const renderProofsTab = () => {
+    if (loadingProofs) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.lime} />
+          <Text style={styles.loadingText}>{t('admin.payments.loadingProofs', 'Cargando comprobantes...')}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <>
+        {pendingProofs.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="checkmark-done-circle-outline" size={64} color={COLORS.success} />
+            <Text style={styles.emptyTitle}>{t('admin.payments.empty.noProofs', '¡Todo al día!')}</Text>
+            <Text style={styles.emptySubtitle}>{t('admin.payments.empty.noProofsSubtitle', 'No hay comprobantes pendientes de verificar')}</Text>
+          </View>
+        ) : (
+          pendingProofs.map((proof) => (
+            <TouchableOpacity 
+              key={proof.id} 
+              style={styles.proofCard}
+              onPress={() => {
+                setSelectedProof(proof);
+                setShowProofModal(true);
+                setRejectReason('');
+              }}
+            >
+              <View style={styles.proofHeader}>
+                <View style={styles.proofIconContainer}>
+                  <Ionicons name="document-attach" size={24} color={COLORS.blue} />
+                </View>
+                <View style={styles.proofInfo}>
+                  <Text style={styles.proofTitle}>
+                    {proof.charge?.title || proof.concept || t('admin.payments.proofPayment', 'Comprobante de Pago')}
+                  </Text>
+                  <Text style={styles.proofUser}>
+                    {proof.user?.full_name || proof.user?.name || t('common.user', 'Usuario')}
+                  </Text>
+                  <Text style={styles.proofDate}>
+                    {t('admin.payments.submittedAt', 'Enviado')}: {formatDateTime(proof.created_at)}
+                  </Text>
+                </View>
+                <Text style={styles.proofAmount}>{formatCurrency(proof.amount, proof.currency)}</Text>
+              </View>
+              
+              <View style={styles.proofPreview}>
+                {proof.proof_url && (
+                  <Image 
+                    source={{ uri: proof.proof_url }} 
+                    style={styles.proofThumbnail}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={styles.proofActions}>
+                  <Text style={styles.proofActionHint}>{t('admin.payments.tapToReview', 'Toca para revisar')}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
+      </>
+    );
+  };
+
+  // ============================================
+  // RENDER: SETTINGS TAB
+  // ============================================
+
+  const renderSettingsTab = () => {
+    if (loadingSettings) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.lime} />
+          <Text style={styles.loadingText}>{t('admin.payments.loadingSettings', 'Cargando configuración...')}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.settingsContainer}>
+        {/* Payment Methods */}
+        <View style={styles.settingsSection}>
+          <Text style={styles.settingsSectionTitle}>
+            {t('admin.payments.settings.paymentMethods', 'Métodos de Pago')}
+          </Text>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="card" size={24} color={COLORS.teal} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>
+                  {t('admin.payments.settings.cardPayments', 'Pagos con Tarjeta')}
+                </Text>
+                <Text style={styles.settingDescription}>
+                  {t('admin.payments.settings.cardPaymentsDesc', 'Permitir pagos con tarjeta de crédito/débito')}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={settings.card_payments_enabled}
+              onValueChange={(value) => setSettings({ ...settings, card_payments_enabled: value })}
+              trackColor={{ false: COLORS.border, true: COLORS.lime + '50' }}
+              thumbColor={settings.card_payments_enabled ? COLORS.lime : COLORS.textMuted}
+            />
+          </View>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="document-attach" size={24} color={COLORS.purple} />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingLabel}>
+                  {t('admin.payments.settings.proofPayments', 'Comprobantes de Pago')}
+                </Text>
+                <Text style={styles.settingDescription}>
+                  {t('admin.payments.settings.proofPaymentsDesc', 'Permitir subir comprobantes de transferencia')}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={settings.proof_payments_enabled}
+              onValueChange={(value) => setSettings({ ...settings, proof_payments_enabled: value })}
+              trackColor={{ false: COLORS.border, true: COLORS.lime + '50' }}
+              thumbColor={settings.proof_payments_enabled ? COLORS.lime : COLORS.textMuted}
+            />
+          </View>
+        </View>
+
+        {/* Bank Information */}
+        {settings.proof_payments_enabled && (
+          <View style={styles.settingsSection}>
+            <Text style={styles.settingsSectionTitle}>
+              {t('admin.payments.settings.bankInfo', 'Información Bancaria')}
+            </Text>
+            <Text style={styles.settingsSectionSubtitle}>
+              {t('admin.payments.settings.bankInfoDesc', 'Esta información se mostrará a los residentes al subir comprobantes')}
+            </Text>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.bankName', 'Nombre del Banco')}</Text>
+              <TextInput
+                style={styles.formInput}
+                value={settings.bank_name}
+                onChangeText={(text) => setSettings({ ...settings, bank_name: text })}
+                placeholder="Ej: Banco Atlántida"
+                placeholderTextColor={COLORS.textMuted}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.accountNumber', 'Número de Cuenta')}</Text>
+              <TextInput
+                style={styles.formInput}
+                value={settings.bank_account_number}
+                onChangeText={(text) => setSettings({ ...settings, bank_account_number: text })}
+                placeholder="Ej: 1234567890"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.accountName', 'Nombre del Titular')}</Text>
+              <TextInput
+                style={styles.formInput}
+                value={settings.bank_account_name}
+                onChangeText={(text) => setSettings({ ...settings, bank_account_name: text })}
+                placeholder="Ej: Residencial Los Pinos"
+                placeholderTextColor={COLORS.textMuted}
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.instructions', 'Instrucciones (opcional)')}</Text>
+              <TextInput
+                style={[styles.formInput, styles.formInputMultiline]}
+                value={settings.bank_instructions}
+                onChangeText={(text) => setSettings({ ...settings, bank_instructions: text })}
+                placeholder="Instrucciones adicionales para el pago..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Save Button */}
+        <TouchableOpacity 
+          style={styles.saveSettingsButton}
+          onPress={handleSaveSettings}
+          disabled={savingSettings}
+        >
+          {savingSettings ? (
+            <ActivityIndicator size="small" color={COLORS.background} />
+          ) : (
+            <>
+              <Ionicons name="save" size={20} color={COLORS.background} />
+              <Text style={styles.saveSettingsButtonText}>
+                {t('admin.payments.settings.save', 'Guardar Configuración')}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // ============================================
+  // RENDER: MODALS
+  // ============================================
+
+  const renderCreateModal = () => (
+    <Modal
+      visible={showCreateModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowCreateModal(false)}
+    >
+      <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+            <Text style={styles.modalCancel}>{t('common.cancel', 'Cancelar')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>{t('admin.payments.newCharge', 'Nuevo Cobro')}</Text>
+          <TouchableOpacity onPress={handleCreateCharge} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator size="small" color={COLORS.lime} />
+            ) : (
+              <Text style={styles.modalSave}>{t('common.create', 'Crear')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.modalContent}>
+          {/* Target Selection */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.target', 'Cobrar a')}</Text>
+            <View style={styles.targetGrid}>
+              {TARGET_OPTIONS.map((option) => {
+                const isSelected = formData.target === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.targetButton, isSelected && styles.targetButtonActive]}
+                    onPress={() => {
+                      setFormData({ ...formData, target: option.value, user_id: '', user_name: '' });
+                      setSelectedUsers([]);
+                    }}
+                  >
+                    <Ionicons 
+                      name={option.icon} 
+                      size={24} 
+                      color={isSelected ? COLORS.lime : COLORS.textSecondary} 
+                    />
+                    <Text style={[styles.targetLabel, isSelected && styles.targetLabelActive]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* User Selector - Only for single/multiple */}
+          {formData.target !== 'all' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>
+                {formData.target === 'single' 
+                  ? t('admin.payments.form.resident', 'Residente') + ' *'
+                  : t('admin.payments.form.residents', 'Residentes') + ' *'
+                }
+              </Text>
+              
+              {formData.target === 'single' ? (
+                <TouchableOpacity style={styles.selectorButton} onPress={fetchUsers}>
+                  <Text style={formData.user_name ? styles.selectorText : styles.selectorPlaceholder}>
+                    {formData.user_name || t('admin.payments.form.selectResident', 'Seleccionar residente...')}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.selectorButton} onPress={fetchUsers}>
+                    <Text style={selectedUsers.length > 0 ? styles.selectorText : styles.selectorPlaceholder}>
+                      {selectedUsers.length > 0 
+                        ? t('admin.payments.form.selectedCount', { count: selectedUsers.length }, `${selectedUsers.length} seleccionados`)
+                        : t('admin.payments.form.selectResidents', 'Seleccionar residentes...')
+                      }
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  
+                  {selectedUsers.length > 0 && (
+                    <View style={styles.selectedUsersList}>
+                      {selectedUsers.map((user) => (
+                        <View key={user.id} style={styles.selectedUserChip}>
+                          <Text style={styles.selectedUserChipText}>
+                            {user.full_name || user.name || user.email}
+                          </Text>
+                          <TouchableOpacity onPress={() => handleSelectUser(user)}>
+                            <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+          )}
+
+          {/* Charge Type */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.chargeType', 'Tipo de Cobro')}</Text>
+            <View style={styles.typeGrid}>
+              {PAYMENT_TYPES.map((type) => {
+                const isSelected = formData.payment_type === type.value;
+                return (
+                  <TouchableOpacity
+                    key={type.value}
+                    style={[styles.typeButton, isSelected && styles.typeButtonActive]}
+                    onPress={() => setFormData({ ...formData, payment_type: type.value })}
+                  >
+                    <Ionicons 
+                      name={type.icon} 
+                      size={24} 
+                      color={isSelected ? COLORS.lime : COLORS.textSecondary} 
+                    />
+                    <Text style={[styles.typeLabel, isSelected && styles.typeLabelActive]}>
+                      {type.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Title */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.title', 'Título')} *</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.title}
+              onChangeText={(text) => setFormData({ ...formData, title: text })}
+              placeholder={t('admin.payments.form.titlePlaceholder', 'Ej: Cuota Enero 2026')}
+              placeholderTextColor={COLORS.textMuted}
+            />
+          </View>
+
+          {/* Description */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.description', 'Descripción (opcional)')}</Text>
+            <TextInput
+              style={[styles.formInput, styles.formInputMultiline]}
+              value={formData.description}
+              onChangeText={(text) => setFormData({ ...formData, description: text })}
+              placeholder={t('admin.payments.form.descriptionPlaceholder', 'Descripción adicional...')}
+              placeholderTextColor={COLORS.textMuted}
+              multiline
+              numberOfLines={2}
+            />
+          </View>
+
+          {/* Amount */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.amount', 'Monto (L)')} *</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.amount}
+              onChangeText={(text) => setFormData({ ...formData, amount: text.replace(/[^0-9.]/g, '') })}
+              placeholder="0.00"
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Due Date */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.dueDate', 'Fecha de Vencimiento')} *</Text>
+            <TextInput
+              style={styles.formInput}
+              value={formData.due_date}
+              onChangeText={(text) => setFormData({ ...formData, due_date: text })}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={COLORS.textMuted}
+            />
+            <Text style={styles.formHint}>{t('admin.payments.form.dateFormat', 'Formato: 2026-01-31')}</Text>
+          </View>
+
+          {/* Payment Methods */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>{t('admin.payments.form.allowedMethods', 'Métodos de Pago Permitidos')}</Text>
+            <View style={styles.methodsGrid}>
+              {PAYMENT_METHOD_OPTIONS.map((option) => {
+                let isSelected = false;
+                if (option.value === 'both') {
+                  isSelected = formData.allowed_payment_methods.includes('card') && formData.allowed_payment_methods.includes('proof');
+                } else if (option.value === 'card') {
+                  isSelected = formData.allowed_payment_methods.includes('card') && !formData.allowed_payment_methods.includes('proof');
+                } else if (option.value === 'proof') {
+                  isSelected = !formData.allowed_payment_methods.includes('card') && formData.allowed_payment_methods.includes('proof');
+                }
+                
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.methodButton, isSelected && styles.methodButtonActive]}
+                    onPress={() => {
+                      if (option.value === 'both') {
+                        setFormData({ ...formData, allowed_payment_methods: ['card', 'proof'] });
+                      } else if (option.value === 'card') {
+                        setFormData({ ...formData, allowed_payment_methods: ['card'] });
+                      } else {
+                        setFormData({ ...formData, allowed_payment_methods: ['proof'] });
+                      }
+                    }}
+                  >
+                    <Ionicons 
+                      name={option.icon} 
+                      size={20} 
+                      color={isSelected ? COLORS.lime : COLORS.textSecondary} 
+                    />
+                    <Text style={[styles.methodLabel, isSelected && styles.methodLabelActive]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+
+  const renderUserPickerModal = () => (
+    // DESPUÉS  
+<Modal
+  visible={showUserPicker}
+  animationType="slide"
+  presentationStyle="overFullScreen"
+  transparent={false}
+    >
+      <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => {
+  setShowUserPicker(false);
+  setShowCreateModal(true);
+}}>
+            <Text style={styles.modalCancel}>{t('common.cancel', 'Cancelar')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>
+            {formData.target === 'single' 
+              ? t('admin.payments.selectResident', 'Seleccionar Residente')
+              : t('admin.payments.selectResidents', 'Seleccionar Residentes')
+            }
+          </Text>
+          {formData.target === 'multiple' && (
+            <TouchableOpacity onPress={() => setShowUserPicker(false)}>
+              <Text style={styles.modalSave}>{t('common.done', 'Listo')}</Text>
+            </TouchableOpacity>
+          )}
+          {formData.target === 'single' && <View style={{ width: 60 }} />}
+        </View>
+
+        {/* Search */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            value={userSearch}
+            onChangeText={setUserSearch}
+            placeholder={t('admin.payments.searchPlaceholder', 'Buscar por nombre, email o unidad...')}
+            placeholderTextColor={COLORS.textMuted}
+          />
+        </View>
+
+        {loadingUsers ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.lime} />
+            <Text style={styles.loadingText}>{t('admin.payments.loadingResidents', 'Cargando residentes...')}</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.userList}>
+            {filteredUsers.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={48} color={COLORS.textMuted} />
+                <Text style={styles.emptyTitle}>{t('admin.payments.noResidentsFound', 'No se encontraron residentes')}</Text>
+              </View>
+            ) : (
+              filteredUsers.map((user) => {
+                const isSelected = formData.target === 'single'
+                  ? formData.user_id === user.id
+                  : selectedUsers.some(u => u.id === user.id);
+                  
+                return (
+                  <TouchableOpacity
+                    key={user.id}
+                    style={[styles.userItem, isSelected && styles.userItemSelected]}
+                    onPress={() => handleSelectUser(user)}
+                  >
+                    <View style={styles.userAvatar}>
+                      <Text style={styles.userAvatarText}>
+                        {(user.full_name || user.name || user.email || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.userName}>{user.full_name || user.name || user.email}</Text>
+                      <Text style={styles.userUnit}>
+                        {user.unit_number || user.unit || user.email}
+                      </Text>
+                    </View>
+                    {formData.target === 'multiple' && (
+                      <Ionicons 
+                        name={isSelected ? 'checkbox' : 'square-outline'} 
+                        size={24} 
+                        color={isSelected ? COLORS.lime : COLORS.textMuted} 
+                      />
+                    )}
+                    {formData.target === 'single' && isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
+
+  const renderProofModal = () => (
+    <Modal
+      visible={showProofModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => {
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+      }}
+    >
+      <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => {
+            setShowProofModal(false);
+            setSelectedProof(null);
+            setRejectReason('');
+          }}>
+            <Text style={styles.modalCancel}>{t('common.close', 'Cerrar')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>{t('admin.payments.reviewProof', 'Revisar Comprobante')}</Text>
+          <View style={{ width: 60 }} />
+        </View>
+
+        <ScrollView style={styles.modalContent}>
+          {selectedProof && (
+            <>
+              {/* Proof Image */}
+              {selectedProof.proof_url && (
+                <View style={styles.proofImageContainer}>
+                  <Image 
+                    source={{ uri: selectedProof.proof_url }} 
+                    style={styles.proofImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              {/* Proof Details */}
+              <View style={styles.proofDetails}>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.resident', 'Residente')}:</Text>
+                  <Text style={styles.proofDetailValue}>
+                    {selectedProof.user?.full_name || selectedProof.user?.name || '-'}
+                  </Text>
+                </View>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.concept', 'Concepto')}:</Text>
+                  <Text style={styles.proofDetailValue}>
+                    {selectedProof.charge?.title || selectedProof.concept || '-'}
+                  </Text>
+                </View>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.amount', 'Monto')}:</Text>
+                  <Text style={[styles.proofDetailValue, { color: COLORS.lime, fontWeight: '700' }]}>
+                    {formatCurrency(selectedProof.amount, selectedProof.currency)}
+                  </Text>
+                </View>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.reference', 'Referencia')}:</Text>
+                  <Text style={styles.proofDetailValue}>
+                    {selectedProof.reference || '-'}
+                  </Text>
+                </View>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.notes', 'Notas')}:</Text>
+                  <Text style={styles.proofDetailValue}>
+                    {selectedProof.notes || '-'}
+                  </Text>
+                </View>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.proof.submittedAt', 'Fecha envío')}:</Text>
+                  <Text style={styles.proofDetailValue}>
+                    {formatDateTime(selectedProof.created_at)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Reject Reason Input */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>{t('admin.payments.proof.rejectReason', 'Razón de rechazo (si aplica)')}</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formInputMultiline]}
+                  value={rejectReason}
+                  onChangeText={setRejectReason}
+                  placeholder={t('admin.payments.proof.rejectReasonPlaceholder', 'Ej: Imagen borrosa, monto incorrecto...')}
+                  placeholderTextColor={COLORS.textMuted}
+                  multiline
+                  numberOfLines={2}
+                />
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.proofActionButtons}>
+                <TouchableOpacity
+                  style={[styles.proofActionButton, styles.rejectButton]}
+                  onPress={() => handleRejectProof(selectedProof)}
+                  disabled={processingProof}
+                >
+                  {processingProof ? (
+                    <ActivityIndicator size="small" color={COLORS.textPrimary} />
+                  ) : (
+                    <>
+                      <Ionicons name="close-circle" size={22} color={COLORS.textPrimary} />
+                      <Text style={styles.proofActionButtonText}>{t('admin.payments.proof.reject', 'Rechazar')}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.proofActionButton, styles.approveButton]}
+                  onPress={() => handleVerifyProof(selectedProof)}
+                  disabled={processingProof}
+                >
+                  {processingProof ? (
+                    <ActivityIndicator size="small" color={COLORS.background} />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={22} color={COLORS.background} />
+                      <Text style={[styles.proofActionButtonText, { color: COLORS.background }]}>
+                        {t('admin.payments.proof.approve', 'Aprobar')}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+
+  // ============================================
+  // MAIN RENDER
+  // ============================================
+
+  if (loading && activeTab === 'charges') {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>{t('admin.payments.loading')}</Text>
+          <Text style={styles.loadingText}>{t('admin.payments.loading', 'Cargando...')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -318,13 +1596,22 @@ export default function AdminPayments() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{t('admin.payments.title')}</Text>
-          <Text style={styles.headerSubtitle}>Gestión de pagos</Text>
+          <Text style={styles.headerTitle}>{t('admin.payments.title', 'Cobros')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.payments.subtitle', 'Gestión de pagos comunitarios')}</Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleCreate}>
-          <Ionicons name="add" size={22} color={COLORS.background} />
-        </TouchableOpacity>
+        {activeTab === 'charges' && (
+          <TouchableOpacity style={styles.addButton} onPress={() => {
+            resetForm();
+            setShowCreateModal(true);
+          }}>
+            <Ionicons name="add" size={22} color={COLORS.background} />
+          </TouchableOpacity>
+        )}
+        {activeTab !== 'charges' && <View style={{ width: 44 }} />}
       </View>
+
+      {/* Main Tabs */}
+      {renderTabs()}
 
       <ScrollView
         style={styles.content}
@@ -337,302 +1624,338 @@ export default function AdminPayments() {
           />
         }
       >
-        {/* Stats Cards */}
-        {stats && (
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-              <Text style={[styles.statValue, { color: COLORS.success }]}>
-                {formatCurrency(stats.total_collected || stats.totalCollected || 0)}
-              </Text>
-              <Text style={styles.statLabel}>{t('admin.payments.stats.collected')}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="time" size={22} color={COLORS.warning} />
-              <Text style={[styles.statValue, { color: COLORS.warning }]}>
-                {formatCurrency(stats.total_pending || stats.totalPending || 0)}
-              </Text>
-              <Text style={styles.statLabel}>{t('admin.payments.stats.pending')}</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="alert-circle" size={22} color={COLORS.danger} />
-              <Text style={[styles.statValue, { color: COLORS.danger }]}>
-                {formatCurrency(stats.total_overdue || stats.totalOverdue || 0)}
-              </Text>
-              <Text style={styles.statLabel}>{t('admin.payments.stats.overdue')}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Filters */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScroll}
-          contentContainerStyle={styles.filters}
-        >
-          {['all', 'pending', 'paid', 'overdue'].map((f) => {
-            const isActive = filter === f;
-            const statusInfo = PAYMENT_STATUS[f];
-            return (
-              <TouchableOpacity
-                key={f}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
-                onPress={() => setFilter(f)}
-              >
-                {f !== 'all' && (
-                  <Ionicons 
-                    name={statusInfo?.icon || 'list'} 
-                    size={14} 
-                    color={isActive ? COLORS.background : COLORS.textSecondary} 
-                  />
-                )}
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {f === 'all' ? t('common.all') : statusInfo?.label || f}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Payments List */}
-        {payments.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="cash-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>{t('admin.payments.empty.noCharges')}</Text>
-            <Text style={styles.emptySubtitle}>{t('admin.payments.empty.createFirst')}</Text>
-          </View>
-        ) : (
-          payments.map((payment) => {
-            const statusInfo = PAYMENT_STATUS[payment.status] || PAYMENT_STATUS.pending;
-            return (
-              <View key={payment.id} style={styles.paymentCard}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardIconContainer}>
-                    <Ionicons 
-                      name={getPaymentTypeIcon(payment.payment_type)} 
-                      size={20} 
-                      color={COLORS.teal} 
-                    />
-                  </View>
-                  <View style={styles.cardHeaderLeft}>
-                    <Text style={styles.paymentConcept}>
-                      {payment.concept || getPaymentTypeLabel(payment.payment_type)}
-                    </Text>
-                    <Text style={styles.paymentUser}>
-                      {payment.user?.name || payment.user?.full_name || payment.user_name || t('common.user')}
-                    </Text>
-                  </View>
-                  <Text style={styles.paymentAmount}>{formatCurrency(payment.amount)}</Text>
-                </View>
-                
-                <View style={styles.cardFooter}>
-                  <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
-                    <Ionicons name={statusInfo.icon} size={14} color={statusInfo.color} />
-                    <Text style={[styles.statusText, { color: statusInfo.color }]}>
-                      {statusInfo.label}
-                    </Text>
-                  </View>
-                  <View style={styles.dueDateContainer}>
-                    <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-                    <Text style={styles.dueDate}>{formatDate(payment.due_date)}</Text>
-                  </View>
-                </View>
-
-                {(payment.status === 'pending' || payment.status === 'overdue') && (
-                  <TouchableOpacity
-                    style={styles.markPaidButton}
-                    onPress={() => handleMarkPaid(payment)}
-                  >
-                    <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                    <Text style={styles.markPaidText}>{t('admin.payments.markAsPaid')}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })
-        )}
+        {activeTab === 'charges' && renderChargesTab()}
+        {activeTab === 'proofs' && renderProofsTab()}
+        {activeTab === 'settings' && renderSettingsTab()}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Modal Crear Cobro */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('admin.payments.newCharge')}</Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator size="small" color={COLORS.lime} />
-              ) : (
-                <Text style={styles.modalSave}>{t('common.create')}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {/* Selector de Usuario */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.form.resident')} *</Text>
-              <TouchableOpacity
-                style={styles.selectorButton}
-                onPress={fetchUsers}
-              >
-                <Text style={formData.user_name ? styles.selectorText : styles.selectorPlaceholder}>
-                  {formData.user_name || t('admin.payments.form.selectResident')}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Tipo de Cobro */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.form.chargeType')}</Text>
-              <View style={styles.typeGrid}>
-                {PAYMENT_TYPES.map((type) => {
-                  const isSelected = formData.payment_type === type.value;
-                  return (
-                    <TouchableOpacity
-                      key={type.value}
-                      style={[styles.typeButton, isSelected && styles.typeButtonActive]}
-                      onPress={() => setFormData({ ...formData, payment_type: type.value })}
-                    >
-                      <Ionicons 
-                        name={type.icon} 
-                        size={24} 
-                        color={isSelected ? COLORS.lime : COLORS.textSecondary} 
-                      />
-                      <Text style={[styles.typeLabel, isSelected && styles.typeLabelActive]}>
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Concepto */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.form.description')}</Text>
-              <TextInput
-                style={styles.formInput}
-                value={formData.concept}
-                onChangeText={(text) => setFormData({ ...formData, concept: text })}
-                placeholder={t('admin.payments.form.descriptionPlaceholder')}
-                placeholderTextColor={COLORS.textMuted}
-              />
-            </View>
-
-            {/* Monto */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.form.amount')} *</Text>
-              <TextInput
-                style={styles.formInput}
-                value={formData.amount}
-                onChangeText={(text) => setFormData({ ...formData, amount: text.replace(/[^0-9.]/g, '') })}
-                placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="decimal-pad"
-              />
-            </View>
-
-            {/* Fecha de Vencimiento */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.form.dueDate')} *</Text>
-              <TextInput
-                style={styles.formInput}
-                value={formData.due_date}
-                onChangeText={(text) => setFormData({ ...formData, due_date: text })}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.textMuted}
-              />
-              <Text style={styles.formHint}>Formato: 2025-12-31</Text>
-            </View>
-
-            <View style={{ height: 100 }} />
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Modal Selector de Usuario */}
-      <Modal
-        visible={showUserPicker}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowUserPicker(false)}
-      >
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowUserPicker(false)}>
-              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('admin.payments.selectResident')}</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          {/* Búsqueda */}
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              value={userSearch}
-              onChangeText={setUserSearch}
-              placeholder={t('admin.payments.searchPlaceholder')}
-              placeholderTextColor={COLORS.textMuted}
-            />
-          </View>
-
-          {loadingUsers ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.lime} />
-              <Text style={styles.loadingText}>{t('admin.payments.loadingResidents')}</Text>
-            </View>
-          ) : (
-            <ScrollView style={styles.userList}>
-              {filteredUsers.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyTitle}>{t('admin.payments.noResidentsFound')}</Text>
-                </View>
-              ) : (
-                filteredUsers.map((u) => (
-                  <TouchableOpacity
-                    key={u.id}
-                    style={styles.userItem}
-                    onPress={() => handleSelectUser(u)}
-                  >
-                    <View style={styles.userAvatar}>
-                      <Text style={styles.userAvatarText}>
-                        {(u.full_name || u.name || u.email || '?')[0].toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.userInfo}>
-                      <Text style={styles.userName}>
-                        {u.full_name || u.name || t('common.noName')}
-                      </Text>
-                      <Text style={styles.userDetail}>
-                        {u.unit_number || u.unit ? `${t('common.unit')} ${u.unit_number || u.unit}` : u.email}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))
-              )}
-              <View style={{ height: 100 }} />
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
+      {/* Modals */}
+      {renderCreateModal()}
+      {renderUserPickerModal()}
+      {renderProofModal()}
     </SafeAreaView>
   );
 }
+{/* Charge Detail Modal */}
+<Modal
+  visible={showChargeDetailModal}
+  animationType="slide"
+  presentationStyle="pageSheet"
+  onRequestClose={() => {
+    setShowChargeDetailModal(false);
+    setSelectedChargeDetail(null);
+  }}
+>
+  <SafeAreaView style={styles.modalContainer} edges={['top']}>
+    <View style={styles.modalHeader}>
+      <TouchableOpacity
+        onPress={() => {
+          setShowChargeDetailModal(false);
+          setSelectedChargeDetail(null);
+        }}
+      >
+        <Text style={styles.modalCancel}>
+          {t('common.close', 'Cerrar')}
+        </Text>
+      </TouchableOpacity>
+      <Text style={styles.modalTitle}>
+        {t('admin.payments.chargeDetail', 'Detalle del Cobro')}
+      </Text>
+      <View style={{ width: 60 }} />
+    </View>
+
+    <ScrollView style={styles.modalContent}>
+      {selectedChargeDetail && (
+        <>
+          {/* Status Banner */}
+          {(() => {
+            const status =
+              selectedChargeDetail.display_status ||
+              selectedChargeDetail.status ||
+              'pending';
+
+            const statusInfo =
+              PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
+
+            return (
+              <View
+                style={[
+                  styles.detailStatusBanner,
+                  { backgroundColor: statusInfo.color + '20' },
+                ]}
+              >
+                <Ionicons
+                  name={statusInfo.icon}
+                  size={24}
+                  color={statusInfo.color}
+                />
+                <Text
+                  style={[
+                    styles.detailStatusText,
+                    { color: statusInfo.color },
+                  ]}
+                >
+                  {statusInfo.label}
+                </Text>
+              </View>
+            );
+          })()}
+
+          {/* Charge Info */}
+          <View style={styles.proofDetails}>
+            <View style={styles.proofDetailRow}>
+              <Text style={styles.proofDetailLabel}>
+                {t('admin.payments.detail.concept', 'Concepto')}:
+              </Text>
+              <Text style={styles.proofDetailValue}>
+                {selectedChargeDetail.title || '-'}
+              </Text>
+            </View>
+
+            <View style={styles.proofDetailRow}>
+              <Text style={styles.proofDetailLabel}>
+                {t('admin.payments.detail.amount', 'Monto')}:
+              </Text>
+              <Text
+                style={[
+                  styles.proofDetailValue,
+                  { color: COLORS.lime, fontWeight: '700' },
+                ]}
+              >
+                {formatCurrency(
+                  selectedChargeDetail.amount,
+                  selectedChargeDetail.currency
+                )}
+              </Text>
+            </View>
+
+            <View style={styles.proofDetailRow}>
+              <Text style={styles.proofDetailLabel}>
+                {t('admin.payments.detail.dueDate', 'Vencimiento')}:
+              </Text>
+              <Text style={styles.proofDetailValue}>
+                {formatDate(selectedChargeDetail.due_date)}
+              </Text>
+            </View>
+
+            <View style={styles.proofDetailRow}>
+              <Text style={styles.proofDetailLabel}>
+                {t('admin.payments.detail.type', 'Tipo')}:
+              </Text>
+              <Text style={styles.proofDetailValue}>
+                {getPaymentTypeLabel(
+                  selectedChargeDetail.charge_type
+                )}
+              </Text>
+            </View>
+
+            {selectedChargeDetail.description && (
+              <View
+                style={[
+                  styles.proofDetailRow,
+                  {
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                  },
+                ]}
+              >
+                <Text style={styles.proofDetailLabel}>
+                  {t(
+                    'admin.payments.detail.description',
+                    'Descripción'
+                  )}
+                  :
+                </Text>
+                <Text
+                  style={[
+                    styles.proofDetailValue,
+                    {
+                      marginTop: 4,
+                      maxWidth: '100%',
+                      textAlign: 'left',
+                    },
+                  ]}
+                >
+                  {selectedChargeDetail.description}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Payment Info (if exists) */}
+          {(selectedChargeDetail.payment ||
+            selectedChargeDetail.payments?.length > 0) && (
+            <>
+              <Text style={styles.detailSectionTitle}>
+                {t(
+                  'admin.payments.detail.paymentInfo',
+                  'Información del Pago'
+                )}
+              </Text>
+
+              {(selectedChargeDetail.payments ||
+                [selectedChargeDetail.payment])
+                .filter(Boolean)
+                .map((payment, idx) => (
+                  <View
+                    key={payment.id || idx}
+                    style={styles.proofDetails}
+                  >
+                    <View style={styles.proofDetailRow}>
+                      <Text style={styles.proofDetailLabel}>
+                        {t(
+                          'admin.payments.detail.resident',
+                          'Residente'
+                        )}
+                        :
+                      </Text>
+                      <Text style={styles.proofDetailValue}>
+                        {payment.user?.unit_number
+                          ? `${payment.user.unit_number} - `
+                          : ''}
+                        {payment.user?.name ||
+                          payment.user?.full_name ||
+                          '-'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.proofDetailRow}>
+                      <Text style={styles.proofDetailLabel}>
+                        {t(
+                          'admin.payments.detail.method',
+                          'Método'
+                        )}
+                        :
+                      </Text>
+                      <Text style={styles.proofDetailValue}>
+                        {payment.payment_method === 'card'
+                          ? 'Tarjeta'
+                          : payment.payment_method === 'proof'
+                          ? 'Comprobante'
+                          : payment.payment_method || '-'}
+                      </Text>
+                    </View>
+
+                    {payment.paid_at && (
+                      <View style={styles.proofDetailRow}>
+                        <Text style={styles.proofDetailLabel}>
+                          {t(
+                            'admin.payments.detail.paidAt',
+                            'Pagado'
+                          )}
+                          :
+                        </Text>
+                        <Text style={styles.proofDetailValue}>
+                          {formatDateTime(payment.paid_at)}
+                        </Text>
+                      </View>
+                    )}
+
+                    {payment.proof_submitted_at && (
+                      <View style={styles.proofDetailRow}>
+                        <Text style={styles.proofDetailLabel}>
+                          {t(
+                            'admin.payments.detail.submittedAt',
+                            'Enviado'
+                          )}
+                          :
+                        </Text>
+                        <Text style={styles.proofDetailValue}>
+                          {formatDateTime(
+                            payment.proof_submitted_at
+                          )}
+                        </Text>
+                      </View>
+                    )}
+
+                    {payment.proof_reference && (
+                      <View style={styles.proofDetailRow}>
+                        <Text style={styles.proofDetailLabel}>
+                          {t(
+                            'admin.payments.detail.reference',
+                            'Referencia'
+                          )}
+                          :
+                        </Text>
+                        <Text style={styles.proofDetailValue}>
+                          {payment.proof_reference}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Proof Image */}
+                    {(payment.proof_of_payment ||
+                      payment.proof_url) && (
+                      <View style={styles.proofImageContainer}>
+                        <Text
+                          style={[
+                            styles.proofDetailLabel,
+                            { marginBottom: 8 },
+                          ]}
+                        >
+                          {t(
+                            'admin.payments.detail.proof',
+                            'Comprobante'
+                          )}
+                          :
+                        </Text>
+                        <Image
+                          source={{
+                            uri:
+                              payment.proof_of_payment ||
+                              payment.proof_url,
+                          }}
+                          style={styles.proofImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+                  </View>
+                ))}
+            </>
+          )}
+
+          {/* Cancel Button for pending charges */}
+          {(selectedChargeDetail.display_status === 'pending' ||
+            selectedChargeDetail.status === 'active') &&
+            !selectedChargeDetail.payment?.paid_at && (
+              <TouchableOpacity
+                style={[
+                  styles.cancelButton,
+                  { marginTop: 16, justifyContent: 'center' },
+                ]}
+                onPress={() => {
+                  setShowChargeDetailModal(false);
+                  handleCancelCharge(selectedChargeDetail);
+                }}
+              >
+                <Ionicons
+                  name="close-circle-outline"
+                  size={18}
+                  color={COLORS.danger}
+                />
+                <Text style={styles.cancelButtonText}>
+                  {t(
+                    'admin.payments.cancelCharge',
+                    'Cancelar Cobro'
+                  )}
+                </Text>
+              </TouchableOpacity>
+            )}
+        </>
+      )}
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  </SafeAreaView>
+</Modal>
+
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -660,22 +1983,20 @@ const styles = StyleSheet.create({
   backButton: {
     width: scale(40),
     height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: scale(12),
+    marginLeft: scale(8),
   },
   headerTitle: {
-    fontSize: scale(18),
+    fontSize: scale(20),
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
   headerSubtitle: {
-    fontSize: scale(12),
+    fontSize: scale(13),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
@@ -688,11 +2009,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   
+  // Main Tabs
+  tabsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: scale(16),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(4),
+    marginBottom: scale(16),
+  },
+  mainTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    gap: scale(6),
+  },
+  mainTabActive: {
+    backgroundColor: COLORS.lime,
+  },
+  mainTabText: {
+    fontSize: scale(13),
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  mainTabTextActive: {
+    color: COLORS.background,
+    fontWeight: '600',
+  },
+  tabBadge: {
+    backgroundColor: COLORS.danger,
+    borderRadius: scale(10),
+    minWidth: scale(20),
+    height: scale(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: scale(6),
+  },
+  tabBadgeText: {
+    color: COLORS.textPrimary,
+    fontSize: scale(11),
+    fontWeight: '700',
+  },
+  
+  // Content
   content: {
     flex: 1,
   },
   scrollContent: {
-    padding: scale(16),
+    paddingHorizontal: scale(16),
   },
   
   // Stats
@@ -770,10 +2137,11 @@ const styles = StyleSheet.create({
     fontSize: scale(14),
     color: COLORS.textMuted,
     marginTop: scale(4),
+    textAlign: 'center',
   },
   
-  // Payment Card
-  paymentCard: {
+  // Charge Card
+  chargeCard: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
     padding: scale(16),
@@ -798,17 +2166,17 @@ const styles = StyleSheet.create({
   cardHeaderLeft: {
     flex: 1,
   },
-  paymentConcept: {
+  chargeConcept: {
     fontSize: scale(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
-  paymentUser: {
+  chargeUser: {
     fontSize: scale(13),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
-  paymentAmount: {
+  chargeAmount: {
     fontSize: scale(18),
     fontWeight: '700',
     color: COLORS.textPrimary,
@@ -839,20 +2207,157 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: COLORS.textSecondary,
   },
-  markPaidButton: {
+  cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.success + '15',
+    backgroundColor: COLORS.danger + '15',
     padding: scale(12),
     borderRadius: scale(10),
     marginTop: scale(12),
     gap: scale(6),
   },
-  markPaidText: {
-    color: COLORS.success,
+  cancelButtonText: {
+    color: COLORS.danger,
     fontWeight: '600',
     fontSize: scale(14),
+  },
+  
+  // Proof Card
+  proofCard: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(16),
+    marginBottom: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.blue + '30',
+  },
+  proofHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  proofIconContainer: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.blue + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  proofInfo: {
+    flex: 1,
+  },
+  proofTitle: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  proofUser: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  proofDate: {
+    fontSize: scale(11),
+    color: COLORS.textMuted,
+    marginTop: scale(4),
+  },
+  proofAmount: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: COLORS.lime,
+  },
+  proofPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: scale(12),
+    paddingTop: scale(12),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  proofThumbnail: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(8),
+    backgroundColor: COLORS.backgroundTertiary,
+  },
+  proofActions: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  proofActionHint: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginRight: scale(4),
+  },
+  
+  // Settings
+  settingsContainer: {
+    paddingBottom: scale(20),
+  },
+  settingsSection: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  settingsSectionTitle: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  settingsSectionSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginBottom: scale(16),
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: scale(12),
+  },
+  settingTextContainer: {
+    marginLeft: scale(12),
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  settingDescription: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
+  },
+  saveSettingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.lime,
+    padding: scale(16),
+    borderRadius: scale(12),
+    gap: scale(8),
+  },
+  saveSettingsButtonText: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.background,
   },
   
   // Modal
@@ -900,13 +2405,18 @@ const styles = StyleSheet.create({
   },
   formInput: {
     backgroundColor: COLORS.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: scale(10),
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
     fontSize: scale(16),
     color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  formInputMultiline: {
+    minHeight: scale(80),
+    textAlignVertical: 'top',
+    paddingTop: scale(14),
   },
   formHint: {
     fontSize: scale(12),
@@ -914,17 +2424,17 @@ const styles = StyleSheet.create({
     marginTop: scale(4),
   },
   
-  // Selector
+  // Selectors
   selectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: scale(10),
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(14),
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   selectorText: {
     fontSize: scale(16),
@@ -935,21 +2445,51 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   
+  // Target Grid
+  targetGrid: {
+    flexDirection: 'row',
+    gap: scale(10),
+  },
+  targetButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(16),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  targetButtonActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '15',
+  },
+  targetLabel: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(8),
+    textAlign: 'center',
+  },
+  targetLabelActive: {
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  
   // Type Grid
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: scale(8),
+    gap: scale(10),
   },
   typeButton: {
-    width: '48%',
-    backgroundColor: COLORS.backgroundSecondary,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderRadius: scale(10),
-    padding: scale(12),
+    width: (SCREEN_WIDTH - scale(52)) / 2,
     alignItems: 'center',
-    marginBottom: scale(4),
+    justifyContent: 'center',
+    paddingVertical: scale(16),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   typeButtonActive: {
     borderColor: COLORS.lime,
@@ -958,33 +2498,80 @@ const styles = StyleSheet.create({
   typeLabel: {
     fontSize: scale(12),
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: scale(4),
+    marginTop: scale(8),
   },
   typeLabelActive: {
     color: COLORS.lime,
     fontWeight: '600',
   },
   
+  // Methods Grid
+  methodsGrid: {
+    flexDirection: 'row',
+    gap: scale(10),
+  },
+  methodButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: scale(6),
+  },
+  methodButtonActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '15',
+  },
+  methodLabel: {
+    fontSize: scale(11),
+    color: COLORS.textSecondary,
+  },
+  methodLabelActive: {
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  
+  // Selected Users
+  selectedUsersList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+    marginTop: scale(12),
+  },
+  selectedUserChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundTertiary,
+    paddingVertical: scale(6),
+    paddingLeft: scale(12),
+    paddingRight: scale(8),
+    borderRadius: scale(20),
+    gap: scale(6),
+  },
+  selectedUserChipText: {
+    fontSize: scale(13),
+    color: COLORS.textPrimary,
+  },
+  
   // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: scale(16),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    margin: scale(16),
+    borderRadius: scale(12),
+    paddingHorizontal: scale(12),
   },
   searchIcon: {
-    position: 'absolute',
-    left: scale(28),
-    zIndex: 1,
+    marginRight: scale(8),
   },
   searchInput: {
     flex: 1,
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(10),
-    paddingHorizontal: scale(40),
-    paddingVertical: scale(12),
+    paddingVertical: scale(14),
     fontSize: scale(16),
     color: COLORS.textPrimary,
   },
@@ -996,18 +2583,20 @@ const styles = StyleSheet.create({
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
+    padding: scale(16),
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  userItemSelected: {
+    backgroundColor: COLORS.lime + '10',
   },
   userAvatar: {
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
     backgroundColor: COLORS.teal + '30',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: scale(12),
   },
   userAvatarText: {
@@ -1023,9 +2612,99 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: COLORS.textPrimary,
   },
-  userDetail: {
+  userUnit: {
     fontSize: scale(13),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
+  
+  // Proof Modal
+  proofImageContainer: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    overflow: 'hidden',
+    marginBottom: scale(16),
+  },
+  proofImage: {
+    width: '100%',
+    height: scale(300),
+  },
+  proofDetails: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(16),
+  },
+  proofDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: scale(10),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  proofDetailLabel: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  proofDetailValue: {
+    fontSize: scale(14),
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  proofActionButtons: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginTop: scale(8),
+  },
+  proofActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(16),
+    borderRadius: scale(12),
+    gap: scale(8),
+  },
+  rejectButton: {
+    backgroundColor: COLORS.danger,
+  },
+  approveButton: {
+    backgroundColor: COLORS.lime,
+  },
+  proofActionButtonText: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  // Card Header Right (for chevron)
+cardHeaderRight: {
+  alignItems: 'flex-end',
+},
+
+// Detail Status Banner
+detailStatusBanner: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: scale(16),
+  borderRadius: scale(12),
+  marginBottom: scale(16),
+  gap: scale(8),
+},
+detailStatusText: {
+  fontSize: scale(16),
+  fontWeight: '600',
+},
+
+// Detail Section Title
+detailSectionTitle: {
+  fontSize: scale(14),
+  fontWeight: '600',
+  color: COLORS.textSecondary,
+  marginTop: scale(8),
+  marginBottom: scale(12),
+},
 });
