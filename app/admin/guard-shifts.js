@@ -132,7 +132,7 @@ export default function AdminGuardShifts() {
       const shiftsData = await shiftsRes.json();
       
       if (shiftsData.success) {
-        setShifts(shiftsData.data || []);
+        setShifts(shiftsData.data?.shifts || shiftsData.data || []);
       }
     } catch (error) {
       console.error('Error fetching shifts:', error);
