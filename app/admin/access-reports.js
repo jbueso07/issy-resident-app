@@ -11,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -41,6 +43,7 @@ export default function AccessReportsScreen() {
   const { t, language } = useTranslation();
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
@@ -186,23 +189,47 @@ export default function AccessReportsScreen() {
   };
 
   const fetchAccessDetail = async (logId) => {
+    console.log('=== fetchAccessDetail called with logId:', logId); // DEBUG
+    
+    if (!logId) {
+      console.log('No logId provided!');
+      return;
+    }
+    
     setLoadingDetail(true);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/admin/access-logs/${logId}`, { headers });
+      const url = `${API_URL}/api/admin/access-logs/${logId}`;
+      console.log('Fetching URL:', url); // DEBUG
+      
+      const response = await fetch(url, { headers });
       const data = await response.json();
+      console.log('=== ACCESS LOG DATA ===', JSON.stringify(data, null, 2));
+      console.log('Response:', data); // DEBUG
+      
       if (data.success && data.data) {
         setSelectedLog(data.data);
         setShowDetailScreen(true);
       } else {
+        // Fallback: usar el log existente
+        console.log('Using fallback from existing logs'); // DEBUG
         const existingLog = accessLogs.find(l => l.id === logId);
-        if (existingLog) { setSelectedLog(existingLog); setShowDetailScreen(true); }
+        if (existingLog) { 
+          setSelectedLog(existingLog); 
+          setShowDetailScreen(true); 
+        }
       }
     } catch (error) {
       console.error('Error fetching access detail:', error);
+      // Fallback en caso de error
       const existingLog = accessLogs.find(l => l.id === logId);
-      if (existingLog) { setSelectedLog(existingLog); setShowDetailScreen(true); }
-    } finally { setLoadingDetail(false); }
+      if (existingLog) { 
+        setSelectedLog(existingLog); 
+        setShowDetailScreen(true); 
+      }
+    } finally { 
+      setLoadingDetail(false); 
+    }
   };
 
   const fetchExportSummary = async () => {
@@ -281,7 +308,7 @@ export default function AccessReportsScreen() {
   });
 
   const hasPhotos = (log) => log.photo_url || log.vehicle_photo_url || (log.photos && log.photos.length > 0);
-  const openPhotoZoom = (photoUrl, title) => { setZoomPhoto({ url: photoUrl, title }); setShowZoomModal(true); };
+  const openPhotoZoom = (photoUrl, title) => { console.log("[PhotoZoom] URL:", photoUrl); setZoomPhoto({ url: photoUrl, title }); setShowZoomModal(true); };
 
   // Stat Card Component
   const StatCard = ({ icon, label, value, color, highlight }) => (
@@ -412,7 +439,7 @@ export default function AccessReportsScreen() {
   // Detail Screen
   const DetailScreen = () => {
     if (!selectedLog) return null;
-    const log = selectedLog;
+    const log = selectedLog; console.log("LOG DATA:", JSON.stringify(log, null, 2));
     const qrInfo = getQRTypeInfo(log.qr_type || log.qr_code?.qr_type);
     const photos = [];
     if (log.photo_url) photos.push({ url: log.photo_url, type: 'visitor', label: t('admin.accessReports.detail.visitorPhoto') });
@@ -439,6 +466,15 @@ export default function AccessReportsScreen() {
               <Text style={styles.visitorHeaderName}>{log.visitor_name}</Text>
               <View style={styles.qrTypeBadge}><Ionicons name={qrInfo.icon} size={14} color={qrInfo.color} /><Text style={[styles.qrTypeText, { color: qrInfo.color }]}>{qrInfo.label}</Text></View>
               <Text style={styles.visitorHeaderDate}>{formatFullDateTime(log.timestamp || log.created_at)}</Text>
+              {(log.qr_code?.resident?.name || log.qr_code?.resident?.unit_number) && (
+                <View style={styles.infoRow}><Ionicons name="person" size={14} color={COLORS.teal} /><Text style={styles.infoRowText}>Autorizado por: {log.qr_code?.resident?.name || log.resident_name}{(log.qr_code?.resident?.unit_number || log.unit_number) ? ` - ${log.qr_code?.resident?.unit_number || log.unit_number}` : ''}</Text></View>
+              )}
+              {(log.guard?.name || log.guard_name) && (
+                <View style={styles.infoRow}><Ionicons name="shield" size={14} color={COLORS.lime} /><Text style={styles.infoRowText}>Escaneado por: {log.guard?.name || log.guard_name}</Text></View>
+              )}
+              <View style={[styles.statusBadge, { backgroundColor: log.movement_type === 'entry' ? COLORS.success + '30' : COLORS.textMuted + '30' }]}>
+                <Text style={[styles.statusText, { color: log.movement_type === 'entry' ? COLORS.success : COLORS.textMuted }]}>{log.movement_type === 'entry' ? '✓ Dentro' : 'Salió'}</Text>
+              </View>
             </View>
             {photos.length > 0 && (
               <View style={styles.photosSection}>
@@ -487,6 +523,7 @@ export default function AccessReportsScreen() {
             )}
             <View style={{ height: scale(50) }} />
           </ScrollView>
+        <PhotoZoomModal />
         </SafeAreaView>
       </Modal>
     );
@@ -662,8 +699,8 @@ export default function AccessReportsScreen() {
 
       {loadingDetail && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color={COLORS.lime} /><Text style={styles.loadingOverlayText}>{t('admin.accessReports.loadingDetail')}</Text></View>}
       <DetailScreen />
-      <PhotoZoomModal />
       <ExportModal />
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }
@@ -759,7 +796,7 @@ const styles = StyleSheet.create({
   loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 26, 26, 0.9)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   loadingOverlayText: { marginTop: scale(12), color: COLORS.textSecondary, fontSize: scale(14) },
   detailContainer: { flex: 1, backgroundColor: COLORS.background },
-  detailHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: scale(16), paddingVertical: scale(12), borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  detailHeader: { paddingTop: scale(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: scale(16), paddingVertical: scale(12), borderBottomWidth: 1, borderBottomColor: COLORS.border },
   detailBackButton: { width: scale(40), height: scale(40), borderRadius: scale(20), backgroundColor: COLORS.backgroundSecondary, justifyContent: 'center', alignItems: 'center' },
   detailHeaderTitle: { flex: 1, marginLeft: scale(12) },
   detailHeaderText: { fontSize: scale(17), fontWeight: '600', color: COLORS.textPrimary },
@@ -846,4 +883,8 @@ const styles = StyleSheet.create({
   exportButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.lime, paddingVertical: scale(16), borderRadius: scale(12), gap: scale(8) },
   exportButtonDisabled: { opacity: 0.6 },
   exportButtonText: { fontSize: scale(16), fontWeight: '700', color: COLORS.background },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: scale(8), gap: scale(6) },
+  infoRowText: { fontSize: scale(13), color: COLORS.textSecondary },
+  statusBadge: { marginTop: scale(12), paddingHorizontal: scale(16), paddingVertical: scale(6), borderRadius: scale(20) },
+  statusText: { fontSize: scale(14), fontWeight: '600' },
 });

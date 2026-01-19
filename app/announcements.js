@@ -21,6 +21,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
 import { useTranslation } from '../src/hooks/useTranslation';
+import { useUserLocation } from '../src/context/UserLocationContext';
+import { UserLocationSelector, UserLocationPickerModal } from '../src/components/UserLocationPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -48,6 +50,7 @@ const COLORS = {
 export default function AnnouncementsScreen() {
   const router = useRouter();
   const { t, language } = useTranslation();
+  const { selectedLocationId, loading: locationLoading } = useUserLocation();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,8 +60,9 @@ export default function AnnouncementsScreen() {
   const imageScrollRef = useRef(null);
 
   const fetchAnnouncements = async () => {
+    if (!selectedLocationId) return;
     try {
-      const result = await getAnnouncements();
+      const result = await getAnnouncements(selectedLocationId);
       if (result.success) {
         setAnnouncements(result.data || []);
       }
@@ -71,13 +75,16 @@ export default function AnnouncementsScreen() {
   };
 
   useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+    if (selectedLocationId) {
+      setLoading(true);
+      fetchAnnouncements();
+    }
+  }, [selectedLocationId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAnnouncements();
-  }, []);
+  }, [selectedLocationId]);
 
   const handleOpenAnnouncement = async (announcement) => {
     setSelectedAnnouncement(announcement);
@@ -259,7 +266,7 @@ export default function AnnouncementsScreen() {
     );
   };
 
-  if (loading) {
+  if (loading || locationLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -289,7 +296,7 @@ export default function AnnouncementsScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.headerSubtitle}>{t('announcements.subtitle')}</Text>
+          <UserLocationSelector style={styles.headerSubtitle} />
         </View>
         <View style={{ width: scale(40) }} />
       </View>
@@ -353,6 +360,9 @@ export default function AnnouncementsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Location Picker Modal */}
+      <UserLocationPickerModal />
     </SafeAreaView>
   );
 }

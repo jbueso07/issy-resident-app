@@ -369,16 +369,11 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
     setCardModalVisible(true);
   };
 
-  const processCardPayment = async () => {
+const processCardPayment = async () => {
     if (!selectedCard) {
       Alert.alert(t('common.error'), t('communityPayments.cardPayment.selectCard'));
       return;
     }
-    // Open payment detail modal
-const openPaymentDetail = (charge) => {
-setSelectedPaymentDetail(charge);
-setDetailModalVisible(true);
-};
 
     setSubmitting(true);
     try {
@@ -411,6 +406,12 @@ setDetailModalVisible(true);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Open payment detail modal
+  const openPaymentDetail = (charge) => {
+    setSelectedPaymentDetail(charge);
+    setDetailModalVisible(true);
   };
 
   // ============================================

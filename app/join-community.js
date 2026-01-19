@@ -1,15 +1,22 @@
 // app/join-community.js - Unirse a Comunidad - ProHome Dark Theme
+// UPDATED: Support for public community codes with unit nomenclature
+
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
-  Dimensions
+  Dimensions, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
-import { verifyInvitationCode, acceptInvitationCode } from '../src/services/api';
+import { 
+  verifyInvitationCode, 
+  acceptInvitationCode,
+  verifyPublicCode,
+  joinWithPublicCode 
+} from '../src/services/api';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,6 +43,27 @@ const COLORS = {
   yellowLight: 'rgba(245, 158, 11, 0.15)',
 };
 
+// Nomenclature field labels
+const FIELD_LABELS = {
+  torre: 'Torre',
+  nivel: 'Nivel / Piso',
+  apartamento: 'Apartamento',
+  casa: 'Casa',
+  bloque: 'Bloque',
+  avenida: 'Avenida',
+  etapa: 'Etapa',
+};
+
+const FIELD_ICONS = {
+  torre: 'business',
+  nivel: 'layers',
+  apartamento: 'home',
+  casa: 'home',
+  bloque: 'grid',
+  avenida: 'map',
+  etapa: 'layers',
+};
+
 export default function JoinCommunityScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -47,6 +75,9 @@ export default function JoinCommunityScreen() {
   const [verifying, setVerifying] = useState(false);
   const [invitation, setInvitation] = useState(null);
   const [error, setError] = useState('');
+  
+  // Unit details for public code
+  const [unitDetails, setUnitDetails] = useState({});
 
   // Si viene con código en params, verificar automáticamente
   useEffect(() => {
@@ -64,8 +95,18 @@ export default function JoinCommunityScreen() {
     setVerifying(true);
     setError('');
     setInvitation(null);
+    setUnitDetails({});
     
-    const res = await verifyInvitationCode(code.trim().toUpperCase());
+    const upperCode = code.trim().toUpperCase();
+    
+    // First try personal invitation
+    let res = await verifyInvitationCode(upperCode);
+    
+    // If not found, try public code
+    if (!res.success) {
+      res = await verifyPublicCode(upperCode);
+    }
+    
     setVerifying(false);
     
     if (res.success) {
@@ -76,18 +117,53 @@ export default function JoinCommunityScreen() {
   };
 
   const handleAccept = async () => {
+    const upperCode = code.trim().toUpperCase();
+    
+    // If it's a public code, validate required fields
+    if (invitation?.type === 'public_code') {
+      const nomenclature = invitation.unit_nomenclature || {};
+      const missingFields = [];
+      
+      Object.entries(nomenclature).forEach(([key, config]) => {
+        if (typeof config === 'object' && config.enabled && config.required) {
+          if (!unitDetails[key]?.trim()) {
+            missingFields.push(FIELD_LABELS[key] || key);
+          }
+        }
+      });
+      
+      if (missingFields.length > 0) {
+        Alert.alert(
+          'Campos requeridos',
+          `Por favor completa: ${missingFields.join(', ')}`
+        );
+        return;
+      }
+    }
+    
     setLoading(true);
-    const res = await acceptInvitationCode(code.trim().toUpperCase());
+    
+    let res;
+    if (invitation?.type === 'public_code') {
+      res = await joinWithPublicCode(upperCode, unitDetails);
+    } else {
+      res = await acceptInvitationCode(upperCode);
+    }
+    
     setLoading(false);
     
     if (res.success) {
+      const locationName = invitation.location_name || 'la comunidad';
       Alert.alert(
-        t('joinCommunity.success.title'),
-        res.message || t('joinCommunity.success.joined', { name: invitation.location_name }),
-        [{ text: t('joinCommunity.success.continue'), onPress: () => {
-          if (refreshUser) refreshUser();
-          router.replace('/my-unit');
-        }}]
+        '¡Solicitud enviada!',
+        res.message || `Tu solicitud para unirte a ${locationName} ha sido enviada. Un administrador la revisará pronto.`,
+        [{ 
+          text: 'Continuar', 
+          onPress: () => {
+            if (refreshUser) refreshUser();
+            router.replace('/(tabs)');
+          }
+        }]
       );
     } else {
       Alert.alert(t('common.error'), res.error);
@@ -102,6 +178,24 @@ export default function JoinCommunityScreen() {
       case 'office': return t('joinCommunity.types.office');
       default: return t('joinCommunity.types.community');
     }
+  };
+
+  // Get enabled fields from nomenclature
+  const getEnabledFields = () => {
+    if (!invitation?.unit_nomenclature) return [];
+    
+    return Object.entries(invitation.unit_nomenclature)
+      .filter(([key, config]) => typeof config === 'object' && config.enabled)
+      .map(([key, config]) => ({
+        key,
+        label: FIELD_LABELS[key] || key,
+        icon: FIELD_ICONS[key] || 'document',
+        required: config.required || false,
+      }));
+  };
+
+  const updateUnitDetail = (key, value) => {
+    setUnitDetails(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -119,134 +213,196 @@ export default function JoinCommunityScreen() {
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Illustration */}
-        <View style={styles.illustration}>
-          <View style={styles.iconContainer}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="home" size={scale(32)} color={COLORS.teal} />
-            </View>
-            <View style={[styles.iconCircleSmall, { marginLeft: scale(-12) }]}>
-              <Ionicons name="people" size={scale(20)} color={COLORS.lime} />
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Illustration */}
+          <View style={styles.illustration}>
+            <View style={styles.iconContainer}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="home" size={scale(32)} color={COLORS.teal} />
+              </View>
+              <View style={[styles.iconCircleSmall, { marginLeft: scale(-12) }]}>
+                <Ionicons name="people" size={scale(20)} color={COLORS.lime} />
+              </View>
             </View>
           </View>
-        </View>
 
-        <Text style={styles.title}>{t('joinCommunity.enterCode')}</Text>
-        <Text style={styles.subtitle}>
-          {t('joinCommunity.enterCodeHint')}
-        </Text>
+          <Text style={styles.title}>{t('joinCommunity.enterCode')}</Text>
+          <Text style={styles.subtitle}>
+            {t('joinCommunity.enterCodeHint')}
+          </Text>
 
-        {/* Code Input */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={code}
-            onChangeText={(t) => {
-              setCode(t.toUpperCase());
-              setError('');
-              setInvitation(null);
-            }}
-            placeholder={t('joinCommunity.codePlaceholder')}
-            placeholderTextColor={COLORS.textMuted}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={10}
-          />
-          <TouchableOpacity
-            style={[styles.verifyBtn, !code.trim() && styles.verifyBtnDisabled]}
-            onPress={handleVerify}
-            disabled={!code.trim() || verifying}
-          >
-            {verifying ? (
-              <ActivityIndicator color={COLORS.background} size="small" />
-            ) : (
-              <Ionicons name="search" size={20} color={COLORS.background} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Error */}
-        {error && (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle" size={18} color={COLORS.red} />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* Invitation Preview */}
-        {invitation && (
-          <View style={styles.invitationCard}>
-            <View style={styles.invitationHeader}>
-              <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
-              <Text style={styles.invitationTitle}>{t('joinCommunity.validInvitation')}</Text>
-            </View>
-
-            <View style={styles.invitationBody}>
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationName}>{invitation.location_name}</Text>
-                <Text style={styles.locationType}>{getTypeLabel(invitation.location_type)}</Text>
-              </View>
-
-              {invitation.address && (
-                <View style={styles.infoRow}>
-                  <Ionicons name="location" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.infoText}>{invitation.address}</Text>
-                </View>
-              )}
-
-              <View style={styles.infoRow}>
-                <Ionicons name="person" size={16} color={COLORS.textSecondary} />
-                <Text style={styles.infoText}>{t('joinCommunity.role')}: {invitation.role || t('joinCommunity.resident')}</Text>
-              </View>
-
-              {invitation.unit_number && (
-                <View style={styles.infoRow}>
-                  <Ionicons name="home" size={16} color={COLORS.textSecondary} />
-                  <Text style={styles.infoText}>{t('joinCommunity.unit')}: {invitation.unit_number}</Text>
-                </View>
-              )}
-
-              {invitation.expires_at && (
-                <View style={styles.expiresInfo}>
-                  <Ionicons name="time" size={14} color={COLORS.yellow} />
-                  <Text style={styles.expiresText}>
-                    {t('joinCommunity.expires')}: {new Date(invitation.expires_at).toLocaleDateString('es')}
-                  </Text>
-                </View>
-              )}
-            </View>
-
+          {/* Code Input */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={code}
+              onChangeText={(t) => {
+                setCode(t.toUpperCase());
+                setError('');
+                setInvitation(null);
+              }}
+              placeholder={t('joinCommunity.codePlaceholder')}
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={10}
+            />
             <TouchableOpacity
-              style={[styles.acceptBtn, loading && styles.acceptBtnDisabled]}
-              onPress={handleAccept}
-              disabled={loading}
+              style={[styles.verifyBtn, !code.trim() && styles.verifyBtnDisabled]}
+              onPress={handleVerify}
+              disabled={!code.trim() || verifying}
             >
-              {loading ? (
-                <ActivityIndicator color={COLORS.background} />
+              {verifying ? (
+                <ActivityIndicator color={COLORS.background} size="small" />
               ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color={COLORS.background} />
-                  <Text style={styles.acceptBtnText}>{t('joinCommunity.joinTo', { name: invitation.location_name })}</Text>
-                </>
+                <Ionicons name="search" size={20} color={COLORS.background} />
               )}
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* Help Text */}
-        {!invitation && (
-          <View style={styles.helpSection}>
-            <View style={styles.helpIcon}>
-              <Ionicons name="help-circle" size={24} color={COLORS.yellow} />
+          {/* Error */}
+          {error && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={18} color={COLORS.red} />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
-            <View style={styles.helpContent}>
-              <Text style={styles.helpTitle}>{t('joinCommunity.help.title')}</Text>
-              <Text style={styles.helpText}>
-                {t('joinCommunity.help.text')}
-              </Text>
+          )}
+
+          {/* Invitation Preview */}
+          {invitation && (
+            <View style={styles.invitationCard}>
+              <View style={styles.invitationHeader}>
+                <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
+                <Text style={styles.invitationTitle}>
+                  {invitation.type === 'public_code' ? 'Comunidad encontrada' : t('joinCommunity.validInvitation')}
+                </Text>
+              </View>
+
+              <View style={styles.invitationBody}>
+                <View style={styles.locationInfo}>
+                  <Text style={styles.locationName}>{invitation.location_name}</Text>
+                  <Text style={styles.locationType}>
+                    {invitation.location_type_label || getTypeLabel(invitation.location_type)}
+                  </Text>
+                </View>
+
+                {invitation.address && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="location" size={16} color={COLORS.textSecondary} />
+                    <Text style={styles.infoText}>{invitation.address}</Text>
+                  </View>
+                )}
+
+                {/* For personal invitations - show role and unit */}
+                {invitation.type !== 'public_code' && (
+                  <>
+                    <View style={styles.infoRow}>
+                      <Ionicons name="person" size={16} color={COLORS.textSecondary} />
+                      <Text style={styles.infoText}>
+                        {t('joinCommunity.role')}: {invitation.role_label || invitation.role || t('joinCommunity.resident')}
+                      </Text>
+                    </View>
+
+                    {invitation.unit_number && (
+                      <View style={styles.infoRow}>
+                        <Ionicons name="home" size={16} color={COLORS.textSecondary} />
+                        <Text style={styles.infoText}>{t('joinCommunity.unit')}: {invitation.unit_number}</Text>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {/* For public codes - show unit selection form */}
+                {invitation.type === 'public_code' && getEnabledFields().length > 0 && (
+                  <View style={styles.unitFormContainer}>
+                    <Text style={styles.unitFormTitle}>
+                      <Ionicons name="home" size={16} color={COLORS.teal} /> Ingresa tu unidad
+                    </Text>
+                    <Text style={styles.unitFormSubtitle}>
+                      Completa los datos de tu vivienda
+                    </Text>
+                    
+                    {getEnabledFields().map(field => (
+                      <View key={field.key} style={styles.unitFieldContainer}>
+                        <View style={styles.unitFieldLabel}>
+                          <Ionicons name={field.icon} size={16} color={COLORS.textSecondary} />
+                          <Text style={styles.unitFieldLabelText}>
+                            {field.label}
+                            {field.required && <Text style={styles.requiredStar}> *</Text>}
+                          </Text>
+                        </View>
+                        <TextInput
+                          style={styles.unitFieldInput}
+                          value={unitDetails[field.key] || ''}
+                          onChangeText={(value) => updateUnitDetail(field.key, value)}
+                          placeholder={`Ingresa ${field.label.toLowerCase()}`}
+                          placeholderTextColor={COLORS.textMuted}
+                          keyboardType={field.key === 'nivel' || field.key === 'apartamento' ? 'number-pad' : 'default'}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Approval notice */}
+                {invitation.requires_approval && (
+                  <View style={styles.approvalNotice}>
+                    <Ionicons name="time" size={16} color={COLORS.yellow} />
+                    <Text style={styles.approvalNoticeText}>
+                      Tu solicitud será revisada por un administrador
+                    </Text>
+                  </View>
+                )}
+
+                {invitation.expires_at && (
+                  <View style={styles.expiresInfo}>
+                    <Ionicons name="time" size={14} color={COLORS.yellow} />
+                    <Text style={styles.expiresText}>
+                      {t('joinCommunity.expires')}: {new Date(invitation.expires_at).toLocaleDateString('es')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.acceptBtn, loading && styles.acceptBtnDisabled]}
+                onPress={handleAccept}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={20} color={COLORS.background} />
+                    <Text style={styles.acceptBtnText}>
+                      {invitation.type === 'public_code' 
+                        ? 'Enviar solicitud' 
+                        : t('joinCommunity.joinTo', { name: invitation.location_name })}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-          </View>
-        )}
+          )}
+
+          {/* Help Text */}
+          {!invitation && (
+            <View style={styles.helpSection}>
+              <View style={styles.helpIcon}>
+                <Ionicons name="help-circle" size={24} color={COLORS.yellow} />
+              </View>
+              <View style={styles.helpContent}>
+                <Text style={styles.helpTitle}>{t('joinCommunity.help.title')}</Text>
+                <Text style={styles.helpText}>
+                  {t('joinCommunity.help.text')}
+                </Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -282,7 +438,10 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: scale(24),
+    paddingBottom: scale(40),
   },
 
   illustration: {
@@ -419,6 +578,67 @@ const styles = StyleSheet.create({
     fontSize: scale(14),
     color: COLORS.textSecondary,
   },
+  
+  // Unit Form for public codes
+  unitFormContainer: {
+    marginTop: scale(16),
+    paddingTop: scale(16),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.cardBorder,
+  },
+  unitFormTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  unitFormSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginBottom: scale(16),
+  },
+  unitFieldContainer: {
+    marginBottom: scale(14),
+  },
+  unitFieldLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginBottom: scale(6),
+  },
+  unitFieldLabelText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  requiredStar: {
+    color: COLORS.red,
+  },
+  unitFieldInput: {
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(10),
+    padding: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+  },
+  
+  // Approval notice
+  approvalNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.yellowLight,
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginTop: scale(12),
+  },
+  approvalNoticeText: {
+    fontSize: scale(13),
+    color: COLORS.yellow,
+    flex: 1,
+  },
+  
   expiresInfo: {
     flexDirection: 'row',
     alignItems: 'center',

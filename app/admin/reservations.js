@@ -20,6 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../src/config/supabase';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -65,6 +67,7 @@ export default function AdminReservationsScreen() {
   const STATUS_CONFIG = getStatusConfig(t);
   const router = useRouter();
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   
   const [activeTab, setActiveTab] = useState('pending');
   const [reservations, setReservations] = useState([]);
@@ -524,6 +527,7 @@ export default function AdminReservationsScreen() {
           );
         })()}
       </Modal>
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }

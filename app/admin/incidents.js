@@ -502,6 +502,7 @@ export default function AdminIncidents() {
 
       {/* Detail Modal */}
       {renderDetailModal()}
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }

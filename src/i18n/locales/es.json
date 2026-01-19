@@ -38,16 +38,16 @@
     "limit": "Límite"
   },
   "qr": {
-  "myResidentQR": "Mi QR de Residente",
-  "personalAccess": "Acceso personal",
-  "live": "EN VIVO",
-  "newCodeIn": "Nuevo código en {{seconds}}s",
-  "house": "Casa",
-  "notAssigned": "Sin asignar",
-  "uniqueCode": "Código único e intransferible",
-  "joinCommunityForQR": "Únete a una comunidad para obtener tu QR",
-  "errorGenerating": "Error al generar QR"
-},
+    "myResidentQR": "Mi QR de Residente",
+    "personalAccess": "Acceso personal",
+    "live": "EN VIVO",
+    "newCodeIn": "Nuevo código en {{seconds}}s",
+    "house": "Casa",
+    "notAssigned": "Sin asignar",
+    "uniqueCode": "Código único e intransferible",
+    "joinCommunityForQR": "Únete a una comunidad para obtener tu QR",
+    "errorGenerating": "Error al generar QR"
+  },
   "app": {
     "name": "ISSY",
     "welcome": "Bienvenido",
@@ -1562,6 +1562,15 @@
       }
     },
     "communityManagement": {
+      "deactivateMember": "Desactivar Miembro",
+      "selectDeactivationReason": "Selecciona el motivo de desactivación para {{name}}",
+      "deactivate": "Desactivar",
+      "selectCommunity": "Seleccionar Comunidad",
+      "unitNumber": "Número de Unidad",
+      "enterUnit": "Ingresa la unidad",
+      "role": "Rol",
+      "approveAllConfirm": "¿Aprobar {{count}} solicitudes pendientes?",
+      "approvedCount": "{{count}} miembros aprobados",
       "title": "Gestión de Comunidad",
       "subtitle": "Administra miembros",
       "accessDenied": "Acceso Denegado",
@@ -2361,5 +2370,104 @@
     "pmsDesc": "Gestiona tus propiedades",
     "marketplace": "Marketplace",
     "marketplaceDesc": "Compra y vende en tu comunidad"
+  },
+  "communityPayments": {
+    "title": "Cobros de Comunidad",
+    "subtitle": "Gestiona tus pagos de comunidad",
+    "loading": "Cargando cobros...",
+    "pendingBalance": "Saldo Pendiente",
+    "pendingPayment": "cobro pendiente",
+    "pendingPayments": "cobros pendientes",
+    "tabs": {
+      "pending": "Pendientes",
+      "history": "Historial",
+      "cards": "Tarjetas"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "proofSubmitted": "Comprobante enviado",
+      "processing": "Procesando",
+      "paid": "Pagado",
+      "rejected": "Rechazado",
+      "overdue": "Vencido"
+    },
+    "paymentMethods": {
+      "card": "Tarjeta",
+      "proof": "Comprobante",
+      "both": "Tarjeta o comprobante",
+      "cardOnly": "Solo tarjeta",
+      "proofOnly": "Solo comprobante"
+    },
+    "actions": {
+      "pay": "Pagar",
+      "payAll": "Pagar todo",
+      "payNow": "Pagar ahora",
+      "payWithCard": "Pagar con tarjeta",
+      "uploadProof": "Subir comprobante"
+    },
+    "proofUpload": {
+      "title": "Subir Comprobante",
+      "subtitle": "Sube tu comprobante de pago",
+      "bankInfo": "Información Bancaria",
+      "bankName": "Banco",
+      "accountNumber": "Número de cuenta",
+      "accountName": "Titular",
+      "accountType": "Tipo de cuenta",
+      "instructions": "Instrucciones",
+      "takePhoto": "Tomar foto",
+      "selectFromGallery": "Seleccionar de galería",
+      "reference": "Referencia (opcional)",
+      "referencePlaceholder": "Ej: #12345",
+      "notes": "Notas (opcional)",
+      "notesPlaceholder": "Información adicional...",
+      "submit": "Enviar Comprobante",
+      "proofRequired": "Debes subir una imagen del comprobante",
+      "success": "¡Comprobante Enviado!",
+      "successMessage": "Tu comprobante ha sido enviado y está pendiente de verificación",
+      "verificationNote": "Tu comprobante será verificado por el administrador. Te notificaremos cuando sea aprobado.",
+      "copied": "Copiado al portapapeles"
+    },
+    "cardPayment": {
+      "title": "Pagar con Tarjeta",
+      "selectCard": "Selecciona una tarjeta",
+      "addNewCard": "Agregar nueva tarjeta",
+      "noCards": "Sin tarjetas",
+      "addCardFirst": "Agrega una tarjeta para pagar",
+      "subtotal": "Subtotal",
+      "serviceFee": "Comisión de servicio",
+      "total": "Total",
+      "pay": "Pagar",
+      "processing": "Procesando pago...",
+      "success": "¡Pago Exitoso!",
+      "successMessage": "Tu pago ha sido procesado correctamente"
+    },
+    "detail": {
+      "concept": "Concepto",
+      "description": "Descripción",
+      "amount": "Monto",
+      "dueDate": "Vencimiento",
+      "status": "Estado",
+      "paymentMethod": "Método de pago",
+      "paidAt": "Pagado el"
+    },
+    "empty": {
+      "pending": {
+        "title": "Sin cobros pendientes",
+        "subtitle": "¡Estás al día con tus pagos!"
+      },
+      "history": {
+        "title": "Sin historial",
+        "subtitle": "Tus pagos completados aparecerán aquí"
+      },
+      "cards": {
+        "title": "Sin tarjetas",
+        "subtitle": "Agrega una tarjeta para pagar más rápido"
+      }
+    },
+    "errors": {
+      "loadFailed": "Error al cargar cobros",
+      "proofFailed": "Error al enviar comprobante",
+      "paymentFailed": "Error al procesar pago"
+    }
   }
 }

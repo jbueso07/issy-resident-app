@@ -175,8 +175,76 @@ export default function MySubscriptionScreen() {
   };
 
   const getPlansForVertical = () => {
-    if (!selectedVertical) return [];
-    return allPlans.filter(p => p.vertical === selectedVertical && p.is_active);
+    if (!selectedVertical || !Array.isArray(allPlans)) return [];
+    return allPlans.filter(p => p && typeof p === 'object' && p.vertical === selectedVertical && p.is_active);
+  };
+
+  // Render individual plan card - extracted to avoid whitespace issues
+  const renderPlanCard = (plan) => {
+    const isB2B = plan.type === "b2b";
+    if (!plan || !plan.id) return null;
+    
+    const verticalColor = VERTICALS[selectedVertical]?.color || COLORS.purple;
+    
+    return (
+      <View key={plan.id} style={styles.planCard}>
+        <View style={styles.planHeader}>
+          <Text style={styles.planName}>{plan.name}</Text>
+          {plan.trial_days > 0 ? (
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>{t('mySubscription.freeDays', { days: plan.trial_days })}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.planPricing}>
+          <Text style={styles.planPrice}>${plan.price_monthly}</Text>
+          <Text style={styles.planPeriod}>/{t('mySubscription.month')}</Text>
+        </View>
+        {plan.price_yearly ? (
+          <Text style={styles.yearlyPrice}>{t('mySubscription.yearlyPrice', { price: plan.price_yearly })}</Text>
+        ) : null}
+        <View style={styles.featuresList}>
+          {(plan.features || []).slice(0, 4).map((feature, idx) => (
+            <View key={idx} style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.green} />
+              <Text style={styles.featureText}>{feature}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.planActions}>
+          {isB2B ? (
+            <TouchableOpacity
+              style={[styles.trialBtn, { backgroundColor: verticalColor, flex: 1 }]}
+              onPress={() => { setShowPlansModal(false); router.push({ pathname: "/request-demo", params: { vertical: selectedVertical }}); }}
+            >
+              <Text style={styles.trialBtnText}>{"Solicitar Demo"}</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              {plan.trial_days > 0 ? (
+                <TouchableOpacity
+                  style={[styles.trialBtn, { backgroundColor: verticalColor }]}
+                  onPress={() => handleStartTrial(plan)}
+                  disabled={processing}
+                >
+                  {processing ? (
+                    <ActivityIndicator color={COLORS.textPrimary} size="small" />
+                  ) : (
+                    <Text style={styles.trialBtnText}>{t("mySubscription.tryFree")}</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.subscribeBtn}
+                onPress={() => handleSelectPlanForPayment(plan)}
+              >
+                <Text style={styles.subscribeBtnText}>{t("mySubscription.subscribe")}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    );
   };
 
   if (loading) {
@@ -216,47 +284,28 @@ export default function MySubscriptionScreen() {
               <View style={[styles.activeHeader, { backgroundColor: vertical.color || COLORS.purple }]}>
                 <Text style={styles.activeIcon}>{vertical.icon}</Text>
                 <Text style={styles.activePlan}>{sub.plan?.name || t('mySubscription.plan')}</Text>
-                <Text style={styles.activePrice}>
-                  {sub.status === 'trial' ? t('mySubscription.freeTrial') : `$${sub.plan?.price_monthly}/${t('mySubscription.month')}`}
-                </Text>
+                <Text style={styles.activePrice}>{sub.status === 'trial' ? t('mySubscription.freeTrial') : `$${sub.plan?.price_monthly}/${t('mySubscription.month')}`}</Text>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>
-                    {sub.status === 'trial' ? `🎁 ${t('mySubscription.trial')}` : `✓ ${t('mySubscription.active')}`}
-                  </Text>
+                  <Text style={styles.statusText}>{sub.status === 'trial' ? `🎁 ${t('mySubscription.trial')}` : `✓ ${t('mySubscription.active')}`}</Text>
                 </View>
               </View>
-              
               <View style={styles.activeBody}>
-                {sub.status === 'trial' && (
+                {sub.status === 'trial' ? (
                   <View style={styles.trialAlert}>
                     <Ionicons name="time-outline" size={18} color={COLORS.yellow} />
-                    <Text style={styles.trialText}>
-                      {t('mySubscription.daysRemaining', { days: daysLeft })}
-                    </Text>
+                    <Text style={styles.trialText}>{t('mySubscription.daysRemaining', { days: daysLeft })}</Text>
                   </View>
-                )}
-                
+                ) : null}
                 <View style={styles.activeInfo}>
                   <View>
                     <Text style={styles.infoLabel}>{t('mySubscription.nextBill')}</Text>
-                    <Text style={styles.infoValue}>
-                      {sub.current_period_end 
-                        ? new Date(sub.current_period_end).toLocaleDateString('es', { day: 'numeric', month: 'short' })
-                        : 'N/A'
-                      }
-                    </Text>
+                    <Text style={styles.infoValue}>{sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString('es', { day: 'numeric', month: 'short' }) : 'N/A'}</Text>
                   </View>
                   <View>
                     <Text style={styles.infoLabel}>{t('mySubscription.method')}</Text>
-                    <Text style={styles.infoValue}>
-                      {paymentMethods.find(c => c.is_default)?.last_four 
-                        ? `•••• ${paymentMethods.find(c => c.is_default).last_four}`
-                        : t('mySubscription.noCard')
-                      }
-                    </Text>
+                    <Text style={styles.infoValue}>{paymentMethods.find(c => c.is_default)?.last_four ? `•••• ${paymentMethods.find(c => c.is_default).last_four}` : t('mySubscription.noCard')}</Text>
                   </View>
                 </View>
-                
                 <View style={styles.activeActions}>
                   <TouchableOpacity style={styles.upgradeBtn}>
                     <Text style={styles.upgradeBtnText}>{t('mySubscription.changePlan')}</Text>
@@ -274,10 +323,8 @@ export default function MySubscriptionScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('mySubscription.availableServices')}</Text>
           <Text style={styles.sectionSubtitle}>{t('mySubscription.exploreServices')}</Text>
-          
           {Object.entries(VERTICALS).map(([key, vertical]) => {
             const activeSub = getVerticalSubscription(key);
-            
             return (
               <TouchableOpacity 
                 key={key} 
@@ -290,15 +337,10 @@ export default function MySubscriptionScreen() {
                 </View>
                 <View style={styles.serviceInfo}>
                   <Text style={styles.serviceName}>{vertical.name}</Text>
-                  <Text style={styles.serviceStatus}>
-                    {activeSub 
-                      ? (activeSub.status === 'trial' ? t('mySubscription.inTrialPeriod') : t('mySubscription.activeSubscription'))
-                      : t('mySubscription.available')
-                    }
-                  </Text>
+                  <Text style={styles.serviceStatus}>{activeSub ? (activeSub.status === 'trial' ? t('mySubscription.inTrialPeriod') : t('mySubscription.activeSubscription')) : t('mySubscription.available')}</Text>
                 </View>
                 {activeSub ? (
-                  <View style={[styles.activeBadge]}>
+                  <View style={styles.activeBadge}>
                     <Ionicons name="checkmark-circle" size={20} color={COLORS.green} />
                   </View>
                 ) : (
@@ -318,12 +360,7 @@ export default function MySubscriptionScreen() {
           </View>
           <View style={styles.linkInfo}>
             <Text style={styles.linkTitle}>{t('mySubscription.paymentMethods')}</Text>
-            <Text style={styles.linkSubtitle}>
-              {paymentMethods.length > 0 
-                ? t('mySubscription.cardsSaved', { count: paymentMethods.length })
-                : t('mySubscription.addPaymentMethod')
-              }
-            </Text>
+            <Text style={styles.linkSubtitle}>{paymentMethods.length > 0 ? t('mySubscription.cardsSaved', { count: paymentMethods.length }) : t('mySubscription.addPaymentMethod')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={22} color={COLORS.textMuted} />
         </TouchableOpacity>
@@ -332,82 +369,25 @@ export default function MySubscriptionScreen() {
       </ScrollView>
 
       {/* Plans Modal */}
-      <Modal visible={showPlansModal} animationType="slide" transparent>
+      <Modal visible={showPlansModal && !!selectedVertical} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {VERTICALS[selectedVertical]?.icon} {VERTICALS[selectedVertical]?.name}
-              </Text>
+              <Text style={styles.modalTitle}>{selectedVertical ? `${VERTICALS[selectedVertical]?.icon || ''} ${VERTICALS[selectedVertical]?.name || ''}` : ''}</Text>
               <TouchableOpacity onPress={() => setShowPlansModal(false)}>
                 <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <Text style={styles.plansSubtitle}>{t('mySubscription.choosePlan')}</Text>
-
-              {getPlansForVertical().map((plan) => (
-                <View key={plan.id} style={styles.planCard}>
-                  <View style={styles.planHeader}>
-                    <Text style={styles.planName}>{plan.name}</Text>
-                    {plan.trial_days > 0 && (
-                      <View style={styles.trialBadge}>
-                        <Text style={styles.trialBadgeText}>{t('mySubscription.freeDays', { days: plan.trial_days })}</Text>
-                      </View>
-                    )}
-                  </View>
-                  
-                  <View style={styles.planPricing}>
-                    <Text style={styles.planPrice}>${plan.price_monthly}</Text>
-                    <Text style={styles.planPeriod}>/{t('mySubscription.month')}</Text>
-                  </View>
-                  {plan.price_yearly && (
-                    <Text style={styles.yearlyPrice}>
-                      {t('mySubscription.yearlyPrice', { price: plan.price_yearly })}
-                    </Text>
-                  )}
-
-                  <View style={styles.featuresList}>
-                    {(plan.features || []).slice(0, 4).map((feature, idx) => (
-                      <View key={idx} style={styles.featureItem}>
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.green} />
-                        <Text style={styles.featureText}>{feature}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.planActions}>
-                    {plan.trial_days > 0 && (
-                      <TouchableOpacity
-                        style={[styles.trialBtn, { backgroundColor: VERTICALS[selectedVertical]?.color || COLORS.purple }]}
-                        onPress={() => handleStartTrial(plan)}
-                        disabled={processing}
-                      >
-                        {processing ? (
-                          <ActivityIndicator color={COLORS.textPrimary} size="small" />
-                        ) : (
-                          <Text style={styles.trialBtnText}>{t('mySubscription.tryFree')}</Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={styles.subscribeBtn}
-                      onPress={() => handleSelectPlanForPayment(plan)}
-                    >
-                      <Text style={styles.subscribeBtnText}>{t('mySubscription.subscribe')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-
-              {getPlansForVertical().length === 0 && (
+              {getPlansForVertical().map(renderPlanCard)}
+              {getPlansForVertical().length === 0 ? (
                 <View style={styles.noPlans}>
                   <Ionicons name="cube-outline" size={48} color={COLORS.textMuted} />
                   <Text style={styles.noPlansText}>{t('mySubscription.noPlansAvailable')}</Text>
                 </View>
-              )}
+              ) : null}
             </ScrollView>
           </View>
         </View>
@@ -424,34 +404,26 @@ export default function MySubscriptionScreen() {
                 <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
-
             <View style={styles.modalBody}>
-              {selectedPlan && (
+              {selectedPlan ? (
                 <>
                   <View style={styles.summaryCard}>
                     <Text style={styles.summaryPlan}>{selectedPlan.name}</Text>
-                    <Text style={styles.summaryPrice}>${selectedPlan.price_monthly}/{t('mySubscription.month')}</Text>
+                    <Text style={styles.summaryPrice}>{`$${selectedPlan.price_monthly}/${t('mySubscription.month')}`}</Text>
                   </View>
-
                   <Text style={styles.paymentTitle}>{t('mySubscription.paymentMethodTitle')}</Text>
                   {paymentMethods.length > 0 ? (
                     <View style={styles.selectedCard}>
-                      <Text style={styles.selectedCardText}>
-                        💳 •••• {paymentMethods.find(c => c.is_default)?.last_four || paymentMethods[0]?.last_four}
-                      </Text>
+                      <Text style={styles.selectedCardText}>{`💳 •••• ${paymentMethods.find(c => c.is_default)?.last_four || paymentMethods[0]?.last_four}`}</Text>
                       <TouchableOpacity onPress={() => router.push('/payment-methods')}>
                         <Text style={styles.changeCardText}>{t('mySubscription.change')}</Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      style={styles.addCardBtn}
-                      onPress={() => router.push('/payment-methods')}
-                    >
-                      <Text style={styles.addCardBtnText}>+ {t('mySubscription.addCard')}</Text>
+                    <TouchableOpacity style={styles.addCardBtn} onPress={() => router.push('/payment-methods')}>
+                      <Text style={styles.addCardBtnText}>{`+ ${t('mySubscription.addCard')}`}</Text>
                     </TouchableOpacity>
                   )}
-
                   <TouchableOpacity
                     style={[styles.payBtn, processing && styles.payBtnDisabled]}
                     onPress={() => handleSubscribe('monthly')}
@@ -463,12 +435,9 @@ export default function MySubscriptionScreen() {
                       <Text style={styles.payBtnText}>{t('mySubscription.pay', { amount: selectedPlan.price_monthly })}</Text>
                     )}
                   </TouchableOpacity>
-
-                  <Text style={styles.secureNote}>
-                    🔒 {t('mySubscription.securePayment')}
-                  </Text>
+                  <Text style={styles.secureNote}>{`🔒 ${t('mySubscription.securePayment')}`}</Text>
                 </>
-              )}
+              ) : null}
             </View>
           </View>
         </View>

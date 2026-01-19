@@ -26,6 +26,8 @@ import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { useUserLocation } from '../../src/context/UserLocationContext';
+import { UserLocationSelector, UserLocationPickerModal } from '../../src/components/UserLocationPicker';
 import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
@@ -91,6 +93,7 @@ const formatTimeForBackend = (date) => {
 export default function Visits() {
   const { profile } = useAuth();
   const { t, language } = useTranslation();
+  const { selectedLocationId, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
   const qrRef = useRef(null);
 
   // Dynamic QR types with translations
@@ -166,12 +169,15 @@ export default function Visits() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
 
   useEffect(() => {
-    loadResidentQRSecret();
-  }, []);
+    if (selectedLocationId) {
+      loadResidentQRSecret();
+    }
+  }, [selectedLocationId]);
 
   const loadResidentQRSecret = async () => {
+    if (!selectedLocationId) return;
     try {
-      const result = await getResidentQRSecret();
+      const result = await getResidentQRSecret(selectedLocationId);
       if (result.success) {
         setResidentQRData(result.data);
       }
@@ -184,12 +190,15 @@ export default function Visits() {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   useEffect(() => {
-    loadQRCodes();
-  }, []);
+    if (selectedLocationId) {
+      loadQRCodes();
+    }
+  }, [selectedLocationId]);
 
   const loadQRCodes = async () => {
+    if (!selectedLocationId) return;
     try {
-      const result = await getMyQRCodes();
+      const result = await getMyQRCodes(selectedLocationId);
       if (result.success) {
         setQrCodes(result.data || []);
       }
@@ -588,7 +597,11 @@ return (
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title} maxFontSizeMultiplier={1.2}>{t('visits.title')}</Text>
-          <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>{t('visits.subtitle')}</Text>
+          {hasMultipleLocations ? (
+            <UserLocationSelector style={styles.subtitle} />
+          ) : (
+            <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>{t('visits.subtitle')}</Text>
+          )}
         </View>
 
         {/* Tabs */}
@@ -1197,7 +1210,8 @@ return (
           )}
         </ScrollView>
       </View>
-    </Modal>
+      </Modal>
+    <UserLocationPickerModal />
   </View>
 );
 }

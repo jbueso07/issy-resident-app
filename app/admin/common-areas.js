@@ -22,6 +22,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -51,6 +53,7 @@ export default function AdminCommonAreas() {
   const { t } = useTranslation();
   const router = useRouter();
   const { user, profile, token } = useAuth();
+  const { selectedLocationId, selectedLocation, canSwitchLocation, openPicker, loading: locationLoading } = useAdminLocation();
 
   // Categories with translations
   const CATEGORIES = [
@@ -106,7 +109,7 @@ export default function AdminCommonAreas() {
       max_hours: '4',
       max_advance_days: '30',
       requires_approval: false,
-      location_id: profile?.location_id || '',
+      location_id: '',
       is_24_hours: false,
       available_from: '08:00',
       available_until: '20:00',
@@ -115,8 +118,8 @@ export default function AdminCommonAreas() {
   }
 
   useEffect(() => {
-    if (token) loadData();
-  }, [token]);
+    if (token && selectedLocationId) loadData();
+  }, [token, selectedLocationId]);
 
   const loadData = async () => {
     await Promise.all([
@@ -130,13 +133,13 @@ export default function AdminCommonAreas() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  }, []);
+  }, [selectedLocationId]);
 
   const loadAreas = async () => {
-    if (!token) return;
+    if (!token || !selectedLocationId) return;
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/common-areas`, {
+      const response = await fetch(`${API_URL}/common-areas?location_id=${selectedLocationId}`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
@@ -166,9 +169,9 @@ export default function AdminCommonAreas() {
   };
 
   const loadStats = async () => {
-    if (!token) return;
+    if (!token || !selectedLocationId) return;
     try {
-      const response = await fetch(`${API_URL}/common-areas/stats`, {
+      const response = await fetch(`${API_URL}/common-areas/stats?location_id=${selectedLocationId}`, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await response.json();
@@ -258,7 +261,7 @@ export default function AdminCommonAreas() {
         max_duration_hours: parseInt(form.max_hours) || 4,
         max_advance_days: parseInt(form.max_advance_days) || 30,
         requires_approval: form.requires_approval,
-        location_id: form.location_id || profile?.location_id,
+        location_id: form.location_id || selectedLocationId,
         is_24_hours: form.is_24_hours,
         available_from: form.available_from,
         available_until: form.available_until,
@@ -357,7 +360,10 @@ export default function AdminCommonAreas() {
 
   const resetForm = () => {
     setEditingArea(null);
-    setForm(getInitialForm());
+    setForm({
+      ...getInitialForm(),
+      location_id: selectedLocationId || '',
+    });
   };
 
   const getCategoryInfo = (categoryId) => {
@@ -497,7 +503,13 @@ export default function AdminCommonAreas() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t('admin.commonAreas.title')}</Text>
-          <Text style={styles.headerSubtitle}>{t('admin.commonAreas.subtitle')}</Text>
+          {canSwitchLocation && selectedLocation ? (
+            <TouchableOpacity onPress={openPicker}>
+              <Text style={[styles.headerSubtitle, { color: '#D4FE48' }]}>{selectedLocation.name} ▾</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.headerSubtitle}>{t('admin.commonAreas.subtitle')}</Text>
+          )}
         </View>
         <TouchableOpacity onPress={() => { resetForm(); setShowModal(true); }} style={styles.addButton}>
           <Ionicons name="add" size={24} color={COLORS.background} />
@@ -822,6 +834,8 @@ export default function AdminCommonAreas() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+      
+      <LocationPickerModal />
     </SafeAreaView>
   );
 }

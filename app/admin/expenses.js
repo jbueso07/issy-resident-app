@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -58,6 +60,7 @@ const getExpenseCategories = (t) => [
 export default function AdminExpenses() {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
   
   // i18n config
@@ -478,6 +481,7 @@ export default function AdminExpenses() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }

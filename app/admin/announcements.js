@@ -20,6 +20,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +56,7 @@ const COLORS = {
 export default function AdminAnnouncements() {
   const { t, language } = useTranslation();
   const { user, profile, signOut } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
   const imageScrollRef = useRef(null);
   
@@ -113,8 +116,9 @@ export default function AdminAnnouncements() {
   };
 
   useEffect(() => {
+    if (!selectedLocationId) return;
     fetchAnnouncements();
-  }, []);
+  }, [selectedLocationId]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -127,7 +131,7 @@ export default function AdminAnnouncements() {
   const fetchAnnouncements = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/announcements/admin`, { headers });
+      const response = await fetch(`${API_URL}/api/announcements/admin?location_id=${selectedLocationId}`, { headers });
       const data = await response.json();
       if (data.success) {
         setAnnouncements(data.data || []);
@@ -630,15 +634,11 @@ export default function AdminAnnouncements() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('admin.announcements.title')}</Text>
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={22} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-      </View>
+      <LocationHeader
+        title={t('admin.announcements.title')}
+        onBack={() => router.back()}
+        onRefresh={onRefresh}
+      />
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{announcements.length}</Text>
@@ -677,6 +677,7 @@ export default function AdminAnnouncements() {
         }
       />
       {renderFormModal()}
+      <LocationPickerModal />
       {renderDetailModal()}
     </SafeAreaView>
   );

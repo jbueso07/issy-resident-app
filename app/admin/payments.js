@@ -23,6 +23,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -84,6 +86,7 @@ const getPaymentMethodOptions = (t) => [
 export default function AdminPayments() {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
   
   // i18n configs
@@ -97,7 +100,7 @@ export default function AdminPayments() {
   // ============================================
   
   // Main tab state
-  const [activeTab, setActiveTab] = useState('charges'); // charges, proofs, settings
+  const [activeTab, setActiveTab] = useState('charges');
   
   // Charges tab state
   const [charges, setCharges] = useState([]);
@@ -115,6 +118,8 @@ export default function AdminPayments() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [processingProof, setProcessingProof] = useState(false);
+  
+  // Charge detail modal state
   const [showChargeDetailModal, setShowChargeDetailModal] = useState(false);
   const [selectedChargeDetail, setSelectedChargeDetail] = useState(null);
 
@@ -134,7 +139,7 @@ export default function AdminPayments() {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
-  const [createStep, setCreateStep] = useState('form'); // 'form' | 'userPicker'
+  const [createStep, setCreateStep] = useState('form');
   const [userSearch, setUserSearch] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   
@@ -269,36 +274,32 @@ export default function AdminPayments() {
   };
 
   const fetchUsers = async () => {
-  // Cerrar modal de crear primero
-  setShowCreateModal(false);
-  
-  if (users.length > 0) {
-    setShowUserPicker(true);
-    return;
-  }
-
-  setLoadingUsers(true);
-  setShowUserPicker(true);
-
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${API_URL}/api/community-payments/admin/residents`, { headers });
-    const data = await response.json();
-
-    if (data.success) {
-      setUsers(data.data || []);
+    setShowCreateModal(false);
+    
+    if (users.length > 0) {
+      setShowUserPicker(true);
+      return;
     }
-  } catch (error) {
-    console.error('Error fetching users:', error);
-  } finally {
-    setLoadingUsers(false);
-  }
-};
 
+    setLoadingUsers(true);
+    setShowUserPicker(true);
 
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/api/community-payments/admin/residents`, { headers });
+      const data = await response.json();
+
+      if (data.success) {
+        setUsers(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleCreateCharge = async () => {
-    // Validations
     if (formData.target === 'single' && !formData.user_id) {
       Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.selectResident', 'Selecciona un residente'));
       return;
@@ -320,14 +321,12 @@ export default function AdminPayments() {
     try {
       const headers = await getAuthHeaders();
       
-      // Determine user_ids based on target
       let userIds = [];
       if (formData.target === 'single') {
         userIds = [formData.user_id];
       } else if (formData.target === 'multiple') {
         userIds = selectedUsers.map(u => u.id);
       }
-      // For 'all', we send empty array and backend handles it
 
       const payload = {
         target: formData.target,
@@ -401,8 +400,8 @@ export default function AdminPayments() {
 
   const openChargeDetail = (charge) => {
     setSelectedChargeDetail(charge);
-setShowChargeDetailModal(true);
-};
+    setShowChargeDetailModal(true);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -568,24 +567,24 @@ setShowChargeDetailModal(true);
   // ============================================
 
   const handleSelectUser = (selectedUser) => {
-  if (formData.target === 'single') {
-    setFormData({
-      ...formData,
-      user_id: selectedUser.id,
-      user_name: selectedUser.name || selectedUser.email,
-    });
-    setShowUserPicker(false);
-    setShowCreateModal(true);  // <-- AGREGAR ESTA LÍNEA
-  } else if (formData.target === 'multiple') {
-    const alreadySelected = selectedUsers.find(u => u.id === selectedUser.id);
-    if (alreadySelected) {
-      setSelectedUsers(selectedUsers.filter(u => u.id !== selectedUser.id));
-    } else {
-      setSelectedUsers([...selectedUsers, selectedUser]);
+    if (formData.target === 'single') {
+      setFormData({
+        ...formData,
+        user_id: selectedUser.id,
+        user_name: selectedUser.name || selectedUser.email,
+      });
+      setShowUserPicker(false);
+      setShowCreateModal(true);
+    } else if (formData.target === 'multiple') {
+      const alreadySelected = selectedUsers.find(u => u.id === selectedUser.id);
+      if (alreadySelected) {
+        setSelectedUsers(selectedUsers.filter(u => u.id !== selectedUser.id));
+      } else {
+        setSelectedUsers([...selectedUsers, selectedUser]);
+      }
     }
-  }
-  setUserSearch('');
-};
+    setUserSearch('');
+  };
 
   const filteredUsers = users.filter(u => {
     const searchLower = userSearch.toLowerCase();
@@ -693,88 +692,31 @@ setShowChargeDetailModal(true);
       )}
 
       {/* Filters */}
-      <ScrollView style={styles.modalContent}>
-
-  {/* ===================== */}
-  {/* STEP: FORM */}
-  {/* ===================== */}
-  {createStep === 'form' && (
-    <>
-      {/* 🔽 AQUÍ SE QUEDA TODO TU FORMULARIO ORIGINAL SIN CAMBIOS 🔽 */}
-      {/* NO BORRES NI MODIFIQUES NADA DEL FORMULARIO */}
-    </>
-  )}
-
-  {/* ===================== */}
-  {/* STEP: USER PICKER */}
-  {/* ===================== */}
-  {createStep === 'userPicker' && (
-    <>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          value={userSearch}
-          onChangeText={setUserSearch}
-          placeholder={t('admin.payments.searchPlaceholder', 'Buscar por nombre, email o unidad...')}
-          placeholderTextColor={COLORS.textMuted}
-        />
-      </View>
-
-      {loadingUsers ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.lime} />
-          <Text style={styles.loadingText}>
-            {t('admin.payments.loadingResidents', 'Cargando residentes...')}
-          </Text>
-        </View>
-      ) : (
-        filteredUsers.map((user) => {
-          const isSelected =
-            formData.target === 'single'
-              ? formData.user_id === user.id
-              : selectedUsers.some(u => u.id === user.id);
-
-          return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+        <View style={styles.filters}>
+          {[
+            { key: 'all', label: t('admin.payments.filters.all', 'Todos'), icon: 'list' },
+            { key: 'pending', label: t('admin.payments.filters.pending', 'Pendientes'), icon: 'time' },
+            { key: 'paid', label: t('admin.payments.filters.paid', 'Pagados'), icon: 'checkmark-circle' },
+            { key: 'overdue', label: t('admin.payments.filters.overdue', 'Vencidos'), icon: 'alert-circle' },
+          ].map((f) => (
             <TouchableOpacity
-              key={user.id}
-              style={[styles.userItem, isSelected && styles.userItemSelected]}
-              onPress={() => handleSelectUser(user)}
+              key={f.key}
+              style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
+              onPress={() => setFilter(f.key)}
             >
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>
-                  {(user.name || user.email || '?')[0].toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>{user.name || user.email}</Text>
-                <Text style={styles.userUnit}>
-                  {user.unit_number || user.email}
-                </Text>
-              </View>
-
-              {formData.target === 'multiple' && (
-                <Ionicons
-                  name={isSelected ? 'checkbox' : 'square-outline'}
-                  size={24}
-                  color={isSelected ? COLORS.lime : COLORS.textMuted}
-                />
-              )}
-
-              {formData.target === 'single' && isSelected && (
-                <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
-              )}
+              <Ionicons 
+                name={f.icon} 
+                size={16} 
+                color={filter === f.key ? COLORS.background : COLORS.textSecondary} 
+              />
+              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
+                {f.label}
+              </Text>
             </TouchableOpacity>
-          );
-        })
-      )}
-
-      <View style={{ height: 100 }} />
-    </>
-  )}
-
-</ScrollView>
-
+          ))}
+        </View>
+      </ScrollView>
 
       {/* Charges List */}
       {charges.length === 0 ? (
@@ -785,113 +727,59 @@ setShowChargeDetailModal(true);
         </View>
       ) : (
         charges.map((charge) => {
-  // Use display_status from backend, fallback to old logic
-  const status =
-    charge.display_status ||
-    charge.payment_status ||
-    charge.status ||
-    'pending';
-
-  const statusInfo = PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
-  const chargeIsOverdue = status === 'pending' && isOverdue(charge.due_date);
-  const displayStatus = chargeIsOverdue
-    ? PAYMENT_STATUS.overdue
-    : statusInfo;
-
-  // Get user info from payment or charge
-  const payment = charge.payment || charge.payments?.[0];
-  const userName =
-    payment?.user?.name ||
-    payment?.user?.full_name ||
-    charge.user?.name ||
-    charge.user_name ||
-    t('common.user', 'Usuario');
-
-  const userUnit =
-    payment?.user?.unit_number ||
-    charge.user?.unit_number ||
-    '';
-
-  return (
-    <TouchableOpacity
-      key={charge.id}
-      style={styles.chargeCard}
-      onPress={() => openChargeDetail(charge)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.cardIconContainer}>
-          <Ionicons
-            name={getPaymentTypeIcon(
-              charge.charge_type || charge.payment_type
-            )}
-            size={20}
-            color={COLORS.teal}
-          />
-        </View>
-
-        <View style={styles.cardHeaderLeft}>
-          <Text style={styles.chargeConcept}>
-            {charge.title ||
-              charge.concept ||
-              getPaymentTypeLabel(
-                charge.charge_type || charge.payment_type
-              )}
-          </Text>
-          <Text style={styles.chargeUser}>
-            {userUnit ? `${userUnit} - ${userName}` : userName}
-          </Text>
-        </View>
-
-        <View style={styles.cardHeaderRight}>
-          <Text style={styles.chargeAmount}>
-            {formatCurrency(charge.amount, charge.currency)}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={COLORS.textMuted}
-          />
-        </View>
-      </View>
-
-      <View style={styles.cardFooter}>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: displayStatus.color + '20' },
-          ]}
-        >
-          <Ionicons
-            name={displayStatus.icon}
-            size={14}
-            color={displayStatus.color}
-          />
-          <Text
-            style={[
-              styles.statusText,
-              { color: displayStatus.color },
-            ]}
-          >
-            {displayStatus.label}
-          </Text>
-        </View>
-
-        <View style={styles.dueDateContainer}>
-          <Ionicons
-            name="calendar-outline"
-            size={14}
-            color={COLORS.textSecondary}
-          />
-          <Text style={styles.dueDate}>
-            {formatDate(charge.due_date)}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-})
-
+          const status = charge.display_status || charge.payment_status || charge.status || 'pending';
+          const statusInfo = PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
+          const chargeIsOverdue = status === 'pending' && isOverdue(charge.due_date);
+          const displayStatus = chargeIsOverdue ? PAYMENT_STATUS.overdue : statusInfo;
+          
+          const payment = charge.payment || charge.payments?.[0];
+          const userName = payment?.user?.name || payment?.user?.full_name || charge.user?.name || charge.user_name || t('common.user', 'Usuario');
+          const userUnit = payment?.user?.unit_number || charge.user?.unit_number || '';
+          
+          return (
+            <TouchableOpacity
+              key={charge.id}
+              style={styles.chargeCard}
+              onPress={() => openChargeDetail(charge)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconContainer}>
+                  <Ionicons 
+                    name={getPaymentTypeIcon(charge.charge_type || charge.payment_type)} 
+                    size={20} 
+                    color={COLORS.teal} 
+                  />
+                </View>
+                <View style={styles.cardHeaderLeft}>
+                  <Text style={styles.chargeConcept}>
+                    {charge.title || charge.concept || getPaymentTypeLabel(charge.charge_type || charge.payment_type)}
+                  </Text>
+                  <Text style={styles.chargeUser}>
+                    {userUnit ? `${userUnit} - ${userName}` : userName}
+                  </Text>
+                </View>
+                <View style={styles.cardHeaderRight}>
+                  <Text style={styles.chargeAmount}>{formatCurrency(charge.amount, charge.currency)}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                </View>
+              </View>
+              
+              <View style={styles.cardFooter}>
+                <View style={[styles.statusBadge, { backgroundColor: displayStatus.color + '20' }]}>
+                  <Ionicons name={displayStatus.icon} size={14} color={displayStatus.color} />
+                  <Text style={[styles.statusText, { color: displayStatus.color }]}>
+                    {displayStatus.label}
+                  </Text>
+                </View>
+                <View style={styles.dueDateContainer}>
+                  <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.dueDate}>{formatDate(charge.due_date)}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })
       )}
     </>
   );
@@ -1166,7 +1054,7 @@ setShowChargeDetailModal(true);
             </View>
           </View>
 
-          {/* User Selector - Only for single/multiple */}
+          {/* User Selector */}
           {formData.target !== 'all' && (
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>
@@ -1188,7 +1076,7 @@ setShowChargeDetailModal(true);
                   <TouchableOpacity style={styles.selectorButton} onPress={fetchUsers}>
                     <Text style={selectedUsers.length > 0 ? styles.selectorText : styles.selectorPlaceholder}>
                       {selectedUsers.length > 0 
-                        ? t('admin.payments.form.selectedCount', { count: selectedUsers.length }, `${selectedUsers.length} seleccionados`)
+                        ? `${selectedUsers.length} seleccionados`
                         : t('admin.payments.form.selectResidents', 'Seleccionar residentes...')
                       }
                     </Text>
@@ -1341,19 +1229,18 @@ setShowChargeDetailModal(true);
   );
 
   const renderUserPickerModal = () => (
-    // DESPUÉS  
-<Modal
-  visible={showUserPicker}
-  animationType="slide"
-  presentationStyle="overFullScreen"
-  transparent={false}
+    <Modal
+      visible={showUserPicker}
+      animationType="slide"
+      presentationStyle="overFullScreen"
+      transparent={false}
     >
       <SafeAreaView style={styles.modalContainer} edges={['top']}>
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: scale(50) }]}>
           <TouchableOpacity onPress={() => {
-  setShowUserPicker(false);
-  setShowCreateModal(true);
-}}>
+            setShowUserPicker(false);
+            setShowCreateModal(true);
+          }}>
             <Text style={styles.modalCancel}>{t('common.cancel', 'Cancelar')}</Text>
           </TouchableOpacity>
           <Text style={styles.modalTitle}>
@@ -1363,7 +1250,10 @@ setShowChargeDetailModal(true);
             }
           </Text>
           {formData.target === 'multiple' && (
-            <TouchableOpacity onPress={() => setShowUserPicker(false)}>
+            <TouchableOpacity onPress={() => {
+              setShowUserPicker(false);
+              setShowCreateModal(true);
+            }}>
               <Text style={styles.modalSave}>{t('common.done', 'Listo')}</Text>
             </TouchableOpacity>
           )}
@@ -1573,6 +1463,165 @@ setShowChargeDetailModal(true);
     </Modal>
   );
 
+  const renderChargeDetailModal = () => (
+    <Modal
+      visible={showChargeDetailModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => {
+        setShowChargeDetailModal(false);
+        setSelectedChargeDetail(null);
+      }}
+    >
+      <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => {
+            setShowChargeDetailModal(false);
+            setSelectedChargeDetail(null);
+          }}>
+            <Text style={styles.modalCancel}>{t('common.close', 'Cerrar')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>{t('admin.payments.chargeDetail', 'Detalle del Cobro')}</Text>
+          <View style={{ width: 60 }} />
+        </View>
+
+        <ScrollView style={styles.modalContent}>
+          {selectedChargeDetail && (
+            <>
+              {/* Status Banner */}
+              {(() => {
+                const status = selectedChargeDetail.display_status || selectedChargeDetail.status || 'pending';
+                const statusInfo = PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
+                return (
+                  <View style={[styles.detailStatusBanner, { backgroundColor: statusInfo.color + '20' }]}>
+                    <Ionicons name={statusInfo.icon} size={24} color={statusInfo.color} />
+                    <Text style={[styles.detailStatusText, { color: statusInfo.color }]}>
+                      {statusInfo.label}
+                    </Text>
+                  </View>
+                );
+              })()}
+
+              {/* Charge Info */}
+              <View style={styles.proofDetails}>
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.concept', 'Concepto')}:</Text>
+                  <Text style={styles.proofDetailValue}>{selectedChargeDetail.title || '-'}</Text>
+                </View>
+                
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.amount', 'Monto')}:</Text>
+                  <Text style={[styles.proofDetailValue, { color: COLORS.lime, fontWeight: '700' }]}>
+                    {formatCurrency(selectedChargeDetail.amount, selectedChargeDetail.currency)}
+                  </Text>
+                </View>
+
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.dueDate', 'Vencimiento')}:</Text>
+                  <Text style={styles.proofDetailValue}>{formatDate(selectedChargeDetail.due_date)}</Text>
+                </View>
+
+                <View style={styles.proofDetailRow}>
+                  <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.type', 'Tipo')}:</Text>
+                  <Text style={styles.proofDetailValue}>{getPaymentTypeLabel(selectedChargeDetail.charge_type)}</Text>
+                </View>
+
+                {selectedChargeDetail.description && (
+                  <View style={[styles.proofDetailRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+                    <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.description', 'Descripción')}:</Text>
+                    <Text style={[styles.proofDetailValue, { marginTop: 4, maxWidth: '100%', textAlign: 'left' }]}>
+                      {selectedChargeDetail.description}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Payment Info */}
+              {(selectedChargeDetail.payment || selectedChargeDetail.payments?.length > 0) && (
+                <>
+                  <Text style={styles.detailSectionTitle}>{t('admin.payments.detail.paymentInfo', 'Información del Pago')}</Text>
+                  
+                  {(selectedChargeDetail.payments || [selectedChargeDetail.payment]).filter(Boolean).map((payment, idx) => (
+                    <View key={payment.id || idx} style={styles.proofDetails}>
+                      <View style={styles.proofDetailRow}>
+                        <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.resident', 'Residente')}:</Text>
+                        <Text style={styles.proofDetailValue}>
+                          {payment.user?.unit_number ? `${payment.user.unit_number} - ` : ''}
+                          {payment.user?.name || payment.user?.full_name || '-'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.proofDetailRow}>
+                        <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.method', 'Método')}:</Text>
+                        <Text style={styles.proofDetailValue}>
+                          {payment.payment_method === 'card' ? 'Tarjeta' : 
+                           payment.payment_method === 'proof' ? 'Comprobante' : 
+                           payment.payment_method || '-'}
+                        </Text>
+                      </View>
+
+                      {payment.paid_at && (
+                        <View style={styles.proofDetailRow}>
+                          <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.paidAt', 'Pagado')}:</Text>
+                          <Text style={styles.proofDetailValue}>{formatDateTime(payment.paid_at)}</Text>
+                        </View>
+                      )}
+
+                      {payment.proof_submitted_at && (
+                        <View style={styles.proofDetailRow}>
+                          <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.submittedAt', 'Enviado')}:</Text>
+                          <Text style={styles.proofDetailValue}>{formatDateTime(payment.proof_submitted_at)}</Text>
+                        </View>
+                      )}
+
+                      {payment.proof_reference && (
+                        <View style={styles.proofDetailRow}>
+                          <Text style={styles.proofDetailLabel}>{t('admin.payments.detail.reference', 'Referencia')}:</Text>
+                          <Text style={styles.proofDetailValue}>{payment.proof_reference}</Text>
+                        </View>
+                      )}
+
+                      {/* Proof Image */}
+                      {(payment.proof_of_payment || payment.proof_url) && (
+                        <View style={styles.proofImageContainer}>
+                          <Text style={[styles.proofDetailLabel, { marginBottom: 8 }]}>
+                            {t('admin.payments.detail.proof', 'Comprobante')}:
+                          </Text>
+                          <Image 
+                            source={{ uri: payment.proof_of_payment || payment.proof_url }} 
+                            style={styles.proofImage}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Cancel Button */}
+              {(selectedChargeDetail.display_status === 'pending' || selectedChargeDetail.status === 'active') && 
+               !selectedChargeDetail.payment?.paid_at && (
+                <TouchableOpacity
+                  style={[styles.cancelButton, { marginTop: 16, justifyContent: 'center' }]}
+                  onPress={() => {
+                    setShowChargeDetailModal(false);
+                    handleCancelCharge(selectedChargeDetail);
+                  }}
+                >
+                  <Ionicons name="close-circle-outline" size={18} color={COLORS.danger} />
+                  <Text style={styles.cancelButtonText}>{t('admin.payments.cancelCharge', 'Cancelar Cobro')}</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+
   // ============================================
   // MAIN RENDER
   // ============================================
@@ -1597,7 +1646,7 @@ setShowChargeDetailModal(true);
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t('admin.payments.title', 'Cobros')}</Text>
-          <Text style={styles.headerSubtitle}>{t('admin.payments.subtitle', 'Gestión de pagos comunitarios')}</Text>
+          <Text style={styles.headerSubtitle}>{t('admin.payments.subtitle', 'Gestión de pagos')}</Text>
         </View>
         {activeTab === 'charges' && (
           <TouchableOpacity style={styles.addButton} onPress={() => {
@@ -1635,323 +1684,11 @@ setShowChargeDetailModal(true);
       {renderCreateModal()}
       {renderUserPickerModal()}
       {renderProofModal()}
+      {renderChargeDetailModal()}
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }
-{/* Charge Detail Modal */}
-<Modal
-  visible={showChargeDetailModal}
-  animationType="slide"
-  presentationStyle="pageSheet"
-  onRequestClose={() => {
-    setShowChargeDetailModal(false);
-    setSelectedChargeDetail(null);
-  }}
->
-  <SafeAreaView style={styles.modalContainer} edges={['top']}>
-    <View style={styles.modalHeader}>
-      <TouchableOpacity
-        onPress={() => {
-          setShowChargeDetailModal(false);
-          setSelectedChargeDetail(null);
-        }}
-      >
-        <Text style={styles.modalCancel}>
-          {t('common.close', 'Cerrar')}
-        </Text>
-      </TouchableOpacity>
-      <Text style={styles.modalTitle}>
-        {t('admin.payments.chargeDetail', 'Detalle del Cobro')}
-      </Text>
-      <View style={{ width: 60 }} />
-    </View>
-
-    <ScrollView style={styles.modalContent}>
-      {selectedChargeDetail && (
-        <>
-          {/* Status Banner */}
-          {(() => {
-            const status =
-              selectedChargeDetail.display_status ||
-              selectedChargeDetail.status ||
-              'pending';
-
-            const statusInfo =
-              PAYMENT_STATUS[status] || PAYMENT_STATUS.pending;
-
-            return (
-              <View
-                style={[
-                  styles.detailStatusBanner,
-                  { backgroundColor: statusInfo.color + '20' },
-                ]}
-              >
-                <Ionicons
-                  name={statusInfo.icon}
-                  size={24}
-                  color={statusInfo.color}
-                />
-                <Text
-                  style={[
-                    styles.detailStatusText,
-                    { color: statusInfo.color },
-                  ]}
-                >
-                  {statusInfo.label}
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* Charge Info */}
-          <View style={styles.proofDetails}>
-            <View style={styles.proofDetailRow}>
-              <Text style={styles.proofDetailLabel}>
-                {t('admin.payments.detail.concept', 'Concepto')}:
-              </Text>
-              <Text style={styles.proofDetailValue}>
-                {selectedChargeDetail.title || '-'}
-              </Text>
-            </View>
-
-            <View style={styles.proofDetailRow}>
-              <Text style={styles.proofDetailLabel}>
-                {t('admin.payments.detail.amount', 'Monto')}:
-              </Text>
-              <Text
-                style={[
-                  styles.proofDetailValue,
-                  { color: COLORS.lime, fontWeight: '700' },
-                ]}
-              >
-                {formatCurrency(
-                  selectedChargeDetail.amount,
-                  selectedChargeDetail.currency
-                )}
-              </Text>
-            </View>
-
-            <View style={styles.proofDetailRow}>
-              <Text style={styles.proofDetailLabel}>
-                {t('admin.payments.detail.dueDate', 'Vencimiento')}:
-              </Text>
-              <Text style={styles.proofDetailValue}>
-                {formatDate(selectedChargeDetail.due_date)}
-              </Text>
-            </View>
-
-            <View style={styles.proofDetailRow}>
-              <Text style={styles.proofDetailLabel}>
-                {t('admin.payments.detail.type', 'Tipo')}:
-              </Text>
-              <Text style={styles.proofDetailValue}>
-                {getPaymentTypeLabel(
-                  selectedChargeDetail.charge_type
-                )}
-              </Text>
-            </View>
-
-            {selectedChargeDetail.description && (
-              <View
-                style={[
-                  styles.proofDetailRow,
-                  {
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  },
-                ]}
-              >
-                <Text style={styles.proofDetailLabel}>
-                  {t(
-                    'admin.payments.detail.description',
-                    'Descripción'
-                  )}
-                  :
-                </Text>
-                <Text
-                  style={[
-                    styles.proofDetailValue,
-                    {
-                      marginTop: 4,
-                      maxWidth: '100%',
-                      textAlign: 'left',
-                    },
-                  ]}
-                >
-                  {selectedChargeDetail.description}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Payment Info (if exists) */}
-          {(selectedChargeDetail.payment ||
-            selectedChargeDetail.payments?.length > 0) && (
-            <>
-              <Text style={styles.detailSectionTitle}>
-                {t(
-                  'admin.payments.detail.paymentInfo',
-                  'Información del Pago'
-                )}
-              </Text>
-
-              {(selectedChargeDetail.payments ||
-                [selectedChargeDetail.payment])
-                .filter(Boolean)
-                .map((payment, idx) => (
-                  <View
-                    key={payment.id || idx}
-                    style={styles.proofDetails}
-                  >
-                    <View style={styles.proofDetailRow}>
-                      <Text style={styles.proofDetailLabel}>
-                        {t(
-                          'admin.payments.detail.resident',
-                          'Residente'
-                        )}
-                        :
-                      </Text>
-                      <Text style={styles.proofDetailValue}>
-                        {payment.user?.unit_number
-                          ? `${payment.user.unit_number} - `
-                          : ''}
-                        {payment.user?.name ||
-                          payment.user?.full_name ||
-                          '-'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.proofDetailRow}>
-                      <Text style={styles.proofDetailLabel}>
-                        {t(
-                          'admin.payments.detail.method',
-                          'Método'
-                        )}
-                        :
-                      </Text>
-                      <Text style={styles.proofDetailValue}>
-                        {payment.payment_method === 'card'
-                          ? 'Tarjeta'
-                          : payment.payment_method === 'proof'
-                          ? 'Comprobante'
-                          : payment.payment_method || '-'}
-                      </Text>
-                    </View>
-
-                    {payment.paid_at && (
-                      <View style={styles.proofDetailRow}>
-                        <Text style={styles.proofDetailLabel}>
-                          {t(
-                            'admin.payments.detail.paidAt',
-                            'Pagado'
-                          )}
-                          :
-                        </Text>
-                        <Text style={styles.proofDetailValue}>
-                          {formatDateTime(payment.paid_at)}
-                        </Text>
-                      </View>
-                    )}
-
-                    {payment.proof_submitted_at && (
-                      <View style={styles.proofDetailRow}>
-                        <Text style={styles.proofDetailLabel}>
-                          {t(
-                            'admin.payments.detail.submittedAt',
-                            'Enviado'
-                          )}
-                          :
-                        </Text>
-                        <Text style={styles.proofDetailValue}>
-                          {formatDateTime(
-                            payment.proof_submitted_at
-                          )}
-                        </Text>
-                      </View>
-                    )}
-
-                    {payment.proof_reference && (
-                      <View style={styles.proofDetailRow}>
-                        <Text style={styles.proofDetailLabel}>
-                          {t(
-                            'admin.payments.detail.reference',
-                            'Referencia'
-                          )}
-                          :
-                        </Text>
-                        <Text style={styles.proofDetailValue}>
-                          {payment.proof_reference}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Proof Image */}
-                    {(payment.proof_of_payment ||
-                      payment.proof_url) && (
-                      <View style={styles.proofImageContainer}>
-                        <Text
-                          style={[
-                            styles.proofDetailLabel,
-                            { marginBottom: 8 },
-                          ]}
-                        >
-                          {t(
-                            'admin.payments.detail.proof',
-                            'Comprobante'
-                          )}
-                          :
-                        </Text>
-                        <Image
-                          source={{
-                            uri:
-                              payment.proof_of_payment ||
-                              payment.proof_url,
-                          }}
-                          style={styles.proofImage}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    )}
-                  </View>
-                ))}
-            </>
-          )}
-
-          {/* Cancel Button for pending charges */}
-          {(selectedChargeDetail.display_status === 'pending' ||
-            selectedChargeDetail.status === 'active') &&
-            !selectedChargeDetail.payment?.paid_at && (
-              <TouchableOpacity
-                style={[
-                  styles.cancelButton,
-                  { marginTop: 16, justifyContent: 'center' },
-                ]}
-                onPress={() => {
-                  setShowChargeDetailModal(false);
-                  handleCancelCharge(selectedChargeDetail);
-                }}
-              >
-                <Ionicons
-                  name="close-circle-outline"
-                  size={18}
-                  color={COLORS.danger}
-                />
-                <Text style={styles.cancelButtonText}>
-                  {t(
-                    'admin.payments.cancelCharge',
-                    'Cancelar Cobro'
-                  )}
-                </Text>
-              </TouchableOpacity>
-            )}
-        </>
-      )}
-
-      <View style={{ height: 100 }} />
-    </ScrollView>
-  </SafeAreaView>
-</Modal>
-
 
 // ============================================
 // STYLES
@@ -1964,16 +1701,14 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     marginTop: scale(12),
     color: COLORS.textSecondary,
     fontSize: scale(14),
   },
-  
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2008,8 +1743,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
-  // Main Tabs
   tabsContainer: {
     flexDirection: 'row',
     marginHorizontal: scale(16),
@@ -2053,16 +1786,12 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
     fontWeight: '700',
   },
-  
-  // Content
   content: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: scale(16),
   },
-  
-  // Stats
   statsContainer: {
     flexDirection: 'row',
     gap: scale(10),
@@ -2087,8 +1816,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
-  
-  // Filters
   filtersScroll: {
     marginBottom: scale(16),
     marginHorizontal: scale(-16),
@@ -2121,8 +1848,6 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: COLORS.background,
   },
-  
-  // Empty State
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: scale(60),
@@ -2139,8 +1864,6 @@ const styles = StyleSheet.create({
     marginTop: scale(4),
     textAlign: 'center',
   },
-  
-  // Charge Card
   chargeCard: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
@@ -2165,6 +1888,9 @@ const styles = StyleSheet.create({
   },
   cardHeaderLeft: {
     flex: 1,
+  },
+  cardHeaderRight: {
+    alignItems: 'flex-end',
   },
   chargeConcept: {
     fontSize: scale(16),
@@ -2222,8 +1948,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: scale(14),
   },
-  
-  // Proof Card
   proofCard: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
@@ -2293,8 +2017,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginRight: scale(4),
   },
-  
-  // Settings
   settingsContainer: {
     paddingBottom: scale(20),
   },
@@ -2359,8 +2081,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.background,
   },
-  
-  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -2392,8 +2112,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: scale(16),
   },
-  
-  // Form
   formGroup: {
     marginBottom: scale(20),
   },
@@ -2423,8 +2141,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: scale(4),
   },
-  
-  // Selectors
   selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2444,8 +2160,6 @@ const styles = StyleSheet.create({
     fontSize: scale(16),
     color: COLORS.textMuted,
   },
-  
-  // Target Grid
   targetGrid: {
     flexDirection: 'row',
     gap: scale(10),
@@ -2474,8 +2188,6 @@ const styles = StyleSheet.create({
     color: COLORS.lime,
     fontWeight: '600',
   },
-  
-  // Type Grid
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2504,8 +2216,6 @@ const styles = StyleSheet.create({
     color: COLORS.lime,
     fontWeight: '600',
   },
-  
-  // Methods Grid
   methodsGrid: {
     flexDirection: 'row',
     gap: scale(10),
@@ -2534,8 +2244,6 @@ const styles = StyleSheet.create({
     color: COLORS.lime,
     fontWeight: '600',
   },
-  
-  // Selected Users
   selectedUsersList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2556,8 +2264,6 @@ const styles = StyleSheet.create({
     fontSize: scale(13),
     color: COLORS.textPrimary,
   },
-  
-  // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2575,8 +2281,6 @@ const styles = StyleSheet.create({
     fontSize: scale(16),
     color: COLORS.textPrimary,
   },
-  
-  // User List
   userList: {
     flex: 1,
   },
@@ -2617,8 +2321,6 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
-  
-  // Proof Modal
   proofImageContainer: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(16),
@@ -2679,32 +2381,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
-  // Card Header Right (for chevron)
-cardHeaderRight: {
-  alignItems: 'flex-end',
-},
-
-// Detail Status Banner
-detailStatusBanner: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: scale(16),
-  borderRadius: scale(12),
-  marginBottom: scale(16),
-  gap: scale(8),
-},
-detailStatusText: {
-  fontSize: scale(16),
-  fontWeight: '600',
-},
-
-// Detail Section Title
-detailSectionTitle: {
-  fontSize: scale(14),
-  fontWeight: '600',
-  color: COLORS.textSecondary,
-  marginTop: scale(8),
-  marginBottom: scale(12),
-},
+  detailStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: scale(16),
+    borderRadius: scale(12),
+    marginBottom: scale(16),
+    gap: scale(8),
+  },
+  detailStatusText: {
+    fontSize: scale(16),
+    fontWeight: '600',
+  },
+  detailSectionTitle: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: scale(8),
+    marginBottom: scale(12),
+  },
 });

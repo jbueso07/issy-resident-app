@@ -154,9 +154,10 @@ export const updateUserProfile = async (profileData) => {
 // QR CODES
 // ==========================================
 
-export const getMyQRCodes = async () => {
+export const getMyQRCodes = async (locationId) => {
   try {
-    const data = await authFetch('/qr');
+    const url = locationId ? `/qr?location_id=${locationId}` : '/qr';
+    const data = await authFetch(url);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching QR codes:', error);
@@ -298,9 +299,10 @@ export const getTicketDetail = async (id) => {
 // ANUNCIOS
 // ==========================================
 
-export const getAnnouncements = async () => {
+export const getAnnouncements = async (locationId) => {
   try {
-    const data = await authFetch('/announcements');
+    const url = locationId ? `/announcements?location_id=${locationId}` : '/announcements';
+    const data = await authFetch(url);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching announcements:', error);
@@ -1137,7 +1139,7 @@ export const getLocations = async () => {
 
 export const getMySubscriptions = async () => {
   try {
-    const data = await authFetch('/subscriptions/my-subscriptions');
+    const data = await authFetch('/subscriptions/my');
     return { success: true, data: data.data || data };
   } catch (error) {
     console.log('Subscriptions not available:', error.message);
@@ -1152,6 +1154,19 @@ export const getVerticalPlans = async () => {
   } catch (error) {
     console.log('Plans not available:', error.message);
     return { success: true, data: [] };
+  }
+};
+
+export const startTrial = async (planId) => {
+  try {
+    const data = await authFetch("/subscriptions/trial", {
+      method: "POST",
+      body: JSON.stringify({ planId: planId })
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error("Error starting trial:", error);
+    return { success: false, error: error.message };
   }
 };
 
@@ -1208,7 +1223,7 @@ export const subscribeToPlan = async (planId, paymentMethodId) => {
     const data = await authFetch('/subscriptions/subscribe', {
       method: 'POST',
       body: JSON.stringify({ 
-        plan_id: planId, 
+        planId: planId, 
         payment_method_id: paymentMethodId 
       }),
     });
@@ -1668,9 +1683,10 @@ export const switchOrganization = async (locationId) => {
 // RESIDENT QR (TOTP)
 // ==========================================
 
-export const getResidentQRSecret = async () => {
+export const getResidentQRSecret = async (locationId) => {
   try {
-    const data = await authFetch('/resident-qr/secret');
+    const url = locationId ? `/resident-qr/secret?location_id=${locationId}` : '/resident-qr/secret';
+    const data = await authFetch(url);
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching resident QR secret:', error);
@@ -1742,6 +1758,305 @@ export const uploadAvatar = async (uri, userId) => {
     return { success: true, url: urlData.publicUrl };
   } catch (error) {
     console.error('Error uploading avatar:', error);
+    return { success: false, error: error.message };
+  }
+};
+// ==========================================
+// INVITATIONS - Join Community
+// ==========================================
+
+/**
+ * Verificar código de invitación personal
+ */
+export const verifyInvitationCode = async (code) => {
+  try {
+    const response = await fetch(`${API_URL}/invitations/verify/${code}`, {
+      method: 'GET',
+      headers: await getAuthHeaders(),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error verifying invitation:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Aceptar código de invitación personal
+ */
+export const acceptInvitationCode = async (code) => {
+  try {
+    const response = await fetch(`${API_URL}/invitations/accept/${code}`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error accepting invitation:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Verificar código público de comunidad
+ */
+export const verifyPublicCode = async (code) => {
+  try {
+    const response = await fetch(`${API_URL}/invitations/public/${code}`, {
+      method: 'GET',
+      headers: await getAuthHeaders(),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error verifying public code:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Unirse a comunidad con código público
+ */
+export const joinWithPublicCode = async (code, unitDetails) => {
+  try {
+    const response = await fetch(`${API_URL}/invitations/join-public/${code}`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ unit_details: unitDetails }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error joining with public code:', error);
+    return { success: false, error: error.message };
+  }
+};
+// ==========================================
+// COMMUNITY PAYMENTS
+// Add these functions to src/services/api.js
+// ==========================================
+
+/**
+ * Get my pending charges and payment history
+ */
+export const getMyCommunityCharges = async () => {
+  try {
+    const data = await authFetch('/community-payments/my-charges');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching community charges:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get payment settings for location (bank info, allowed methods)
+ */
+export const getCommunityPaymentSettings = async () => {
+  try {
+    const data = await authFetch('/community-payments/settings');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching payment settings:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Submit proof of payment
+ */
+export const submitPaymentProof = async (chargeId, proofData) => {
+  try {
+    const data = await authFetch(`/community-payments/${chargeId}/submit-proof`, {
+      method: 'POST',
+      body: JSON.stringify(proofData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error submitting proof:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Pay with card
+ */
+export const payCommunityChargeWithCard = async (chargeId, paymentMethodId) => {
+  try {
+    const data = await authFetch(`/community-payments/${chargeId}/pay-card`, {
+      method: 'POST',
+      body: JSON.stringify({ payment_method_id: paymentMethodId }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error paying with card:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// ADMIN - COMMUNITY PAYMENTS
+// ==========================================
+
+/**
+ * Get all charges for location (Admin)
+ */
+export const getAdminCommunityCharges = async (status = 'active') => {
+  try {
+    const data = await authFetch(`/community-payments/admin/charges?status=${status}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching admin charges:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Create new charge (Admin)
+ */
+export const createCommunityCharge = async (chargeData) => {
+  try {
+    const data = await authFetch('/community-payments/admin/charges', {
+      method: 'POST',
+      body: JSON.stringify(chargeData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating charge:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Cancel/delete charge (Admin)
+ */
+export const cancelCommunityCharge = async (chargeId) => {
+  try {
+    const data = await authFetch(`/community-payments/admin/charges/${chargeId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error canceling charge:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get all payments (Admin)
+ */
+export const getAdminCommunityPayments = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.status) queryParams.append('status', params.status);
+    if (params.charge_id) queryParams.append('charge_id', params.charge_id);
+    
+    const query = queryParams.toString();
+    const endpoint = query ? `/community-payments/admin/payments?${query}` : '/community-payments/admin/payments';
+    
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching admin payments:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get pending proof verifications (Admin)
+ */
+export const getPendingPaymentProofs = async () => {
+  try {
+    const data = await authFetch('/community-payments/admin/pending-proofs');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching pending proofs:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Verify/approve proof of payment (Admin)
+ */
+export const verifyPaymentProof = async (paymentId, verifyData = {}) => {
+  try {
+    const data = await authFetch(`/community-payments/admin/payments/${paymentId}/verify`, {
+      method: 'POST',
+      body: JSON.stringify(verifyData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error verifying proof:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Reject proof of payment (Admin)
+ */
+export const rejectPaymentProof = async (paymentId, reason) => {
+  try {
+    const data = await authFetch(`/community-payments/admin/payments/${paymentId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error rejecting proof:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get residents for charge creation (Admin)
+ */
+export const getResidentsForCharge = async (search = '') => {
+  try {
+    const endpoint = search 
+      ? `/community-payments/admin/residents?search=${encodeURIComponent(search)}`
+      : '/community-payments/admin/residents';
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching residents:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get payment statistics (Admin)
+ */
+export const getCommunityPaymentStats = async () => {
+  try {
+    const data = await authFetch('/community-payments/admin/stats');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching payment stats:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+// ==========================================
+// DEMO REQUESTS
+// ==========================================
+export const createDemoRequest = async (data) => {
+  try {
+    const response = await fetch(`${API_URL}/demo-requests`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+   console.log('Response status:', response.status, 'Result:', JSON.stringify(result));
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al enviar solicitud');
+    }
+    return { success: true, data: result.data, message: result.message };
+  } catch (error) {
+    console.error('Error creating demo request:', error);
     return { success: false, error: error.message };
   }
 };

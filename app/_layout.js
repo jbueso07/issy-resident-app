@@ -4,13 +4,15 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { AuthProvider } from '../src/context/AuthContext';
 import { LanguageProvider } from '../src/context/LanguageContext';
+import { AdminLocationProvider } from '../src/context/AdminLocationContext';
+import { UserLocationProvider } from '../src/context/UserLocationContext';
 import { StatusBar } from 'expo-status-bar';
 import { useNotifications } from '../src/hooks/useNotifications';
 
 // Componente interno que usa el hook de notificaciones
 function NotificationInitializer() {
   const { expoPushToken, notification, error } = useNotifications();
-
+  
   useEffect(() => {
     if (expoPushToken) {
       console.log('📱 Push notifications initialized:', expoPushToken);
@@ -19,13 +21,13 @@ function NotificationInitializer() {
       console.log('⚠️ Push notification error:', error);
     }
   }, [expoPushToken, error]);
-
+  
   useEffect(() => {
     if (notification) {
       console.log('📬 New notification received:', notification.request.content);
     }
   }, [notification]);
-
+  
   return null;
 }
 
@@ -33,15 +35,19 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <StatusBar style="light" />
-        <NotificationInitializer />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="admin" />
-          <Stack.Screen name="join" />
-        </Stack>
+        <AdminLocationProvider>
+          <UserLocationProvider>
+            <StatusBar style="light" />
+            <NotificationInitializer />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="admin" />
+              <Stack.Screen name="join" />
+            </Stack>
+          </UserLocationProvider>
+        </AdminLocationProvider>
       </LanguageProvider>
     </AuthProvider>
   );

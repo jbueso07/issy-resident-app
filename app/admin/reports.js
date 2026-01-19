@@ -18,6 +18,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
@@ -46,6 +48,7 @@ const COLORS = {
 export default function AdminReports() {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
   
   const [globalStats, setGlobalStats] = useState(null);
@@ -430,6 +433,7 @@ export default function AdminReports() {
 
         <View style={{ height: scale(100) }} />
       </ScrollView>
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }

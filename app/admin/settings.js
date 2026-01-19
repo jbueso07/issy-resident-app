@@ -21,6 +21,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -67,6 +69,7 @@ export default function AdminSettings() {
   const TABS = getTabs(t);
   const SUSPENSION_REASONS = getSuspensionReasons(t);
   const { user, profile } = useAuth();
+  const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState('guard');
@@ -1253,6 +1256,7 @@ export default function AdminSettings() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }
