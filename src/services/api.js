@@ -2060,3 +2060,285 @@ export const createDemoRequest = async (data) => {
     return { success: false, error: error.message };
   }
 };
+// ==========================================
+// FINANCE - BUDGET ASSISTANT
+// ==========================================
+export const getBudgetAssistant = async (monthlyIncome = null) => {
+  try {
+    const endpoint = monthlyIncome 
+      ? `/finance/budget-assistant?monthly_income=${monthlyIncome}`
+      : '/finance/budget-assistant';
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching budget assistant:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const applyBudgetSuggestion = async (rule, monthlyIncome) => {
+  try {
+    const data = await authFetch('/finance/budget-assistant/apply', {
+      method: 'POST',
+      body: JSON.stringify({ rule, monthly_income: monthlyIncome })
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error applying budget suggestion:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - REPORTS & CHARTS
+// ==========================================
+export const getReportSummary = async (months = 6) => {
+  try {
+    const data = await authFetch(`/finance/reports/summary?months=${months}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching report summary:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const getReportByCategory = async (type = 'expense', startDate = null, endDate = null) => {
+  try {
+    let endpoint = `/finance/reports/by-category?type=${type}`;
+    if (startDate) endpoint += `&start_date=${startDate}`;
+    if (endDate) endpoint += `&end_date=${endDate}`;
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching report by category:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const getReportTrends = async (category = null, months = 6) => {
+  try {
+    let endpoint = `/finance/reports/trends?months=${months}`;
+    if (category) endpoint += `&category=${category}`;
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching report trends:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const getMonthComparison = async () => {
+  try {
+    const data = await authFetch('/finance/reports/comparison');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching month comparison:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - GOAL PROJECTIONS
+// ==========================================
+export const getGoalProjection = async (goalId) => {
+  try {
+    const data = await authFetch(`/finance/goals/${goalId}/projection`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching goal projection:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const calculateGoalPlan = async (targetAmount, currentAmount = 0, deadline = null, monthlyCapacity = null) => {
+  try {
+    const data = await authFetch('/finance/goals/calculate', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        target_amount: targetAmount, 
+        current_amount: currentAmount,
+        deadline,
+        monthly_capacity: monthlyCapacity
+      })
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error calculating goal plan:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - SUBSCRIPTIONS (RECURRING PAYMENTS)
+// ==========================================
+export const getSubscriptions = async (activeOnly = false) => {
+  try {
+    const endpoint = activeOnly ? '/finance/subscriptions?active_only=true' : '/finance/subscriptions';
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data, summary: data.summary };
+  } catch (error) {
+    console.error('Error fetching subscriptions:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const createSubscription = async (subscriptionData) => {
+  try {
+    const data = await authFetch('/finance/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify(subscriptionData)
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const updateSubscription = async (id, updates) => {
+  try {
+    const data = await authFetch(`/finance/subscriptions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating subscription:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const deleteSubscription = async (id) => {
+  try {
+    const data = await authFetch(`/finance/subscriptions/${id}`, {
+      method: 'DELETE'
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting subscription:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const markSubscriptionPaid = async (id, registerTransaction = true) => {
+  try {
+    const data = await authFetch(`/finance/subscriptions/${id}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({ register_transaction: registerTransaction })
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error marking subscription paid:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// FINANCE - RECEIVABLES (ACCOUNTS RECEIVABLE)
+// ==========================================
+export const getReceivables = async (status = null) => {
+  try {
+    const endpoint = status ? `/finance/receivables?status=${status}` : '/finance/receivables';
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data, summary: data.summary };
+  } catch (error) {
+    console.error('Error fetching receivables:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const createReceivable = async (receivableData) => {
+  try {
+    const data = await authFetch('/finance/receivables', {
+      method: 'POST',
+      body: JSON.stringify(receivableData)
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating receivable:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const updateReceivable = async (id, updates) => {
+  try {
+    const data = await authFetch(`/finance/receivables/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating receivable:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const deleteReceivable = async (id) => {
+  try {
+    const data = await authFetch(`/finance/receivables/${id}`, {
+      method: 'DELETE'
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting receivable:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const markReceivableCollected = async (id, registerIncome = true, paymentMethod = null) => {
+  try {
+    const data = await authFetch(`/finance/receivables/${id}/collect`, {
+      method: 'POST',
+      body: JSON.stringify({ register_income: registerIncome, payment_method: paymentMethod })
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error marking receivable collected:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const addReceivablePayment = async (id, amount, paymentMethod = null, notes = null, registerIncome = true) => {
+  try {
+    const data = await authFetch(`/finance/receivables/${id}/payment`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, payment_method: paymentMethod, notes, register_income: registerIncome })
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error adding receivable payment:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const getReceivablePayments = async (id) => {
+  try {
+    const data = await authFetch(`/finance/receivables/${id}/payments`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching receivable payments:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+// ============================================
+// Configuración del Usuario - Finanzas
+// ============================================
+export const getFinanceSettings = async () => {
+  try {
+    const response = await api.get('/finance/settings');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting finance settings:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateFinanceSettings = async (settings) => {
+  try {
+    const response = await api.put('/finance/settings', settings);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating finance settings:', error);
+    return { success: false, error: error.message };
+  }
+};
