@@ -1342,6 +1342,21 @@ export const getUpcomingInvoices = async (days = 30) => {
 };
 
 // Create invoice
+// Upload receipt image to Storage
+export const uploadReceiptImage = async (base64Image) => {
+  try {
+    const response = await fetch(`${API_URL}/finance/upload-receipt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
+      body: JSON.stringify({ base64Image }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error("Error uploading receipt:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 export const createInvoice = async (invoiceData) => {
   try {
     const data = await authFetch('/finance/invoices', {

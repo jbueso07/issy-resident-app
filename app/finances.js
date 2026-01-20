@@ -36,6 +36,7 @@ import {
   getUpcomingInvoices,
   getInvoices,
   createInvoice,
+  uploadReceiptImage,
   markInvoicePaid,
   getBudgetsStatus,
   createBudget,
@@ -396,17 +397,40 @@ export default function FinancesScreen() {
       setInvoiceForm({ ...invoiceForm, image_url: base64Image });
     }
   };
-
   const handleCreateInvoice = async () => {
     if (!invoiceForm.vendor_name || !invoiceForm.amount) { Alert.alert(t('common.error'), t('finances.errors.vendorAmountRequired')); return; }
     try {
-      const res = await createInvoice({ vendor_name: invoiceForm.vendor_name, amount: parseFloat(invoiceForm.amount), category: invoiceForm.category || 'Servicios', due_date: invoiceForm.due_date || null, description: invoiceForm.description, image_url: invoiceForm.image_url });
-      if (res.success) { Alert.alert(t('finances.success.invoiceTitle'), res.message || t('finances.success.invoiceRegistered')); setShowInvoiceModal(false); setInvoiceForm({ vendor_name: '', amount: '', category: '', due_date: '', description: '', image_url: null }); loadData(); }
-      else Alert.alert(t('common.error'), res.error || t('finances.errors.registerFailed'));
+      let imageUrl = null;
+      
+      // Si hay imagen, subirla primero a Storage
+      if (invoiceForm.image_url && invoiceForm.image_url.startsWith('data:')) {
+        const uploadRes = await uploadReceiptImage(invoiceForm.image_url);
+        if (uploadRes.success) {
+          imageUrl = uploadRes.data.url;
+        } else {
+          Alert.alert(t('common.error'), t('finances.errors.imageUploadFailed', 'Error al subir imagen'));
+          return;
+        }
+      } else if (invoiceForm.image_url) {
+        imageUrl = invoiceForm.image_url; // Ya es URL
+      }
+      
+      const res = await createInvoice({ 
+        vendor_name: invoiceForm.vendor_name, 
+        amount: parseFloat(invoiceForm.amount), 
+        category: invoiceForm.category || 'Servicios', 
+        due_date: invoiceForm.due_date || null, 
+        description: invoiceForm.description, 
+        image_url: imageUrl 
+      });
+      if (res.success) { 
+        Alert.alert(t('finances.success.invoiceTitle'), res.message || t('finances.success.invoiceRegistered')); 
+        setShowInvoiceModal(false); 
+        setInvoiceForm({ vendor_name: '', amount: '', category: '', due_date: '', description: '', image_url: null }); 
+        loadData(); 
+      } else Alert.alert(t('common.error'), res.error || t('finances.errors.registerFailed'));
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.invoiceError')); }
   };
-
-
   const handleShareImage = async (imageUrl) => {
     if (sharingImage) return; // Prevent multiple clicks
     
