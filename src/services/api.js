@@ -921,6 +921,7 @@ export const getIncidents = async (params = {}) => {
     if (params.limit) queryParams.append('limit', params.limit);
     if (params.offset) queryParams.append('offset', params.offset);
     if (params.my_incidents) queryParams.append('my_incidents', params.my_incidents);
+    if (params.location_id) queryParams.append('location_id', params.location_id);
     
     const query = queryParams.toString();
     const endpoint = query ? `/incidents?${query}` : '/incidents';
@@ -1345,9 +1346,10 @@ export const getUpcomingInvoices = async (days = 30) => {
 // Upload receipt image to Storage
 export const uploadReceiptImage = async (base64Image) => {
   try {
+    const token = await AsyncStorage.getItem("token");
     const response = await fetch(`${API_URL}/finance/upload-receipt`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${await getToken()}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ base64Image }),
     });
     return await response.json();
@@ -1356,7 +1358,6 @@ export const uploadReceiptImage = async (base64Image) => {
     return { success: false, error: error.message };
   }
 };
-
 export const createInvoice = async (invoiceData) => {
   try {
     const data = await authFetch('/finance/invoices', {
@@ -2355,5 +2356,100 @@ export const updateFinanceSettings = async (settings) => {
   } catch (error) {
     console.error('Error updating finance settings:', error);
     return { success: false, error: error.message };
+  }
+};
+
+// ==========================================
+// BANK ACCOUNTS - Multiple accounts per location
+// ==========================================
+
+/**
+ * Get bank accounts for payment (public view for residents)
+ */
+export const getPublicBankAccounts = async () => {
+  try {
+    const data = await authFetch('/bank-accounts/public');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching public bank accounts:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Get all bank accounts for location (Admin)
+ */
+export const getBankAccounts = async (locationId = null) => {
+  try {
+    const endpoint = locationId 
+      ? `/bank-accounts?location_id=${locationId}` 
+      : '/bank-accounts';
+    const data = await authFetch(endpoint);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching bank accounts:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Create bank account (Admin)
+ */
+export const createBankAccount = async (accountData) => {
+  try {
+    const data = await authFetch('/bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify(accountData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error creating bank account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Update bank account (Admin)
+ */
+export const updateBankAccount = async (accountId, accountData) => {
+  try {
+    const data = await authFetch(`/bank-accounts/${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(accountData),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error updating bank account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Delete bank account (Admin)
+ */
+export const deleteBankAccount = async (accountId) => {
+  try {
+    const data = await authFetch(`/bank-accounts/${accountId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, message: data.message };
+  } catch (error) {
+    console.error('Error deleting bank account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+/**
+ * Set bank account as default (Admin)
+ */
+export const setDefaultBankAccount = async (accountId) => {
+  try {
+    const data = await authFetch(`/bank-accounts/${accountId}/default`, {
+      method: 'PATCH',
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error setting default bank account:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };

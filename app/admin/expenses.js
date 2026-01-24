@@ -53,8 +53,10 @@ const getExpenseCategories = (t) => [
   { value: 'utilities', label: t('admin.expenses.categories.utilities'), icon: 'bulb', color: COLORS.blue },
   { value: 'security', label: t('admin.expenses.categories.security'), icon: 'shield-checkmark', color: COLORS.purple },
   { value: 'cleaning', label: t('admin.expenses.categories.cleaning'), icon: 'sparkles', color: COLORS.success },
-  { value: 'administration', label: t('admin.expenses.categories.administration'), icon: 'document-text', color: COLORS.textSecondary },
-  { value: 'other', label: t('admin.expenses.categories.other'), icon: 'cube', color: COLORS.pink },
+  { value: 'repairs', label: t('admin.expenses.categories.repairs') || 'Reparaciones', icon: 'hammer', color: COLORS.danger },
+  { value: 'supplies', label: t('admin.expenses.categories.supplies') || 'Suministros', icon: 'cube', color: COLORS.teal },
+  { value: 'taxes', label: t('admin.expenses.categories.taxes') || 'Impuestos', icon: 'document-text', color: COLORS.textSecondary },
+  { value: 'other', label: t('admin.expenses.categories.other'), icon: 'ellipsis-horizontal', color: COLORS.pink },
 ];
 
 export default function AdminExpenses() {
@@ -79,21 +81,27 @@ export default function AdminExpenses() {
     description: '',
     amount: '',
     category: 'maintenance',
-    date: '',
-    notes: '',
+    expense_date: '',
+    vendor_name: '',
   });
 
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
 
+  // Validar permisos de admin
   useEffect(() => {
     if (!isAdmin) {
       Alert.alert(t('admin.expenses.accessDenied'), t('admin.expenses.noPermissions'));
       router.back();
-      return;
     }
-    fetchData();
-  }, []);
+  }, [isAdmin]);
+
+  // Fetch data cuando cambie la ubicación seleccionada
+  useEffect(() => {
+    if (isAdmin && selectedLocationId) {
+      fetchData();
+    }
+  }, [selectedLocationId, isAdmin]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -104,23 +112,38 @@ export default function AdminExpenses() {
   };
 
   const fetchData = async () => {
+    if (!selectedLocationId) return;
+    
     try {
+      setLoading(true);
       const headers = await getAuthHeaders();
       
-      const expensesRes = await fetch(`${API_URL}/api/expenses`, { headers });
+      // Fetch expenses filtered by location_id
+      const expensesRes = await fetch(
+        `${API_URL}/api/expenses?location_id=${selectedLocationId}`, 
+        { headers }
+      );
       const expensesData = await expensesRes.json();
       if (expensesData.success || Array.isArray(expensesData)) {
         const list = expensesData.data || expensesData.expenses || expensesData;
         setExpenses(Array.isArray(list) ? list : []);
       }
       
-      const statsRes = await fetch(`${API_URL}/api/expenses/stats`, { headers });
+      // Fetch stats filtered by location_id
+      const statsRes = await fetch(
+        `${API_URL}/api/expenses/stats?location_id=${selectedLocationId}`, 
+        { headers }
+      );
       const statsData = await statsRes.json();
       if (statsData.success !== false) {
         setStats(statsData.data || statsData);
       }
 
-      const balanceRes = await fetch(`${API_URL}/api/admin/payments/balance`, { headers });
+      // Fetch balance filtered by location_id
+      const balanceRes = await fetch(
+        `${API_URL}/api/expenses/balance?location_id=${selectedLocationId}`, 
+        { headers }
+      );
       const balanceData = await balanceRes.json();
       if (balanceData.success !== false) {
         setBalance(balanceData.data || balanceData);
@@ -136,7 +159,7 @@ export default function AdminExpenses() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, []);
+  }, [selectedLocationId]);
 
   const handleCreate = () => {
     setEditingExpense(null);
@@ -144,8 +167,8 @@ export default function AdminExpenses() {
       description: '',
       amount: '',
       category: 'maintenance',
-      date: new Date().toISOString().split('T')[0],
-      notes: '',
+      expense_date: new Date().toISOString().split('T')[0],
+      vendor_name: '',
     });
     setShowModal(true);
   };
@@ -156,8 +179,8 @@ export default function AdminExpenses() {
       description: expense.description || '',
       amount: expense.amount?.toString() || '',
       category: expense.category || 'maintenance',
-      date: expense.date?.split('T')[0] || '',
-      notes: expense.notes || '',
+      expense_date: expense.expense_date?.split('T')[0] || '',
+      vendor_name: expense.vendor_name || '',
     });
     setShowModal(true);
   };
@@ -171,6 +194,14 @@ export default function AdminExpenses() {
       Alert.alert(t('common.error'), t('admin.expenses.errors.enterValidAmount'));
       return;
     }
+    if (!formData.expense_date) {
+      Alert.alert(t('common.error'), t('admin.expenses.errors.enterDate') || 'Ingresa una fecha');
+      return;
+    }
+    if (!selectedLocationId) {
+      Alert.alert(t('common.error'), t('admin.common.selectLocationFirst') || 'Selecciona una ubicación primero');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -179,8 +210,9 @@ export default function AdminExpenses() {
         description: formData.description,
         amount: parseFloat(formData.amount),
         category: formData.category,
-        date: formData.date || new Date().toISOString().split('T')[0],
-        notes: formData.notes,
+        expense_date: formData.expense_date,
+        vendor_name: formData.vendor_name || null,
+        location_id: selectedLocationId,
       };
 
       const url = editingExpense 
@@ -249,10 +281,11 @@ export default function AdminExpenses() {
   };
 
   const getCategoryInfo = (category) => {
-    return EXPENSE_CATEGORIES.find(c => c.value === category) || EXPENSE_CATEGORIES[5];
+    return EXPENSE_CATEGORIES.find(c => c.value === category) || EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1];
   };
 
-  if (loading) {
+  // Loading state - incluye locationLoading
+  if (loading || locationLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -279,6 +312,9 @@ export default function AdminExpenses() {
         </TouchableOpacity>
       </View>
 
+      {/* Location Selector */}
+      <LocationHeader />
+
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
@@ -296,9 +332,9 @@ export default function AdminExpenses() {
             <Text style={styles.balanceLabel}>{t('admin.expenses.monthBalance.title')}</Text>
             <Text style={[
               styles.balanceValue,
-              { color: (balance.balance || balance.net || 0) >= 0 ? COLORS.success : COLORS.danger }
+              { color: (balance.net_balance || 0) >= 0 ? COLORS.success : COLORS.danger }
             ]}>
-              {formatCurrency(balance.balance || balance.net || 0)}
+              {formatCurrency(balance.net_balance || 0)}
             </Text>
             <View style={styles.balanceDetails}>
               <View style={styles.balanceItem}>
@@ -307,7 +343,7 @@ export default function AdminExpenses() {
                 </View>
                 <Text style={styles.balanceItemLabel}>{t('admin.expenses.monthBalance.income')}</Text>
                 <Text style={[styles.balanceItemValue, { color: COLORS.success }]}>
-                  +{formatCurrency(balance.income || balance.total_income || 0)}
+                  +{formatCurrency(balance.total_income || 0)}
                 </Text>
               </View>
               <View style={styles.balanceDivider} />
@@ -317,8 +353,25 @@ export default function AdminExpenses() {
                 </View>
                 <Text style={styles.balanceItemLabel}>{t('admin.expenses.monthBalance.expenses')}</Text>
                 <Text style={[styles.balanceItemValue, { color: COLORS.danger }]}>
-                  -{formatCurrency(balance.expenses || balance.total_expenses || 0)}
+                  -{formatCurrency(balance.total_expenses || 0)}
                 </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Stats Card */}
+        {stats && (
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>{t('admin.expenses.summary') || 'Resumen de Gastos'}</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{formatCurrency(stats.total_expenses)}</Text>
+                <Text style={styles.statLabel}>{t('admin.expenses.totalExpenses') || 'Total'}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{stats.total_count || 0}</Text>
+                <Text style={styles.statLabel}>{t('admin.expenses.records') || 'Registros'}</Text>
               </View>
             </View>
           </View>
@@ -357,11 +410,17 @@ export default function AdminExpenses() {
                     <Text style={[styles.expenseCategory, { color: categoryInfo.color }]}>
                       {categoryInfo.label}
                     </Text>
+                    {expense.vendor_name && (
+                      <>
+                        <Text style={styles.expenseDot}>•</Text>
+                        <Text style={styles.expenseVendor}>{expense.vendor_name}</Text>
+                      </>
+                    )}
                   </View>
                 </View>
                 <View style={styles.expenseRight}>
                   <Text style={styles.expenseAmount}>-{formatCurrency(expense.amount)}</Text>
-                  <Text style={styles.expenseDate}>{formatDate(expense.date || expense.created_at)}</Text>
+                  <Text style={styles.expenseDate}>{formatDate(expense.expense_date || expense.created_at)}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -454,26 +513,24 @@ export default function AdminExpenses() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.expenses.form.date')}</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.date')} *</Text>
               <TextInput
                 style={styles.formInput}
-                value={formData.date}
-                onChangeText={(text) => setFormData({ ...formData, date: text })}
+                value={formData.expense_date}
+                onChangeText={(text) => setFormData({ ...formData, expense_date: text })}
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={COLORS.textMuted}
               />
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.expenses.form.notes')}</Text>
+              <Text style={styles.formLabel}>{t('admin.expenses.form.vendor') || 'Proveedor'}</Text>
               <TextInput
-                style={[styles.formInput, styles.textArea]}
-                value={formData.notes}
-                onChangeText={(text) => setFormData({ ...formData, notes: text })}
-                placeholder={t('admin.expenses.form.notesPlaceholder')}
+                style={styles.formInput}
+                value={formData.vendor_name}
+                onChangeText={(text) => setFormData({ ...formData, vendor_name: text })}
+                placeholder={t('admin.expenses.form.vendorPlaceholder') || 'Nombre del proveedor'}
                 placeholderTextColor={COLORS.textMuted}
-                multiline
-                textAlignVertical="top"
               />
             </View>
 
@@ -481,7 +538,9 @@ export default function AdminExpenses() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    <LocationPickerModal />
+      
+      {/* Location Picker Modal */}
+      <LocationPickerModal />
     </SafeAreaView>
   );
 }
@@ -552,7 +611,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(16),
     padding: scale(20),
-    marginBottom: scale(20),
+    marginBottom: scale(16),
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -597,6 +656,39 @@ const styles = StyleSheet.create({
     width: 1,
     height: '100%',
     backgroundColor: COLORS.border,
+  },
+
+  // Stats Card
+  statsCard: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(20),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  statsTitle: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(12),
+  },
+  statsGrid: {
+    flexDirection: 'row',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.lime,
+  },
+  statLabel: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(4),
   },
   
   // Section
@@ -668,6 +760,14 @@ const styles = StyleSheet.create({
   },
   expenseCategory: {
     fontSize: scale(12),
+  },
+  expenseDot: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+  },
+  expenseVendor: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
   },
   expenseRight: {
     alignItems: 'flex-end',

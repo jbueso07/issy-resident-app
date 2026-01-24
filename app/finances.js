@@ -432,7 +432,7 @@ export default function FinancesScreen() {
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.invoiceError')); }
   };
   const handleShareImage = async (imageUrl) => {
-    if (sharingImage) return; // Prevent multiple clicks
+    if (sharingImage) return;
     
     try {
       if (!imageUrl) {
@@ -443,37 +443,29 @@ export default function FinancesScreen() {
       setSharingImage(true);
       let fileUri;
       
-      // Check if it's a base64 data URL
       if (imageUrl.startsWith('data:')) {
-        // Extract the base64 data (remove the "data:image/...;base64," prefix)
         const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
-        // Determine file extension from the data URL
         const mimeMatch = imageUrl.match(/^data:image\/(\w+);/);
         const extension = mimeMatch ? mimeMatch[1].replace('jpeg', 'jpg') : 'jpg';
         const filename = `factura_${Date.now()}.${extension}`;
         fileUri = FileSystem.cacheDirectory + filename;
-        
-        // Write the base64 data to a file
-        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-          encoding: 'base64',
-        });
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, { encoding: 'base64' });
       } else {
-        // It's a regular HTTP/HTTPS URL - download it
-        const filename = imageUrl.split("/").pop() || "factura.jpg";
+        // Limpiar URL de query params para el nombre
+        const cleanUrl = imageUrl.split('?')[0];
+        const extension = cleanUrl.match(/\.(jpg|jpeg|png|webp)$/i)?.[1] || 'jpg';
+        const filename = `factura_${Date.now()}.${extension}`;
         fileUri = FileSystem.cacheDirectory + filename;
         const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri);
         if (downloadResult.status !== 200) {
-          throw new Error("Download failed");
+          throw new Error('Download failed');
         }
         fileUri = downloadResult.uri;
       }
       
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'image/jpeg',
-          dialogTitle: 'Compartir factura',
-        });
+        await Sharing.shareAsync(fileUri, { mimeType: 'image/jpeg', dialogTitle: 'Compartir factura' });
       } else {
         Alert.alert(t("common.error"), t("finances.errors.sharingNotAvailable", "Compartir no está disponible"));
       }
@@ -484,7 +476,6 @@ export default function FinancesScreen() {
       setSharingImage(false);
     }
   };
-
   const handleViewImage = (imageUrl) => {
     if (imageUrl) {
       setSelectedImage(imageUrl);

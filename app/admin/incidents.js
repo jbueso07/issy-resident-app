@@ -1,5 +1,6 @@
 // app/admin/incidents.js
 // ISSY Admin - Gestión de Incidentes (ProHome Dark Theme)
+// UPDATED: Added LocationPickerModal for superadmin location switching
 
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -22,10 +23,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
@@ -72,6 +77,7 @@ const getTypeLabels = (t) => ({
 export default function AdminIncidents() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user, profile, isSuperAdmin } = useAuth();
   
   // i18n configs
   const STATUS_CONFIG = getStatusConfig(t);
@@ -89,9 +95,59 @@ export default function AdminIncidents() {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Location picker state (for superadmin)
+  const [locations, setLocations] = useState([]);
+  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  
+  const userRole = profile?.role || user?.role || 'user';
+  const userLocationId = profile?.location_id || user?.location_id;
+  const isSuperAdminUser = userRole === 'superadmin' || isSuperAdmin?.();
+
+  // Fetch locations for superadmin
+  useEffect(() => {
+    if (isSuperAdminUser) {
+      fetchLocations();
+    } else {
+      setSelectedLocationId(userLocationId);
+    }
+  }, [isSuperAdminUser, userLocationId]);
+
+  // Fetch incidents when location changes
+  useEffect(() => {
+    if (selectedLocationId) {
+      fetchIncidents();
+    }
+  }, [selectedLocationId]);
+
+  const getAuthHeaders = async () => {
+    const token = await AsyncStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/locations`, { headers });
+      const data = await res.json();
+      if (data.success || Array.isArray(data)) {
+        const list = data.data || data;
+        setLocations(list);
+        if (list.length > 0 && !selectedLocationId) {
+          setSelectedLocationId(list[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  };
+
   const fetchIncidents = useCallback(async () => {
     try {
-      const result = await getIncidents();
+      const result = await getIncidents({ location_id: selectedLocationId });
       if (result.success) {
         setIncidents(result.data.incidents || result.data || []);
       }
@@ -101,11 +157,7 @@ export default function AdminIncidents() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchIncidents();
-  }, [fetchIncidents]);
+  }, [selectedLocationId]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -182,7 +234,12 @@ export default function AdminIncidents() {
     }
   };
 
-  if (loading) {
+  const getCurrentLocationName = () => {
+    const location = locations.find(l => l.id === selectedLocationId);
+    return location?.name || 'Seleccionar comunidad';
+  };
+
+  if (loading && !selectedLocationId) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -401,15 +458,12 @@ export default function AdminIncidents() {
                 ) : (
                   <Text style={styles.noComments}>{t('admin.incidents.noComments')}</Text>
                 )}
-                
-                <View style={{ height: scale(100) }} />
               </ScrollView>
 
-              {/* Comment Input */}
               <View style={styles.addCommentContainer}>
                 <TextInput
                   style={styles.commentInput}
-                  placeholder={t('admin.incidents.addCommentPlaceholder')}
+                  placeholder={t('admin.incidents.addComment')}
                   placeholderTextColor={COLORS.textMuted}
                   value={commentText}
                   onChangeText={setCommentText}
@@ -421,14 +475,69 @@ export default function AdminIncidents() {
                   disabled={!commentText.trim() || submitting}
                 >
                   {submitting ? (
-                    <ActivityIndicator size="small" color={COLORS.textPrimary} />
+                    <ActivityIndicator size="small" color={COLORS.background} />
                   ) : (
-                    <Ionicons name="send" size={20} color={COLORS.background} />
+                    <Ionicons name="send" size={20} color={commentText.trim() ? COLORS.background : COLORS.textMuted} />
                   )}
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
           ) : null}
+        </SafeAreaView>
+      </Modal>
+    );
+  };
+
+  // Location Picker Modal
+  const renderLocationPickerModal = () => {
+    if (!isSuperAdminUser || !showLocationPicker) return null;
+
+    return (
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>{t('admin.communityManagement.selectCommunity', 'Seleccionar Comunidad')}</Text>
+            <View style={{ width: scale(60) }} />
+          </View>
+
+          <ScrollView style={styles.locationPickerContent}>
+            {locations.map((location) => (
+              <TouchableOpacity
+                key={location.id}
+                style={[
+                  styles.locationOption,
+                  selectedLocationId === location.id && styles.locationOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedLocationId(location.id);
+                  setShowLocationPicker(false);
+                }}
+              >
+                <View style={styles.locationIconContainer}>
+                  <Ionicons name="business" size={22} color={COLORS.teal} />
+                </View>
+                <View style={styles.locationInfo}>
+                  <Text style={styles.locationName}>{location.name}</Text>
+                  {(location.address || location.city) && (
+                    <Text style={styles.locationAddress}>
+                      {[location.address, location.city].filter(Boolean).join(', ')}
+                    </Text>
+                  )}
+                </View>
+                {selectedLocationId === location.id && (
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.lime} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
     );
@@ -443,7 +552,13 @@ export default function AdminIncidents() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t('admin.incidents.title')}</Text>
-          <Text style={styles.headerSubtitle}>{incidents.length} reportes</Text>
+          {isSuperAdminUser ? (
+            <TouchableOpacity onPress={() => setShowLocationPicker(true)}>
+              <Text style={styles.headerSubtitleLink}>{getCurrentLocationName()} ▾</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.headerSubtitle}>{incidents.length} reportes</Text>
+          )}
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
           <Ionicons name="refresh" size={22} color={COLORS.textPrimary} />
@@ -478,31 +593,40 @@ export default function AdminIncidents() {
       {/* Filters */}
       {renderFilters()}
 
-      {/* Incidents List */}
-      <FlatList
-        data={filteredIncidents}
-        keyExtractor={(item) => item.id?.toString()}
-        renderItem={renderIncidentCard}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.lime}
-          />
-        }
-        ListEmptyComponent={() => (
-          <View style={styles.emptyState}>
-            <Ionicons name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>{t('admin.incidents.empty.noIncidents')}</Text>
-            <Text style={styles.emptySubtitle}>No hay incidentes {filterStatus !== 'all' ? 'con este estado' : ''}</Text>
-          </View>
-        )}
-      />
+      {/* Loading state */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.lime} />
+        </View>
+      ) : (
+        /* Incidents List */
+        <FlatList
+          data={filteredIncidents}
+          keyExtractor={(item) => item.id?.toString()}
+          renderItem={renderIncidentCard}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.lime}
+            />
+          }
+          ListEmptyComponent={() => (
+            <View style={styles.emptyState}>
+              <Ionicons name="shield-checkmark-outline" size={64} color={COLORS.textMuted} />
+              <Text style={styles.emptyTitle}>{t('admin.incidents.empty.noIncidents')}</Text>
+              <Text style={styles.emptySubtitle}>No hay incidentes {filterStatus !== 'all' ? 'con este estado' : ''}</Text>
+            </View>
+          )}
+        />
+      )}
 
       {/* Detail Modal */}
       {renderDetailModal()}
-    <LocationPickerModal />
+
+      {/* Location Picker Modal */}
+      {renderLocationPickerModal()}
     </SafeAreaView>
   );
 }
@@ -519,28 +643,29 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: scale(12),
-    fontSize: scale(14),
     color: COLORS.textSecondary,
+    fontSize: scale(14),
   },
   
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: scale(16),
     paddingVertical: scale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     width: scale(40),
     height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
     flex: 1,
-    marginLeft: scale(12),
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: scale(18),
@@ -552,11 +677,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
+  headerSubtitleLink: {
+    fontSize: scale(12),
+    color: COLORS.lime,
+    marginTop: scale(2),
+    fontWeight: '500',
+  },
   refreshButton: {
     width: scale(40),
     height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -570,33 +699,32 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    alignItems: 'center',
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
     backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(12),
+    padding: scale(12),
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   statNumber: {
-    fontSize: scale(20),
+    fontSize: scale(24),
     fontWeight: '700',
     marginTop: scale(4),
   },
   statLabel: {
-    fontSize: scale(10),
+    fontSize: scale(11),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
 
   // Filters
   filterScroll: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    maxHeight: scale(50),
   },
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
+    paddingBottom: scale(12),
     gap: scale(8),
   },
   filterChip: {
@@ -615,24 +743,25 @@ const styles = StyleSheet.create({
     borderColor: COLORS.lime,
   },
   filterText: {
-    fontSize: scale(13),
+    fontSize: scale(12),
     color: COLORS.textSecondary,
     fontWeight: '500',
   },
   filterTextActive: {
     color: COLORS.background,
+    fontWeight: '600',
   },
 
   // List
   listContent: {
-    padding: scale(16),
-    paddingBottom: scale(100),
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(20),
   },
   card: {
     backgroundColor: COLORS.backgroundSecondary,
     borderRadius: scale(12),
-    padding: scale(16),
-    marginBottom: scale(12),
+    padding: scale(14),
+    marginBottom: scale(10),
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -640,13 +769,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: scale(10),
+    marginBottom: scale(8),
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: scale(12),
+    marginRight: scale(10),
   },
   typeIconBox: {
     width: scale(36),
@@ -740,6 +869,10 @@ const styles = StyleSheet.create({
     paddingVertical: scale(12),
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  modalCancel: {
+    fontSize: scale(15),
+    color: COLORS.textSecondary,
   },
   closeButton: {
     width: scale(40),
@@ -934,5 +1067,47 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.backgroundTertiary,
+  },
+
+  // Location Picker
+  locationPickerContent: {
+    flex: 1,
+    padding: scale(16),
+  },
+  locationOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(14),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.backgroundSecondary,
+    marginBottom: scale(10),
+  },
+  locationOptionSelected: {
+    backgroundColor: COLORS.lime + '15',
+    borderColor: COLORS.lime,
+  },
+  locationIconContainer: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.teal + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: scale(15),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  locationAddress: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    marginTop: scale(2),
   },
 });

@@ -26,6 +26,13 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
+  getBankAccounts, 
+  createBankAccount, 
+  updateBankAccount, 
+  deleteBankAccount,
+  setDefaultBankAccount 
+} from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -85,7 +92,7 @@ const getPaymentMethodOptions = (t) => [
 
 export default function AdminPayments() {
   const { t } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user, profile, isSuperAdmin } = useAuth();
   const { selectedLocationId, loading: locationLoading } = useAdminLocation();
   const router = useRouter();
   
@@ -133,6 +140,21 @@ export default function AdminPayments() {
     bank_instructions: '',
   });
   const [loadingSettings, setLoadingSettings] = useState(false);
+
+  // Bank accounts state
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
+  const [showBankAccountModal, setShowBankAccountModal] = useState(false);
+  const [editingBankAccount, setEditingBankAccount] = useState(null);
+  const [bankAccountForm, setBankAccountForm] = useState({
+    bank_name: "",
+    account_number: "",
+    account_name: "",
+    account_type: "savings",
+    instructions: "",
+    is_default: false,
+  });
+  const [savingBankAccount, setSavingBankAccount] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   
   // Users state (for charge creation)
@@ -238,6 +260,7 @@ export default function AdminPayments() {
       await fetchPendingProofs();
     } else if (activeTab === 'settings') {
       await fetchSettings();
+      await fetchBankAccounts();
     }
   };
 
@@ -563,6 +586,109 @@ export default function AdminPayments() {
   };
 
   // ============================================
+
+  // ============================================
+  // BANK ACCOUNTS FUNCTIONS
+  // ============================================
+
+  const fetchBankAccounts = async () => {
+    try {
+      setLoadingBankAccounts(true);
+      const result = await getBankAccounts(selectedLocationId);
+      if (result.success) {
+        setBankAccounts(result.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching bank accounts:", error);
+    } finally {
+      setLoadingBankAccounts(false);
+    }
+  };
+
+  const resetBankAccountForm = () => {
+    setBankAccountForm({
+      bank_name: "",
+      account_number: "",
+      account_name: "",
+      account_type: "savings",
+      instructions: "",
+      is_default: false,
+    });
+    setEditingBankAccount(null);
+  };
+
+  const openAddBankAccount = () => {
+    resetBankAccountForm();
+    setShowBankAccountModal(true);
+  };
+
+  const openEditBankAccount = (account) => {
+    setEditingBankAccount(account);
+    setBankAccountForm({
+      bank_name: account.bank_name || "",
+      account_number: account.account_number_full || account.account_number || "",
+      account_name: account.account_name || "",
+      account_type: account.account_type || "savings",
+      instructions: account.instructions || "",
+      is_default: account.is_default || false,
+    });
+    setShowBankAccountModal(true);
+  };
+
+  const handleSaveBankAccount = async () => {
+    if (!bankAccountForm.bank_name || !bankAccountForm.account_number || !bankAccountForm.account_name) {
+      Alert.alert(t("common.error", "Error"), t("admin.payments.errors.fillRequiredFields", "Completa los campos requeridos"));
+      return;
+    }
+    setSavingBankAccount(true);
+    try {
+      const accountData = { ...bankAccountForm, location_id: selectedLocationId };
+      let result;
+      if (editingBankAccount) {
+        result = await updateBankAccount(editingBankAccount.id, accountData);
+      } else {
+        result = await createBankAccount(accountData);
+      }
+      if (result.success) {
+        Alert.alert(t("common.success", "Éxito"), editingBankAccount ? t("admin.payments.success.bankAccountUpdated", "Cuenta actualizada") : t("admin.payments.success.bankAccountCreated", "Cuenta creada"));
+        setShowBankAccountModal(false);
+        resetBankAccountForm();
+        fetchBankAccounts();
+      } else {
+        Alert.alert(t("common.error", "Error"), result.error || "Error al guardar");
+      }
+    } catch (error) {
+      Alert.alert(t("common.error", "Error"), "Error al guardar cuenta");
+    } finally {
+      setSavingBankAccount(false);
+    }
+  };
+
+  const handleDeleteBankAccount = (account) => {
+    Alert.alert(t("admin.payments.deleteBankAccount", "Eliminar Cuenta"), t("admin.payments.deleteBankAccountConfirm", "¿Eliminar esta cuenta bancaria?"), [
+      { text: t("common.cancel", "Cancelar"), style: "cancel" },
+      { text: t("common.delete", "Eliminar"), style: "destructive", onPress: async () => {
+        const result = await deleteBankAccount(account.id);
+        if (result.success) {
+          Alert.alert(t("common.success", "Éxito"), t("admin.payments.success.bankAccountDeleted", "Cuenta eliminada"));
+          fetchBankAccounts();
+        } else {
+          Alert.alert(t("common.error", "Error"), result.error || "Error al eliminar");
+        }
+      }},
+    ]);
+  };
+
+  const handleSetDefaultBankAccount = async (account) => {
+    if (account.is_default) return;
+    const result = await setDefaultBankAccount(account.id);
+    if (result.success) {
+      fetchBankAccounts();
+    } else {
+      Alert.alert(t("common.error", "Error"), result.error || "Error al establecer como principal");
+    }
+  };
+
   // USER SELECTION HELPERS
   // ============================================
 
@@ -918,62 +1044,81 @@ export default function AdminPayments() {
           </View>
         </View>
 
-        {/* Bank Information */}
+        {/* Bank Accounts - Multiple */}
         {settings.proof_payments_enabled && (
           <View style={styles.settingsSection}>
-            <Text style={styles.settingsSectionTitle}>
-              {t('admin.payments.settings.bankInfo', 'Información Bancaria')}
-            </Text>
-            <Text style={styles.settingsSectionSubtitle}>
-              {t('admin.payments.settings.bankInfoDesc', 'Esta información se mostrará a los residentes al subir comprobantes')}
-            </Text>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.settings.bankName', 'Nombre del Banco')}</Text>
-              <TextInput
-                style={styles.formInput}
-                value={settings.bank_name}
-                onChangeText={(text) => setSettings({ ...settings, bank_name: text })}
-                placeholder="Ej: Banco Atlántida"
-                placeholderTextColor={COLORS.textMuted}
-              />
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.settingsSectionTitle}>
+                  {t('admin.payments.settings.bankAccounts', 'Cuentas Bancarias')}
+                </Text>
+                <Text style={styles.settingsSectionSubtitle}>
+                  {t('admin.payments.settings.bankAccountsDesc', 'Agrega las cuentas donde los residentes pueden depositar')}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.addBankButton} onPress={openAddBankAccount}>
+                <Ionicons name="add-circle" size={24} color={COLORS.lime} />
+              </TouchableOpacity>
             </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.settings.accountNumber', 'Número de Cuenta')}</Text>
-              <TextInput
-                style={styles.formInput}
-                value={settings.bank_account_number}
-                onChangeText={(text) => setSettings({ ...settings, bank_account_number: text })}
-                placeholder="Ej: 1234567890"
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="numeric"
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.settings.accountName', 'Nombre del Titular')}</Text>
-              <TextInput
-                style={styles.formInput}
-                value={settings.bank_account_name}
-                onChangeText={(text) => setSettings({ ...settings, bank_account_name: text })}
-                placeholder="Ej: Residencial Los Pinos"
-                placeholderTextColor={COLORS.textMuted}
-              />
-            </View>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>{t('admin.payments.settings.instructions', 'Instrucciones (opcional)')}</Text>
-              <TextInput
-                style={[styles.formInput, styles.formInputMultiline]}
-                value={settings.bank_instructions}
-                onChangeText={(text) => setSettings({ ...settings, bank_instructions: text })}
-                placeholder="Instrucciones adicionales para el pago..."
-                placeholderTextColor={COLORS.textMuted}
-                multiline
-                numberOfLines={3}
-              />
-            </View>
+
+            {loadingBankAccounts ? (
+              <ActivityIndicator size="small" color={COLORS.lime} style={{ marginVertical: 20 }} />
+            ) : bankAccounts.length === 0 ? (
+              <View style={styles.emptyBankAccounts}>
+                <Ionicons name="wallet-outline" size={48} color={COLORS.textMuted} />
+                <Text style={styles.emptyBankAccountsText}>
+                  {t('admin.payments.noBankAccounts', 'No hay cuentas bancarias')}
+                </Text>
+                <TouchableOpacity style={styles.addFirstBankButton} onPress={openAddBankAccount}>
+                  <Ionicons name="add" size={20} color={COLORS.background} />
+                  <Text style={styles.addFirstBankButtonText}>
+                    {t('admin.payments.addFirstBankAccount', 'Agregar cuenta')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.bankAccountsList}>
+                {bankAccounts.map((account, index) => (
+                  <View key={account.id} style={[styles.bankAccountCard, account.is_default && styles.bankAccountCardDefault]}>
+                    <View style={styles.bankAccountHeader}>
+                      <View style={styles.bankAccountInfo}>
+                        <Text style={styles.bankAccountName}>{account.bank_name}</Text>
+                        {account.is_default && (
+                          <View style={styles.defaultBadge}>
+                            <Text style={styles.defaultBadgeText}>{t('common.default', 'Principal')}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.bankAccountActions}>
+                        {!account.is_default && (
+                          <TouchableOpacity onPress={() => handleSetDefaultBankAccount(account)} style={styles.bankAccountAction}>
+                            <Ionicons name="star-outline" size={18} color={COLORS.textMuted} />
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => openEditBankAccount(account)} style={styles.bankAccountAction}>
+                          <Ionicons name="pencil" size={18} color={COLORS.teal} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteBankAccount(account)} style={styles.bankAccountAction}>
+                          <Ionicons name="trash-outline" size={18} color={COLORS.error} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <View style={styles.bankAccountDetails}>
+                      <Text style={styles.bankAccountNumber}>{account.account_number}</Text>
+                      <Text style={styles.bankAccountHolder}>{account.account_name}</Text>
+                      {account.account_type && (
+                        <Text style={styles.bankAccountType}>
+                          {account.account_type === 'savings' ? 'Ahorro' : account.account_type === 'checking' ? 'Corriente' : account.account_type}
+                        </Text>
+                      )}
+                    </View>
+                    {account.instructions && (
+                      <Text style={styles.bankAccountInstructions}>{account.instructions}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -1002,6 +1147,142 @@ export default function AdminPayments() {
   // RENDER: MODALS
   // ============================================
 
+
+  // ============================================
+  // RENDER: BANK ACCOUNT MODAL
+  // ============================================
+  const renderBankAccountModal = () => (
+    <Modal
+      visible={showBankAccountModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowBankAccountModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editingBankAccount 
+                ? t('admin.payments.editBankAccount', 'Editar Cuenta') 
+                : t('admin.payments.addBankAccount', 'Nueva Cuenta Bancaria')}
+            </Text>
+            <TouchableOpacity onPress={() => setShowBankAccountModal(false)}>
+              <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.bankName', 'Nombre del Banco')} *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={bankAccountForm.bank_name}
+                onChangeText={(text) => setBankAccountForm({ ...bankAccountForm, bank_name: text })}
+                placeholder="Ej: Banco Atlántida"
+                placeholderTextColor={COLORS.textMuted}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.accountNumber', 'Número de Cuenta')} *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={bankAccountForm.account_number}
+                onChangeText={(text) => setBankAccountForm({ ...bankAccountForm, account_number: text })}
+                placeholder="Ej: 1234567890"
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.accountName', 'Nombre del Titular')} *</Text>
+              <TextInput
+                style={styles.formInput}
+                value={bankAccountForm.account_name}
+                onChangeText={(text) => setBankAccountForm({ ...bankAccountForm, account_name: text })}
+                placeholder="Ej: Residencial Los Pinos"
+                placeholderTextColor={COLORS.textMuted}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.accountType', 'Tipo de Cuenta')}</Text>
+              <View style={styles.accountTypeRow}>
+                <TouchableOpacity
+                  style={[styles.accountTypeButton, bankAccountForm.account_type === 'savings' && styles.accountTypeButtonActive]}
+                  onPress={() => setBankAccountForm({ ...bankAccountForm, account_type: 'savings' })}
+                >
+                  <Text style={[styles.accountTypeText, bankAccountForm.account_type === 'savings' && styles.accountTypeTextActive]}>
+                    {t('admin.payments.savings', 'Ahorro')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.accountTypeButton, bankAccountForm.account_type === 'checking' && styles.accountTypeButtonActive]}
+                  onPress={() => setBankAccountForm({ ...bankAccountForm, account_type: 'checking' })}
+                >
+                  <Text style={[styles.accountTypeText, bankAccountForm.account_type === 'checking' && styles.accountTypeTextActive]}>
+                    {t('admin.payments.checking', 'Corriente')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>{t('admin.payments.settings.instructions', 'Instrucciones (opcional)')}</Text>
+              <TextInput
+                style={[styles.formInput, styles.formInputMultiline]}
+                value={bankAccountForm.instructions}
+                onChangeText={(text) => setBankAccountForm({ ...bankAccountForm, instructions: text })}
+                placeholder="Instrucciones adicionales para el pago..."
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <TouchableOpacity
+                style={styles.defaultCheckbox}
+                onPress={() => setBankAccountForm({ ...bankAccountForm, is_default: !bankAccountForm.is_default })}
+              >
+                <Ionicons 
+                  name={bankAccountForm.is_default ? "checkbox" : "square-outline"} 
+                  size={24} 
+                  color={bankAccountForm.is_default ? COLORS.lime : COLORS.textMuted} 
+                />
+                <Text style={styles.defaultCheckboxText}>
+                  {t('admin.payments.setAsDefault', 'Establecer como cuenta principal')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowBankAccountModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('common.cancel', 'Cancelar')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.submitButton, savingBankAccount && styles.submitButtonDisabled]}
+              onPress={handleSaveBankAccount}
+              disabled={savingBankAccount}
+            >
+              {savingBankAccount ? (
+                <ActivityIndicator size="small" color={COLORS.background} />
+              ) : (
+                <Text style={styles.submitButtonText}>
+                  {editingBankAccount ? t('common.save', 'Guardar') : t('common.add', 'Agregar')}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
   const renderCreateModal = () => (
     <Modal
       visible={showCreateModal}
@@ -1656,7 +1937,11 @@ export default function AdminPayments() {
             <Ionicons name="add" size={22} color={COLORS.background} />
           </TouchableOpacity>
         )}
-        {activeTab !== 'charges' && <View style={{ width: 44 }} />}
+        {activeTab === 'settings' && isSuperAdmin() ? (
+          <TouchableOpacity style={styles.configPaymentButton} onPress={() => router.push('/admin/payment-config')}>
+            <Ionicons name="shield-checkmark" size={20} color={COLORS.purple} />
+          </TouchableOpacity>
+        ) : activeTab !== 'charges' ? <View style={{ width: 44 }} /> : null}
       </View>
 
       {/* Main Tabs */}
@@ -1682,6 +1967,7 @@ export default function AdminPayments() {
 
       {/* Modals */}
       {renderCreateModal()}
+      {renderBankAccountModal()}
       {renderUserPickerModal()}
       {renderProofModal()}
       {renderChargeDetailModal()}
@@ -1742,6 +2028,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.lime,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  configPaymentButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: COLORS.purple + "20",
+    alignItems: "center",
+    justifyContent: "center",
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -2400,5 +2694,153 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(8),
     marginBottom: scale(12),
+  },
+  // Bank Accounts Styles
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: scale(16),
+  },
+  addBankButton: {
+    padding: scale(4),
+  },
+  emptyBankAccounts: {
+    alignItems: 'center',
+    padding: scale(32),
+    backgroundColor: COLORS.surface,
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+  },
+  emptyBankAccountsText: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    marginTop: scale(12),
+    marginBottom: scale(16),
+  },
+  addFirstBankButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    borderRadius: scale(8),
+    gap: scale(6),
+  },
+  addFirstBankButtonText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.background,
+  },
+  bankAccountsList: {
+    gap: scale(12),
+  },
+  bankAccountCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: scale(12),
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  bankAccountCardDefault: {
+    borderColor: COLORS.lime,
+    borderWidth: 2,
+  },
+  bankAccountHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(12),
+  },
+  bankAccountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    flex: 1,
+  },
+  bankAccountName: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  defaultBadge: {
+    backgroundColor: COLORS.lime + '20',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
+  },
+  defaultBadgeText: {
+    fontSize: scale(10),
+    fontWeight: '600',
+    color: COLORS.lime,
+    textTransform: 'uppercase',
+  },
+  bankAccountActions: {
+    flexDirection: 'row',
+    gap: scale(8),
+  },
+  bankAccountAction: {
+    padding: scale(6),
+  },
+  bankAccountDetails: {
+    gap: scale(4),
+  },
+  bankAccountNumber: {
+    fontSize: scale(18),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    letterSpacing: 1,
+  },
+  bankAccountHolder: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  bankAccountType: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    textTransform: 'capitalize',
+  },
+  bankAccountInstructions: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(8),
+    fontStyle: 'italic',
+  },
+  accountTypeRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+  },
+  accountTypeButton: {
+    flex: 1,
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  accountTypeButtonActive: {
+    borderColor: COLORS.lime,
+    backgroundColor: COLORS.lime + '15',
+  },
+  accountTypeText: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+  },
+  accountTypeTextActive: {
+    color: COLORS.lime,
+    fontWeight: '600',
+  },
+  defaultCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    paddingVertical: scale(8),
+  },
+  defaultCheckboxText: {
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
   },
 });

@@ -80,13 +80,13 @@ export default function AdminReservationsScreen() {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const locationId = profile?.location_id || user?.location_id;
+  
 
   useEffect(() => {
-    if (locationId) {
+    if (selectedLocationId) {
       fetchData();
     }
-  }, [locationId]);
+  }, [selectedLocationId]);
 
   const fetchData = async () => {
     try {
@@ -102,7 +102,7 @@ export default function AdminReservationsScreen() {
       const { data, error } = await supabase
         .from('area_reservations')
         .select('*')
-        .eq('location_id', locationId)
+        .eq('location_id', selectedLocationId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -117,7 +117,7 @@ export default function AdminReservationsScreen() {
       const { data, error } = await supabase
         .from('common_areas')
         .select('id, name, type, capacity, rules')
-        .eq('location_id', locationId);
+        .eq('location_id', selectedLocationId);
 
       if (error) throw error;
       setAreas(data || []);
@@ -245,13 +245,11 @@ export default function AdminReservationsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('admin.reservations.title')}</Text>
-        <View style={{ width: scale(40) }} />
-      </View>
+      <LocationHeader 
+        title={t('admin.reservations.title')} 
+        onBack={() => router.back()} 
+        onRefresh={onRefresh} 
+      />
 
       {/* Stats */}
       <View style={styles.statsContainer}>
@@ -527,7 +525,7 @@ export default function AdminReservationsScreen() {
           );
         })()}
       </Modal>
-    <LocationPickerModal />
+      <LocationPickerModal />
     </SafeAreaView>
   );
 }
