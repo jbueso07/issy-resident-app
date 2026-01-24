@@ -1171,54 +1171,98 @@ export const startTrial = async (planId) => {
   }
 };
 
-export const getPaymentMethods = async () => {
+
+// ==========================================
+// PAYMENT METHODS (Clinpays)
+// ==========================================
+
+/**
+ * Get payment methods for user
+ * @param {string|null} locationId - null for ISSY, UUID for community
+ */
+export const getPaymentMethods = async (locationId = null) => {
   try {
-    const data = await authFetch('/payment-methods');
+    const params = locationId ? `?locationId=${locationId}` : "";
+    const data = await authFetch(`/clinpays/methods${params}`);
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.log('Payment methods not available:', error.message);
-    // Fail gracefully - return empty array
+    console.log("Payment methods not available:", error.message);
     return { success: true, data: [] };
   }
 };
 
+/**
+ * Add payment method
+ * @param {object} paymentMethodData - Card data including optional locationId
+ */
 export const addPaymentMethod = async (paymentMethodData) => {
   try {
-    const data = await authFetch('/payment-methods', {
-      method: 'POST',
+    const data = await authFetch("/clinpays/methods", {
+      method: "POST",
       body: JSON.stringify(paymentMethodData),
     });
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error adding payment method:', error);
-    return { success: false, error: 'Funcionalidad próximamente disponible' };
+    console.error("Error adding payment method:", error);
+    return { success: false, error: error.message || "Error al agregar tarjeta" };
   }
 };
 
 export const deletePaymentMethod = async (paymentMethodId) => {
   try {
-    const data = await authFetch(`/payment-methods/${paymentMethodId}`, {
-      method: 'DELETE',
+    const data = await authFetch(`/clinpays/methods/${paymentMethodId}`, {
+      method: "DELETE",
     });
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error deleting payment method:', error);
-    return { success: false, error: 'Funcionalidad próximamente disponible' };
+    console.error("Error deleting payment method:", error);
+    return { success: false, error: error.message || "Error al eliminar tarjeta" };
   }
 };
 
 export const setDefaultPaymentMethod = async (paymentMethodId) => {
   try {
-    const data = await authFetch(`/payment-methods/${paymentMethodId}/default`, {
-      method: 'PUT',
+    const data = await authFetch(`/clinpays/methods/${paymentMethodId}/default`, {
+      method: "PATCH",
     });
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error setting default payment method:', error);
-    return { success: false, error: 'Funcionalidad próximamente disponible' };
+    console.error("Error setting default payment method:", error);
+    return { success: false, error: error.message || "Error al actualizar tarjeta" };
   }
 };
 
+/**
+ * Process payment with saved card
+ */
+export const processPaymentWithSavedCard = async (paymentData) => {
+  try {
+    const data = await authFetch("/clinpays/process", {
+      method: "POST",
+      body: JSON.stringify(paymentData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    return { success: false, error: error.message || "Error al procesar pago" };
+  }
+};
+
+/**
+ * Process one-time payment with new card
+ */
+export const processOneTimePayment = async (paymentData) => {
+  try {
+    const data = await authFetch("/clinpays/process-new", {
+      method: "POST",
+      body: JSON.stringify(paymentData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error("Error processing one-time payment:", error);
+    return { success: false, error: error.message || "Error al procesar pago" };
+  }
+};
 export const subscribeToPlan = async (planId, paymentMethodId) => {
   try {
     const data = await authFetch('/subscriptions/subscribe', {
