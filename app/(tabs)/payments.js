@@ -692,7 +692,8 @@ const processCardPayment = async () => {
                             onPress={() => openPaymentDetail(charge)}
                           >
                             <Ionicons name="eye" size={16} color={COLORS.purple} />
-                            <Text style={styles.viewProofButtonText}>Ver comprobante</Text>                         </TouchableOpacity>
+                            <Text style={styles.viewProofButtonText}>Ver comprobante</Text>
+                          </TouchableOpacity>
                        )}
                      </View>
                    )}
