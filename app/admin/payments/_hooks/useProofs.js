@@ -15,7 +15,7 @@ export function useProofs(locationId, onRefresh) {
       setLoading(true);
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/proofs/pending?location_id=${locationId}`,
+        `${API_URL}/api/community-payments/admin/payments/pending?location_id=${locationId}`,
         { headers }
       );
       const data = await response.json();
@@ -34,7 +34,7 @@ export function useProofs(locationId, onRefresh) {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/proofs/${payment.id}/verify`,
+        `${API_URL}/api/community-payments/admin/payments/${payment.id}/verify`,
         {
           method: 'POST',
           headers,
@@ -61,7 +61,7 @@ export function useProofs(locationId, onRefresh) {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/proofs/${payment.id}/reject`,
+        `${API_URL}/api/community-payments/admin/payments/${payment.id}/reject`,
         {
           method: 'POST',
           headers: {
