@@ -110,7 +110,7 @@ export default function AccessReportsScreen() {
       return;
     }
     fetchData();
-  }, [activeTab, selectedDate, movementFilter]);
+  }, [activeTab, selectedDate, movementFilter, selectedLocationId]);
 
   useEffect(() => {
     if (showExportModal && !exportStartDate) {
@@ -151,7 +151,7 @@ export default function AccessReportsScreen() {
   const fetchDashboard = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/guard/access/dashboard`, { headers });
+      const response = await fetch(`${API_URL}/api/guard/access/dashboard?location_id=${selectedLocationId}`, { headers });
       const data = await response.json();
       setDashboardData(data.data || data);
     } catch (error) { console.error('Error fetching dashboard:', error); }
@@ -160,7 +160,7 @@ export default function AccessReportsScreen() {
   const fetchHistory = async () => {
     try {
       const headers = await getAuthHeaders();
-      let url = `${API_URL}/api/guard/access/history?date=${selectedDate}&page=${pagination.page}&limit=${pagination.limit}`;
+      let url = `${API_URL}/api/guard/access/history?location_id=${selectedLocationId}&date=${selectedDate}&page=${pagination.page}&limit=${pagination.limit}`;
       if (movementFilter) url += `&movement_type=${movementFilter}`;
       const response = await fetch(url, { headers });
       const data = await response.json();
@@ -173,7 +173,7 @@ export default function AccessReportsScreen() {
   const fetchVisitorsInside = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/guard/access/inside`, { headers });
+      const response = await fetch(`${API_URL}/api/guard/access/inside?location_id=${selectedLocationId}`, { headers });
       const data = await response.json();
       setVisitorsInside((data.data || data).visitors || []);
     } catch (error) { console.error('Error fetching visitors inside:', error); }
@@ -182,7 +182,7 @@ export default function AccessReportsScreen() {
   const fetchIncidents = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/guard/incidents`, { headers });
+      const response = await fetch(`${API_URL}/api/guard/incidents?location_id=${selectedLocationId}`, { headers });
       const data = await response.json();
       setIncidents(Array.isArray(data.data || data) ? (data.data || data) : []);
     } catch (error) { console.error('Error fetching incidents:', error); }
@@ -552,6 +552,8 @@ export default function AccessReportsScreen() {
         <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}><Ionicons name="refresh" size={22} color={COLORS.textSecondary} /></TouchableOpacity>
       </View>
 
+      {/* Location Selector */}
+      <LocationHeader />
       <View style={styles.tabsContainer}>
         {tabs.map(tab => (
           <TouchableOpacity key={tab.id} style={[styles.tab, activeTab === tab.id && styles.tabActive]} onPress={() => setActiveTab(tab.id)}>

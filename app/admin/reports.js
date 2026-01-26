@@ -67,7 +67,7 @@ export default function AdminReports() {
       return;
     }
     fetchData();
-  }, []);
+  }, [selectedLocationId]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -82,22 +82,22 @@ export default function AdminReports() {
       const headers = await getAuthHeaders();
       
       // Fetch global stats
-      const globalRes = await fetch(`${API_URL}/api/stats/global`, { headers });
-      const globalData = await globalRes.json();
+const globalRes = await fetch(`${API_URL}/api/stats/global?location_id=${selectedLocationId}`, { headers });
+const globalData = await globalRes.json();
       if (globalData.success || globalData.data) {
         setGlobalStats(globalData.data || globalData);
       }
       
       // Fetch trends
-      const trendsRes = await fetch(`${API_URL}/api/stats/trends`, { headers });
-      const trendsData = await trendsRes.json();
+const trendsRes = await fetch(`${API_URL}/api/stats/trends?location_id=${selectedLocationId}`, { headers });
+const trendsData = await trendsRes.json();
       if (trendsData.success || trendsData.data) {
         setTrends(trendsData.data || trendsData);
       }
 
       // Fetch activity
-      const activityRes = await fetch(`${API_URL}/api/stats/activity`, { headers });
-      const activityData = await activityRes.json();
+const activityRes = await fetch(`${API_URL}/api/stats/activity?location_id=${selectedLocationId}`, { headers });
+const activityData = await activityRes.json();
       if (activityData.success || activityData.data) {
         setActivity(activityData.data || activityData);
       }
@@ -112,7 +112,7 @@ export default function AdminReports() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-  }, []);
+  }, [selectedLocationId]);
 
   const formatCurrency = (amount) => {
     return `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 0 })}`;
@@ -170,6 +170,9 @@ export default function AdminReports() {
           <Ionicons name="refresh" size={22} color={COLORS.textSecondary} />
         </TouchableOpacity>
       </View>
+
+      {/* Location Selector */}
+      <LocationHeader />
 
       <ScrollView
         style={styles.content}

@@ -16,6 +16,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,7 +47,7 @@ export default function AccessProcessScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams();
   const router = useRouter();
-  const locationId = params.locationId;
+  const { selectedLocationId: locationId } = useAdminLocation();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -286,6 +288,8 @@ export default function AccessProcessScreen() {
         <View style={{ width: scale(40) }} />
       </View>
       
+      
+      {/* Location Selector */}
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}

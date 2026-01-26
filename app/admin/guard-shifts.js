@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { useAdminLocation } from '../../src/context/AdminLocationContext';
+import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -52,28 +54,13 @@ export default function AdminGuardShifts() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  const [locations, setLocations] = useState([]);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  // Using AdminLocationContext instead of local state
+  const { selectedLocationId, locations, selectedLocation } = useAdminLocation();
+  console.log("guard-shifts selectedLocationId:", selectedLocationId);
+  // LocationPickerModal handled by AdminLocationContext
 
   const userRole = profile?.role || user?.role || 'user';
-  const userLocationId = profile?.location_id || user?.location_id;
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
-  const isSuperAdminUser = userRole === 'superadmin';
-
-  useEffect(() => {
-    if (!isAdmin) {
-      Alert.alert(t('admin.guardShifts.accessDenied'), t('admin.guardShifts.noPermissions'));
-      router.back();
-      return;
-    }
-    
-    if (isSuperAdminUser) {
-      fetchLocations();
-    } else {
-      setSelectedLocationId(userLocationId);
-    }
-  }, []);
 
   useEffect(() => {
     if (selectedLocationId) {
@@ -89,26 +76,6 @@ export default function AdminGuardShifts() {
     };
   };
 
-  const fetchLocations = async () => {
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/locations`, { headers });
-      const data = await res.json();
-      
-      if (data.success || Array.isArray(data)) {
-        const list = data.data || data;
-        setLocations(list);
-        if (list.length > 0 && !selectedLocationId) {
-          setSelectedLocationId(list[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching locations:', error);
-      if (userLocationId) {
-        setSelectedLocationId(userLocationId);
-      }
-    }
-  };
 
   const fetchShifts = async () => {
     try {
@@ -194,7 +161,7 @@ export default function AdminGuardShifts() {
     });
   };
 
-  const currentLocation = locations.find(l => l.id === selectedLocationId);
+  const currentLocation = selectedLocation;
 
   if (loading) {
     return (
@@ -203,7 +170,8 @@ export default function AdminGuardShifts() {
           <ActivityIndicator size="large" color={COLORS.lime} />
           <Text style={styles.loadingText}>{t('admin.guardShifts.loading')}</Text>
         </View>
-      </SafeAreaView>
+      <LocationPickerModal />
+    </SafeAreaView>
     );
   }
 
@@ -216,23 +184,11 @@ export default function AdminGuardShifts() {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{t('admin.guardShifts.title')}</Text>
-          {isSuperAdminUser && locations.length > 1 ? (
-            <TouchableOpacity 
-              style={styles.locationSelector}
-              onPress={() => setShowLocationPicker(true)}
-            >
-              <Ionicons name="location" size={14} color={COLORS.teal} />
-              <Text style={styles.locationText} numberOfLines={1}>
-                {currentLocation?.name || t('common.select')}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          ) : (
-            <Text style={styles.headerSubtitle}>{currentLocation?.name || ''}</Text>
-          )}
         </View>
-        <View style={{ width: scale(40) }} />
       </View>
+
+      {/* Location Selector */}
+      <LocationHeader />
 
       {/* Turnos de Hoy */}
       {todayShifts.length > 0 && (
@@ -332,48 +288,7 @@ export default function AdminGuardShifts() {
       </ScrollView>
 
       {/* Location Picker */}
-      {showLocationPicker && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('admin.guardShifts.selectLocation')}</Text>
-              <TouchableOpacity onPress={() => setShowLocationPicker(false)}>
-                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView>
-              {locations.map((loc) => (
-                <TouchableOpacity
-                  key={loc.id}
-                  style={[
-                    styles.locationItem,
-                    loc.id === selectedLocationId && styles.locationItemActive
-                  ]}
-                  onPress={() => {
-                    setSelectedLocationId(loc.id);
-                    setShowLocationPicker(false);
-                  }}
-                >
-                  <Ionicons 
-                    name="business" 
-                    size={20} 
-                    color={loc.id === selectedLocationId ? COLORS.lime : COLORS.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.locationItemText,
-                    loc.id === selectedLocationId && styles.locationItemTextActive
-                  ]}>
-                    {loc.name}
-                  </Text>
-                  {loc.id === selectedLocationId && (
-                    <Ionicons name="checkmark" size={20} color={COLORS.lime} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      )}
+    <LocationPickerModal />
     </SafeAreaView>
   );
 }
