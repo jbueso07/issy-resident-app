@@ -35,10 +35,10 @@ export function StatementModal({
   const [userPayments, setUserPayments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingAll, setGeneratingAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [step, setStep] = useState('select'); // 'select' | 'preview'
+  const [step, setStep] = useState('select');
 
-  // Filter users by search
   const filteredUsers = users?.filter(user => {
     const query = searchQuery.toLowerCase();
     const name = (user.full_name || user.name || '').toLowerCase();
@@ -47,7 +47,6 @@ export function StatementModal({
     return name.includes(query) || unit.includes(query) || email.includes(query);
   }) || [];
 
-  // Fetch user payment history
   const fetchUserPayments = useCallback(async (userId) => {
     if (!locationId || !userId) return;
     
@@ -55,14 +54,12 @@ export function StatementModal({
       setLoading(true);
       const headers = await getAuthHeaders();
       
-      // Get existing payments for this user
       const paymentsResponse = await fetch(
         `${API_URL}/api/community-payments/admin/payments?location_id=${locationId}&user_id=${userId}`,
         { headers }
       );
       const paymentsData = await paymentsResponse.json();
       
-      // Get all charges to find pending ones
       const chargesResponse = await fetch(
         `${API_URL}/api/community-payments/admin/charges?location_id=${locationId}`,
         { headers }
@@ -72,7 +69,6 @@ export function StatementModal({
       const results = [];
       const paidChargeIds = new Set();
       
-      // Add existing payments
       if (paymentsData.success && paymentsData.data) {
         paymentsData.data.forEach(payment => {
           paidChargeIds.add(payment.charge_id);
@@ -90,7 +86,6 @@ export function StatementModal({
         });
       }
       
-      // Add pending charges that apply to this user but have no payment yet
       if (chargesData.success && chargesData.data) {
         chargesData.data.forEach(charge => {
           if (paidChargeIds.has(charge.id)) return;
@@ -120,21 +115,19 @@ export function StatementModal({
       setLoading(false);
     }
   }, [locationId]);
-  // Handle user selection
+
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setStep('preview');
     fetchUserPayments(user.id);
   };
 
-  // Go back to user selection
   const handleBack = () => {
     setStep('select');
     setSelectedUser(null);
     setUserPayments([]);
   };
 
-  // Calculate totals
   const calculateTotals = () => {
     let totalCharged = 0;
     let totalPaid = 0;
@@ -143,8 +136,7 @@ export function StatementModal({
     userPayments.forEach(item => {
       const amount = parseFloat(item.amount) || 0;
       totalCharged += amount;
-      
-      if (item.status === 'paid' || item.payment?.status === 'paid') {
+      if (item.status === 'paid') {
         totalPaid += amount;
       } else {
         totalPending += amount;
@@ -154,9 +146,6 @@ export function StatementModal({
     return { totalCharged, totalPaid, totalPending };
   };
 
-  // Generate PDF HTML
-  // Generate PDF HTML with improvements
-  // Generate PDF HTML
   const generatePDFHtml = () => {
     const { totalCharged, totalPaid, totalPending } = calculateTotals();
     const today = new Date().toLocaleDateString("es-HN", { year: "numeric", month: "long", day: "numeric" });
@@ -262,7 +251,7 @@ export function StatementModal({
       <div class="section">
         <div class="section-title">Detalle de Movimientos</div>
         <table><thead><tr><th>Vencimiento</th><th>Concepto</th><th style="text-align:right;">Monto</th><th style="text-align:center;">Fecha Pago</th><th style="text-align:center;">Estado</th></tr></thead>
-        <tbody>${paymentsHtml || "<tr><td colspan=5 style=padding:16px;text-align:center;color:#9ca3af;>No hay movimientos</td></tr>"}</tbody></table>
+        <tbody>${paymentsHtml || '<tr><td colspan="5" style="padding:16px;text-align:center;color:#9ca3af;">No hay movimientos</td></tr>'}</tbody></table>
       </div>
       <div class="footer"><p><strong>ISSY</strong> - Sistema de Gestión de Comunidades</p><p>Este documento es informativo y no constituye una factura fiscal</p></div>
     </body></html>`;
@@ -271,19 +260,17 @@ export function StatementModal({
   const handleGeneratePDF = async () => {
     try {
       setGenerating(true);
-      
       const html = generatePDFHtml();
       const { uri } = await Print.printToFileAsync({ html });
-      
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
-          dialogTitle: t('admin.payments.statement.share', 'Compartir Estado de Cuenta'),
+          dialogTitle: 'Compartir Estado de Cuenta',
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Error', 'Compartir no disponible en este dispositivo');
+        Alert.alert('Error', 'Compartir no disponible');
       }
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -293,7 +280,156 @@ export function StatementModal({
     }
   };
 
-  // Reset on close
+  const handleGenerateConsolidatedPDF = async () => {
+    if (!users || users.length === 0) {
+      Alert.alert("Error", "No hay residentes para generar el reporte");
+      return;
+    }
+    
+    try {
+      setGeneratingAll(true);
+      const headers = await getAuthHeaders();
+      
+      const chargesResponse = await fetch(
+        `${API_URL}/api/community-payments/admin/charges?location_id=${locationId}`,
+        { headers }
+      );
+      const chargesData = await chargesResponse.json();
+      
+      const paymentsResponse = await fetch(
+        `${API_URL}/api/community-payments/admin/payments?location_id=${locationId}`,
+        { headers }
+      );
+      const paymentsData = await paymentsResponse.json();
+      
+      const charges = chargesData.success ? chargesData.data || [] : [];
+      const payments = paymentsData.success ? paymentsData.data || [] : [];
+      
+      const userSummaries = users.map(user => {
+        const userPayments = payments.filter(p => p.user_id === user.id);
+        const paidChargeIds = new Set(userPayments.map(p => p.charge_id));
+        
+        let totalPaid = 0;
+        let totalPending = 0;
+        
+        userPayments.forEach(p => {
+          if (p.status === "paid") totalPaid += parseFloat(p.charge?.amount || p.amount) || 0;
+        });
+        
+        charges.forEach(charge => {
+          if (paidChargeIds.has(charge.id)) return;
+          const applies = charge.applies_to === "all" || (charge.specific_users && charge.specific_users.includes(user.id));
+          if (applies && charge.status === "active") {
+            totalPending += parseFloat(charge.amount) || 0;
+          }
+        });
+        
+        return {
+          name: user.full_name || user.name || user.email,
+          house: user.house_number || user.unit_number || "-",
+          email: user.email || "-",
+          phone: user.phone || "-",
+          paid: totalPaid,
+          pending: totalPending,
+          total: totalPaid + totalPending,
+        };
+      });
+      
+      const grandTotalPaid = userSummaries.reduce((sum, u) => sum + u.paid, 0);
+      const grandTotalPending = userSummaries.reduce((sum, u) => sum + u.pending, 0);
+      const grandTotal = grandTotalPaid + grandTotalPending;
+      
+      const today = new Date().toLocaleDateString("es-HN", { year: "numeric", month: "long", day: "numeric" });
+      
+      const logoSvg = `<svg width="80" height="32" viewBox="0 0 80 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="26" font-family="Arial Black, sans-serif" font-size="28" font-weight="900" fill="#0F1A1A">ISSY</text>
+        <circle cx="72" cy="24" r="4" fill="#AAFF00"/>
+      </svg>`;
+      
+      const usersHtml = userSummaries.map(u => `
+        <tr>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${u.name}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:center;">${u.house}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#059669;">L ${u.paid.toFixed(2)}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;color:#d97706;">L ${u.pending.toFixed(2)}</td>
+          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">L ${u.total.toFixed(2)}</td>
+        </tr>
+      `).join("");
+      
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reporte Consolidado</title>
+      <style>
+        body{font-family:"Helvetica Neue",Arial,sans-serif;margin:0;padding:24px 32px;color:#1f2937;font-size:12px;}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #0F1A1A;}
+        .logo-section{display:flex;flex-direction:column;}
+        .website{font-size:10px;color:#6b7280;margin-top:2px;}
+        .doc-info{text-align:right;}
+        .doc-title{font-size:18px;font-weight:700;color:#0F1A1A;}
+        .doc-date{font-size:11px;color:#6b7280;margin-top:2px;}
+        .section{margin-bottom:16px;}
+        .section-title{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+        .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+        .summary-box{padding:12px;border-radius:6px;text-align:center;}
+        .summary-box.users{background:#e0e7ff;}
+        .summary-box.total{background:#f3f4f6;}
+        .summary-box.paid{background:#d1fae5;}
+        .summary-box.pending{background:#fef3c7;}
+        .summary-label{font-size:10px;color:#6b7280;}
+        .summary-value{font-size:18px;font-weight:700;margin-top:4px;}
+        .summary-box.users .summary-value{color:#4f46e5;}
+        .summary-box.total .summary-value{color:#1f2937;}
+        .summary-box.paid .summary-value{color:#059669;}
+        .summary-box.pending .summary-value{color:#d97706;}
+        table{width:100%;border-collapse:collapse;font-size:11px;}
+        th{background:#0F1A1A;color:white;padding:8px;text-align:left;font-weight:600;font-size:10px;}
+        .footer{margin-top:20px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;}
+        .footer p{color:#6b7280;font-size:10px;margin:2px 0;}
+        .totals-row{background:#f3f4f6;font-weight:700;}
+      </style></head>
+      <body>
+        <div class="header">
+          <div class="logo-section">${logoSvg}<div class="website">www.joinissy.com</div></div>
+          <div class="doc-info"><div class="doc-title">Reporte Consolidado</div><div class="doc-date">${today}</div></div>
+        </div>
+        <div class="section">
+          <div class="section-title">Comunidad: ${locationName || "N/A"}</div>
+          <div class="summary-grid">
+            <div class="summary-box users"><div class="summary-label">Residentes</div><div class="summary-value">${users.length}</div></div>
+            <div class="summary-box total"><div class="summary-label">Total Cargos</div><div class="summary-value">L ${grandTotal.toFixed(2)}</div></div>
+            <div class="summary-box paid"><div class="summary-label">Total Recaudado</div><div class="summary-value">L ${grandTotalPaid.toFixed(2)}</div></div>
+            <div class="summary-box pending"><div class="summary-label">Total Pendiente</div><div class="summary-value">L ${grandTotalPending.toFixed(2)}</div></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Detalle por Residente</div>
+          <table>
+            <thead><tr><th>Residente</th><th style="text-align:center;">No. Casa</th><th style="text-align:right;">Pagado</th><th style="text-align:right;">Pendiente</th><th style="text-align:right;">Total</th></tr></thead>
+            <tbody>
+              ${usersHtml}
+              <tr class="totals-row">
+                <td style="padding:10px 8px;" colspan="2">TOTALES</td>
+                <td style="padding:10px 8px;text-align:right;color:#059669;">L ${grandTotalPaid.toFixed(2)}</td>
+                <td style="padding:10px 8px;text-align:right;color:#d97706;">L ${grandTotalPending.toFixed(2)}</td>
+                <td style="padding:10px 8px;text-align:right;">L ${grandTotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="footer"><p><strong>ISSY</strong> - Sistema de Gestión de Comunidades</p><p>Este documento es informativo y no constituye una factura fiscal</p></div>
+      </body></html>`;
+      
+      const { uri } = await Print.printToFileAsync({ html });
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Compartir Reporte Consolidado", UTI: "com.adobe.pdf" });
+      }
+    } catch (error) {
+      console.error("Error generating consolidated PDF:", error);
+      Alert.alert("Error", "Error al generar el reporte");
+    } finally {
+      setGeneratingAll(false);
+    }
+  };
+
   useEffect(() => {
     if (!visible) {
       setStep('select');
@@ -313,7 +449,6 @@ export function StatementModal({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
         <View style={styles.header}>
           {step === 'preview' ? (
             <TouchableOpacity onPress={handleBack}>
@@ -321,31 +456,24 @@ export function StatementModal({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.cancelText}>{t('common.close', 'Cerrar')}</Text>
+              <Text style={styles.cancelText}>Cerrar</Text>
             </TouchableOpacity>
           )}
           <Text style={styles.title}>
-            {step === 'select' 
-              ? t('admin.payments.statement.title', 'Estado de Cuenta')
-              : t('admin.payments.statement.preview', 'Vista Previa')
-            }
+            {step === 'select' ? 'Estado de Cuenta' : 'Vista Previa'}
           </Text>
           <View style={{ width: 60 }} />
         </View>
 
         {step === 'select' ? (
-          /* User Selection Step */
           <View style={styles.content}>
-            <Text style={styles.subtitle}>
-              {t('admin.payments.statement.selectResident', 'Selecciona un residente')}
-            </Text>
+            <Text style={styles.subtitle}>Selecciona un residente</Text>
             
-            {/* Search */}
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={20} color={COLORS.textMuted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder={t('admin.payments.statement.searchPlaceholder', 'Buscar por nombre o unidad...')}
+                placeholder="Buscar por nombre o unidad..."
                 placeholderTextColor={COLORS.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -357,7 +485,6 @@ export function StatementModal({
               )}
             </View>
 
-            {/* Users List */}
             <ScrollView style={styles.usersList}>
               {filteredUsers.length === 0 ? (
                 <View style={styles.emptyContainer}>
@@ -383,7 +510,7 @@ export function StatementModal({
                         {user.full_name || user.name || user.email}
                       </Text>
                       <Text style={styles.userUnit}>
-                        {user.unit_number ? `Unidad ${user.unit_number}` : user.email}
+                        {user.unit_number ? `Casa ${user.unit_number}` : user.email}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
@@ -391,9 +518,23 @@ export function StatementModal({
                 ))
               )}
             </ScrollView>
+
+            <TouchableOpacity
+              style={styles.consolidatedButton}
+              onPress={handleGenerateConsolidatedPDF}
+              disabled={generatingAll || !users || users.length === 0}
+            >
+              {generatingAll ? (
+                <ActivityIndicator size="small" color={COLORS.teal} />
+              ) : (
+                <>
+                  <Ionicons name="document-text" size={18} color={COLORS.teal} />
+                  <Text style={styles.consolidatedButtonText}>Reporte General de Todos</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         ) : (
-          /* Preview Step */
           <View style={styles.content}>
             {loading ? (
               <View style={styles.loadingContainer}>
@@ -402,7 +543,6 @@ export function StatementModal({
               </View>
             ) : (
               <>
-                {/* User Info */}
                 <View style={styles.userHeader}>
                   <View style={styles.userAvatarLarge}>
                     <Text style={styles.userAvatarTextLarge}>
@@ -414,12 +554,11 @@ export function StatementModal({
                       {selectedUser?.full_name || selectedUser?.name}
                     </Text>
                     <Text style={styles.userHeaderUnit}>
-                      {selectedUser?.unit_number ? `Unidad ${selectedUser.unit_number}` : selectedUser?.email}
+                      {selectedUser?.unit_number ? `Casa ${selectedUser.unit_number}` : selectedUser?.email}
                     </Text>
                   </View>
                 </View>
 
-                {/* Summary Cards */}
                 <View style={styles.summaryContainer}>
                   <View style={[styles.summaryCard, styles.summaryTotal]}>
                     <Text style={styles.summaryLabel}>Total Cargos</Text>
@@ -441,7 +580,6 @@ export function StatementModal({
                   </View>
                 </View>
 
-                {/* Payments List */}
                 <Text style={styles.sectionTitle}>Movimientos</Text>
                 <ScrollView style={styles.paymentsList}>
                   {userPayments.length === 0 ? (
@@ -451,7 +589,7 @@ export function StatementModal({
                     </View>
                   ) : (
                     userPayments.map((item, index) => {
-                      const isPaid = item.status === 'paid' || item.payment?.status === 'paid';
+                      const isPaid = item.status === 'paid';
                       const isProofSubmitted = item.status === 'proof_submitted';
                       
                       return (
@@ -486,7 +624,6 @@ export function StatementModal({
                   )}
                 </ScrollView>
 
-                {/* Generate PDF Button */}
                 <TouchableOpacity
                   style={styles.generateButton}
                   onPress={handleGeneratePDF}
@@ -497,9 +634,7 @@ export function StatementModal({
                   ) : (
                     <>
                       <Ionicons name="document-text" size={20} color={COLORS.background} />
-                      <Text style={styles.generateButtonText}>
-                        {t('admin.payments.statement.generate', 'Generar PDF')}
-                      </Text>
+                      <Text style={styles.generateButtonText}>Generar PDF</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -745,6 +880,23 @@ const styles = StyleSheet.create({
     fontSize: scale(16),
     fontWeight: '600',
     color: COLORS.background,
+  },
+  consolidatedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.teal + '15',
+    borderWidth: 1,
+    borderColor: COLORS.teal,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    marginTop: scale(16),
+    gap: scale(8),
+  },
+  consolidatedButtonText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.teal,
   },
 });
 

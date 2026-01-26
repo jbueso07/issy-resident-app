@@ -107,7 +107,7 @@ export default function AdminSettings() {
 
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
-  const locationId = profile?.location_id || user?.location_id;
+  const locationId = selectedLocationId || profile?.location_id || user?.location_id;
 
   useEffect(() => {
     if (!isAdmin) {
@@ -116,7 +116,7 @@ export default function AdminSettings() {
       return;
     }
     loadData();
-  }, []);
+  }, [locationId]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -208,7 +208,7 @@ export default function AdminSettings() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
-  }, []);
+  }, [locationId]);
 
   // Guard settings handlers
   const handleGuardSettingChange = (key, value) => {
@@ -488,6 +488,8 @@ export default function AdminSettings() {
         <View style={{ width: scale(40) }} />
       </View>
 
+      {/* Location Selector */}
+      <LocationHeader />
       {/* Tabs */}
       <ScrollView
         horizontal
@@ -920,7 +922,7 @@ export default function AdminSettings() {
             )}
 
             {/* Users List */}
-            {usersPaymentStatus.filter(u => u.role === 'user').map(usr => (
+            {usersPaymentStatus.filter(u => u.role !== 'superadmin').map(usr => (
               <View key={usr.id} style={styles.userCard}>
                 <View style={styles.userAvatarContainer}>
                   <View style={[styles.userAvatar, { backgroundColor: usr.is_active ? COLORS.success + '30' : COLORS.danger + '30' }]}>
@@ -990,7 +992,7 @@ export default function AdminSettings() {
               </View>
             ))}
 
-            {usersPaymentStatus.filter(u => u.role === 'user').length === 0 && (
+            {usersPaymentStatus.filter(u => u.role !== 'superadmin').length === 0 && (
               <View style={styles.emptyContainer}>
                 <Ionicons name="people-outline" size={64} color={COLORS.textMuted} />
                 <Text style={styles.emptyTitle}>{t('admin.settings.users.noUsers')}</Text>
