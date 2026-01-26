@@ -9,3 +9,4 @@ export { BankAccountModal } from './BankAccountModal';
 export { UserPickerModal } from './UserPickerModal';
 export { ProofReviewModal } from './ProofReviewModal';
 export { ChargeDetailModal } from './ChargeDetailModal';
+export { StatementModal } from './StatementModal';

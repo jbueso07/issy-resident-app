@@ -46,7 +46,7 @@ import { BankAccountModal } from './_components/BankAccountModal';
 import { UserPickerModal } from './_components/UserPickerModal';
 import { ProofReviewModal } from './_components/ProofReviewModal';
 import { ChargeDetailModal } from './_components/ChargeDetailModal';
-
+import { StatementModal } from './_components/StatementModal';
 export default function AdminPayments() {
   const { t } = useTranslation();
   const { user, profile, isSuperAdmin } = useAuth();
@@ -69,6 +69,7 @@ export default function AdminPayments() {
   
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showStatementModal, setShowStatementModal] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showBankAccountModal, setShowBankAccountModal] = useState(false);
   const [showProofModal, setShowProofModal] = useState(false);
@@ -132,7 +133,10 @@ export default function AdminPayments() {
     }
   }, [activeTab]);
 
-  const handleOpenCreateModal = () => {
+  const handleOpenStatementModal = async () => {
+    await charges.fetchUsers();
+    setShowStatementModal(true);
+  };  const handleOpenCreateModal = () => {
     charges.resetForm();
     setShowCreateModal(true);
   };
@@ -310,6 +314,11 @@ export default function AdminPayments() {
           )}
         </View>
         {activeTab === 'charges' && (
+          <TouchableOpacity style={styles.statementButton} onPress={handleOpenStatementModal}>
+            <Ionicons name="document-text" size={20} color={COLORS.teal} />
+          </TouchableOpacity>
+        )}
+        {activeTab === 'charges' && (
           <TouchableOpacity style={styles.addButton} onPress={handleOpenCreateModal}>
             <Ionicons name="add" size={22} color={COLORS.background} />
           </TouchableOpacity>
@@ -335,6 +344,11 @@ export default function AdminPayments() {
           />
         }
       >
+        {activeTab === 'charges' && (
+          <TouchableOpacity style={styles.statementButton} onPress={handleOpenStatementModal}>
+            <Ionicons name="document-text" size={20} color={COLORS.teal} />
+          </TouchableOpacity>
+        )}
         {activeTab === 'charges' && (
           <ChargesTab
             charges={charges.charges}
@@ -448,6 +462,13 @@ export default function AdminPayments() {
         PAYMENT_TYPES={PAYMENT_TYPES}
       />
 
+      <StatementModal
+        visible={showStatementModal}
+        onClose={() => setShowStatementModal(false)}
+        locationId={selectedLocation?.id}
+        locationName={selectedLocation?.name}
+        users={charges.users}
+      />
       <LocationPickerModal />
     </SafeAreaView>
   );
@@ -507,6 +528,15 @@ const styles = StyleSheet.create({
     fontSize: scale(14),
     color: COLORS.teal,
     fontWeight: "500",
+  },
+  statementButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.teal + "20",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scale(8),
   },
   addButton: {
     width: scale(44),
