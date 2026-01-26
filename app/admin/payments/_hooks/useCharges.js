@@ -1,11 +1,9 @@
 // app/admin/payments/hooks/useCharges.js
 // ISSY Admin - Charges Hook
-
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { API_URL, getDefaultFormData } from '../_constants';
 import { getAuthHeaders, validateChargeForm, getPaymentTypeLabel } from '../_helpers';
-
 export function useCharges(t, selectedLocationId) {
   const [charges, setCharges] = useState([]);
   const [stats, setStats] = useState(null);
@@ -21,7 +19,6 @@ export function useCharges(t, selectedLocationId) {
   
   // Form state
   const [formData, setFormData] = useState(getDefaultFormData());
-
   /**
    * Fetch charges and stats from API
    */
@@ -34,16 +31,14 @@ export function useCharges(t, selectedLocationId) {
       if (filter !== 'all') params.append('status', filter);
       if (selectedLocationId) params.append('location_id', selectedLocationId);
       
-      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const queryString = params.toString() ? '?' + params.toString() : '';
       
       const [chargesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/api/community-payments/admin/charges${queryString}`, { headers }),
-        fetch(`${API_URL}/api/community-payments/admin/stats${queryString}`, { headers }),
+        fetch(API_URL + '/api/community-payments/admin/charges' + queryString, { headers }),
+        fetch(API_URL + '/api/community-payments/admin/stats' + queryString, { headers }),
       ]);
-
       const chargesData = await chargesRes.json();
       const statsData = await statsRes.json();
-
       if (chargesData.success) {
         setCharges(chargesData.data || []);
       }
@@ -57,20 +52,17 @@ export function useCharges(t, selectedLocationId) {
       setRefreshing(false);
     }
   }, [filter, selectedLocationId]);
-
   /**
    * Fetch users/residents for charge creation
    */
   const fetchUsers = useCallback(async () => {
     if (users.length > 0) return users;
-
     setLoadingUsers(true);
     try {
       const headers = await getAuthHeaders();
-      const url = `${API_URL}/api/community-payments/admin/residents${selectedLocationId ? `?location_id=${selectedLocationId}` : ''}`;
+      const url = API_URL + '/api/community-payments/admin/residents' + (selectedLocationId ? '?location_id=' + selectedLocationId : '');
       const response = await fetch(url, { headers });
       const data = await response.json();
-
       if (data.success) {
         setUsers(data.data || []);
         return data.data || [];
@@ -83,7 +75,6 @@ export function useCharges(t, selectedLocationId) {
       setLoadingUsers(false);
     }
   }, [selectedLocationId, users.length]);
-
   /**
    * Create a new charge
    */
@@ -93,7 +84,6 @@ export function useCharges(t, selectedLocationId) {
       Alert.alert(t('common.error', 'Error'), validation.error);
       return false;
     }
-
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
@@ -104,7 +94,6 @@ export function useCharges(t, selectedLocationId) {
       } else if (formData.target === 'multiple') {
         userIds = selectedUsers.map(u => u.id);
       }
-
       const payload = {
         target: formData.target,
         user_ids: userIds,
@@ -117,20 +106,17 @@ export function useCharges(t, selectedLocationId) {
         allowed_payment_methods: formData.allowed_payment_methods,
         location_id: selectedLocationId,
       };
-
-      const response = await fetch(`${API_URL}/api/community-payments/admin/charges`, {
+      const response = await fetch(API_URL + '/api/community-payments/admin/charges', {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
-
       const data = await response.json();
-
       if (response.ok && data.success) {
         const count = data.data?.charges_created || 1;
         Alert.alert(
           t('common.success', 'Éxito'),
-          t('admin.payments.success.chargesCreated', { count }, `Se crearon ${count} cobro(s) exitosamente`)
+          t('admin.payments.success.chargesCreated', { count }, 'Se crearon ' + count + ' cobro(s) exitosamente')
         );
         resetForm();
         fetchCharges();
@@ -147,7 +133,6 @@ export function useCharges(t, selectedLocationId) {
       setSaving(false);
     }
   }, [formData, selectedUsers, selectedLocationId, t, fetchCharges]);
-
   /**
    * Cancel a charge
    */
@@ -164,11 +149,10 @@ export function useCharges(t, selectedLocationId) {
             onPress: async () => {
               try {
                 const headers = await getAuthHeaders();
-                const response = await fetch(`${API_URL}/api/community-payments/admin/charges/${charge.id}`, {
+                const response = await fetch(API_URL + '/api/community-payments/admin/charges/' + charge.id, {
                   method: 'DELETE',
                   headers,
                 });
-
                 if (response.ok) {
                   Alert.alert(t('common.success', 'Éxito'), t('admin.payments.success.chargeCancelled', 'Cobro cancelado'));
                   fetchCharges();
@@ -186,7 +170,6 @@ export function useCharges(t, selectedLocationId) {
       );
     });
   }, [t, fetchCharges]);
-
   /**
    * Reset form to initial state
    */
@@ -194,14 +177,12 @@ export function useCharges(t, selectedLocationId) {
     setFormData(getDefaultFormData());
     setSelectedUsers([]);
   }, []);
-
   /**
    * Clear users when location changes
    */
   const clearUsers = useCallback(() => {
     setUsers([]);
   }, []);
-
   /**
    * Handle user selection for charges
    */
@@ -212,7 +193,7 @@ export function useCharges(t, selectedLocationId) {
         user_id: selectedUser.id,
         user_name: selectedUser.name || selectedUser.full_name || selectedUser.email,
       }));
-      return 'close'; // Signal to close picker
+      return 'close';
     } else if (formData.target === 'multiple') {
       const alreadySelected = selectedUsers.find(u => u.id === selectedUser.id);
       if (alreadySelected) {
@@ -220,17 +201,15 @@ export function useCharges(t, selectedLocationId) {
       } else {
         setSelectedUsers(prev => [...prev, selectedUser]);
       }
-      return 'keep'; // Signal to keep picker open
+      return 'keep';
     }
   }, [formData.target, selectedUsers]);
-
   /**
    * Update form data
    */
   const updateFormData = useCallback((updates) => {
     setFormData(prev => ({ ...prev, ...updates }));
   }, []);
-
   /**
    * Refresh charges
    */
@@ -238,9 +217,7 @@ export function useCharges(t, selectedLocationId) {
     setRefreshing(true);
     fetchCharges();
   }, [fetchCharges]);
-
   return {
-    // State
     charges,
     stats,
     loading,
@@ -251,8 +228,6 @@ export function useCharges(t, selectedLocationId) {
     loadingUsers,
     selectedUsers,
     formData,
-    
-    // Actions
     fetchCharges,
     fetchUsers,
     createCharge,

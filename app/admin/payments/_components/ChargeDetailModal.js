@@ -95,6 +95,7 @@ export function ChargeDetailModal({
   };
 
   const handleVerify = async (payment) => {
+    console.log("handleVerify llamado, onVerifyProof:", !!onVerifyProof);
     if (onVerifyProof) {
       setProcessingAction('verify');
       await onVerifyProof(payment);

@@ -80,7 +80,7 @@ export default function AdminPayments() {
   // HOOKS
   // ============================================
   const charges = useCharges(t, selectedLocationId);
-  const proofs = useProofs(t);
+  const proofs = useProofs(selectedLocationId, () => charges.refresh());
   const settings = useSettings(t);
   const bankAccounts = useBankAccounts(t, selectedLocationId);
 
@@ -163,6 +163,7 @@ export default function AdminPayments() {
   const handleCreateCharge = async () => {
     const success = await charges.createCharge();
     if (success) {
+            setSelectedChargeDetail(null);
       setShowCreateModal(false);
     }
   };
@@ -193,6 +194,7 @@ export default function AdminPayments() {
   const handleVerifyProof = async () => {
     const success = await proofs.verifyProof(proofs.selectedProof);
     if (success) {
+            setSelectedChargeDetail(null);
       setShowProofModal(false);
     }
   };
@@ -200,6 +202,7 @@ export default function AdminPayments() {
   const handleRejectProof = async () => {
     const success = await proofs.rejectProof(proofs.selectedProof);
     if (success) {
+            setSelectedChargeDetail(null);
       setShowProofModal(false);
     }
   };
@@ -217,6 +220,7 @@ export default function AdminPayments() {
   const handleSaveBankAccount = async () => {
     const success = await bankAccounts.saveBankAccount();
     if (success) {
+            setSelectedChargeDetail(null);
       setShowBankAccountModal(false);
     }
   };
@@ -445,8 +449,11 @@ export default function AdminPayments() {
         charge={selectedChargeDetail}
         onCancelCharge={handleCancelCharge}
         onVerifyProof={async (payment) => {
+          console.log("Verificando payment:", payment.id);
           const success = await proofs.verifyProof(payment);
+          console.log("Resultado verifyProof:", success);
           if (success) {
+            setSelectedChargeDetail(null);
             charges.fetchCharges();
             setShowChargeDetailModal(false);
           }
@@ -454,6 +461,7 @@ export default function AdminPayments() {
         onRejectProof={async (payment) => {
           const success = await proofs.rejectProof(payment);
           if (success) {
+            setSelectedChargeDetail(null);
             charges.fetchCharges();
             setShowChargeDetailModal(false);
           }
