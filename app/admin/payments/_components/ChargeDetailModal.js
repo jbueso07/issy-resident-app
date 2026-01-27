@@ -31,6 +31,7 @@ export function ChargeDetailModal({
   onCancelCharge,
   onVerifyProof,
   onRejectProof,
+  onRevertPayment,
   PAYMENT_STATUS,
   PAYMENT_TYPES,
 }) {
@@ -104,9 +105,32 @@ export function ChargeDetailModal({
   };
 
   const handleReject = async (payment) => {
-    if (onRejectProof) {
-      setProcessingAction('reject');
-      await onRejectProof(payment);
+    Alert.prompt(
+      "Rechazar Comprobante",
+      "Ingresa la razón del rechazo:",
+      async (reason) => {
+        if (reason && reason.trim()) {
+          if (onRejectProof) {
+            setProcessingAction("reject");
+            await onRejectProof(payment, reason.trim());
+            setProcessingAction(null);
+          }
+        } else {
+          Alert.alert("Error", "La razón es requerida");
+        }
+      },
+      "plain-text",
+      "",
+      "default"
+    );
+    return;
+  };
+
+
+  const handleRevert = async (payment) => {
+    if (onRevertPayment) {
+      setProcessingAction('revert');
+      await onRevertPayment(payment);
       setProcessingAction(null);
     }
   };
@@ -296,6 +320,27 @@ export function ChargeDetailModal({
                     </View>
                   )}
 
+                  {/* Revert Button for paid payments */}
+                  {payment.status === 'paid' && onRevertPayment && (
+                    <View style={styles.actionButtonsContainer}>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.revertButton]}
+                        onPress={() => handleRevert(payment)}
+                        disabled={processingAction !== null}
+                      >
+                        {processingAction === 'revert' ? (
+                          <ActivityIndicator size="small" color={COLORS.warning} />
+                        ) : (
+                          <>
+                            <Ionicons name="refresh-circle" size={20} color={COLORS.warning} />
+                            <Text style={styles.revertButtonText}>
+                              {t('admin.payments.revert', 'Revertir Aprobación')}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   {/* Approve/Reject Buttons */}
                   {hasPendingProof(payment) && (onVerifyProof || onRejectProof) && (
                     <View style={styles.actionButtonsContainer}>
@@ -499,6 +544,14 @@ const styles = StyleSheet.create({
   },
   rejectButtonText: {
     color: COLORS.danger,
+    fontWeight: '600',
+    fontSize: scale(14),
+  },
+  revertButton: {
+    backgroundColor: COLORS.warning + '15',
+  },
+  revertButtonText: {
+    color: COLORS.warning,
     fontWeight: '600',
     fontSize: scale(14),
   },

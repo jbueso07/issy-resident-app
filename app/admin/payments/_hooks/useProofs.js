@@ -15,7 +15,7 @@ export function useProofs(locationId, onRefresh) {
       setLoading(true);
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/payments/pending?location_id=${locationId}`,
+        API_URL + '/api/community-payments/admin/payments/pending?location_id=' + locationId,
         { headers }
       );
       const data = await response.json();
@@ -34,7 +34,7 @@ export function useProofs(locationId, onRefresh) {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/payments/${payment.id}/verify`,
+        API_URL + '/api/community-payments/admin/payments/' + payment.id + '/verify',
         {
           method: 'POST',
           headers,
@@ -61,7 +61,7 @@ export function useProofs(locationId, onRefresh) {
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(
-        `${API_URL}/api/community-payments/admin/payments/${payment.id}/reject`,
+        API_URL + '/api/community-payments/admin/payments/' + payment.id + '/reject',
         {
           method: 'POST',
           headers: {
@@ -88,12 +88,44 @@ export function useProofs(locationId, onRefresh) {
     }
   }, [onRefresh]);
 
+  const revertPayment = useCallback(async (payment, reason) => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        API_URL + '/api/community-payments/admin/payments/' + payment.id + '/revert',
+        {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: reason || '' }),
+        }
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        Alert.alert('Éxito', 'Pago revertido a pendiente');
+        if (onRefresh) onRefresh();
+        return true;
+      } else {
+        Alert.alert('Error', data.error || 'Error al revertir');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error reverting payment:', error);
+      Alert.alert('Error', 'Error de conexión');
+      return false;
+    }
+  }, [onRefresh]);
+
   return {
     pendingProofs,
     loading,
     fetchPendingProofs,
     verifyProof,
     rejectProof,
+    revertPayment,
   };
 }
 

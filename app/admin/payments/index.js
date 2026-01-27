@@ -362,7 +362,15 @@ export default function AdminPayments() {
             setFilter={charges.setFilter}
             onChargePress={handleOpenChargeDetail}
             onCreatePress={handleOpenCreateModal}
-            PAYMENT_STATUS={PAYMENT_STATUS}
+            onRevertPayment={async (payment) => {
+          const success = await proofs.revertPayment(payment);
+          if (success) {
+            setSelectedChargeDetail(null);
+            charges.fetchCharges();
+            setShowChargeDetailModal(false);
+          }
+        }}
+        PAYMENT_STATUS={PAYMENT_STATUS}
             PAYMENT_TYPES={PAYMENT_TYPES}
           />
         )}
@@ -458,8 +466,16 @@ export default function AdminPayments() {
             setShowChargeDetailModal(false);
           }
         }}
-        onRejectProof={async (payment) => {
-          const success = await proofs.rejectProof(payment);
+        onRejectProof={async (payment, reason) => {
+          const success = await proofs.rejectProof(payment, reason);
+          if (success) {
+            setSelectedChargeDetail(null);
+            charges.fetchCharges();
+            setShowChargeDetailModal(false);
+          }
+        }}
+        onRevertPayment={async (payment) => {
+          const success = await proofs.revertPayment(payment);
           if (success) {
             setSelectedChargeDetail(null);
             charges.fetchCharges();
