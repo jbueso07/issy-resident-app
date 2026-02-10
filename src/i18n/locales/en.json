@@ -205,6 +205,11 @@
       "subtitle": "Enter your invitation code to get started",
       "button": "Join Community"
     },
+    "createLocation": {
+      "title": "Create Location",
+      "subtitle": "Register a new community or residential for your clients",
+      "button": "Create New Location"
+    },
     "recentActivity": "Recent activity",
     "pendingPayments": "Pending payments",
     "upcomingVisits": "Upcoming visits",
@@ -2055,7 +2060,13 @@
     "accessReports": "Access Reports",
     "accessReportsDesc": "Audit and history",
     "reports": "Reports",
-    "reportsDesc": "Statistics and metrics"
+    "reportsDesc": "Statistics and metrics",
+    "patrols": "Patrols",
+    "patrolsDesc": "Manage routes and checkpoints",
+    "patrolReports": "Patrol Reports",
+    "patrolReportsDesc": "History and statistics",
+    "locations": "Locations",
+    "locationsDesc": "Manage communities"
   },
   "services": {
     "servicesTitle": "Services",

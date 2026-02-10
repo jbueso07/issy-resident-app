@@ -223,6 +223,11 @@
       "title": "Únete a una Comunidad",
       "subtitle": "Ingresa tu código de invitación",
       "button": "Unirse"
+    },
+    "createLocation": {
+      "title": "Crear Ubicación",
+      "subtitle": "Registra una nueva comunidad o residencial para tus clientes",
+      "button": "Crear Nueva Ubicación"
     }
   },
   "visits": {
@@ -2404,7 +2409,13 @@
     "accessReports": "Reportes de Acceso",
     "accessReportsDesc": "Auditoría e historial",
     "reports": "Reportes",
-    "reportsDesc": "Estadísticas y métricas"
+    "reportsDesc": "Estadísticas y métricas",
+    "patrols": "Rondines",
+    "patrolsDesc": "Gestionar rutas y checkpoints",
+    "patrolReports": "Reportes de Rondines",
+    "patrolReportsDesc": "Historial y estadísticas",
+    "locations": "Ubicaciones",
+    "locationsDesc": "Gestionar comunidades"
   },
   "services": {
     "servicesTitle": "Servicios",

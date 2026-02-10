@@ -108,6 +108,8 @@
       "expo-localization"
     ],
     "extra": {
+      "supabaseUrl": "https://fxawqxquinldcxkvwoet.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4YXdxeHF1aW5sZGN4a3Z3b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDAwNDYsImV4cCI6MjA3ODMxNjA0Nn0.Nu0AXZf9iy0kjPYi7V6acrhtiHuv30HkNGECb7AhgLk",
       "eas": {
         "projectId": "c4a103bf-1ca0-4901-817c-af9dc40325e8"
       }

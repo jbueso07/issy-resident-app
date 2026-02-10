@@ -194,6 +194,11 @@
       "subtitle": "Digite seu código de convite para começar",
       "button": "Entrar na Comunidade"
     },
+    "createLocation": {
+      "title": "Criar Local",
+      "subtitle": "Registre uma nova comunidade ou residencial para seus clientes",
+      "button": "Criar Novo Local"
+    },
     "recentActivity": "Atividade recente",
     "pendingPayments": "Pagamentos pendentes",
     "upcomingVisits": "Próximas visitas",

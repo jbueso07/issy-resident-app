@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const supabaseUrl = 'https://fxawqxquinldcxkvwoet.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4YXdxeHF1aW5sZGN4a3Z3b2V0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDAwNDYsImV4cCI6MjA3ODMxNjA0Nn0.Nu0AXZf9iy0kjPYi7V6acrhtiHuv30HkNGECb7AhgLk';
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 'https://fxawqxquinldcxkvwoet.supabase.co';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || '';
+
+if (!supabaseAnonKey) {
+  console.warn('Supabase anon key not found in app.json extra config');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

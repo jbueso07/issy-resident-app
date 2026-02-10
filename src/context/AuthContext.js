@@ -272,6 +272,10 @@ const { expoPushToken } = useNotifications();
     try {
       console.log('Syncing Google user with backend:', supabaseUser.email);
 
+      // Get the current Supabase session token for backend verification
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseAccessToken = session?.access_token || null;
+
       const response = await fetch(`${API_URL}/auth/google-sync`, {
         method: 'POST',
         headers: {
@@ -284,7 +288,8 @@ const { expoPushToken } = useNotifications();
             supabaseUser.email?.split('@')[0],
           supabase_id: supabaseUser.id,
           avatar_url: supabaseUser.user_metadata?.avatar_url || null,
-          provider: 'google'
+          provider: 'google',
+          supabase_access_token: supabaseAccessToken
         }),
       });
 
@@ -835,6 +840,7 @@ const { expoPushToken } = useNotifications();
 
       // Helpers
       refreshProfile,
+      getValidToken,
       hasLocation,
       getUserRole,
       isSuperAdmin,

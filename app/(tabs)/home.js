@@ -225,9 +225,18 @@ export default function Home() {
   ], [t]);
 
   const ADMIN_SERVICES = useMemo(() => [
-  { 
-    id: 'create-announcement', 
-    title: t('adminMenu.announcements'), 
+  {
+    id: 'locations',
+    title: t('adminMenu.locations', 'Ubicaciones'),
+    subtitle: t('adminMenu.locationsDesc', 'Gestionar comunidades'),
+    route: '/admin/locations',
+    activeColor: COLORS.lime,
+    icon: 'location-outline',
+    superAdminOnly: true,
+  },
+  {
+    id: 'create-announcement',
+    title: t('adminMenu.announcements'),
     subtitle: t('adminMenu.announcementsDesc'),
     route: '/admin/announcements',
     activeColor: COLORS.cyan,
@@ -321,13 +330,38 @@ export default function Home() {
     activeColor: COLORS.blue,
     icon: 'shield-checkmark-outline',
   },
-  { 
-    id: 'reports', 
-    title: t('adminMenu.reports'), 
+  {
+    id: 'reports',
+    title: t('adminMenu.reports'),
     subtitle: t('adminMenu.reportsDesc'),
     route: '/admin/reports',
     activeColor: COLORS.lime,
     icon: 'analytics-outline',
+  },
+  {
+    id: 'patrols',
+    title: t('adminMenu.patrols', 'Rondines'),
+    subtitle: t('adminMenu.patrolsDesc', 'Gestionar rutas y checkpoints'),
+    route: '/admin/patrols',
+    activeColor: COLORS.orange,
+    icon: 'footsteps-outline',
+  },
+  {
+    id: 'patrol-reports',
+    title: t('adminMenu.patrolReports', 'Reportes de Rondines'),
+    subtitle: t('adminMenu.patrolReportsDesc', 'Historial y estadísticas'),
+    route: '/admin/patrol-reports',
+    activeColor: COLORS.cyan,
+    icon: 'stats-chart-outline',
+  },
+  {
+    id: 'marketplace-admin',
+    title: 'Marketplace',
+    subtitle: 'Proveedores, servicios y configuración',
+    route: '/admin/marketplace',
+    activeColor: COLORS.teal,
+    icon: 'storefront-outline',
+    superAdminOnly: true,
   },
 ], [t]);
 
@@ -361,6 +395,7 @@ export default function Home() {
   };
 
   const handleJoinCommunity = () => router.push('/join-community');
+  const handleCreateLocation = () => router.push('/create-location');
 
   const handleSwitchLocation = async (location) => {
     if (!location?.location_id || switchingLocation) return;
@@ -498,6 +533,25 @@ export default function Home() {
             </Text>
             <TouchableOpacity style={styles.joinButton} onPress={handleJoinCommunity}>
               <Text style={styles.joinButtonText} maxFontSizeMultiplier={1.2}>{t('home.joinCommunity.button')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Create Location Card */}
+          <View style={styles.createLocationCard}>
+            <View style={styles.createLocationIconContainer}>
+              <Ionicons name="add-circle" size={scale(36)} color={COLORS.lime} />
+            </View>
+            <Text style={styles.createLocationTitle} maxFontSizeMultiplier={1.2}>
+              {t('home.createLocation.title', 'Crear Ubicación')}
+            </Text>
+            <Text style={styles.createLocationSubtitle} maxFontSizeMultiplier={1.2}>
+              {t('home.createLocation.subtitle', 'Registra una nueva comunidad o residencial para tus clientes')}
+            </Text>
+            <TouchableOpacity style={styles.createLocationButton} onPress={handleCreateLocation}>
+              <Ionicons name="add" size={18} color={COLORS.textDark} />
+              <Text style={styles.createLocationButtonText} maxFontSizeMultiplier={1.2}>
+                {t('home.createLocation.button', 'Crear Nueva Ubicación')}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -744,7 +798,9 @@ export default function Home() {
               decelerationRate="fast"
               snapToInterval={scale(160) + scale(12)}
             >
-              {ADMIN_SERVICES.map((service) => {
+              {ADMIN_SERVICES.filter(service =>
+                !service.superAdminOnly || userRole === 'superadmin'
+              ).map((service) => {
                 const isActive = activeAdminServices[service.id];
                 return (
                   <TouchableOpacity
@@ -1202,6 +1258,55 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     color: COLORS.textPrimary,
+    fontSize: scale(14),
+    fontWeight: '600',
+  },
+
+  // ============ CREATE LOCATION CARD ============
+  createLocationCard: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(20),
+    padding: scale(24),
+    alignItems: 'center',
+    marginBottom: scale(24),
+    marginHorizontal: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.lime + '30',
+  },
+  createLocationIconContainer: {
+    width: scale(70),
+    height: scale(70),
+    borderRadius: scale(35),
+    backgroundColor: COLORS.lime + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+  },
+  createLocationTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: scale(8),
+  },
+  createLocationSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: scale(20),
+    lineHeight: scale(18),
+  },
+  createLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lime,
+    paddingHorizontal: scale(28),
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    gap: scale(6),
+  },
+  createLocationButtonText: {
+    color: COLORS.textDark,
     fontSize: scale(14),
     fontWeight: '600',
   },

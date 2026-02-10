@@ -194,6 +194,11 @@
       "subtitle": "Entrez votre code d'invitation pour commencer",
       "button": "Rejoindre"
     },
+    "createLocation": {
+      "title": "Créer un Emplacement",
+      "subtitle": "Enregistrez une nouvelle communauté ou résidence pour vos clients",
+      "button": "Créer un Nouvel Emplacement"
+    },
     "recentActivity": "Activité récente",
     "pendingPayments": "Paiements en attente",
     "upcomingVisits": "Visites à venir",
