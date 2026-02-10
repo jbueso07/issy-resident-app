@@ -57,6 +57,7 @@ export default function AccessProcessScreen() {
     require_companion: false,
     use_qr_for_residents: false,
     can_request_resident_approval: true,
+    resident_qr_enabled: true, // ✅ New: Enable/disable dynamic resident QR (TOTP)
   });
 
   // Access processes with translations
@@ -146,6 +147,12 @@ export default function AccessProcessScreen() {
   // Security preferences with translations
   const SECURITY_PREFERENCES = [
     {
+      id: 'resident_qr_enabled',
+      title: t('admin.accessProcess.preferences.residentQr.title') || 'QR Dinámico de Residente',
+      description: t('admin.accessProcess.preferences.residentQr.description') || 'Permite a los residentes usar un código QR personal que cambia cada 10 segundos para acceder',
+      icon: 'person-circle',
+    },
+    {
       id: 'require_exit_registration',
       title: t('admin.accessProcess.preferences.exitRegistration.title'),
       description: t('admin.accessProcess.preferences.exitRegistration.description'),
@@ -207,6 +214,7 @@ export default function AccessProcessScreen() {
             require_companion: settings.require_companion || false,
             use_qr_for_residents: settings.use_qr_for_residents || false,
             can_request_resident_approval: settings.can_request_resident_approval ?? true,
+            resident_qr_enabled: settings.resident_qr_enabled ?? true, // ✅ New field
           });
         }
       }

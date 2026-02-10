@@ -1,8 +1,8 @@
-// app/(tabs)/marketplace.js
-// ISSY Marketplace - Tab Screen (Home)
+// app/marketplace-hub/index.js
+// ISSY Marketplace - Home Screen
 // Línea gráfica ProHome
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Dimensions,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,15 +170,18 @@ const POPULAR_SERVICES = [
   },
 ];
 
-export default function MarketplaceScreen() {
-  const { profile } = useAuth();
+export default function MarketplaceHomeScreen() {
+  const { user, profile } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Simular estado Prime
   const isPrime = profile?.is_prime || false;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Aquí cargaría datos reales
     await new Promise(resolve => setTimeout(resolve, 1000));
     setRefreshing(false);
   }, []);
@@ -199,6 +203,7 @@ export default function MarketplaceScreen() {
     router.push(`/marketplace-hub/category/${categoryId}`);
   };
 
+  // ============ RENDER SERVICE CARD ============
   const renderServiceCard = (service, isLarge = false) => (
     <TouchableOpacity
       key={service.id}
@@ -206,6 +211,7 @@ export default function MarketplaceScreen() {
       onPress={() => handleServicePress(service.id)}
       activeOpacity={0.8}
     >
+      {/* Image or Icon */}
       <View style={[styles.serviceImageContainer, { backgroundColor: `${service.color}20` }]}>
         {service.image ? (
           <Image source={{ uri: service.image }} style={styles.serviceImage} />
@@ -219,6 +225,7 @@ export default function MarketplaceScreen() {
         )}
       </View>
 
+      {/* Info */}
       <View style={styles.serviceInfo}>
         <Text style={styles.serviceTitle} numberOfLines={1}>{service.title}</Text>
         <Text style={styles.serviceProvider} numberOfLines={1}>{service.provider}</Text>
@@ -254,6 +261,13 @@ export default function MarketplaceScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Marketplace</Text>
             <Text style={styles.headerSubtitle}>Servicios cerca de ti</Text>
@@ -295,7 +309,7 @@ export default function MarketplaceScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Prime Banner */}
+        {/* Prime Banner (if not Prime) */}
         {!isPrime && (
           <TouchableOpacity
             style={styles.primeBanner}
@@ -416,12 +430,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: scale(20),
   },
+
+  // ============ HEADER ============
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(16),
     paddingVertical: scale(16),
     gap: scale(12),
+  },
+  backButton: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.bgCard,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   headerTextContainer: {
     flex: 1,
@@ -447,6 +473,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+
+  // ============ SEARCH ============
   searchSection: {
     flexDirection: 'row',
     paddingHorizontal: scale(16),
@@ -480,6 +508,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+
+  // ============ PRIME BANNER ============
   primeBanner: {
     marginHorizontal: scale(16),
     marginBottom: scale(24),
@@ -507,6 +537,8 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     opacity: 0.8,
   },
+
+  // ============ SECTIONS ============
   section: {
     marginBottom: scale(24),
   },
@@ -527,6 +559,8 @@ const styles = StyleSheet.create({
     color: COLORS.teal,
     fontWeight: '500',
   },
+
+  // ============ CATEGORIES ============
   categoriesContainer: {
     paddingHorizontal: scale(16),
     gap: scale(12),
@@ -548,6 +582,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
+
+  // ============ SERVICES ============
   servicesHorizontal: {
     paddingHorizontal: scale(16),
     gap: scale(14),
@@ -641,6 +677,8 @@ const styles = StyleSheet.create({
     fontSize: scale(10),
     color: COLORS.textMuted,
   },
+
+  // ============ PROVIDER CTA ============
   providerCTA: {
     flexDirection: 'row',
     alignItems: 'center',

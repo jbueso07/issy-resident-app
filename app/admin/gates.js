@@ -27,6 +27,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -377,6 +379,79 @@ export default function AdminGates() {
     }
   };
 
+  const handleDeleteDevice = async (device) => {
+    Alert.alert(
+      'Eliminar Dispositivo',
+      `¿Estás seguro de eliminar "${device.device_name}"?\n\nEl agente en el cliente dejará de funcionar.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const response = await fetch(`${API_URL}/hardware/devices/${device.id}`, {
+                method: 'DELETE',
+                headers,
+              });
+              const data = await response.json();
+              if (response.ok && data.success) {
+                Alert.alert('Eliminado', 'Dispositivo eliminado correctamente');
+                if (editingGate) {
+                  const updated = (editingGate.access_devices || []).filter(d => d.id !== device.id);
+                  setEditingGate({ ...editingGate, access_devices: updated });
+                }
+                fetchGates();
+              } else {
+                Alert.alert('Error', data.error || 'No se pudo eliminar');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Error al eliminar dispositivo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRegenerateSecret = async (device) => {
+    Alert.alert(
+      'Regenerar Credenciales',
+      `¿Regenerar el secret de "${device.device_name}"?\n\nEl agente actual dejará de autenticarse hasta que actualices el config.json con el nuevo secret.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Regenerar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const response = await fetch(`${API_URL}/hardware/devices/${device.id}/regenerate-secret`, {
+                method: 'POST',
+                headers,
+              });
+              const data = await response.json();
+              if (response.ok && data.success) {
+                setDeviceCredentials({
+                  device_code: device.device_code,
+                  device_secret: data.data.device_secret,
+                  device_name: device.device_name,
+                  api_url: API_URL.replace('/api', ''),
+                });
+                setShowCredentialsModal(true);
+              } else {
+                Alert.alert('Error', data.error || 'No se pudo regenerar');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Error al regenerar credenciales');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const copyToClipboard = async (text, label) => {
     try {
       await Clipboard.setStringAsync(text);
@@ -386,13 +461,94 @@ export default function AdminGates() {
     }
   };
 
-  const generateConfigJson = () => {
+  const generateFullConfigJson = () => {
     if (!deviceCredentials) return '';
+    const gateName = editingGate?.name || deviceCredentials.device_name || 'Sin nombre';
+    const agentId = gateName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    
     return JSON.stringify({
-      device_code: deviceCredentials.device_code,
-      device_secret: deviceCredentials.device_secret,
-      api_url: 'https://api.joinissy.com',
+      agent: {
+        id: `agent-${agentId}`,
+        name: `ISSY Agent - ${gateName}`,
+        version: '2.1.0',
+      },
+      locationId: selectedLocationId || '',
+      auth: {
+        token: '',
+        deviceCode: deviceCredentials.device_code,
+        deviceSecret: deviceCredentials.device_secret,
+      },
+      api: {
+        baseUrl: 'https://api.joinissy.com/api',
+        pollInterval: 5000,
+        heartbeatInterval: 60000,
+        timeout: 10000,
+      },
+      devices: [
+        {
+          id: 'zkteco-entrada',
+          name: 'LECTOR ENTRADA - Configurar IP',
+          ip: '192.168.1.201',
+          port: 4370,
+          timeout: 10000,
+          inactivityTimeout: 4000,
+        },
+        {
+          id: 'zkteco-salida',
+          name: 'LECTOR SALIDA - Configurar IP',
+          ip: '192.168.1.200',
+          port: 4370,
+          timeout: 10000,
+          inactivityTimeout: 4000,
+        },
+      ],
+      qrReader: {
+        enabled: false,
+        device: 'auto',
+        relay: {
+          enabled: false,
+          gpioPin: 17,
+          pulseDurationMs: 3000,
+        },
+      },
+      logging: {
+        level: 'info',
+        file: 'logs/agent.log',
+      },
     }, null, 2);
+  };
+
+  const handleDownloadConfig = async () => {
+    if (!deviceCredentials) return;
+
+    const configContent = generateFullConfigJson();
+
+    try {
+      const fileName = `config-${deviceCredentials.device_code}.json`;
+      const filePath = `${FileSystem.documentDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(filePath, configContent);
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(filePath, {
+          mimeType: 'application/json',
+          dialogTitle: 'Guardar config.json del agente ISSY',
+          UTI: 'public.json',
+        });
+      } else {
+        await Clipboard.setStringAsync(configContent);
+        Alert.alert('Config copiado', 'El archivo config.json fue copiado al portapapeles. Pégalo en un archivo en la PC/Pi del cliente.');
+      }
+    } catch (error) {
+      console.error('Error generating config:', error);
+      // Fallback: copy to clipboard
+      try {
+        await Clipboard.setStringAsync(configContent);
+        Alert.alert('Config copiado', 'No se pudo compartir el archivo, pero fue copiado al portapapeles.');
+      } catch (e) {
+        Alert.alert('Error', 'No se pudo generar el archivo de configuración');
+      }
+    }
   };
 
   const getGateTypeInfo = (typeId) => {
@@ -802,7 +958,7 @@ export default function AdminGates() {
                       <Ionicons name="hardware-chip" size={48} color={COLORS.purple} />
                       <Text style={styles.hardwareTitle}>Hardware de Acceso</Text>
                       <Text style={styles.hardwareDescription}>
-                        Vincula dispositivos Raspberry Pi + ZKTeco para control de acceso automático.
+                        Vincula dispositivos PC o Raspberry Pi + ZKTeco para control de acceso automático.
                       </Text>
                     </View>
 
@@ -836,6 +992,22 @@ export default function AdminGates() {
                                       {device.is_active ? '● En línea' : '○ Desconectado'}
                                     </Text>
                                   </View>
+                                </View>
+                                <View style={styles.deviceActions}>
+                                  <TouchableOpacity
+                                    style={styles.deviceActionButton}
+                                    onPress={() => handleRegenerateSecret(device)}
+                                  >
+                                    <Ionicons name="refresh" size={16} color={COLORS.warning} />
+                                    <Text style={[styles.deviceActionText, { color: COLORS.warning }]}>Regenerar</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.deviceActionButton}
+                                    onPress={() => handleDeleteDevice(device)}
+                                  >
+                                    <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
+                                    <Text style={[styles.deviceActionText, { color: COLORS.danger }]}>Eliminar</Text>
+                                  </TouchableOpacity>
                                 </View>
                               </View>
                             ))}
@@ -925,7 +1097,7 @@ export default function AdminGates() {
 
           {/* Create Device Overlay Inside Modal */}
           {showCreateDeviceModal && (
-            <View style={styles.pickerOverlayModal}>
+            <View style={[styles.pickerOverlayModal, { justifyContent: 'center', paddingHorizontal: scale(20), paddingBottom: scale(120) }]}>
               <TouchableOpacity 
                 style={styles.pickerOverlayBg} 
                 onPress={() => {
@@ -983,13 +1155,13 @@ export default function AdminGates() {
             </View>
           )}
 
-          {/* Credentials Overlay Inside Modal */}
+          {/* Credentials Overlay Inside Modal - UPDATED with Download Config */}
           {showCredentialsModal && (
             <View style={styles.pickerOverlayModal}>
-              <View style={[styles.dialogContainer, { maxHeight: '85%', width: '95%' }]}>
+              <View style={[styles.dialogContainer, { maxHeight: '90%', width: '95%' }]}>
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <View style={styles.dialogHeader}>
-                    <Ionicons name="key" size={32} color={COLORS.success} />
+                    <Ionicons name="checkmark-circle" size={48} color={COLORS.success} />
                     <Text style={styles.dialogTitle}>¡Dispositivo Creado!</Text>
                   </View>
 
@@ -1020,24 +1192,40 @@ export default function AdminGates() {
                     <Ionicons name="copy-outline" size={20} color={COLORS.teal} />
                   </TouchableOpacity>
 
-                  <Text style={styles.credentialLabel}>config.json para Raspberry Pi</Text>
-                  <TouchableOpacity 
-                    style={[styles.credentialBox, { minHeight: scale(100), alignItems: 'flex-start' }]}
-                    onPress={() => copyToClipboard(generateConfigJson(), 'Config JSON')}
+                  {/* Download Config Button */}
+                  <TouchableOpacity
+                    style={styles.downloadConfigButton}
+                    onPress={handleDownloadConfig}
                   >
-                    <Text style={[styles.credentialValue, { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontSize: scale(11) }]}>
-                      {generateConfigJson()}
-                    </Text>
+                    <Ionicons name="download-outline" size={22} color="#fff" />
+                    <Text style={styles.downloadConfigButtonText}>Descargar config.json</Text>
                   </TouchableOpacity>
 
+                  {/* Copy Config */}
                   <TouchableOpacity 
                     style={styles.copyAllButton}
-                    onPress={() => copyToClipboard(generateConfigJson(), 'Configuración completa')}
+                    onPress={() => copyToClipboard(generateFullConfigJson(), 'Config JSON completo')}
                   >
                     <Ionicons name="clipboard" size={18} color={COLORS.background} />
                     <Text style={styles.copyAllButtonText}>Copiar config.json</Text>
                   </TouchableOpacity>
 
+                  {/* Tech Instructions */}
+                  <View style={styles.techInstructionsContainer}>
+                    <Text style={styles.techInstructionsTitle}>
+                      📋 PASOS PARA EL TÉCNICO
+                    </Text>
+                    <Text style={styles.techInstructionsText}>
+                      1. Enviar config.json a la PC o Raspberry Pi{'\n'}
+                      2. Editar las IPs de los dispositivos ZKTeco{'\n'}
+                      3. Windows → Ejecutar install-issy-agent.ps1{'\n'}
+                         Raspberry Pi → sudo ./install-issy-agent.sh{'\n'}
+                      4. Verificar conexión: node test-connection.js{'\n'}
+                      5. Confirmar estado: pm2 logs issy-agent
+                    </Text>
+                  </View>
+
+                  {/* Close Button */}
                   <TouchableOpacity 
                     style={[styles.dialogConfirmButton, { marginTop: scale(20), width: '100%' }]}
                     onPress={() => {
@@ -1613,6 +1801,26 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: scale(2),
   },
+  deviceActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: scale(12),
+    paddingTop: scale(12),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: scale(16),
+  },
+  deviceActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    paddingVertical: scale(6),
+    paddingHorizontal: scale(10),
+  },
+  deviceActionText: {
+    fontSize: scale(13),
+    fontWeight: '600',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -1708,19 +1916,53 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: scale(10),
   },
-  copyAllButton: {
+  downloadConfigButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.teal,
+    paddingVertical: scale(14),
+    borderRadius: scale(12),
+    marginTop: scale(20),
+    gap: scale(8),
+  },
+  downloadConfigButtonText: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: '#fff',
+  },
+  copyAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.purple,
     paddingVertical: scale(12),
     borderRadius: scale(10),
-    marginTop: scale(16),
+    marginTop: scale(10),
     gap: scale(8),
   },
   copyAllButtonText: {
     fontSize: scale(14),
     fontWeight: '600',
-    color: COLORS.background,
+    color: '#fff',
+  },
+  techInstructionsContainer: {
+    marginTop: scale(20),
+    padding: scale(16),
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  techInstructionsTitle: {
+    color: COLORS.textSecondary,
+    fontSize: scale(13),
+    fontWeight: '700',
+    marginBottom: scale(8),
+  },
+  techInstructionsText: {
+    color: COLORS.textMuted,
+    fontSize: scale(12),
+    lineHeight: scale(20),
   },
 });

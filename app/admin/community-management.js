@@ -122,6 +122,14 @@ export default function CommunityManagement() {
   const [editForm, setEditForm] = useState({ role: '', unit_number: '' });
   const [actionLoading, setActionLoading] = useState(false);
   
+  // Card/Tag Management State
+  const [memberCards, setMemberCards] = useState([]);
+  const [loadingCards, setLoadingCards] = useState(false);
+  const [showAssignCardForm, setShowAssignCardForm] = useState(false); // inline in edit modal
+  const [newCardForm, setNewCardForm] = useState({ credential_number: '', card_uid: '', label: '', credential_type: 'card' });
+  const [assigningCard, setAssigningCard] = useState(false);
+  const [cardActionLoading, setCardActionLoading] = useState(null);
+  
   // Expanded households
   const [expandedUnits, setExpandedUnits] = useState({});
 
@@ -428,6 +436,120 @@ export default function CommunityManagement() {
       unit_number: member.unit_number || '',
     });
     setShowEditModal(true);
+    setShowAssignCardForm(false);
+    setMemberCards([]);
+    fetchMemberCards(member.user?.id);
+  };
+
+  // ========== CARD/TAG MANAGEMENT ==========
+  const fetchMemberCards = async (userId) => {
+    if (!userId || !selectedLocationId) return;
+    setLoadingCards(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(
+        `${API_URL}/access-control/credentials?location_id=${selectedLocationId}&user_id=${userId}`,
+        { headers }
+      );
+      const data = await res.json();
+      setMemberCards(data.success ? (data.data || []) : []);
+    } catch (error) {
+      console.error('Error fetching cards:', error);
+      setMemberCards([]);
+    } finally {
+      setLoadingCards(false);
+    }
+  };
+
+  const handleAssignCard = async () => {
+    if (!newCardForm.credential_number.trim()) {
+      Alert.alert('Error', 'El número de tarjeta es requerido');
+      return;
+    }
+    setAssigningCard(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/access-control/credentials`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          location_id: selectedLocationId,
+          user_id: selectedMember?.user?.id,
+          credential_type: newCardForm.credential_type,
+          credential_number: newCardForm.credential_number.trim(),
+          card_uid: newCardForm.card_uid.trim() || null,
+          label: newCardForm.label.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert('✅ Tarjeta Asignada', `Tarjeta ${newCardForm.credential_number} asignada. ${data.data?.sync_commands_created || 0} comandos de sincronización creados.`);
+        setShowAssignCardForm(false);
+        setNewCardForm({ credential_number: '', card_uid: '', label: '', credential_type: 'card' });
+        fetchMemberCards(selectedMember?.user?.id);
+      } else {
+        Alert.alert('Error', data.error || 'No se pudo asignar la tarjeta');
+      }
+    } catch (error) {
+      console.error('Error assigning card:', error);
+      Alert.alert('Error', 'No se pudo asignar la tarjeta');
+    } finally {
+      setAssigningCard(false);
+    }
+  };
+
+  const handleCardAction = (card, action, title, msg) => {
+    Alert.alert(title, msg, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: action === 'reactivate' ? 'Reactivar' : action === 'suspend' ? 'Suspender' : action === 'revoke' ? 'Revocar' : 'Eliminar',
+        style: action === 'reactivate' ? 'default' : 'destructive',
+        onPress: async () => {
+          setCardActionLoading(card.id);
+          try {
+            const headers = await getAuthHeaders();
+            const url = action === 'delete'
+              ? `${API_URL}/access-control/credentials/${card.id}`
+              : `${API_URL}/access-control/credentials/${card.id}/${action}`;
+            const res = await fetch(url, {
+              method: action === 'delete' ? 'DELETE' : 'POST',
+              headers,
+              ...(action !== 'delete' && { body: JSON.stringify({ reason: `${action} por administrador` }) }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              Alert.alert('✅', data.message || 'Operación exitosa');
+              fetchMemberCards(selectedMember?.user?.id);
+            } else {
+              Alert.alert('Error', data.error || 'Operación fallida');
+            }
+          } catch (error) {
+            Alert.alert('Error', 'No se pudo completar la operación');
+          } finally {
+            setCardActionLoading(null);
+          }
+        },
+      },
+    ]);
+  };
+
+  const getCardStatusConfig = (status) => {
+    const map = {
+      active: { label: 'Activa', color: COLORS.success, icon: 'checkmark-circle' },
+      suspended: { label: 'Suspendida', color: COLORS.warning, icon: 'pause-circle' },
+      revoked: { label: 'Revocada', color: COLORS.danger, icon: 'close-circle' },
+      expired: { label: 'Expirada', color: COLORS.textMuted, icon: 'time' },
+    };
+    return map[status] || { label: status, color: COLORS.textSecondary, icon: 'help-circle' };
+  };
+
+  const getSyncStatusConfig = (status) => {
+    const map = {
+      synced: { label: 'Sync', color: COLORS.success, icon: 'cloud-done' },
+      pending: { label: 'Pendiente', color: COLORS.warning, icon: 'cloud-upload' },
+      failed: { label: 'Error', color: COLORS.danger, icon: 'cloud-offline' },
+    };
+    return map[status] || { label: 'N/A', color: COLORS.textMuted, icon: 'cloud' };
   };
 
   const saveEditMember = async () => {
@@ -919,6 +1041,12 @@ export default function CommunityManagement() {
                                 {getRoleBadge(member.role).label}
                               </Text>
                             </View>
+                            {member.user?.has_access_card && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingHorizontal: scale(6), paddingVertical: scale(2), borderRadius: scale(4), backgroundColor: COLORS.cyan + '15', marginTop: scale(3), alignSelf: 'flex-start' }}>
+                                <Ionicons name="card" size={10} color={COLORS.cyan} />
+                                <Text style={{ fontSize: scale(10), color: COLORS.cyan, fontWeight: '500' }}>Tarjeta</Text>
+                              </View>
+                            )}
                             {member.is_active === false && member.deactivation_reason && (
                               <Text style={styles.deactivationReason}>
                                 ⚠️ {member.deactivation_reason}
@@ -1082,86 +1210,286 @@ export default function CommunityManagement() {
         </SafeAreaView>
       </Modal>
 
-      {/* Edit Member Modal */}
+      {/* Edit Member Modal - with inline card management */}
       <Modal visible={showEditModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowEditModal(false)}>
-              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
+            <TouchableOpacity onPress={() => {
+              if (showAssignCardForm) {
+                setShowAssignCardForm(false);
+              } else {
+                setShowEditModal(false);
+                setMemberCards([]);
+                setSelectedMember(null);
+              }
+            }}>
+              <Text style={styles.modalCancel}>
+                {showAssignCardForm ? '← Volver' : t('common.cancel')}
+              </Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('admin.communityManagement.editMember')}</Text>
-            <TouchableOpacity onPress={saveEditMember} disabled={actionLoading}>
-              {actionLoading ? (
+            <Text style={styles.modalTitle}>
+              {showAssignCardForm ? 'Asignar Tarjeta' : t('admin.communityManagement.editMember')}
+            </Text>
+            <TouchableOpacity
+              onPress={showAssignCardForm ? handleAssignCard : saveEditMember}
+              disabled={actionLoading || assigningCard}
+            >
+              {(actionLoading || assigningCard) ? (
                 <ActivityIndicator size="small" color={COLORS.lime} />
               ) : (
-                <Text style={styles.modalSave}>{t('common.save')}</Text>
+                <Text style={styles.modalSave}>
+                  {showAssignCardForm ? 'Asignar' : t('common.save')}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.editMemberHeader}>
-              <View style={styles.editMemberAvatar}>
-                <Text style={styles.editMemberAvatarText}>
-                  {selectedMember?.user?.name?.charAt(0)?.toUpperCase() || '?'}
-                </Text>
-              </View>
-              <Text style={styles.editMemberName}>{selectedMember?.user?.name}</Text>
-              <Text style={styles.editMemberEmail}>{selectedMember?.user?.email}</Text>
-            </View>
+          <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
+            {showAssignCardForm ? (
+              /* ======== ASSIGN CARD INLINE FORM ======== */
+              <>
+                <View style={styles.editMemberHeader}>
+                  <View style={[styles.editMemberAvatar, { backgroundColor: COLORS.cyan + '30' }]}>
+                    <Ionicons name="card" size={28} color={COLORS.cyan} />
+                  </View>
+                  <Text style={styles.editMemberName}>{selectedMember?.user?.name}</Text>
+                  <Text style={styles.editMemberEmail}>{selectedMember?.unit_number || 'Sin unidad asignada'}</Text>
+                </View>
 
-            <Text style={styles.inputLabel}>{t('admin.communityManagement.unitNumber')}</Text>
-            <TextInput
-              style={styles.input}
-              value={editForm.unit_number}
-              onChangeText={(text) => setEditForm(prev => ({ ...prev, unit_number: text }))}
-              placeholder={t('admin.communityManagement.enterUnit')}
-              placeholderTextColor={COLORS.textMuted}
-            />
+                <Text style={styles.inputLabel}>Tipo de Credencial</Text>
+                <View style={{ flexDirection: 'row', gap: scale(10), marginBottom: scale(8) }}>
+                  {[
+                    { key: 'card', label: 'Tarjeta', icon: 'card' },
+                    { key: 'tag', label: 'Tag/Llavero', icon: 'pricetag' },
+                    { key: 'pin', label: 'PIN', icon: 'keypad' },
+                  ].map((type) => (
+                    <TouchableOpacity
+                      key={type.key}
+                      style={[
+                        styles.roleSelectorItem,
+                        { flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: scale(6) },
+                        newCardForm.credential_type === type.key && { backgroundColor: COLORS.cyan + '20', borderColor: COLORS.cyan },
+                      ]}
+                      onPress={() => setNewCardForm(prev => ({ ...prev, credential_type: type.key }))}
+                    >
+                      <Ionicons name={type.icon} size={16} color={newCardForm.credential_type === type.key ? COLORS.cyan : COLORS.textSecondary} />
+                      <Text style={[styles.roleSelectorText, newCardForm.credential_type === type.key && { color: COLORS.cyan, fontWeight: '600' }]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-            <Text style={styles.inputLabel}>{t('admin.communityManagement.role')}</Text>
-            <View style={styles.roleSelector}>
-              {Object.entries(ROLES).map(([key, config]) => (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.roleSelectorItem,
-                    editForm.role === key && { backgroundColor: config.bg, borderColor: config.color }
-                  ]}
-                  onPress={() => setEditForm(prev => ({ ...prev, role: key }))}
-                >
-                  <Text style={[
-                    styles.roleSelectorText,
-                    editForm.role === key && { color: config.color, fontWeight: '600' }
-                  ]}>
-                    {config.label}
+                <Text style={styles.inputLabel}>Número de Tarjeta / Tag *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCardForm.credential_number}
+                  onChangeText={(text) => setNewCardForm(prev => ({ ...prev, credential_number: text }))}
+                  placeholder="Ej: 0012345678"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="numeric"
+                  autoFocus
+                />
+
+                <Text style={styles.inputLabel}>UID de Tarjeta (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCardForm.card_uid}
+                  onChangeText={(text) => setNewCardForm(prev => ({ ...prev, card_uid: text }))}
+                  placeholder="Ej: A1B2C3D4 (hexadecimal del chip)"
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize="characters"
+                />
+
+                <Text style={styles.inputLabel}>Etiqueta (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCardForm.label}
+                  onChangeText={(text) => setNewCardForm(prev => ({ ...prev, label: text }))}
+                  placeholder="Ej: Tarjeta principal, Llavero portón"
+                  placeholderTextColor={COLORS.textMuted}
+                />
+
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: scale(8), marginTop: scale(20), padding: scale(12), borderRadius: scale(10), backgroundColor: COLORS.teal + '10', borderWidth: 1, borderColor: COLORS.teal + '30' }}>
+                  <Ionicons name="information-circle" size={18} color={COLORS.teal} />
+                  <Text style={{ flex: 1, fontSize: scale(12), color: COLORS.textSecondary, lineHeight: scale(18) }}>
+                    La tarjeta se sincronizará automáticamente con los dispositivos ZKTeco configurados en esta comunidad.
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                </View>
+              </>
+            ) : (
+              /* ======== EDIT MEMBER + CARDS LIST ======== */
+              <>
+                <View style={styles.editMemberHeader}>
+                  <View style={styles.editMemberAvatar}>
+                    <Text style={styles.editMemberAvatarText}>
+                      {selectedMember?.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                  <Text style={styles.editMemberName}>{selectedMember?.user?.name}</Text>
+                  <Text style={styles.editMemberEmail}>{selectedMember?.user?.email}</Text>
+                </View>
 
-            {/* Delete Button */}
-            <TouchableOpacity
-              style={{
-                marginTop: 32,
-                marginBottom: 20,
-                padding: 16,
-                borderRadius: 12,
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderWidth: 1,
-                borderColor: '#EF4444',
-                alignItems: 'center',
-              }}
-              onPress={handleDeleteMember}
-              disabled={actionLoading}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 16 }}>
-                  Eliminar de la comunidad
-                </Text>
-              </View>
-            </TouchableOpacity>
+                <Text style={styles.inputLabel}>{t('admin.communityManagement.unitNumber')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editForm.unit_number}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, unit_number: text }))}
+                  placeholder={t('admin.communityManagement.enterUnit')}
+                  placeholderTextColor={COLORS.textMuted}
+                />
+
+                <Text style={styles.inputLabel}>{t('admin.communityManagement.role')}</Text>
+                <View style={styles.roleSelector}>
+                  {Object.entries(ROLES).map(([key, config]) => (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.roleSelectorItem,
+                        editForm.role === key && { backgroundColor: config.bg, borderColor: config.color }
+                      ]}
+                      onPress={() => setEditForm(prev => ({ ...prev, role: key }))}
+                    >
+                      <Text style={[
+                        styles.roleSelectorText,
+                        editForm.role === key && { color: config.color, fontWeight: '600' }
+                      ]}>
+                        {config.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* ===== CARD / TAG SECTION ===== */}
+                <View style={{ height: 1, backgroundColor: COLORS.border, marginTop: scale(24), marginBottom: scale(16) }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: scale(12) }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
+                    <Ionicons name="card" size={20} color={COLORS.cyan} />
+                    <Text style={{ fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary }}>Tarjetas / Tags</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingVertical: scale(6), paddingHorizontal: scale(12), borderRadius: scale(8), backgroundColor: COLORS.lime + '15', borderWidth: 1, borderColor: COLORS.lime + '40' }}
+                    onPress={() => {
+                      setNewCardForm({ credential_number: '', card_uid: '', label: '', credential_type: 'card' });
+                      setShowAssignCardForm(true);
+                    }}
+                  >
+                    <Ionicons name="add-circle" size={20} color={COLORS.lime} />
+                    <Text style={{ fontSize: scale(13), fontWeight: '600', color: COLORS.lime }}>Asignar</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {loadingCards ? (
+                  <View style={{ paddingVertical: scale(20), alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color={COLORS.teal} />
+                    <Text style={{ color: COLORS.textSecondary, marginTop: scale(8), fontSize: scale(13) }}>Cargando tarjetas...</Text>
+                  </View>
+                ) : memberCards.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: scale(24), gap: scale(6) }}>
+                    <Ionicons name="card-outline" size={40} color={COLORS.textMuted} />
+                    <Text style={{ fontSize: scale(14), color: COLORS.textSecondary, fontWeight: '500' }}>Sin tarjetas asignadas</Text>
+                    <Text style={{ fontSize: scale(12), color: COLORS.textMuted, textAlign: 'center' }}>Toca "Asignar" para agregar una tarjeta de acceso</Text>
+                  </View>
+                ) : (
+                  memberCards.map((card) => {
+                    const stCfg = getCardStatusConfig(card.status);
+                    const syCfg = getSyncStatusConfig(card.sync_status);
+                    const isCardLoading = cardActionLoading === card.id;
+                    return (
+                      <View key={card.id} style={{ backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(12), marginBottom: scale(10), borderWidth: 1, borderColor: COLORS.border }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, gap: scale(10) }}>
+                            <View style={{ width: scale(36), height: scale(36), borderRadius: scale(10), alignItems: 'center', justifyContent: 'center', backgroundColor: card.credential_type === 'tag' ? COLORS.purple + '20' : card.credential_type === 'pin' ? COLORS.warning + '20' : COLORS.cyan + '20' }}>
+                              <Ionicons name={card.credential_type === 'tag' ? 'pricetag' : card.credential_type === 'pin' ? 'keypad' : 'card'} size={18} color={card.credential_type === 'tag' ? COLORS.purple : card.credential_type === 'pin' ? COLORS.warning : COLORS.cyan} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: scale(15), fontWeight: '700', color: COLORS.textPrimary, letterSpacing: 0.5 }}>{card.credential_number}</Text>
+                              {card.label ? <Text style={{ fontSize: scale(12), color: COLORS.textSecondary, marginTop: scale(2) }}>{card.label}</Text> : null}
+                              {card.card_uid ? <Text style={{ fontSize: scale(11), color: COLORS.textMuted, marginTop: scale(1) }}>UID: {card.card_uid}</Text> : null}
+                            </View>
+                          </View>
+                          <View style={{ alignItems: 'flex-end', gap: scale(4) }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(6), backgroundColor: stCfg.color + '20' }}>
+                              <Ionicons name={stCfg.icon} size={12} color={stCfg.color} />
+                              <Text style={{ fontSize: scale(11), fontWeight: '600', color: stCfg.color }}>{stCfg.label}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(3), paddingHorizontal: scale(6), paddingVertical: scale(2), borderRadius: scale(4), backgroundColor: syCfg.color + '15' }}>
+                              <Ionicons name={syCfg.icon} size={10} color={syCfg.color} />
+                              <Text style={{ fontSize: scale(9), fontWeight: '500', color: syCfg.color }}>{syCfg.label}</Text>
+                            </View>
+                          </View>
+                        </View>
+                        {/* Card action buttons */}
+                        {isCardLoading ? (
+                          <View style={{ paddingVertical: scale(8), alignItems: 'center' }}>
+                            <ActivityIndicator size="small" color={COLORS.teal} />
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', gap: scale(8), marginTop: scale(10), paddingTop: scale(10), borderTopWidth: 1, borderTopColor: COLORS.border, flexWrap: 'wrap' }}>
+                            {card.status === 'active' && (
+                              <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingVertical: scale(6), paddingHorizontal: scale(10), borderRadius: scale(6), borderWidth: 1, borderColor: COLORS.warning }}
+                                onPress={() => handleCardAction(card, 'suspend', 'Suspender Tarjeta', `¿Suspender tarjeta ${card.credential_number}?`)}
+                              >
+                                <Ionicons name="pause" size={14} color={COLORS.warning} />
+                                <Text style={{ fontSize: scale(11), fontWeight: '600', color: COLORS.warning }}>Suspender</Text>
+                              </TouchableOpacity>
+                            )}
+                            {card.status === 'suspended' && (
+                              <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingVertical: scale(6), paddingHorizontal: scale(10), borderRadius: scale(6), borderWidth: 1, borderColor: COLORS.success }}
+                                onPress={() => handleCardAction(card, 'reactivate', 'Reactivar Tarjeta', `¿Reactivar tarjeta ${card.credential_number}?`)}
+                              >
+                                <Ionicons name="play" size={14} color={COLORS.success} />
+                                <Text style={{ fontSize: scale(11), fontWeight: '600', color: COLORS.success }}>Reactivar</Text>
+                              </TouchableOpacity>
+                            )}
+                            {card.status !== 'revoked' && (
+                              <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingVertical: scale(6), paddingHorizontal: scale(10), borderRadius: scale(6), borderWidth: 1, borderColor: COLORS.danger }}
+                                onPress={() => handleCardAction(card, 'revoke', 'Revocar Tarjeta', `¿Revocar permanentemente la tarjeta ${card.credential_number}? No se puede deshacer.`)}
+                              >
+                                <Ionicons name="ban" size={14} color={COLORS.danger} />
+                                <Text style={{ fontSize: scale(11), fontWeight: '600', color: COLORS.danger }}>Revocar</Text>
+                              </TouchableOpacity>
+                            )}
+                            <TouchableOpacity
+                              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: scale(6), paddingHorizontal: scale(10), borderRadius: scale(6), borderWidth: 1, borderColor: COLORS.textMuted }}
+                              onPress={() => handleCardAction(card, 'delete', 'Eliminar Tarjeta', `¿Eliminar ${card.credential_number}? Se eliminará del sistema y de todos los dispositivos.`)}
+                            >
+                              <Ionicons name="trash" size={14} color={COLORS.textMuted} />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
+                )}
+
+                {/* Delete Member Button */}
+                <TouchableOpacity
+                  style={{
+                    marginTop: 32,
+                    marginBottom: 20,
+                    padding: 16,
+                    borderRadius: 12,
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 1,
+                    borderColor: '#EF4444',
+                    alignItems: 'center',
+                  }}
+                  onPress={handleDeleteMember}
+                  disabled={actionLoading}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 16 }}>
+                      Eliminar de la comunidad
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>

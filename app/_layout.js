@@ -45,6 +45,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="admin" />
               <Stack.Screen name="join" />
+              <Stack.Screen name="marketplace-hub" />
             </Stack>
           </UserLocationProvider>
         </AdminLocationProvider>

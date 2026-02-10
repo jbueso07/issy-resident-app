@@ -28,7 +28,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { useUserLocation } from '../../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../../src/components/UserLocationPicker';
-import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret } from '../../src/services/api';
+import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
@@ -80,6 +80,81 @@ const DURATIONS = [
   { value: 6, label: '6 hrs' },
   { value: 12, label: '12 hrs' },
   { value: 24, label: '24 hrs' },
+];
+
+// ============ DELIVERY / RIDESHARE PROVIDERS BY COUNTRY ============
+const DELIVERY_PROVIDERS = {
+  HN: {
+    label: 'Honduras',
+    providers: [
+      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
+      { id: 'rappi', name: 'Rappi', color: '#FF441F', icon: 'bag-handle', initial: 'R' },
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'indriver', name: 'InDriver', color: '#2FD058', icon: 'car-sport', initial: 'iD' },
+      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+  US: {
+    label: 'United States',
+    providers: [
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'doordash', name: 'DoorDash', color: '#FF3008', icon: 'bag-handle', initial: 'DD' },
+      { id: 'grubhub', name: 'Grubhub', color: '#F63440', icon: 'restaurant', initial: 'GH' },
+      { id: 'amazon', name: 'Amazon', color: '#FF9900', icon: 'cube', initial: 'A' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'lyft', name: 'Lyft', color: '#FF00BF', icon: 'car-sport', initial: 'L' },
+      { id: 'otro', name: 'Other', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+  MX: {
+    label: 'México',
+    providers: [
+      { id: 'rappi', name: 'Rappi', color: '#FF441F', icon: 'bag-handle', initial: 'R' },
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'didi_food', name: 'DiDi Food', color: '#FF7B00', icon: 'restaurant', initial: 'DD' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'didi', name: 'DiDi', color: '#FF7B00', icon: 'car-sport', initial: 'D' },
+      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+  GT: {
+    label: 'Guatemala',
+    providers: [
+      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+  SV: {
+    label: 'El Salvador',
+    providers: [
+      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+  DEFAULT: {
+    label: 'International',
+    providers: [
+      { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
+      { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
+      { id: 'delivery', name: 'Delivery', color: '#FF6B00', icon: 'bicycle', initial: 'D' },
+      { id: 'otro', name: 'Other', color: '#8B5CF6', icon: 'cube', initial: '?' },
+    ],
+  },
+};
+
+// Quick access durations
+const QUICK_DURATIONS = [
+  { value: 30, label: '30 min' },
+  { value: 60, label: '1 hr' },
+  { value: 120, label: '2 hrs' },
 ];
 
 // Helper moved inside component
@@ -138,6 +213,7 @@ export default function Visits() {
   // Resident QR TOTP
   const [residentQRData, setResidentQRData] = useState(null);
   const [loadingResidentQR, setLoadingResidentQR] = useState(true);
+  const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
   const [activeTab, setActiveTab] = useState("myqr");
 
   // Form states
@@ -146,6 +222,26 @@ export default function Visits() {
   const [visitorPhone, setVisitorPhone] = useState('');
   const [visitorId, setVisitorId] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // User lookup states (in-app sharing)
+  const [foundUser, setFoundUser] = useState(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [sendInApp, setSendInApp] = useState(false);
+  const [sharingMode, setSharingMode] = useState('any'); // 'any' | 'app_only' | 'app_preferred'
+
+  // Quick Delivery states
+  const [showQuickModal, setShowQuickModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [quickDuration, setQuickDuration] = useState(60);
+  const [quickDriverName, setQuickDriverName] = useState('');
+  const [quickDriverPhone, setQuickDriverPhone] = useState('');
+  const [generatingQuick, setGeneratingQuick] = useState(false);
+
+  // Get country-specific providers (default to HN for now, later from user profile/location)
+  const userCountry = profile?.country_code || 'HN';
+  const deliveryProviders = useMemo(() => {
+    return DELIVERY_PROVIDERS[userCountry] || DELIVERY_PROVIDERS.DEFAULT;
+  }, [userCountry]);
 
   // Single QR states
   const [visitDate, setVisitDate] = useState(new Date());
@@ -176,10 +272,15 @@ export default function Visits() {
 
   const loadResidentQRSecret = async () => {
     if (!selectedLocationId) return;
+    setResidentQRDisabled(false); // Reset disabled state
     try {
       const result = await getResidentQRSecret(selectedLocationId);
       if (result.success) {
         setResidentQRData(result.data);
+      } else if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
+        // ✅ Feature is disabled by admin
+        setResidentQRDisabled(true);
+        setResidentQRData(null);
       }
     } catch (error) {
       console.error("Error loading resident QR:", error);
@@ -194,6 +295,46 @@ export default function Visits() {
       loadQRCodes();
     }
   }, [selectedLocationId]);
+
+  // Load sharing mode for location
+  useEffect(() => {
+    if (selectedLocationId) {
+      getQRSharingMode(selectedLocationId).then(result => {
+        if (result.success) setSharingMode(result.mode);
+      });
+    }
+  }, [selectedLocationId]);
+
+  // Debounced phone lookup for in-app sharing
+  useEffect(() => {
+    const cleanPhone = visitorPhone.replace(/[\s\-\(\)]/g, '');
+    if (cleanPhone.length >= 8) {
+      const timer = setTimeout(async () => {
+        setLookupLoading(true);
+        try {
+          const result = await lookupUserForQR(cleanPhone);
+          if (result.success && result.data?.found) {
+            setFoundUser(result.data.user);
+            // Auto-enable in-app if mode is app_only or app_preferred
+            if (sharingMode === 'app_only' || sharingMode === 'app_preferred') {
+              setSendInApp(true);
+            }
+          } else {
+            setFoundUser(null);
+            setSendInApp(false);
+          }
+        } catch (e) {
+          setFoundUser(null);
+        } finally {
+          setLookupLoading(false);
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    } else {
+      setFoundUser(null);
+      setSendInApp(false);
+    }
+  }, [visitorPhone, sharingMode]);
 
   const loadQRCodes = async () => {
     if (!selectedLocationId) return;
@@ -230,6 +371,8 @@ export default function Visits() {
     setAllDays(false);
     setStartTime(new Date(new Date().setHours(9, 0, 0)));
     setEndTime(new Date(new Date().setHours(18, 0, 0)));
+    setFoundUser(null);
+    setSendInApp(false);
   };
 
   const toggleAllDays = () => {
@@ -239,6 +382,89 @@ export default function Visits() {
     } else {
       setAllDays(true);
       setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+    }
+  };
+
+  const handleQuickDeliveryQR = async () => {
+    if (!selectedProvider) return;
+
+    setGeneratingQuick(true);
+
+    const now = new Date();
+    const validUntil = new Date(now.getTime() + quickDuration * 60 * 1000);
+    const driverLabel = quickDriverName.trim() || selectedProvider.name;
+    const visitorLabel = `${selectedProvider.name} - ${driverLabel}`;
+    const phoneToSave = quickDriverPhone.trim() || 'N/A';
+
+    const qrData = {
+      visitor_name: visitorLabel,
+      visitor_phone: phoneToSave,
+      visitor_id: null,
+      qr_type: 'single',
+      valid_from: now.toISOString(),
+      valid_until: validUntil.toISOString(),
+      house_number: profile?.house_number || profile?.apartment_number || null,
+      is_delivery: true,
+      delivery_provider: selectedProvider.id,
+    };
+
+    try {
+      const result = await generateQRCode(qrData);
+
+      if (result.success) {
+        // Close modal and reset
+        setShowQuickModal(false);
+        setSelectedProvider(null);
+        setQuickDriverName('');
+        setQuickDriverPhone('');
+        setQuickDuration(60);
+
+        // Reload QR codes
+        loadQRCodes();
+
+        // Show the QR modal
+        const newQR = result.data;
+        if (newQR) {
+          setSelectedQR(newQR);
+          setShowQRModal(true);
+
+          // If phone provided, auto-share QR image after modal renders
+          if (phoneToSave !== 'N/A' && phoneToSave.length >= 8) {
+            const communityName = locationName || 'la residencial';
+            const expiryTime = validUntil.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+
+            // Wait for QR modal to render, then capture and share
+            setTimeout(async () => {
+              try {
+                if (cardRef.current) {
+                  const uri = await captureRef(cardRef, {
+                    format: 'png',
+                    quality: 1,
+                    result: 'tmpfile',
+                  });
+
+                  if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, {
+                      mimeType: 'image/png',
+                      dialogTitle: `Código de acceso - ${selectedProvider.name}`,
+                      UTI: 'public.png',
+                    });
+                  }
+                }
+              } catch (e) {
+                console.log('Auto-share skipped:', e.message);
+              }
+            }, 1200);
+          }
+        }
+      } else {
+        Alert.alert('Error', result.error || 'No se pudo generar el QR');
+      }
+    } catch (error) {
+      console.error('Error generating quick QR:', error);
+      Alert.alert('Error', 'Error al generar QR rápido');
+    } finally {
+      setGeneratingQuick(false);
     }
   };
 
@@ -259,8 +485,12 @@ export default function Visits() {
       Alert.alert('Error', t('visits.errors.visitorNameRequired'));
       return;
     }
-    if (!visitorPhone.trim()) {
+    if (!visitorPhone.trim() && !sendInApp) {
       Alert.alert('Error', t('visits.errors.phoneRequired'));
+      return;
+    }
+    if (sharingMode === 'app_only' && !foundUser) {
+      Alert.alert('Error', 'Esta comunidad solo permite enviar códigos QR dentro de la app ISSY. El destinatario debe ser usuario de ISSY.');
       return;
     }
     if ((qrType === 'temporary' || qrType === 'frequent') && selectedDays.length === 0) {
@@ -272,12 +502,18 @@ export default function Visits() {
 
     let qrData = {
       visitor_name: visitorName.trim(),
-      visitor_phone: visitorPhone.trim(),
+      visitor_phone: visitorPhone.trim() || 'N/A',
       visitor_id: visitorId.trim() || null,
       qr_type: qrType,
-        house_number: profile?.house_number || profile?.apartment_number || null,
-      house_number: profile?.house_number || profile?.apartment_number || null,  // ✅ Agregado
+      house_number: profile?.house_number || profile?.apartment_number || null,
     };
+
+    // In-app sharing data
+    if (sendInApp && foundUser) {
+      qrData.recipient_user_id = foundUser.id;
+      qrData.delivery_method = 'in_app';
+      qrData.sent_at = new Date().toISOString();
+    }
 
     if (qrType === 'single') {
       const validFrom = new Date(visitDate);
@@ -310,7 +546,14 @@ export default function Visits() {
     const result = await generateQRCode(qrData);
 
     if (result.success) {
-      Alert.alert(t('visits.success.title'), t('visits.success.message'));
+      if (sendInApp && foundUser) {
+        Alert.alert(
+          '✅ Enviado', 
+          `El código QR fue enviado a ${foundUser.name} dentro de ISSY. Lo verá en su pestaña "Mis Accesos".`
+        );
+      } else {
+        Alert.alert(t('visits.success.title'), t('visits.success.message'));
+      }
       setShowCreateModal(false);
       resetForm();
       loadQRCodes();
@@ -619,9 +862,58 @@ return (
           />
         )}
 
+        {/* Message when Resident QR is disabled by admin */}
+        {activeTab === 'myqr' && residentQRDisabled && !loadingResidentQR && (
+          <View style={styles.disabledQRContainer}>
+            <Ionicons name="qr-code-outline" size={scale(48)} color={COLORS.textMuted} />
+            <Text style={styles.disabledQRTitle}>{t('visits.residentQrDisabled.title') || 'QR de Residente No Disponible'}</Text>
+            <Text style={styles.disabledQRText}>{t('visits.residentQrDisabled.message') || 'El administrador de tu comunidad ha deshabilitado esta función.'}</Text>
+          </View>
+        )}
+
         {/* Tab: Visitantes */}
         {activeTab === 'visitors' && (
           <>
+            {/* ============================================ */}
+            {/* QUICK DELIVERY / UBER ACCESS */}
+            {/* ============================================ */}
+            <View style={styles.quickAccessSection}>
+              <View style={styles.quickAccessHeader}>
+                <Ionicons name="flash" size={20} color={COLORS.orange} />
+                <Text style={styles.quickAccessTitle} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
+              </View>
+              <Text style={styles.quickAccessSubtitle} maxFontSizeMultiplier={1.2}>
+                Genera un QR rápido para delivery o transporte
+              </Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.providersRow}
+              >
+                {deliveryProviders.providers.map((provider) => (
+                  <TouchableOpacity
+                    key={provider.id}
+                    style={styles.providerButton}
+                    onPress={() => {
+                      setSelectedProvider(provider);
+                      setQuickDuration(60);
+                      setQuickDriverName('');
+                      setQuickDriverPhone('');
+                      setShowQuickModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.providerLogoContainer, { backgroundColor: provider.color + '20', borderColor: provider.color + '50' }]}>
+                      <Ionicons name={provider.icon} size={28} color={provider.color} />
+                    </View>
+                    <Text style={styles.providerName} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+                      {provider.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
             {/* Create QR Button */}
             <TouchableOpacity
               style={styles.createButton}
@@ -741,6 +1033,66 @@ return (
               keyboardType="phone-pad"
               maxFontSizeMultiplier={1.2}
             />
+
+            {/* User Lookup Result */}
+            {lookupLoading && (
+              <View style={styles.lookupRow}>
+                <ActivityIndicator size="small" color={COLORS.cyan} />
+                <Text style={styles.lookupSearching}>Buscando usuario ISSY...</Text>
+              </View>
+            )}
+
+            {foundUser && !lookupLoading && (
+              <View style={styles.foundUserCard}>
+                <View style={styles.foundUserInfo}>
+                  <View style={styles.foundUserAvatar}>
+                    {foundUser.profile_image ? (
+                      <Image source={{ uri: foundUser.profile_image }} style={styles.foundUserAvatarImg} />
+                    ) : (
+                      <Text style={styles.foundUserAvatarText}>
+                        {foundUser.name?.charAt(0)?.toUpperCase() || '?'}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.foundUserName}>{foundUser.name}</Text>
+                    <Text style={styles.foundUserUnit}>
+                      {foundUser.house_number ? `Casa ${foundUser.house_number}` : 'Usuario ISSY'}
+                    </Text>
+                  </View>
+                  <View style={styles.foundUserBadge}>
+                    <Ionicons name="checkmark-circle" size={16} color={COLORS.teal} />
+                    <Text style={styles.foundUserBadgeText}>ISSY</Text>
+                  </View>
+                </View>
+
+                {/* In-App Toggle */}
+                <TouchableOpacity
+                  style={[styles.inAppToggle, sendInApp && styles.inAppToggleActive]}
+                  onPress={() => setSendInApp(!sendInApp)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={sendInApp ? 'paper-plane' : 'paper-plane-outline'} 
+                    size={18} 
+                    color={sendInApp ? COLORS.textDark : COLORS.teal} 
+                  />
+                  <Text style={[styles.inAppToggleText, sendInApp && styles.inAppToggleTextActive]}>
+                    {sendInApp ? 'Se enviará dentro de ISSY' : 'Enviar dentro de ISSY'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* App-only mode warning */}
+            {sharingMode === 'app_only' && !foundUser && visitorPhone.length >= 8 && !lookupLoading && (
+              <View style={styles.appOnlyWarning}>
+                <Ionicons name="alert-circle" size={18} color={COLORS.orange} />
+                <Text style={styles.appOnlyWarningText}>
+                  Esta comunidad requiere que los códigos QR se envíen dentro de ISSY. El destinatario debe tener la app instalada.
+                </Text>
+              </View>
+            )}
 
             <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorId')}</Text>
             <TextInput
@@ -1211,6 +1563,123 @@ return (
         </ScrollView>
       </View>
       </Modal>
+    {/* ============================================ */}
+    {/* QUICK DELIVERY MODAL */}
+    {/* ============================================ */}
+    <Modal
+      visible={showQuickModal}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowQuickModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => {
+              setShowQuickModal(false);
+              setSelectedProvider(null);
+            }}>
+              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
+            <View style={{ width: scale(60) }} />
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {selectedProvider && (
+              <>
+                {/* Provider Header */}
+                <View style={styles.quickProviderHeader}>
+                  <View style={[styles.quickProviderLogo, { backgroundColor: selectedProvider.color + '20', borderColor: selectedProvider.color }]}>
+                    <Ionicons name={selectedProvider.icon} size={40} color={selectedProvider.color} />
+                  </View>
+                  <Text style={styles.quickProviderName} maxFontSizeMultiplier={1.2}>{selectedProvider.name}</Text>
+                  <Text style={styles.quickProviderDesc} maxFontSizeMultiplier={1.2}>
+                    Se generará un QR de uso único para el conductor
+                  </Text>
+                </View>
+
+                {/* Driver Name (Optional) */}
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Nombre del conductor (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej: Juan Carlos"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={quickDriverName}
+                  onChangeText={setQuickDriverName}
+                  maxFontSizeMultiplier={1.2}
+                />
+
+                {/* Driver Phone (Optional - for WhatsApp) */}
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Teléfono del conductor (opcional)</Text>
+                <View style={styles.phoneInputRow}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="9999-9999"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={quickDriverPhone}
+                    onChangeText={setQuickDriverPhone}
+                    keyboardType="phone-pad"
+                    maxFontSizeMultiplier={1.2}
+                  />
+                  {quickDriverPhone.trim().length >= 8 && (
+                    <View style={styles.whatsappBadge}>
+                      <Ionicons name="share-outline" size={16} color="#25D366" />
+                      <Text style={styles.whatsappBadgeText} maxFontSizeMultiplier={1.2}>Se compartirá el QR automáticamente</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Duration Selector */}
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Tiempo de acceso</Text>
+                <View style={styles.durationSelector}>
+                  {QUICK_DURATIONS.map((d) => (
+                    <TouchableOpacity
+                      key={d.value}
+                      style={[styles.durationButton, quickDuration === d.value && { backgroundColor: selectedProvider.color, borderColor: selectedProvider.color }]}
+                      onPress={() => setQuickDuration(d.value)}
+                    >
+                      <Text style={[styles.durationLabel, quickDuration === d.value && styles.durationLabelActive]} maxFontSizeMultiplier={1.2}>
+                        {d.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Info Note */}
+                <View style={styles.quickInfoNote}>
+                  <Ionicons name="information-circle" size={20} color={COLORS.cyan} />
+                  <Text style={styles.quickInfoText} maxFontSizeMultiplier={1.2}>
+                    No necesitás guardar el número. Si lo ingresás, al generar el QR se abrirá WhatsApp directo para enviárselo al conductor. El QR expira automáticamente.
+                  </Text>
+                </View>
+
+                {/* Generate Button */}
+                <TouchableOpacity
+                  style={[styles.quickGenerateButton, { backgroundColor: selectedProvider.color }, generatingQuick && { opacity: 0.6 }]}
+                  onPress={handleQuickDeliveryQR}
+                  disabled={generatingQuick}
+                >
+                  {generatingQuick ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="flash" size={22} color="#fff" style={{ marginRight: scale(8) }} />
+                      <Text style={styles.quickGenerateText} maxFontSizeMultiplier={1.2}>
+                        Generar QR para {selectedProvider.name}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            <View style={{ height: scale(40) }} />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </Modal>
+
     <UserLocationPickerModal />
   </View>
 );
@@ -1242,6 +1711,30 @@ const styles = StyleSheet.create({
     fontSize: scale(14),
     color: COLORS.textSecondary,
     marginTop: scale(4),
+  },
+
+  // Disabled QR Message
+  disabledQRContainer: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(16),
+    padding: scale(24),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: scale(16),
+  },
+  disabledQRTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginTop: scale(12),
+    marginBottom: scale(8),
+  },
+  disabledQRText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: scale(20),
   },
 
   // Create Button
@@ -1857,5 +2350,246 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontSize: scale(16),
     fontWeight: '500',
+  },
+
+  // ============ QUICK DELIVERY SECTION ============
+  quickAccessSection: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(16),
+    padding: scale(16),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  quickAccessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginBottom: scale(4),
+  },
+  quickAccessTitle: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  quickAccessSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginBottom: scale(14),
+  },
+  providersRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+    paddingRight: scale(8),
+  },
+  providerButton: {
+    alignItems: 'center',
+    width: scale(72),
+  },
+  providerLogoContainer: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    marginBottom: scale(6),
+  },
+  providerLogo: {
+    width: scale(56),
+    height: scale(56),
+  },
+  providerName: {
+    fontSize: scale(11),
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+
+  // ============ QUICK DELIVERY MODAL ============
+  quickProviderHeader: {
+    alignItems: 'center',
+    paddingVertical: scale(24),
+  },
+  quickProviderLogo: {
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(24),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    overflow: 'hidden',
+    marginBottom: scale(12),
+  },
+  quickProviderLogoImage: {
+    width: scale(80),
+    height: scale(80),
+  },
+  quickProviderName: {
+    fontSize: scale(22),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  quickProviderDesc: {
+    fontSize: scale(13),
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingHorizontal: scale(20),
+  },
+  quickInfoNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.cyan + '10',
+    padding: scale(14),
+    borderRadius: scale(12),
+    marginTop: scale(20),
+    gap: scale(10),
+  },
+  quickInfoText: {
+    flex: 1,
+    fontSize: scale(12),
+    color: COLORS.cyan,
+    lineHeight: scale(18),
+  },
+  quickGenerateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(16),
+    borderRadius: scale(14),
+    marginTop: scale(24),
+  },
+  quickGenerateText: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: '#fff',
+  },
+  phoneInputRow: {
+    position: 'relative',
+  },
+  whatsappBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginTop: scale(8),
+    paddingVertical: scale(6),
+    paddingHorizontal: scale(12),
+    backgroundColor: '#25D36615',
+    borderRadius: scale(8),
+    alignSelf: 'flex-start',
+  },
+  whatsappBadgeText: {
+    fontSize: scale(12),
+    color: '#25D366',
+    fontWeight: '600',
+  },
+
+  // ============ USER LOOKUP / IN-APP SHARING ============
+  lookupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginTop: scale(8),
+    paddingVertical: scale(6),
+  },
+  lookupSearching: {
+    fontSize: scale(12),
+    color: COLORS.cyan,
+  },
+  foundUserCard: {
+    backgroundColor: COLORS.teal + '15',
+    borderRadius: scale(12),
+    padding: scale(12),
+    marginTop: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.teal + '30',
+  },
+  foundUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  foundUserAvatar: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: COLORS.teal + '30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  foundUserAvatarImg: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+  },
+  foundUserAvatarText: {
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: COLORS.teal,
+  },
+  foundUserName: {
+    fontSize: scale(14),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  foundUserUnit: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+  },
+  foundUserBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    backgroundColor: COLORS.teal + '20',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+  },
+  foundUserBadgeText: {
+    fontSize: scale(11),
+    fontWeight: '700',
+    color: COLORS.teal,
+  },
+  inAppToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    marginTop: scale(10),
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.bgCardAlt,
+    borderWidth: 1,
+    borderColor: COLORS.teal + '30',
+  },
+  inAppToggleActive: {
+    backgroundColor: COLORS.teal,
+    borderColor: COLORS.teal,
+  },
+  inAppToggleText: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
+  inAppToggleTextActive: {
+    color: COLORS.textDark,
+  },
+  appOnlyWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(8),
+    marginTop: scale(8),
+    padding: scale(10),
+    backgroundColor: COLORS.orange + '15',
+    borderRadius: scale(10),
+  },
+  appOnlyWarningText: {
+    flex: 1,
+    fontSize: scale(12),
+    color: COLORS.orange,
+    lineHeight: scale(17),
   },
 });

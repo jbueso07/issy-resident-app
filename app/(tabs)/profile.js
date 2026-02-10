@@ -161,16 +161,23 @@ export default function Profile() {
     {
       title: t('profile.myCommunity'),
       items: [
-        { 
-          icon: 'home-outline', 
-          title: t('profile.myUnit'), 
+        {
+          icon: 'home-outline',
+          title: t('profile.myUnit'),
           subtitle: t('profile.myUnitDesc'),
           route: '/my-unit',
           color: COLORS.teal,
         },
-        { 
-          icon: 'link-outline', 
-          title: t('profile.joinCommunity'), 
+        {
+          icon: 'key-outline',
+          title: t('profile.myCredentials', 'Mis Credenciales'),
+          subtitle: t('profile.myCredentialsDesc', 'Tags y tarjetas de acceso'),
+          route: '/my-credentials',
+          color: COLORS.cyan,
+        },
+        {
+          icon: 'link-outline',
+          title: t('profile.joinCommunity'),
           subtitle: t('profile.joinCommunityDesc'),
           route: '/join-community',
           color: COLORS.lime,
