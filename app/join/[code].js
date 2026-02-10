@@ -11,6 +11,7 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -58,6 +59,30 @@ export default function JoinScreen() {
   const [invitation, setInvitation] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [unitDetails, setUnitDetails] = useState({});
+
+  // Nomenclature field labels and icons
+  const FIELD_LABELS = {
+    torre: 'Torre', nivel: 'Nivel / Piso', apartamento: 'Apartamento',
+    casa: 'Casa', bloque: 'Bloque', avenida: 'Avenida', etapa: 'Etapa',
+  };
+  const FIELD_ICONS = {
+    torre: 'business', nivel: 'layers', apartamento: 'home',
+    casa: 'home', bloque: 'grid', avenida: 'map', etapa: 'layers',
+  };
+
+  // Get enabled nomenclature fields from invitation
+  const getEnabledFields = () => {
+    if (!invitation?.unit_nomenclature) return [];
+    return Object.entries(invitation.unit_nomenclature)
+      .filter(([key, config]) => typeof config === 'object' && config.enabled)
+      .map(([key, config]) => ({
+        key,
+        label: FIELD_LABELS[key] || key,
+        icon: FIELD_ICONS[key] || 'document',
+        required: config.required || false,
+      }));
+  };
 
   // Locale dinámico para fechas
   const getLocale = () => {
@@ -119,25 +144,55 @@ export default function JoinScreen() {
       return;
     }
 
+    // For public codes, validate required unit fields
+    if (invitation?.type === 'public_code') {
+      const nomenclature = invitation.unit_nomenclature || {};
+      const missingFields = [];
+      Object.entries(nomenclature).forEach(([key, config]) => {
+        if (typeof config === 'object' && config.enabled && config.required) {
+          if (!unitDetails[key]?.trim()) {
+            missingFields.push(FIELD_LABELS[key] || key);
+          }
+        }
+      });
+      if (missingFields.length > 0) {
+        Alert.alert('Campos requeridos', `Por favor completa: ${missingFields.join(', ')}`);
+        return;
+      }
+    }
+
     try {
       setAccepting(true);
       setError('');
 
-      const response = await fetch(`${API_URL}/invitations/accept/${code}`, {
+      let endpoint;
+      let body = undefined;
+
+      if (invitation?.type === 'public_code') {
+        // Use the dedicated public code join endpoint with unit details
+        endpoint = `${API_URL}/invitations/join-public/${code}`;
+        body = JSON.stringify({ unit_details: unitDetails });
+      } else {
+        // Use standard accept endpoint for org/rental invitations
+        endpoint = `${API_URL}/invitations/accept/${code}`;
+      }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        ...(body && { body }),
       });
 
       const data = await response.json();
 
       if (data.success) {
         setSuccess(true);
-        
+
         await refreshProfile();
-        
+
         setTimeout(() => {
           router.replace('/(tabs)/home');
         }, 2000);
@@ -192,7 +247,7 @@ export default function JoinScreen() {
           </View>
           <Text style={styles.successTitle}>{t('auth.join.joinedSuccessfully')}</Text>
           <Text style={styles.successSubtitle}>
-            {t('auth.join.nowPartOf', { name: invitation?.location?.name || t('auth.join.theCommunity') })}
+            {t('auth.join.nowPartOf', { name: invitation?.location_name || invitation?.location?.name || t('auth.join.theCommunity') })}
           </Text>
           <ActivityIndicator size="small" color={COLORS.purple} style={{ marginTop: scale(20) }} />
         </View>
@@ -254,15 +309,21 @@ export default function JoinScreen() {
         {/* Type Badge */}
         <View style={[
           styles.typeBadge,
-          { backgroundColor: invitation?.type === 'rental' ? COLORS.blueLight : COLORS.purpleLight }
+          { backgroundColor: invitation?.type === 'rental' ? COLORS.blueLight
+              : invitation?.type === 'public_code' ? COLORS.greenLight
+              : COLORS.purpleLight }
         ]}>
           <Text style={[
             styles.typeBadgeText,
-            { color: invitation?.type === 'rental' ? COLORS.blue : COLORS.purple }
+            { color: invitation?.type === 'rental' ? COLORS.blue
+                : invitation?.type === 'public_code' ? COLORS.green
+                : COLORS.purple }
           ]}>
             {invitation?.type === 'rental'
               ? `🏠 ${t('auth.join.tenantInvitation')}`
-              : `🏘️ ${t('auth.join.communityInvitation')}`}
+              : invitation?.type === 'public_code'
+                ? `🏘️ Comunidad abierta`
+                : `🏘️ ${t('auth.join.communityInvitation')}`}
           </Text>
         </View>
 
@@ -283,7 +344,34 @@ export default function JoinScreen() {
             <>
               <DetailRow label={t('auth.join.community')} value={invitation.location_name || 'N/A'} t={t} />
               <DetailRow label={t('auth.join.address')} value={invitation.address || 'N/A'} t={t} />
-              <DetailRow label="Tipo" value={invitation.location_type_label || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.type') || 'Tipo'} value={invitation.location_type_label || 'N/A'} t={t} />
+
+              {/* Unit nomenclature form */}
+              {getEnabledFields().length > 0 && (
+                <View style={styles.unitFormContainer}>
+                  <Text style={styles.unitFormTitle}>Ingresa tu unidad</Text>
+                  <Text style={styles.unitFormSubtitle}>Completa los datos de tu vivienda</Text>
+                  {getEnabledFields().map(field => (
+                    <View key={field.key} style={styles.unitFieldContainer}>
+                      <View style={styles.unitFieldLabel}>
+                        <Ionicons name={field.icon} size={16} color={COLORS.textSecondary} />
+                        <Text style={styles.unitFieldLabelText}>
+                          {field.label}
+                          {field.required && <Text style={{ color: COLORS.red }}> *</Text>}
+                        </Text>
+                      </View>
+                      <TextInput
+                        style={styles.unitFieldInput}
+                        value={unitDetails[field.key] || ''}
+                        onChangeText={(value) => setUnitDetails(prev => ({ ...prev, [field.key]: value }))}
+                        placeholder={`Ingresa ${field.label.toLowerCase()}`}
+                        placeholderTextColor={COLORS.textMuted}
+                        keyboardType={field.key === 'nivel' || field.key === 'apartamento' ? 'number-pad' : 'default'}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
             </>
           )}
 
@@ -359,7 +447,11 @@ export default function JoinScreen() {
               <>
                 <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
                 <Text style={styles.primaryButtonText}>
-                  {user ? t('auth.join.acceptInvitation') : t('auth.join.loginAndAccept')}
+                  {!user
+                    ? t('auth.join.loginAndAccept')
+                    : invitation?.type === 'public_code'
+                      ? 'Enviar solicitud'
+                      : t('auth.join.acceptInvitation')}
                 </Text>
               </>
             )}
@@ -605,5 +697,45 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: scale(13),
     color: COLORS.yellow,
+  },
+  // Unit form for public codes
+  unitFormContainer: {
+    marginTop: scale(16),
+    paddingTop: scale(16),
+    borderTopWidth: 1,
+    borderTopColor: COLORS.cardBorder,
+  },
+  unitFormTitle: {
+    fontSize: scale(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: scale(4),
+  },
+  unitFormSubtitle: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginBottom: scale(16),
+  },
+  unitFieldContainer: {
+    marginBottom: scale(14),
+  },
+  unitFieldLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginBottom: scale(6),
+  },
+  unitFieldLabelText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+  },
+  unitFieldInput: {
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(10),
+    padding: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
   },
 });

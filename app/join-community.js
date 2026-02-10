@@ -68,7 +68,7 @@ export default function JoinCommunityScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { refreshUser } = useAuth();
+  const { refreshProfile } = useAuth();
   
   const [code, setCode] = useState(params.code || '');
   const [loading, setLoading] = useState(false);
@@ -160,7 +160,7 @@ export default function JoinCommunityScreen() {
         [{ 
           text: 'Continuar', 
           onPress: () => {
-            if (refreshUser) refreshUser();
+            if (refreshProfile) refreshProfile();
             router.replace('/(tabs)');
           }
         }]

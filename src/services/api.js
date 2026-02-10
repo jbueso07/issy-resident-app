@@ -216,6 +216,48 @@ export const getQRCodeDetail = async (id) => {
     return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
+export const lookupUserForQR = async (phone, email) => {
+  try {
+    const params = new URLSearchParams();
+    if (phone) params.append('phone', phone);
+    if (email) params.append('email', email);
+    const data = await authFetch(`/qr/lookup-user?${params.toString()}`);
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error looking up user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getReceivedQRCodes = async () => {
+  try {
+    const data = await authFetch('/qr/received');
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching received QRs:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUnseenQRCount = async () => {
+  try {
+    const data = await authFetch('/qr/received/unseen-count');
+    return { success: true, count: data.data?.count || 0 };
+  } catch (error) {
+    return { success: false, count: 0 };
+  }
+};
+
+export const getQRSharingMode = async (locationId) => {
+  try {
+    const url = locationId ? `/qr/sharing-mode?location_id=${locationId}` : '/qr/sharing-mode';
+    const data = await authFetch(url);
+    return { success: true, mode: data.data?.mode || 'any' };
+  } catch (error) {
+    return { success: false, mode: 'any' };
+  }
+};
+
 
 // ==========================================
 // PAGOS DE COMUNIDAD
@@ -1824,6 +1866,20 @@ export const uploadAvatar = async (uri, userId) => {
 // ==========================================
 // INVITATIONS - Join Community
 // ==========================================
+
+/**
+ * Helper to get auth headers with token from AsyncStorage
+ */
+const getAuthHeaders = async () => {
+  const token = await AsyncStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 /**
  * Verificar código de invitación personal
