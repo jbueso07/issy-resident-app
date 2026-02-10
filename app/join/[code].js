@@ -260,8 +260,8 @@ export default function JoinScreen() {
             styles.typeBadgeText,
             { color: invitation?.type === 'rental' ? COLORS.blue : COLORS.purple }
           ]}>
-            {invitation?.type === 'rental' 
-              ? `🏠 ${t('auth.join.tenantInvitation')}` 
+            {invitation?.type === 'rental'
+              ? `🏠 ${t('auth.join.tenantInvitation')}`
               : `🏘️ ${t('auth.join.communityInvitation')}`}
           </Text>
         </View>
@@ -271,28 +271,37 @@ export default function JoinScreen() {
           {/* Organization invitation */}
           {invitation?.type === 'organization' && (
             <>
-              <DetailRow label={t('auth.join.community')} value={invitation.location?.name || 'N/A'} t={t} />
-              <DetailRow label={t('auth.join.address')} value={invitation.location?.address || 'N/A'} t={t} />
-              <DetailRow label={t('auth.join.city')} value={invitation.location?.city || 'N/A'} t={t} />
-              <DetailRow label={t('auth.join.assignedRole')} value={getRoleName(invitation.role)} t={t} />
+              <DetailRow label={t('auth.join.community')} value={invitation.location_name || invitation.location?.name || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.address')} value={invitation.address || invitation.location?.address || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.city')} value={invitation.country || invitation.location?.city || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.assignedRole')} value={invitation.role_label || getRoleName(invitation.role)} t={t} />
+            </>
+          )}
+
+          {/* Public code invitation */}
+          {invitation?.type === 'public_code' && (
+            <>
+              <DetailRow label={t('auth.join.community')} value={invitation.location_name || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.address')} value={invitation.address || 'N/A'} t={t} />
+              <DetailRow label="Tipo" value={invitation.location_type_label || 'N/A'} t={t} />
             </>
           )}
 
           {/* Rental invitation */}
           {invitation?.type === 'rental' && (
             <>
-              <DetailRow label={t('auth.join.property')} value={invitation.property?.name || 'N/A'} t={t} />
-              <DetailRow label={t('auth.join.unit')} value={invitation.unit?.unit_number || 'N/A'} t={t} />
-              {invitation.lease && (
+              <DetailRow label={t('auth.join.property')} value={invitation.property || invitation.property?.name || 'N/A'} t={t} />
+              <DetailRow label={t('auth.join.unit')} value={invitation.unit || invitation.unit?.unit_number || 'N/A'} t={t} />
+              {(invitation.rent_amount || invitation.lease) && (
                 <>
-                  <DetailRow 
-                    label={t('auth.join.monthlyRent')} 
-                    value={formatCurrency(invitation.lease.rent_amount, invitation.lease.currency)} 
+                  <DetailRow
+                    label={t('auth.join.monthlyRent')}
+                    value={formatCurrency(invitation.rent_amount || invitation.lease?.rent_amount, invitation.currency || invitation.lease?.currency)}
                     t={t}
                   />
-                  <DetailRow 
-                    label={t('auth.join.startDate')} 
-                    value={new Date(invitation.lease.start_date).toLocaleDateString(getLocale())} 
+                  <DetailRow
+                    label={t('auth.join.startDate')}
+                    value={invitation.lease_period || (invitation.lease?.start_date ? new Date(invitation.lease.start_date).toLocaleDateString(getLocale()) : 'N/A')}
                     t={t}
                   />
                 </>
@@ -302,12 +311,22 @@ export default function JoinScreen() {
 
           {/* Invited by */}
           {invitation?.invited_by && (
-            <DetailRow 
-              label={t('auth.join.invitedBy')} 
-              value={invitation.invited_by.name} 
-              isLast 
+            <DetailRow
+              label={t('auth.join.invitedBy')}
+              value={invitation.invited_by.name || invitation.invited_by}
+              isLast
               t={t}
             />
+          )}
+
+          {/* Requires approval notice */}
+          {invitation?.requires_approval && (
+            <View style={styles.approvalNotice}>
+              <Ionicons name="time" size={16} color={COLORS.yellow} />
+              <Text style={styles.approvalNoticeText}>
+                Tu solicitud será revisada por un administrador
+              </Text>
+            </View>
           )}
         </View>
 
@@ -572,5 +591,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: scale(24),
+  },
+  approvalNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    backgroundColor: COLORS.yellowLight,
+    padding: scale(12),
+    borderRadius: scale(10),
+    marginTop: scale(12),
+  },
+  approvalNoticeText: {
+    flex: 1,
+    fontSize: scale(13),
+    color: COLORS.yellow,
   },
 });
