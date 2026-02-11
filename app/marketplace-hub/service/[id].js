@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
+import { getServiceById } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -49,53 +50,6 @@ const COLORS = {
   gradientEnd: '#AAFF00',
 };
 
-// Servicio de ejemplo
-const MOCK_SERVICE = {
-  id: '1',
-  title: 'Limpieza Profesional del Hogar',
-  description: 'Servicio completo de limpieza para tu hogar incluyendo todas las áreas: sala, comedor, cocina, baños y habitaciones. Utilizamos productos de alta calidad y técnicas profesionales para dejar tu espacio impecable.',
-  provider: {
-    id: 'p1',
-    name: 'CleanPro Services',
-    avatar: null,
-    rating: 4.9,
-    reviews: 256,
-    verified: true,
-    responseTime: '< 1 hora',
-    completedJobs: 512,
-  },
-  category: 'Hogar',
-  subcategory: 'Limpieza',
-  pricingType: 'hourly',
-  basePrice: 150,
-  priceRange: { min: 150, max: 450 },
-  priceUnit: 'hora',
-  estimatedDuration: 180,
-  bookingType: 'both',
-  rating: 4.9,
-  totalRatings: 128,
-  images: [],
-  icon: 'sparkles',
-  color: COLORS.teal,
-  primeDiscount: 15,
-  includes: [
-    'Limpieza de pisos y superficies',
-    'Desinfección de baños y cocina',
-    'Aspirado y trapeado',
-    'Limpieza de ventanas interiores',
-    'Productos de limpieza incluidos',
-  ],
-  requirements: [
-    'Acceso a agua y electricidad',
-    'Espacio despejado para trabajar',
-  ],
-  faqs: [
-    { question: '¿Qué productos utilizan?', answer: 'Utilizamos productos biodegradables de alta calidad.' },
-    { question: '¿Cuánto tiempo toma?', answer: 'Depende del tamaño, generalmente 2-4 horas.' },
-    { question: '¿Tienen garantía?', answer: 'Sí, si no estás satisfecho, regresamos gratis.' },
-  ],
-};
-
 export default function ServiceDetailScreen() {
   const { id } = useLocalSearchParams();
   const { profile } = useAuth();
@@ -111,10 +65,50 @@ export default function ServiceDetailScreen() {
 
   const loadService = async () => {
     setLoading(true);
-    // Simular carga de API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setService(MOCK_SERVICE);
-    setLoading(false);
+    try {
+      const result = await getServiceById(id);
+      if (result.success && result.data) {
+        const s = result.data;
+        setService({
+          ...s,
+          title: s.title || s.name,
+          provider: s.provider || {
+            id: s.provider_id,
+            name: s.provider_name || 'Proveedor',
+            avatar: s.provider_avatar || null,
+            rating: s.provider_rating || 0,
+            reviews: s.provider_reviews || 0,
+            verified: s.provider_verified || false,
+            responseTime: s.response_time || '< 2 horas',
+            completedJobs: s.completed_jobs || 0,
+          },
+          category: s.category_name || s.category || '',
+          subcategory: s.subcategory_name || s.subcategory || '',
+          pricingType: s.pricing_type || s.pricingType || 'fixed',
+          basePrice: s.base_price || s.basePrice || 0,
+          priceRange: s.price_range || s.priceRange || { min: 0, max: 0 },
+          priceUnit: s.price_unit || s.priceUnit || 'servicio',
+          estimatedDuration: s.estimated_duration || s.estimatedDuration || 60,
+          bookingType: s.booking_type || s.bookingType || 'both',
+          rating: s.avg_rating || s.rating || 0,
+          totalRatings: s.total_reviews || s.totalRatings || 0,
+          images: s.images || [],
+          icon: s.icon || 'briefcase',
+          color: s.color || '#00BFA6',
+          primeDiscount: s.prime_discount || s.primeDiscount || 0,
+          includes: s.includes || s.service_includes || [],
+          requirements: s.requirements || [],
+          faqs: s.faqs || [],
+        });
+      } else {
+        setService(null);
+      }
+    } catch (error) {
+      console.error('Error loading service:', error);
+      setService(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBookNow = () => {

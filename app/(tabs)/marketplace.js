@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { getFeaturedServices, getServices } from '../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -62,125 +63,56 @@ const CATEGORIES = [
   { id: 'pets', name: 'Mascotas', icon: 'paw', color: COLORS.cyan },
 ];
 
-// ============ SERVICIOS EJEMPLO ============
-const FEATURED_SERVICES = [
-  {
-    id: '1',
-    title: 'Limpieza Profesional',
-    provider: 'CleanPro Services',
-    category: 'Hogar',
-    price: 450,
-    rating: 4.9,
-    reviews: 128,
-    image: null,
-    icon: 'sparkles',
-    color: COLORS.teal,
-    primeDiscount: 15,
-  },
-  {
-    id: '2',
-    title: 'Plomería Express',
-    provider: 'Fix-It Rápido',
-    category: 'Hogar',
-    price: 350,
-    rating: 4.7,
-    reviews: 89,
-    image: null,
-    icon: 'water',
-    color: COLORS.blue,
-    primeDiscount: 10,
-  },
-  {
-    id: '3',
-    title: 'Electricista Certificado',
-    provider: 'ElectroSafe',
-    category: 'Hogar',
-    price: 400,
-    rating: 4.8,
-    reviews: 156,
-    image: null,
-    icon: 'flash',
-    color: COLORS.orange,
-    primeDiscount: 12,
-  },
-  {
-    id: '4',
-    title: 'Jardinería y Paisajismo',
-    provider: 'GreenThumb Pro',
-    category: 'Hogar',
-    price: 500,
-    rating: 4.6,
-    reviews: 72,
-    image: null,
-    icon: 'leaf',
-    color: COLORS.green,
-    primeDiscount: 10,
-  },
-];
-
-const POPULAR_SERVICES = [
-  {
-    id: '5',
-    title: 'Clases de Yoga',
-    provider: 'Zen Studio',
-    category: 'Salud',
-    price: 200,
-    rating: 4.9,
-    reviews: 234,
-    image: null,
-    icon: 'body',
-    color: COLORS.purple,
-  },
-  {
-    id: '6',
-    title: 'Peluquería a Domicilio',
-    provider: 'Style at Home',
-    category: 'Belleza',
-    price: 350,
-    rating: 4.8,
-    reviews: 189,
-    image: null,
-    icon: 'cut',
-    color: COLORS.coral,
-  },
-  {
-    id: '7',
-    title: 'Reparación de Celulares',
-    provider: 'TechFix',
-    category: 'Tecnología',
-    price: 250,
-    rating: 4.7,
-    reviews: 156,
-    image: null,
-    icon: 'phone-portrait',
-    color: COLORS.cyan,
-  },
-  {
-    id: '8',
-    title: 'Entrenador Personal',
-    provider: 'FitCoach Pro',
-    category: 'Salud',
-    price: 400,
-    rating: 4.9,
-    reviews: 98,
-    image: null,
-    icon: 'barbell',
-    color: COLORS.orange,
-  },
-];
 
 export default function MarketplaceScreen() {
   const { profile } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [featuredServices, setFeaturedServices] = useState([]);
+  const [popularServices, setPopularServices] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const isPrime = profile?.is_prime || false;
 
+  // Load data from API
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Fetch featured services
+      const featuredResponse = await getFeaturedServices();
+      if (featuredResponse.success && Array.isArray(featuredResponse.data)) {
+        setFeaturedServices(featuredResponse.data);
+      } else {
+        setFeaturedServices([]);
+      }
+
+      // Fetch popular services
+      const popularResponse = await getServices({ sort: 'popular', limit: 8 });
+      if (popularResponse.success && Array.isArray(popularResponse.data)) {
+        setPopularServices(popularResponse.data);
+      } else {
+        setPopularServices([]);
+      }
+    } catch (error) {
+      console.error('Error loading marketplace data:', error);
+      setFeaturedServices([]);
+      setPopularServices([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await loadData();
     setRefreshing(false);
-  }, []);
+  }, [loadData]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -199,44 +131,56 @@ export default function MarketplaceScreen() {
     router.push(`/marketplace-hub/category/${categoryId}`);
   };
 
-  const renderServiceCard = (service, isLarge = false) => (
-    <TouchableOpacity
-      key={service.id}
-      style={[styles.serviceCard, isLarge && styles.serviceCardLarge]}
-      onPress={() => handleServicePress(service.id)}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.serviceImageContainer, { backgroundColor: `${service.color}20` }]}>
-        {service.image ? (
-          <Image source={{ uri: service.image }} style={styles.serviceImage} />
-        ) : (
-          <Ionicons name={service.icon} size={isLarge ? 40 : 32} color={service.color} />
-        )}
-        {isPrime && service.primeDiscount && (
-          <View style={styles.primeDiscountBadge}>
-            <Text style={styles.primeDiscountText}>-{service.primeDiscount}%</Text>
-          </View>
-        )}
-      </View>
+  const renderServiceCard = (service, isLarge = false) => {
+    // Map API data to card properties, supporting both old and new formats
+    const providerName = service.provider_name || service.provider?.business_name || service.provider || 'Proveedor';
+    const price = service.base_price ?? service.price ?? 0;
+    const rating = service.avg_rating ?? service.rating ?? 0;
+    const reviews = service.total_reviews ?? service.reviews ?? 0;
+    const icon = service.icon || 'briefcase';
+    const color = service.color || COLORS.teal;
+    const imageUrl = service.images?.[0] || service.image || null;
+    const primeDiscount = service.prime_discount || service.primeDiscount || null;
 
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceTitle} numberOfLines={1}>{service.title}</Text>
-        <Text style={styles.serviceProvider} numberOfLines={1}>{service.provider}</Text>
+    return (
+      <TouchableOpacity
+        key={service.id}
+        style={[styles.serviceCard, isLarge && styles.serviceCardLarge]}
+        onPress={() => handleServicePress(service.id)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.serviceImageContainer, { backgroundColor: `${color}20` }]}>
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.serviceImage} />
+          ) : (
+            <Ionicons name={icon} size={isLarge ? 40 : 32} color={color} />
+          )}
+          {isPrime && primeDiscount && (
+            <View style={styles.primeDiscountBadge}>
+              <Text style={styles.primeDiscountText}>-{primeDiscount}%</Text>
+            </View>
+          )}
+        </View>
 
-        <View style={styles.serviceFooter}>
-          <View style={styles.servicePriceContainer}>
-            <Text style={styles.servicePrice}>L. {service.price}</Text>
-            <Text style={styles.servicePriceUnit}>/servicio</Text>
-          </View>
-          <View style={styles.serviceRating}>
-            <Ionicons name="star" size={12} color={COLORS.orange} />
-            <Text style={styles.serviceRatingText}>{service.rating}</Text>
-            <Text style={styles.serviceReviews}>({service.reviews})</Text>
+        <View style={styles.serviceInfo}>
+          <Text style={styles.serviceTitle} numberOfLines={1}>{service.title}</Text>
+          <Text style={styles.serviceProvider} numberOfLines={1}>{providerName}</Text>
+
+          <View style={styles.serviceFooter}>
+            <View style={styles.servicePriceContainer}>
+              <Text style={styles.servicePrice}>L. {price}</Text>
+              <Text style={styles.servicePriceUnit}>/servicio</Text>
+            </View>
+            <View style={styles.serviceRating}>
+              <Ionicons name="star" size={12} color={COLORS.orange} />
+              <Text style={styles.serviceRatingText}>{rating.toFixed(1)}</Text>
+              <Text style={styles.serviceReviews}>({reviews})</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -359,13 +303,19 @@ export default function MarketplaceScreen() {
               <Text style={styles.sectionLink}>Ver más</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.servicesHorizontal}
-          >
-            {FEATURED_SERVICES.map((service) => renderServiceCard(service, true))}
-          </ScrollView>
+          {featuredServices.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.servicesHorizontal}
+            >
+              {featuredServices.map((service) => renderServiceCard(service, true))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateText}>No hay servicios destacados disponibles</Text>
+            </View>
+          )}
         </View>
 
         {/* Popular Services */}
@@ -376,9 +326,15 @@ export default function MarketplaceScreen() {
               <Text style={styles.sectionLink}>Ver más</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.servicesGrid}>
-            {POPULAR_SERVICES.map((service) => renderServiceCard(service))}
-          </View>
+          {popularServices.length > 0 ? (
+            <View style={styles.servicesGrid}>
+              {popularServices.map((service) => renderServiceCard(service))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateText}>No hay servicios populares disponibles</Text>
+            </View>
+          )}
         </View>
 
         {/* Become Provider CTA */}
@@ -672,5 +628,17 @@ const styles = StyleSheet.create({
   providerCTASubtitle: {
     fontSize: scale(13),
     color: COLORS.textSecondary,
+  },
+  emptyStateContainer: {
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: scale(100),
+  },
+  emptyStateText: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
 });

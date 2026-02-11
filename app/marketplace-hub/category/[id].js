@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { getServices } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -41,11 +42,6 @@ const CATEGORIES = {
   pets: { name: 'Mascotas', icon: 'paw', color: '#00E5FF' },
 };
 
-const MOCK_SERVICES = [
-  { id: '1', title: 'Limpieza Profesional', provider: 'CleanPro', price: 450, rating: 4.9, reviews: 128 },
-  { id: '2', title: 'Plomería Express', provider: 'Fix-It', price: 350, rating: 4.7, reviews: 89 },
-  { id: '3', title: 'Electricista', provider: 'ElectroSafe', price: 400, rating: 4.8, reviews: 156 },
-];
 
 export default function CategoryScreen() {
   const { id } = useLocalSearchParams();
@@ -60,9 +56,27 @@ export default function CategoryScreen() {
 
   const loadServices = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setServices(MOCK_SERVICES);
-    setLoading(false);
+    try {
+      const result = await getServices({ category: id });
+      if (result.success) {
+        const servicesData = Array.isArray(result.data) ? result.data : (result.data?.services || []);
+        setServices(servicesData.map(s => ({
+          ...s,
+          title: s.title || s.name,
+          provider: s.provider_name || s.provider?.business_name || 'Proveedor',
+          price: s.base_price || s.price || 0,
+          rating: s.avg_rating || s.rating || 0,
+          reviews: s.total_reviews || s.reviews || 0,
+        })));
+      } else {
+        setServices([]);
+      }
+    } catch (error) {
+      console.error('Error loading category services:', error);
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderService = ({ item }) => (
@@ -108,7 +122,7 @@ export default function CategoryScreen() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.teal} />
           </View>
-        ) : (
+        ) : services.length > 0 ? (
           <FlatList
             data={services}
             renderItem={renderService}
@@ -116,6 +130,12 @@ export default function CategoryScreen() {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search" size={64} color={COLORS.textMuted} />
+            <Text style={styles.emptyTitle}>No hay servicios</Text>
+            <Text style={styles.emptyText}>No hay servicios en esta categoría aún</Text>
+          </View>
         )}
       </SafeAreaView>
     </>
@@ -210,5 +230,23 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     fontWeight: '600',
     color: COLORS.textPrimary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(40),
+  },
+  emptyTitle: {
+    fontSize: scale(18),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginTop: scale(16),
+    marginBottom: scale(8),
+  },
+  emptyText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });

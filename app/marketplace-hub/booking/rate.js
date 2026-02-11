@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { rateBooking } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -78,19 +79,32 @@ export default function RateServiceScreen() {
     setSubmitting(true);
 
     try {
-      // Simular envío de calificación
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const ratingData = {
+        rating: overallRating,
+        quality: categories.find(c => c.id === 'quality')?.value || 0,
+        punctuality: categories.find(c => c.id === 'punctuality')?.value || 0,
+        communication: categories.find(c => c.id === 'communication')?.value || 0,
+        professionalism: categories.find(c => c.id === 'professionalism')?.value || 0,
+        comment: comment.trim(),
+        would_recommend: wouldRecommend,
+      };
 
-      Alert.alert(
-        '¡Gracias por tu Opinión!',
-        'Tu calificación ayuda a otros usuarios a encontrar los mejores proveedores.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/marketplace-hub/bookings'),
-          },
-        ]
-      );
+      const response = await rateBooking(bookingId, ratingData);
+
+      if (response.success) {
+        Alert.alert(
+          '¡Gracias por tu Opinión!',
+          'Tu calificación ayuda a otros usuarios a encontrar los mejores proveedores.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/marketplace-hub/bookings'),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.error || 'No se pudo enviar tu calificación. Intenta de nuevo.');
+      }
     } catch (error) {
       Alert.alert('Error', 'No se pudo enviar tu calificación. Intenta de nuevo.');
     } finally {

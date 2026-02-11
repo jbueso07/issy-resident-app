@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
+import { getMyBookings } from '../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -66,59 +67,6 @@ const TABS = [
   { id: 'cancelled', label: 'Canceladas' },
 ];
 
-// Mock bookings
-const MOCK_BOOKINGS = [
-  {
-    id: '1',
-    bookingNumber: 'BK-2024-001',
-    serviceTitle: 'Limpieza Profesional',
-    providerName: 'CleanPro Services',
-    status: 'confirmed',
-    scheduledDate: '2024-02-15',
-    scheduledTime: '09:00',
-    totalPrice: 450,
-    icon: 'sparkles',
-    color: COLORS.teal,
-  },
-  {
-    id: '2',
-    bookingNumber: 'BK-2024-002',
-    serviceTitle: 'Plomería Express',
-    providerName: 'Fix-It Rápido',
-    status: 'quote_sent',
-    scheduledDate: null,
-    scheduledTime: null,
-    totalPrice: null,
-    icon: 'water',
-    color: COLORS.blue,
-  },
-  {
-    id: '3',
-    bookingNumber: 'BK-2024-003',
-    serviceTitle: 'Electricista Certificado',
-    providerName: 'ElectroSafe',
-    status: 'completed',
-    scheduledDate: '2024-02-10',
-    scheduledTime: '14:00',
-    totalPrice: 400,
-    icon: 'flash',
-    color: COLORS.orange,
-    hasRated: false,
-  },
-  {
-    id: '4',
-    bookingNumber: 'BK-2024-004',
-    serviceTitle: 'Jardinería',
-    providerName: 'GreenThumb Pro',
-    status: 'cancelled',
-    scheduledDate: '2024-02-08',
-    scheduledTime: '10:00',
-    totalPrice: 500,
-    icon: 'leaf',
-    color: COLORS.green,
-  },
-];
-
 export default function BookingsScreen() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('active');
@@ -132,22 +80,36 @@ export default function BookingsScreen() {
 
   const loadBookings = async () => {
     setLoading(true);
-    // Simular carga de API
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const statusFilter = activeTab === 'active' ? 'active'
+        : activeTab === 'completed' ? 'completed'
+        : activeTab === 'cancelled' ? 'cancelled'
+        : undefined;
 
-    let filtered = MOCK_BOOKINGS;
-    if (activeTab === 'active') {
-      filtered = MOCK_BOOKINGS.filter(b =>
-        ['pending', 'confirmed', 'in_progress', 'quote_requested', 'quote_sent', 'quote_accepted'].includes(b.status)
-      );
-    } else if (activeTab === 'completed') {
-      filtered = MOCK_BOOKINGS.filter(b => b.status === 'completed');
-    } else if (activeTab === 'cancelled') {
-      filtered = MOCK_BOOKINGS.filter(b => b.status === 'cancelled');
+      const result = await getMyBookings({ status: statusFilter });
+      if (result.success) {
+        const bookingsData = Array.isArray(result.data) ? result.data : (result.data?.bookings || []);
+        setBookings(bookingsData.map(b => ({
+          ...b,
+          bookingNumber: b.booking_number || b.bookingNumber || `BK-${b.id?.slice(0, 8) || ''}`,
+          serviceTitle: b.service_title || b.serviceTitle || b.service?.title || 'Servicio',
+          providerName: b.provider_name || b.providerName || b.provider?.business_name || 'Proveedor',
+          scheduledDate: b.scheduled_date || b.scheduledDate,
+          scheduledTime: b.scheduled_time || b.scheduledTime,
+          totalPrice: b.total_price || b.totalPrice || b.total_amount,
+          icon: b.icon || 'briefcase',
+          color: b.color || '#00BFA6',
+          hasRated: b.has_rated || b.hasRated || false,
+        })));
+      } else {
+        setBookings([]);
+      }
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      setBookings([]);
+    } finally {
+      setLoading(false);
     }
-
-    setBookings(filtered);
-    setLoading(false);
   };
 
   const onRefresh = useCallback(async () => {

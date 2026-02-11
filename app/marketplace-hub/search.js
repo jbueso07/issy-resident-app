@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { getServices } from '../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -69,75 +70,6 @@ const SORT_OPTIONS = [
   { id: 'popular', label: 'Más Populares' },
 ];
 
-// Mock de servicios
-const MOCK_SERVICES = [
-  {
-    id: '1',
-    title: 'Limpieza Profesional',
-    provider: 'CleanPro Services',
-    category: 'home',
-    price: 450,
-    rating: 4.9,
-    reviews: 128,
-    icon: 'sparkles',
-    color: COLORS.teal,
-  },
-  {
-    id: '2',
-    title: 'Plomería Express',
-    provider: 'Fix-It Rápido',
-    category: 'home',
-    price: 350,
-    rating: 4.7,
-    reviews: 89,
-    icon: 'water',
-    color: COLORS.blue,
-  },
-  {
-    id: '3',
-    title: 'Electricista Certificado',
-    provider: 'ElectroSafe',
-    category: 'home',
-    price: 400,
-    rating: 4.8,
-    reviews: 156,
-    icon: 'flash',
-    color: COLORS.orange,
-  },
-  {
-    id: '4',
-    title: 'Jardinería y Paisajismo',
-    provider: 'GreenThumb Pro',
-    category: 'home',
-    price: 500,
-    rating: 4.6,
-    reviews: 72,
-    icon: 'leaf',
-    color: COLORS.green,
-  },
-  {
-    id: '5',
-    title: 'Clases de Yoga',
-    provider: 'Zen Studio',
-    category: 'health',
-    price: 200,
-    rating: 4.9,
-    reviews: 234,
-    icon: 'body',
-    color: COLORS.purple,
-  },
-  {
-    id: '6',
-    title: 'Peluquería a Domicilio',
-    provider: 'Style at Home',
-    category: 'beauty',
-    price: 350,
-    rating: 4.8,
-    reviews: 189,
-    icon: 'cut',
-    color: COLORS.coral,
-  },
-];
 
 export default function SearchScreen() {
   const params = useLocalSearchParams();
@@ -158,55 +90,37 @@ export default function SearchScreen() {
 
   const searchServices = async () => {
     setLoading(true);
-    // Simular búsqueda
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const filters = {};
+      if (selectedCategory !== 'all') filters.category = selectedCategory;
+      if (searchQuery) filters.search = searchQuery;
+      if (sortBy) filters.sort = sortBy;
+      if (minRating > 0) filters.min_rating = minRating;
+      if (priceRange.min > 0) filters.min_price = priceRange.min;
+      if (priceRange.max < 10000) filters.max_price = priceRange.max;
 
-    let filtered = [...MOCK_SERVICES];
-
-    // Filtrar por categoría
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(s => s.category === selectedCategory);
+      const result = await getServices(filters);
+      if (result.success) {
+        const servicesData = Array.isArray(result.data) ? result.data : (result.data?.services || []);
+        // Map API fields to expected UI fields
+        setServices(servicesData.map(s => ({
+          ...s,
+          provider: s.provider_name || s.provider?.business_name || s.provider || 'Proveedor',
+          price: s.base_price || s.price || 0,
+          rating: s.avg_rating || s.rating || 0,
+          reviews: s.total_reviews || s.reviews || 0,
+          icon: s.icon || 'briefcase',
+          color: s.color || '#00BFA6',
+        })));
+      } else {
+        setServices([]);
+      }
+    } catch (error) {
+      console.error('Error searching services:', error);
+      setServices([]);
+    } finally {
+      setLoading(false);
     }
-
-    // Filtrar por búsqueda
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(s =>
-        s.title.toLowerCase().includes(query) ||
-        s.provider.toLowerCase().includes(query)
-      );
-    }
-
-    // Filtrar por rating
-    if (minRating > 0) {
-      filtered = filtered.filter(s => s.rating >= minRating);
-    }
-
-    // Filtrar por precio
-    filtered = filtered.filter(s =>
-      s.price >= priceRange.min && s.price <= priceRange.max
-    );
-
-    // Ordenar
-    switch (sortBy) {
-      case 'price_low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price_high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'popular':
-        filtered.sort((a, b) => b.reviews - a.reviews);
-        break;
-      default:
-        break;
-    }
-
-    setServices(filtered);
-    setLoading(false);
   };
 
   const handleServicePress = (serviceId) => {

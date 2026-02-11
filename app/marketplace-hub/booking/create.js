@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { getServiceById, createBooking, requestQuote } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -49,23 +50,26 @@ const COLORS = {
   gradientEnd: '#AAFF00',
 };
 
-// Mock service
-const MOCK_SERVICE = {
-  id: '1',
-  title: 'Limpieza Profesional del Hogar',
-  provider: {
-    id: 'p1',
-    name: 'CleanPro Services',
-    avatar: null,
-    rating: 4.9,
-  },
-  basePrice: 150,
-  priceUnit: 'hora',
-  estimatedDuration: 180,
-  primeDiscount: 15,
-  serviceFee: 0.05,
-  icon: 'sparkles',
-  color: COLORS.teal,
+// Service icon mapping
+const SERVICE_ICONS = {
+  cleaning: 'sparkles',
+  plumbing: 'water',
+  electrical: 'flash',
+  carpentry: 'hammer',
+  painting: 'brush',
+  landscaping: 'leaf',
+  default: 'home',
+};
+
+// Service colors
+const SERVICE_COLORS = {
+  cleaning: COLORS.teal,
+  plumbing: COLORS.blue,
+  electrical: COLORS.yellow,
+  carpentry: COLORS.orange,
+  painting: COLORS.purple,
+  landscaping: COLORS.green,
+  default: COLORS.teal,
 };
 
 export default function CreateBookingScreen() {
@@ -98,9 +102,38 @@ export default function CreateBookingScreen() {
 
   const loadService = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setService(MOCK_SERVICE);
-    setLoading(false);
+    try {
+      const response = await getServiceById(serviceId);
+      if (response.success && response.data) {
+        const apiData = response.data;
+        // Map API response to component fields with fallbacks
+        const mappedService = {
+          id: apiData.id || serviceId,
+          title: apiData.title || 'Servicio',
+          provider: {
+            id: apiData.provider?.id || apiData.provider_id || 'p1',
+            name: apiData.provider?.business_name || apiData.provider?.name || 'Proveedor',
+            avatar: apiData.provider?.avatar_url || null,
+            rating: apiData.provider?.rating || 0,
+          },
+          basePrice: parseFloat(apiData.base_price || apiData.basePrice || 150),
+          priceUnit: apiData.price_unit || apiData.priceUnit || 'hora',
+          estimatedDuration: parseInt(apiData.estimated_duration || apiData.estimatedDuration || 180),
+          primeDiscount: parseFloat(apiData.prime_discount || apiData.primeDiscount || 15),
+          serviceFee: parseFloat(apiData.service_fee || apiData.serviceFee || 0.05),
+          icon: SERVICE_ICONS[apiData.category] || SERVICE_ICONS.default,
+          color: SERVICE_COLORS[apiData.category] || SERVICE_COLORS.default,
+        };
+        setService(mappedService);
+      } else {
+        setService(null);
+      }
+    } catch (error) {
+      console.error('Error loading service:', error);
+      setService(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculatePrice = () => {
@@ -126,21 +159,39 @@ export default function CreateBookingScreen() {
     setSubmitting(true);
 
     try {
-      // Simular creación de reserva
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const bookingData = {
+        service_id: serviceId,
+        address,
+        scheduled_date: selectedDate.toISOString().split('T')[0],
+        scheduled_time: selectedTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        notes: isQuote ? quoteDescription : notes,
+      };
 
-      Alert.alert(
-        isQuote ? '¡Cotización Enviada!' : '¡Reserva Confirmada!',
-        isQuote
-          ? 'El proveedor te enviará una cotización pronto.'
-          : 'Tu reserva ha sido confirmada. Recibirás una notificación de confirmación.',
-        [
-          {
-            text: 'Ver Mis Reservas',
-            onPress: () => router.replace('/marketplace-hub/bookings'),
-          },
-        ]
-      );
+      // Add duration for instant bookings
+      if (!isQuote) {
+        bookingData.hours = hours;
+      }
+
+      const response = isQuote
+        ? await requestQuote(bookingData)
+        : await createBooking(bookingData);
+
+      if (response.success) {
+        Alert.alert(
+          isQuote ? '¡Cotización Enviada!' : '¡Reserva Confirmada!',
+          isQuote
+            ? 'El proveedor te enviará una cotización pronto.'
+            : 'Tu reserva ha sido confirmada. Recibirás una notificación de confirmación.',
+          [
+            {
+              text: 'Ver Mis Reservas',
+              onPress: () => router.replace('/marketplace-hub/bookings'),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.error || 'No se pudo procesar tu solicitud. Intenta de nuevo.');
+      }
     } catch (error) {
       Alert.alert('Error', 'No se pudo procesar tu solicitud. Intenta de nuevo.');
     } finally {

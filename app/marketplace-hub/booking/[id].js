@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { getBookingById, cancelBooking } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -61,41 +62,26 @@ const STATUS_CONFIG = {
   quote_accepted: { label: 'Cotización Aceptada', color: COLORS.teal, icon: 'checkmark', desc: 'Has aceptado la cotización' },
 };
 
-// Mock booking
-const MOCK_BOOKING = {
-  id: '1',
-  bookingNumber: 'BK-2024-001',
-  status: 'confirmed',
-  bookingType: 'instant',
-  service: {
-    id: 's1',
-    title: 'Limpieza Profesional del Hogar',
-    icon: 'sparkles',
-    color: COLORS.teal,
-  },
-  provider: {
-    id: 'p1',
-    name: 'CleanPro Services',
-    phone: '+504 9999-9999',
-    rating: 4.9,
-    verified: true,
-  },
-  scheduledDate: '2024-02-15',
-  scheduledTime: '09:00',
-  estimatedEndTime: '12:00',
-  location: {
-    address: 'Col. Lomas del Guijarro, Tegucigalpa',
-    instructions: 'Casa con portón negro, tocar el timbre.',
-  },
-  pricing: {
-    subtotal: 450,
-    primeDiscount: 67.5,
-    serviceFee: 19.13,
-    total: 401.63,
-  },
-  notes: 'Favor de traer productos de limpieza propios si es posible.',
-  createdAt: '2024-02-10T14:30:00Z',
-  hasRated: false,
+// Service icon mapping
+const SERVICE_ICONS = {
+  cleaning: 'sparkles',
+  plumbing: 'water',
+  electrical: 'flash',
+  carpentry: 'hammer',
+  painting: 'brush',
+  landscaping: 'leaf',
+  default: 'home',
+};
+
+// Service colors
+const SERVICE_COLORS = {
+  cleaning: COLORS.teal,
+  plumbing: COLORS.blue,
+  electrical: COLORS.yellow,
+  carpentry: COLORS.orange,
+  painting: COLORS.purple,
+  landscaping: COLORS.green,
+  default: COLORS.teal,
 };
 
 export default function BookingDetailScreen() {
@@ -110,9 +96,56 @@ export default function BookingDetailScreen() {
 
   const loadBooking = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setBooking(MOCK_BOOKING);
-    setLoading(false);
+    try {
+      const response = await getBookingById(id);
+      if (response.success && response.data) {
+        const apiData = response.data;
+        // Map API response to component fields with fallbacks
+        const mappedBooking = {
+          id: apiData.id || id,
+          bookingNumber: apiData.booking_number || apiData.bookingNumber || 'BK-' + id,
+          status: apiData.status || 'pending',
+          bookingType: apiData.booking_type || apiData.bookingType || 'instant',
+          service: {
+            id: apiData.service?.id || apiData.service_id || 's1',
+            title: apiData.service?.title || apiData.service_title || 'Servicio',
+            icon: SERVICE_ICONS[apiData.service?.category] || SERVICE_ICONS.default,
+            color: SERVICE_COLORS[apiData.service?.category] || SERVICE_COLORS.default,
+          },
+          provider: {
+            id: apiData.provider?.id || apiData.provider_id || 'p1',
+            name: apiData.provider?.business_name || apiData.provider?.name || 'Proveedor',
+            phone: apiData.provider?.phone || '',
+            rating: apiData.provider?.rating || 0,
+            verified: apiData.provider?.is_verified || false,
+          },
+          scheduledDate: apiData.scheduled_date || apiData.scheduledDate || new Date().toISOString().split('T')[0],
+          scheduledTime: apiData.scheduled_time || apiData.scheduledTime || '09:00',
+          estimatedEndTime: apiData.estimated_end_time || apiData.estimatedEndTime || '12:00',
+          location: {
+            address: apiData.location?.address || apiData.address || '',
+            instructions: apiData.location?.instructions || apiData.instructions || '',
+          },
+          pricing: {
+            subtotal: parseFloat(apiData.pricing?.subtotal || apiData.subtotal || 0),
+            primeDiscount: parseFloat(apiData.pricing?.prime_discount || apiData.primeDiscount || 0),
+            serviceFee: parseFloat(apiData.pricing?.service_fee || apiData.serviceFee || 0),
+            total: parseFloat(apiData.pricing?.total || apiData.total || 0),
+          },
+          notes: apiData.notes || '',
+          createdAt: apiData.created_at || apiData.createdAt || new Date().toISOString(),
+          hasRated: apiData.has_rated || apiData.hasRated || false,
+        };
+        setBooking(mappedBooking);
+      } else {
+        setBooking(null);
+      }
+    } catch (error) {
+      console.error('Error loading booking:', error);
+      setBooking(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleContactProvider = () => {
@@ -139,10 +172,20 @@ export default function BookingDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             setCancelling(true);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            setCancelling(false);
-            Alert.alert('Reserva Cancelada', 'Tu reserva ha sido cancelada exitosamente.');
-            router.back();
+            try {
+              const response = await cancelBooking(id, 'Cancelada por el usuario');
+              setCancelling(false);
+
+              if (response.success) {
+                Alert.alert('Reserva Cancelada', 'Tu reserva ha sido cancelada exitosamente.');
+                router.back();
+              } else {
+                Alert.alert('Error', response.error || 'No se pudo cancelar la reserva. Intenta de nuevo.');
+              }
+            } catch (error) {
+              setCancelling(false);
+              Alert.alert('Error', 'No se pudo cancelar la reserva. Intenta de nuevo.');
+            }
           },
         },
       ]

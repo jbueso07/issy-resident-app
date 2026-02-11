@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
+import { registerAsProvider } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -126,12 +127,26 @@ export default function ProviderRegisterScreen() {
     setSubmitting(true);
 
     try {
-      // Simular registro
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const providerData = {
+        business_name: businessName.trim(),
+        business_type: businessType,
+        business_email: email.trim() || undefined,
+        business_phone: phone.trim(),
+        description: description.trim() || undefined,
+        service_categories: selectedCategories,
+        country_code: 'HN',
+        website: website.trim() || undefined,
+      };
+
+      const result = await registerAsProvider(providerData);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al registrar proveedor');
+      }
 
       Alert.alert(
         '¡Registro Exitoso!',
-        'Tu solicitud ha sido enviada. Ahora debes completar la verificación KYC para activar tu cuenta.',
+        result.data?.message || 'Tu solicitud ha sido enviada. Ahora debes completar la verificación KYC para activar tu cuenta.',
         [
           {
             text: 'Continuar',
@@ -140,7 +155,10 @@ export default function ProviderRegisterScreen() {
         ]
       );
     } catch (error) {
-      Alert.alert('Error', 'No se pudo procesar tu registro. Intenta de nuevo.');
+      Alert.alert(
+        'Error',
+        error.message || 'No se pudo procesar tu registro. Intenta de nuevo.'
+      );
     } finally {
       setSubmitting(false);
     }

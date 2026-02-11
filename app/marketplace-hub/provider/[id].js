@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { getProviderById } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -33,24 +34,6 @@ const COLORS = {
   border: 'rgba(255, 255, 255, 0.1)',
 };
 
-const MOCK_PROVIDER = {
-  id: 'p1',
-  businessName: 'CleanPro Services',
-  description: 'Servicios profesionales de limpieza para hogares y oficinas. Más de 5 años de experiencia brindando calidad y confianza.',
-  rating: 4.9,
-  totalRatings: 256,
-  completedJobs: 512,
-  responseTime: 45,
-  responseRate: 98,
-  memberSince: '2022-03',
-  isVerified: true,
-  categories: ['Hogar', 'Limpieza'],
-  services: [
-    { id: '1', title: 'Limpieza Regular', price: 350, rating: 4.9 },
-    { id: '2', title: 'Limpieza Profunda', price: 600, rating: 4.8 },
-    { id: '3', title: 'Limpieza de Oficina', price: 800, rating: 4.9 },
-  ],
-};
 
 export default function ProviderProfileScreen() {
   const { id } = useLocalSearchParams();
@@ -63,9 +46,40 @@ export default function ProviderProfileScreen() {
 
   const loadProvider = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setProvider(MOCK_PROVIDER);
-    setLoading(false);
+    try {
+      const response = await getProviderById(id);
+      if (response.success && response.data) {
+        const apiData = response.data;
+        // Map API response to component fields with fallbacks
+        const mappedProvider = {
+          id: apiData.id || id,
+          businessName: apiData.business_name || apiData.businessName || 'Proveedor',
+          description: apiData.description || 'Sin descripción disponible',
+          rating: parseFloat(apiData.rating || apiData.avg_rating || 0),
+          totalRatings: parseInt(apiData.total_ratings || apiData.ratings_count || 0),
+          completedJobs: parseInt(apiData.completed_jobs || apiData.completedJobs || 0),
+          responseTime: parseInt(apiData.response_time || apiData.responseTime || 0),
+          responseRate: parseInt(apiData.response_rate || apiData.responseRate || 0),
+          memberSince: apiData.member_since || apiData.memberSince || new Date().toISOString().substring(0, 7),
+          isVerified: apiData.is_verified || apiData.isVerified || false,
+          categories: Array.isArray(apiData.categories) ? apiData.categories : [apiData.category || 'Servicios'],
+          services: Array.isArray(apiData.services) ? apiData.services.map(svc => ({
+            id: svc.id || svc.service_id || '',
+            title: svc.title || svc.service_title || 'Servicio',
+            price: parseFloat(svc.price || svc.base_price || 0),
+            rating: parseFloat(svc.rating || svc.avg_rating || 0),
+          })) : [],
+        };
+        setProvider(mappedProvider);
+      } else {
+        setProvider(null);
+      }
+    } catch (error) {
+      console.error('Error loading provider:', error);
+      setProvider(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {

@@ -13,10 +13,12 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { getConversationMessages, sendMessage as sendMessageApi } from '../../../src/services/marketplaceApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -35,56 +37,73 @@ const COLORS = {
   border: 'rgba(255, 255, 255, 0.1)',
 };
 
-const MOCK_MESSAGES = [
-  {
-    id: '1',
-    content: 'Hola, estoy interesado en el servicio de limpieza para el próximo sábado.',
-    sender: 'user',
-    timestamp: '2024-02-10T14:30:00Z',
-  },
-  {
-    id: '2',
-    content: '¡Hola! Claro, con gusto. ¿Qué tipo de limpieza necesitas y cuál es el tamaño del espacio?',
-    sender: 'provider',
-    timestamp: '2024-02-10T14:32:00Z',
-  },
-  {
-    id: '3',
-    content: 'Es un apartamento de 3 habitaciones, necesito limpieza profunda.',
-    sender: 'user',
-    timestamp: '2024-02-10T14:35:00Z',
-  },
-  {
-    id: '4',
-    content: 'Perfecto. Para una limpieza profunda de 3 habitaciones, el servicio tomaría aproximadamente 4 horas. El costo sería L. 600. ¿Te parece bien?',
-    sender: 'provider',
-    timestamp: '2024-02-10T14:40:00Z',
-  },
-];
 
 export default function ChatScreen() {
   const { conversationId } = useLocalSearchParams();
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
 
-  const sendMessage = () => {
+  useEffect(() => {
+    loadMessages();
+  }, [conversationId]);
+
+  const loadMessages = async () => {
+    setLoading(true);
+    try {
+      const response = await getConversationMessages(conversationId);
+      if (response.success && response.data) {
+        const apiMessages = Array.isArray(response.data) ? response.data : response.data.messages || [];
+        // Map API response to component fields with fallbacks
+        const mappedMessages = apiMessages.map(msg => ({
+          id: msg.id || msg.message_id || Date.now().toString(),
+          content: msg.content || msg.message_content || '',
+          sender: msg.sender_type === 'provider' ? 'provider' : 'user',
+          timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
+        }));
+        setMessages(mappedMessages);
+      }
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    const message = {
-      id: Date.now().toString(),
-      content: newMessage.trim(),
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-    };
+    const messageContent = newMessage.trim();
+    setSending(true);
 
-    setMessages(prev => [...prev, message]);
-    setNewMessage('');
+    try {
+      // Send message via API
+      const response = await sendMessageApi(conversationId, messageContent);
 
-    // Scroll to bottom
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      // Add message to local state optimistically
+      const message = {
+        id: response.data?.id || Date.now().toString(),
+        content: messageContent,
+        sender: 'user',
+        timestamp: response.data?.created_at || new Date().toISOString(),
+      };
+
+      setMessages(prev => [...prev, message]);
+      setNewMessage('');
+
+      // Scroll to bottom
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Revert on error if needed
+    } finally {
+      setSending(false);
+    }
   };
 
   const formatTime = (timestamp) => {
@@ -109,11 +128,21 @@ export default function ChatScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.teal} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
         options={{
-          title: 'CleanPro Services',
+          title: 'Conversación',
           headerRight: () => (
             <TouchableOpacity style={styles.headerButton}>
               <Ionicons name="ellipsis-vertical" size={20} color={COLORS.teal} />
@@ -137,6 +166,11 @@ export default function ChatScreen() {
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No hay mensajes aún</Text>
+              </View>
+            }
           />
 
           {/* Input Bar */}
@@ -156,13 +190,17 @@ export default function ChatScreen() {
             <TouchableOpacity
               style={[styles.sendButton, newMessage.trim() && styles.sendButtonActive]}
               onPress={sendMessage}
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || sending}
             >
-              <Ionicons
-                name="send"
-                size={20}
-                color={newMessage.trim() ? COLORS.textDark : COLORS.textMuted}
-              />
+              {sending ? (
+                <ActivityIndicator size="small" color={COLORS.textDark} />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color={newMessage.trim() ? COLORS.textDark : COLORS.textMuted}
+                />
+              )}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -176,6 +214,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bgPrimary,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   keyboardView: {
     flex: 1,
   },
@@ -185,6 +228,16 @@ const styles = StyleSheet.create({
   messagesList: {
     padding: scale(16),
     paddingBottom: scale(8),
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: scale(14),
+    color: COLORS.textMuted,
   },
   messageContainer: {
     marginBottom: scale(12),
