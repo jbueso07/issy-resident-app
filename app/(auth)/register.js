@@ -72,7 +72,9 @@ export default function Register() {
       Alert.alert(t('common.error'), t('auth.errors.emailRequired'));
       return false;
     }
-    if (!email.includes('@')) {
+    // Proper email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
       Alert.alert(t('common.error'), t('auth.errors.invalidEmail'));
       return false;
     }
@@ -80,7 +82,7 @@ export default function Register() {
       Alert.alert(t('common.error'), t('auth.errors.passwordRequired'));
       return false;
     }
-    if (password.length < 6) {
+    if (password.length < 8) {
       Alert.alert(t('common.error'), t('auth.errors.passwordMinLength'));
       return false;
     }
@@ -209,7 +211,7 @@ export default function Register() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder={t('auth.register.minChars')}
+                  placeholder={t('auth.register.minChars', { defaultValue: 'Mínimo 8 caracteres' })}
                   placeholderTextColor={COLORS.textMuted}
                   value={password}
                   onChangeText={setPassword}

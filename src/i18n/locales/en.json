@@ -79,7 +79,7 @@
       "fullNamePlaceholder": "John Doe",
       "phoneOptional": "Phone (optional)",
       "confirmPassword": "Confirm password",
-      "minChars": "Minimum 6 characters",
+      "minChars": "Minimum 8 characters",
       "repeatPassword": "Repeat your password",
       "haveInvitationCode": "Have an invitation code?",
       "invitationCodePlaceholder": "Ex: ABC123",
@@ -103,7 +103,7 @@
       "invalidEmail": "Please enter a valid email",
       "nameRequired": "Please enter your name",
       "passwordRequired": "Please enter a password",
-      "passwordMinLength": "Password must be at least 6 characters",
+      "passwordMinLength": "Password must be at least 8 characters",
       "passwordsMismatch": "Passwords don't match",
       "acceptTerms": "You must accept the Terms of Service and Privacy Policy",
       "invalidInvitationCode": "Invalid invitation code",
@@ -1520,7 +1520,7 @@
       "phone": "Phone",
       "newPassword": "New password",
       "confirmPassword": "Confirm password",
-      "minChars": "Minimum 6 characters",
+      "minChars": "Minimum 8 characters",
       "repeatPassword": "Repeat password"
     },
     "security": {

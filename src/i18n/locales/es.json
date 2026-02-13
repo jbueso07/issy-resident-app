@@ -88,7 +88,7 @@
       "fullNamePlaceholder": "Juan Pérez",
       "phoneOptional": "Teléfono (opcional)",
       "confirmPassword": "Confirmar contraseña",
-      "minChars": "Mínimo 6 caracteres",
+      "minChars": "Mínimo 8 caracteres",
       "repeatPassword": "Repite tu contraseña",
       "haveInvitationCode": "¿Tienes un código de invitación?",
       "invitationCodePlaceholder": "Ej: ABC123",
@@ -112,7 +112,7 @@
       "invalidEmail": "Por favor ingresa un email válido",
       "nameRequired": "Por favor ingresa tu nombre",
       "passwordRequired": "Por favor ingresa una contraseña",
-      "passwordMinLength": "La contraseña debe tener al menos 6 caracteres",
+      "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
       "passwordsMismatch": "Las contraseñas no coinciden",
       "acceptTerms": "Debes aceptar los Términos de Servicio y Política de Privacidad",
       "invalidInvitationCode": "Código de invitación inválido",
@@ -1870,7 +1870,7 @@
       "phone": "Teléfono",
       "newPassword": "Nueva contraseña",
       "confirmPassword": "Confirmar contraseña",
-      "minChars": "Mínimo 6 caracteres",
+      "minChars": "Mínimo 8 caracteres",
       "repeatPassword": "Repite la contraseña"
     },
     "security": {

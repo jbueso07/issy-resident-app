@@ -68,7 +68,7 @@
       "fullNamePlaceholder": "Jean Dupont",
       "phoneOptional": "Téléphone (optionnel)",
       "confirmPassword": "Confirmer le mot de passe",
-      "minChars": "Minimum 6 caractères",
+      "minChars": "Minimum 8 caractères",
       "repeatPassword": "Répétez votre mot de passe",
       "haveInvitationCode": "Avez-vous un code d'invitation ?",
       "invitationCodePlaceholder": "Ex: ABC123",
@@ -92,7 +92,7 @@
       "invalidEmail": "Veuillez entrer un email valide",
       "nameRequired": "Veuillez entrer votre nom",
       "passwordRequired": "Veuillez entrer un mot de passe",
-      "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+      "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères",
       "passwordsMismatch": "Les mots de passe ne correspondent pas",
       "acceptTerms": "Vous devez accepter les Conditions d'utilisation et la Politique de confidentialité",
       "invalidInvitationCode": "Code d'invitation invalide",
@@ -1406,7 +1406,7 @@
       "phone": "Téléphone",
       "newPassword": "Nouveau mot de passe",
       "confirmPassword": "Confirmer mot de passe",
-      "minChars": "Minimum 6 caractères",
+      "minChars": "Minimum 8 caractères",
       "repeatPassword": "Répéter le mot de passe"
     },
     "security": {

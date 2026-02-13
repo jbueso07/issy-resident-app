@@ -68,7 +68,7 @@
       "fullNamePlaceholder": "João Silva",
       "phoneOptional": "Telefone (opcional)",
       "confirmPassword": "Confirmar senha",
-      "minChars": "Mínimo 6 caracteres",
+      "minChars": "Mínimo 8 caracteres",
       "repeatPassword": "Repita sua senha",
       "haveInvitationCode": "Tem um código de convite?",
       "invitationCodePlaceholder": "Ex: ABC123",
@@ -92,7 +92,7 @@
       "invalidEmail": "Por favor, digite um email válido",
       "nameRequired": "Por favor, digite seu nome",
       "passwordRequired": "Por favor, digite uma senha",
-      "passwordMinLength": "A senha deve ter pelo menos 6 caracteres",
+      "passwordMinLength": "A senha deve ter pelo menos 8 caracteres",
       "passwordsMismatch": "As senhas não coincidem",
       "acceptTerms": "Você deve aceitar os Termos de Serviço e a Política de Privacidade",
       "invalidInvitationCode": "Código de convite inválido",
@@ -1434,7 +1434,7 @@
       "phone": "Telefone",
       "newPassword": "Nova senha",
       "confirmPassword": "Confirmar senha",
-      "minChars": "Mínimo 6 caracteres",
+      "minChars": "Mínimo 8 caracteres",
       "repeatPassword": "Repetir senha"
     },
     "security": {
