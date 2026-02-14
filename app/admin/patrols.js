@@ -358,7 +358,7 @@ export default function AdminPatrols() {
     setShowRouteModal(true);
   };
 
-  const handleOpenEditRouteModal = (route) => {
+  const handleOpenEditRouteModal = async (route) => {
     setEditingRoute(route);
     setRouteForm({
       name: route.name || '',
@@ -373,8 +373,25 @@ export default function AdminPatrols() {
       geofence_radius: String(route.geofence_radius_meters || route.geofence_radius || 50),
       is_active: route.is_active !== false,
     });
-    setCheckpoints(route.checkpoints || []);
-    setSchedules(route.schedules || []);
+    // Fetch full route details to get checkpoints with IDs
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/patrols/routes/${route.id}`, { headers });
+      const data = await res.json();
+      if (data.success && data.data?.route) {
+        const fullRoute = data.data.route;
+        setEditingRoute(fullRoute);
+        setCheckpoints(fullRoute.checkpoints || []);
+        setSchedules(fullRoute.schedules || []);
+      } else {
+        setCheckpoints(route.checkpoints || []);
+        setSchedules(route.schedules || []);
+      }
+    } catch (error) {
+      console.error('Error fetching route details:', error);
+      setCheckpoints(route.checkpoints || []);
+      setSchedules(route.schedules || []);
+    }
     setActiveTab('info');
     setShowRouteModal(true);
   };
