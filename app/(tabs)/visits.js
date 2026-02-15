@@ -305,14 +305,21 @@ export default function Visits() {
     }
   }, [selectedLocationId]);
 
-  // Debounced phone lookup for in-app sharing
+  // Debounced phone/email lookup for in-app sharing
   useEffect(() => {
     const cleanPhone = visitorPhone.replace(/[\s\-\(\)]/g, '');
-    if (cleanPhone.length >= 8) {
+    // Check if input looks like email
+    const isEmail = visitorPhone.includes('@') && visitorPhone.includes('.');
+    const shouldLookup = isEmail ? visitorPhone.trim().length >= 5 : cleanPhone.length >= 8;
+
+    if (shouldLookup) {
       const timer = setTimeout(async () => {
         setLookupLoading(true);
         try {
-          const result = await lookupUserForQR(cleanPhone);
+          // Pass as email if it contains @, otherwise as phone
+          const result = isEmail
+            ? await lookupUserForQR(null, visitorPhone.trim())
+            : await lookupUserForQR(cleanPhone);
           if (result.success && result.data?.found) {
             setFoundUser(result.data.user);
             // Auto-enable in-app if mode is app_only or app_preferred
