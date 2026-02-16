@@ -78,6 +78,8 @@ export default function JoinCommunityScreen() {
   
   // Unit details for public code
   const [unitDetails, setUnitDetails] = useState({});
+  // General unit number fallback (when no nomenclature configured)
+  const [generalUnitNumber, setGeneralUnitNumber] = useState('');
 
   // Si viene con código en params, verificar automáticamente
   useEffect(() => {
@@ -96,6 +98,7 @@ export default function JoinCommunityScreen() {
     setError('');
     setInvitation(null);
     setUnitDetails({});
+    setGeneralUnitNumber('');
     
     const upperCode = code.trim().toUpperCase();
     
@@ -142,10 +145,14 @@ export default function JoinCommunityScreen() {
     }
     
     setLoading(true);
-    
+
     let res;
     if (invitation?.type === 'public_code') {
-      res = await joinWithPublicCode(upperCode, unitDetails);
+      // If nomenclature fields exist, send unitDetails; otherwise send general unit number
+      const hasNomenclature = getEnabledFields().length > 0;
+      const detailsToSend = hasNomenclature ? unitDetails : {};
+      const unitNumberToSend = !hasNomenclature ? generalUnitNumber.trim() : null;
+      res = await joinWithPublicCode(upperCode, detailsToSend, unitNumberToSend);
     } else {
       res = await acceptInvitationCode(upperCode);
     }
@@ -157,11 +164,11 @@ export default function JoinCommunityScreen() {
       Alert.alert(
         '¡Solicitud enviada!',
         res.message || `Tu solicitud para unirte a ${locationName} ha sido enviada. Un administrador la revisará pronto.`,
-        [{ 
-          text: 'Continuar', 
+        [{
+          text: 'Continuar',
           onPress: () => {
             if (refreshProfile) refreshProfile();
-            router.replace('/(tabs)');
+            router.replace('/(tabs)/home');
           }
         }]
       );
@@ -324,7 +331,7 @@ export default function JoinCommunityScreen() {
                     <Text style={styles.unitFormSubtitle}>
                       Completa los datos de tu vivienda
                     </Text>
-                    
+
                     {getEnabledFields().map(field => (
                       <View key={field.key} style={styles.unitFieldContainer}>
                         <View style={styles.unitFieldLabel}>
@@ -344,6 +351,25 @@ export default function JoinCommunityScreen() {
                         />
                       </View>
                     ))}
+                  </View>
+                )}
+
+                {/* Fallback: Generic unit number field when no nomenclature configured */}
+                {invitation.type === 'public_code' && getEnabledFields().length === 0 && (
+                  <View style={styles.unitFormContainer}>
+                    <Text style={styles.unitFormTitle}>
+                      <Ionicons name="home" size={16} color={COLORS.teal} /> Tu unidad
+                    </Text>
+                    <Text style={styles.unitFormSubtitle}>
+                      Ingresa tu número de casa, apartamento o unidad
+                    </Text>
+                    <TextInput
+                      style={styles.unitFieldInput}
+                      value={generalUnitNumber}
+                      onChangeText={setGeneralUnitNumber}
+                      placeholder="Ej: Casa 5, Apto 12-B, Bloque A"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
                   </View>
                 )}
 

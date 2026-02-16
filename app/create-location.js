@@ -159,7 +159,7 @@ export default function CreateLocationScreen() {
           text: 'Continuar',
           onPress: () => {
             if (refreshProfile) refreshProfile();
-            router.replace('/(tabs)');
+            router.replace('/(tabs)/home');
           },
         }]
       );

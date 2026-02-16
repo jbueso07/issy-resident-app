@@ -1935,12 +1935,15 @@ export const verifyPublicCode = async (code) => {
 /**
  * Unirse a comunidad con código público
  */
-export const joinWithPublicCode = async (code, unitDetails) => {
+export const joinWithPublicCode = async (code, unitDetails, unitNumber = null) => {
   try {
+    const body = { unit_details: unitDetails };
+    if (unitNumber) body.unit_number = unitNumber;
+
     const response = await fetch(`${API_URL}/invitations/join-public/${code}`, {
       method: 'POST',
       headers: await getAuthHeaders(),
-      body: JSON.stringify({ unit_details: unitDetails }),
+      body: JSON.stringify(body),
     });
     const data = await response.json();
     return data;
