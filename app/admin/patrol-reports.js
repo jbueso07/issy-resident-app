@@ -25,6 +25,20 @@ import { LocationHeader, LocationPickerModal } from '../../src/components/AdminL
 import { useTranslation } from '../../src/hooks/useTranslation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Map imports
+let MapView = null;
+let Marker = null;
+let Polyline = null;
+let PROVIDER_GOOGLE = null;
+try {
+  const Maps = require("react-native-maps");
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  Polyline = Maps.Polyline;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+} catch (e) {
+  console.log("[patrol-reports] react-native-maps not available");
+}
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -263,7 +277,7 @@ export default function PatrolReportsScreen() {
       const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success) {
-        setSessionDetail(data.data);
+        setSessionDetail(data.data.session || data.data);
         setShowDetailModal(true);
       } else {
         // Use the session from the list as fallback
@@ -615,7 +629,7 @@ export default function PatrolReportsScreen() {
     if (!sessionDetail) return null;
 
     const statusInfo = getStatusInfo(sessionDetail.status);
-    const checkpoints = sessionDetail.checkpoint_logs || sessionDetail.checkpoints || [];
+    const checkpoints = sessionDetail.verifications || sessionDetail.checkpoint_logs || sessionDetail.checkpoints || [];
     const photos = sessionDetail.photos || [];
     const gpsTrack = sessionDetail.gps_track || sessionDetail.track_points || [];
 
@@ -680,7 +694,7 @@ export default function PatrolReportsScreen() {
                 <Ionicons name="flag" size={20} color={COLORS.blue} />
                 <Text style={styles.detailGridLabel}>Puntos</Text>
                 <Text style={styles.detailGridValue}>
-                  {sessionDetail.checkpoints_verified || 0}/{sessionDetail.checkpoints_total || 0}
+                  {sessionDetail.verified_checkpoints || 0}/{sessionDetail.total_checkpoints || 0}
                 </Text>
               </View>
               <View style={styles.detailGridItem}>
@@ -699,15 +713,57 @@ export default function PatrolReportsScreen() {
                   <Ionicons name="map" size={20} color={COLORS.lime} />
                   <Text style={styles.sectionTitle}>Recorrido GPS</Text>
                 </View>
-                <View style={styles.mapPlaceholder}>
-                  <Ionicons name="map-outline" size={48} color={COLORS.textMuted} />
-                  <Text style={styles.mapPlaceholderText}>
-                    {gpsTrack.length} puntos de rastreo registrados
-                  </Text>
-                  <Text style={styles.mapPlaceholderSubtext}>
-                    La visualización del mapa estará disponible próximamente
-                  </Text>
-                </View>
+                {MapView ? (
+                  <MapView
+                    style={styles.detailMap}
+                    provider={PROVIDER_GOOGLE}
+                    initialRegion={{
+                      latitude: gpsTrack[0]?.latitude || 0,
+                      longitude: gpsTrack[0]?.longitude || 0,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                    scrollEnabled={true}
+                    zoomEnabled={true}
+                  >
+                    {Polyline && (
+                      <Polyline
+                        coordinates={gpsTrack.map(p => ({ latitude: p.latitude, longitude: p.longitude }))}
+                        strokeColor="#D4FE48"
+                        strokeWidth={3}
+                      />
+                    )}
+                    {Marker && gpsTrack.length > 0 && (
+                      <Marker
+                        coordinate={{ latitude: gpsTrack[0].latitude, longitude: gpsTrack[0].longitude }}
+                        title="Inicio"
+                        pinColor="#10B981"
+                      />
+                    )}
+                    {Marker && gpsTrack.length > 1 && (
+                      <Marker
+                        coordinate={{ latitude: gpsTrack[gpsTrack.length - 1].latitude, longitude: gpsTrack[gpsTrack.length - 1].longitude }}
+                        title="Fin"
+                        pinColor="#EF4444"
+                      />
+                    )}
+                    {Marker && checkpoints.filter(cp => cp.latitude && cp.longitude).map((cp, i) => (
+                      <Marker
+                        key={cp.id || i}
+                        coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
+                        title={cp.name || cp.checkpoint_name || `Punto ${i + 1}`}
+                        pinColor={cp.status === 'verified' ? '#5DDED8' : '#F59E0B'}
+                      />
+                    ))}
+                  </MapView>
+                ) : (
+                  <View style={styles.mapPlaceholder}>
+                    <Ionicons name="map-outline" size={48} color={COLORS.textMuted} />
+                    <Text style={styles.mapPlaceholderText}>
+                      {gpsTrack.length} puntos de rastreo registrados
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -1732,7 +1788,7 @@ const styles = StyleSheet.create({
   },
 
   // Map Placeholder
-  mapPlaceholder: {
+  detailMap: { width: "100%", height: 250, borderRadius: 12, overflow: "hidden", marginTop: 8 }, mapPlaceholder: {
     alignItems: 'center',
     backgroundColor: COLORS.backgroundTertiary,
     borderRadius: scale(10),
