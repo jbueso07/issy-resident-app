@@ -19,8 +19,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Sharing from 'expo-sharing';
-import { captureRef } from 'react-native-view-shot';
 import { useTranslation } from '../hooks/useTranslation';
 import { getReceivedQRCodes } from '../services/api';
 
@@ -56,7 +54,6 @@ const MyAccessesTab = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [sharingImage, setSharingImage] = useState(false);
   const cardRef = useRef(null);
 
   useEffect(() => {
@@ -121,21 +118,6 @@ const MyAccessesTab = () => {
       return `Expira en ${mins} min`;
     }
     return '';
-  };
-
-  const handleShareQRImage = async () => {
-    if (!cardRef.current) return;
-    setSharingImage(true);
-    try {
-      const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile' });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Compartir código QR - ISSY', UTI: 'public.png' });
-      }
-    } catch (error) {
-      console.error('Error sharing:', error);
-    } finally {
-      setSharingImage(false);
-    }
   };
 
   // Active QRs first, then expired
@@ -332,21 +314,7 @@ const MyAccessesTab = () => {
                     </LinearGradient>
                   </View>
 
-                  {/* Share Button */}
-                  <TouchableOpacity
-                    style={styles.shareButton}
-                    onPress={handleShareQRImage}
-                    disabled={sharingImage}
-                  >
-                    {sharingImage ? (
-                      <ActivityIndicator color={COLORS.textDark} size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="share-outline" size={22} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
-                        <Text style={styles.shareButtonText}>Compartir QR</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  {/* Share button removed - received QR codes should not be re-shared */}
                 </>
               )}
             </ScrollView>
@@ -613,23 +581,6 @@ const styles = StyleSheet.create({
     height: scale(30),
   },
 
-  // Share button
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.lime,
-    paddingVertical: scale(16),
-    paddingHorizontal: scale(32),
-    borderRadius: scale(14),
-    marginTop: scale(20),
-    width: scale(300),
-  },
-  shareButtonText: {
-    color: COLORS.textDark,
-    fontSize: scale(16),
-    fontWeight: '600',
-  },
 });
 
 export default MyAccessesTab;

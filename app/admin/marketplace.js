@@ -46,8 +46,11 @@ const COLORS = {
 };
 
 // ============ API HELPER ============
-const authFetch = async (endpoint, options = {}) => {
-  const token = await AsyncStorage.getItem('token');
+const authFetch = async (endpoint, options = {}, authToken = null) => {
+  const token = authToken || await AsyncStorage.getItem('token');
+  if (!token) {
+    console.warn('⚠️ authFetch: No token available for', endpoint);
+  }
   const config = {
     ...options,
     headers: {

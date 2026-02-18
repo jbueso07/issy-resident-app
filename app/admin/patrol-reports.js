@@ -105,7 +105,7 @@ export default function PatrolReportsScreen() {
   };
 
   useEffect(() => {
-    if (!isAdmin) {
+    console.log("PATROL REPORTS - isAdmin:", isAdmin, "selectedLocationId:", selectedLocationId); if (!isAdmin) {
       Alert.alert('Acceso Denegado', 'No tienes permisos para acceder a esta sección');
       router.back();
       return;
@@ -163,7 +163,7 @@ export default function PatrolReportsScreen() {
       if (selectedGuard) url += `&guard_id=${selectedGuard}`;
 
       const response = await fetch(url, { headers });
-      const data = await response.json();
+      const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success) {
         setStats(data.data || data);
@@ -195,7 +195,7 @@ export default function PatrolReportsScreen() {
     }
   };
 
-  const fetchSessions = async () => {
+  const fetchSessions = async () => { console.log("FETCH SESSIONS CALLED", "URL:", `${API_URL}/api/patrols/reports/history?location_id=${selectedLocationId}&start_date=${startDate}&end_date=${endDate}`);
     try {
       const headers = await getAuthHeaders();
       let url = `${API_URL}/api/patrols/reports/history?location_id=${selectedLocationId}`;
@@ -205,10 +205,10 @@ export default function PatrolReportsScreen() {
       if (selectedStatus) url += `&status=${selectedStatus}`;
 
       const response = await fetch(url, { headers });
-      const data = await response.json();
+      const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success) {
-        setSessions(data.data?.sessions || data.data || []);
+        console.log("SESSIONS RESPONSE:", JSON.stringify(data)); setSessions(data.data?.sessions || data.data || []);
       } else {
         setSessions([]);
       }
@@ -225,7 +225,7 @@ export default function PatrolReportsScreen() {
         `${API_URL}/api/patrols/routes?location_id=${selectedLocationId}`,
         { headers }
       );
-      const data = await response.json();
+      const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success) {
         setRoutes(data.data || []);
@@ -242,7 +242,7 @@ export default function PatrolReportsScreen() {
         `${API_URL}/api/users?location_id=${selectedLocationId}&role=guard`,
         { headers }
       );
-      const data = await response.json();
+      const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success || Array.isArray(data)) {
         setGuards(data.data || data || []);
@@ -260,7 +260,7 @@ export default function PatrolReportsScreen() {
         `${API_URL}/api/patrols/reports/sessions/${sessionId}`,
         { headers }
       );
-      const data = await response.json();
+      const data = await response.json(); console.log("SESSIONS RAW:", JSON.stringify(data));
 
       if (data.success) {
         setSessionDetail(data.data);
