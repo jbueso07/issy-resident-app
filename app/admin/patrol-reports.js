@@ -208,7 +208,7 @@ export default function PatrolReportsScreen() {
       const data = await response.json();
 
       if (data.success) {
-        setSessions(data.data || []);
+        setSessions(data.data?.sessions || data.data || []);
       } else {
         setSessions([]);
       }
@@ -571,7 +571,7 @@ export default function PatrolReportsScreen() {
   };
 
   // Filter Picker Modal
-  const FilterPicker = ({ visible, onClose, title, options, selectedValue, onSelect }) => (
+  const FilterPicker = ({ visible, onClose, title, options = [], selectedValue, onSelect }) => (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.pickerOverlay}>
         <TouchableOpacity style={styles.pickerOverlayBg} onPress={onClose} activeOpacity={1} />
@@ -592,7 +592,7 @@ export default function PatrolReportsScreen() {
               </Text>
               {!selectedValue && <Ionicons name="checkmark" size={20} color={COLORS.lime} />}
             </TouchableOpacity>
-            {options.map((option) => (
+            {(Array.isArray(options) ? options : []).map((option) => (
               <TouchableOpacity
                 key={option.id}
                 style={[styles.pickerItem, selectedValue === option.id && styles.pickerItemActive]}
