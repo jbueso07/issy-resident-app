@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { deleteUserAccount } from '../../src/services/api';
@@ -398,7 +399,7 @@ export default function Profile() {
             <Text style={styles.logoutText} maxFontSizeMultiplier={1.2}>{t('profile.logout')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.version} maxFontSizeMultiplier={1}>ISSY Resident App v1.0.0</Text>
+          <Text style={styles.version} maxFontSizeMultiplier={1}>ISSY Resident App v{Constants.expoConfig?.version || '1.0.0'}</Text>
 
           {/* Espacio para tab bar */}
           <View style={{ height: scale(100) }} />
