@@ -413,6 +413,7 @@ export default function Visits() {
       house_number: profile?.house_number || profile?.apartment_number || null,
       is_delivery: true,
       delivery_provider: selectedProvider.id,
+      location_id: selectedLocationId,
     };
 
     try {
@@ -513,6 +514,7 @@ export default function Visits() {
       visitor_id: visitorId.trim() || null,
       qr_type: qrType,
       house_number: profile?.house_number || profile?.apartment_number || null,
+      location_id: selectedLocationId,
     };
 
     // In-app sharing data
