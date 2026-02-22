@@ -45,8 +45,13 @@ export default function JoinCode() {
 
   const handleAcceptInvitation = async () => {
     if (!isAuthenticated) {
-      // Guardar código y redirigir a login/registro
       setStep('login');
+      return;
+    }
+
+    // Para códigos públicos, redirigir a join-community que maneja unit_details y nomenclatura
+    if (invitationData?.type === 'public_code') {
+      router.replace(`/join-community?code=${code.trim().toUpperCase()}`);
       return;
     }
 
