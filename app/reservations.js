@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { supabase } from '../src/config/supabase';
 import { useAuth } from '../src/context/AuthContext';
+import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from '../src/hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -137,7 +138,8 @@ export default function ReservationsScreen() {
 
   const loadAreas = async () => {
     try {
-      const locationId = profile?.location_id || user?.location_id;
+      const locationId = profile?.location_id || profile?.current_location?.location_id || user?.location_id;
+      console.log('🔍 locationId:', locationId, '| profile.location_id:', profile?.location_id, '| current_location:', profile?.current_location?.location_id, '| user.location_id:', user?.location_id, '| profile keys:', profile ? Object.keys(profile) : 'null');
       if (!locationId) return;
 
       const { data, error } = await supabase
@@ -838,6 +840,36 @@ export default function ReservationsScreen() {
                         </Text>
                       </View>
 
+                      {/* QR de acceso cuando está aprobada */}
+                      {selectedReservation.status === 'approved' && selectedReservation.qr_code && (
+                        <View style={styles.qrAccessCard}>
+                          <View style={styles.qrAccessHeader}>
+                            <Ionicons name="qr-code" size={20} color={COLORS.green} />
+                            <Text style={styles.qrAccessTitle}>Código de Acceso</Text>
+                            <View style={styles.qrAccessBadge}>
+                              <Text style={styles.qrAccessBadgeText}>ACTIVO</Text>
+                            </View>
+                          </View>
+                          <View style={styles.qrWrapper}>
+                            <QRCode
+                              value={selectedReservation.qr_code}
+                              size={180}
+                              backgroundColor="white"
+                              color="#0F1A1A"
+                            />
+                          </View>
+                          <Text style={styles.qrManualCode}>
+                            {selectedReservation.qr_code.substring(0, 12).toUpperCase()}
+                          </Text>
+                          <Text style={styles.qrValidText}>
+                            Válido: {formatTime(selectedReservation.start_time)} - {formatTime(selectedReservation.end_time)}
+                          </Text>
+                          <Text style={styles.qrHintText}>
+                            Muestra este código al guardia o acércalo al lector
+                          </Text>
+                        </View>
+                      )}
+
                       {selectedReservation.confirmation_code && (
                         <View style={styles.codeContainer}>
                           <Text style={styles.codeLabel}>{t('reservations.reservationCode').toUpperCase()}</Text>
@@ -1496,5 +1528,70 @@ const styles = StyleSheet.create({
     fontSize: scale(16),
     fontWeight: '600',
     color: COLORS.background,
+  },
+
+  // QR Access Card
+  qrAccessCard: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderRadius: scale(20),
+    padding: scale(20),
+    alignItems: 'center',
+    marginTop: scale(20),
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  qrAccessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginBottom: scale(16),
+    width: '100%',
+  },
+  qrAccessTitle: {
+    flex: 1,
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: COLORS.green,
+  },
+  qrAccessBadge: {
+    backgroundColor: COLORS.green,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(20),
+  },
+  qrAccessBadgeText: {
+    fontSize: scale(10),
+    fontWeight: '700',
+    color: COLORS.background,
+  },
+  qrWrapper: {
+    backgroundColor: '#FFFFFF',
+    padding: scale(14),
+    borderRadius: scale(16),
+    marginBottom: scale(14),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  qrManualCode: {
+    fontSize: scale(13),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    letterSpacing: 2,
+    fontFamily: 'monospace',
+    marginBottom: scale(6),
+  },
+  qrValidText: {
+    fontSize: scale(13),
+    color: COLORS.green,
+    fontWeight: '600',
+    marginBottom: scale(6),
+  },
+  qrHintText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });

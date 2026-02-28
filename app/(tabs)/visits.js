@@ -2,6 +2,7 @@
 // ISSY Resident App - Visits Screen (ProHome Dark Style)
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -16,6 +17,7 @@ import {
   Platform,
   Dimensions,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
@@ -87,7 +89,6 @@ const DELIVERY_PROVIDERS = {
   HN: {
     label: 'Honduras',
     providers: [
-      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
       { id: 'rappi', name: 'Rappi', color: '#FF441F', icon: 'bag-handle', initial: 'R' },
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
@@ -122,7 +123,6 @@ const DELIVERY_PROVIDERS = {
   GT: {
     label: 'Guatemala',
     providers: [
-      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
@@ -132,7 +132,6 @@ const DELIVERY_PROVIDERS = {
   SV: {
     label: 'El Salvador',
     providers: [
-      { id: 'hugo', name: 'Hugo', color: '#FF6B00', icon: 'bicycle', initial: 'H' },
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
@@ -296,6 +295,15 @@ export default function Visits() {
     }
   }, [selectedLocationId]);
 
+  // Refresh QR list every time user navigates back to this tab
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedLocationId) {
+        loadQRCodes();
+      }
+    }, [selectedLocationId])
+  );
+
   // Load sharing mode for location
   useEffect(() => {
     if (selectedLocationId) {
@@ -344,7 +352,10 @@ export default function Visits() {
   }, [visitorPhone, sharingMode]);
 
   const loadQRCodes = async () => {
-    if (!selectedLocationId) return;
+    if (!selectedLocationId) {
+      setLoadingQRs(false);
+      return;
+    }
     try {
       const result = await getMyQRCodes(selectedLocationId);
       if (result.success) {
@@ -436,31 +447,64 @@ export default function Visits() {
           setSelectedQR(newQR);
           setShowQRModal(true);
 
-          // If phone provided, auto-share QR image after modal renders
+          // Si hay teléfono válido, abrir WhatsApp con deep link
           if (phoneToSave !== 'N/A' && phoneToSave.length >= 8) {
             const communityName = locationName || 'la residencial';
             const expiryTime = validUntil.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
 
-            // Wait for QR modal to render, then capture and share
+            // Formatear teléfono: limpiar y agregar código de país si falta
+            let phoneFormatted = phoneToSave.replace(/[\s\-\(\)]/g, '');
+            if (!phoneFormatted.startsWith('+')) {
+              phoneFormatted = `+504${phoneFormatted}`;
+            }
+
+            const driverName = quickDriverName.trim() || 'conductor';
+            const qrCode = newQR.qr_code || newQR.id || '';
+            const mensaje = `Hola ${driverName}, te comparto tu código de acceso para ${communityName}. Código: ${qrCode}. Válido hasta las ${expiryTime}. Muéstralo al guardia o acércalo al lector de la entrada.`;
+            const waUrl = `https://wa.me/${phoneFormatted}?text=${encodeURIComponent(mensaje)}`;
+
             setTimeout(async () => {
               try {
-                if (cardRef.current) {
-                  const uri = await captureRef(cardRef, {
-                    format: 'png',
-                    quality: 1,
-                    result: 'tmpfile',
-                  });
-
-                  if (await Sharing.isAvailableAsync()) {
-                    await Sharing.shareAsync(uri, {
-                      mimeType: 'image/png',
-                      dialogTitle: `Código de acceso - ${selectedProvider.name}`,
-                      UTI: 'public.png',
+                const supported = await Linking.canOpenURL(waUrl);
+                if (supported) {
+                  await Linking.openURL(waUrl);
+                } else {
+                  // Fallback: Share Sheet genérico si WhatsApp no está instalado
+                  if (cardRef.current) {
+                    const uri = await captureRef(cardRef, {
+                      format: 'png',
+                      quality: 1,
+                      result: 'tmpfile',
                     });
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(uri, {
+                        mimeType: 'image/png',
+                        dialogTitle: `Código de acceso - ${selectedProvider.name}`,
+                        UTI: 'public.png',
+                      });
+                    }
                   }
                 }
               } catch (e) {
-                console.log('Auto-share skipped:', e.message);
+                console.log('WhatsApp share failed, trying fallback:', e.message);
+                try {
+                  if (cardRef.current) {
+                    const uri = await captureRef(cardRef, {
+                      format: 'png',
+                      quality: 1,
+                      result: 'tmpfile',
+                    });
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(uri, {
+                        mimeType: 'image/png',
+                        dialogTitle: `Código de acceso - ${selectedProvider.name}`,
+                        UTI: 'public.png',
+                      });
+                    }
+                  }
+                } catch (fallbackErr) {
+                  console.log('Fallback share also failed:', fallbackErr.message);
+                }
               }
             }, 1200);
           }
@@ -956,7 +1000,7 @@ return (
                 <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
               </View>
             ) : (
-              qrCodes.map((qr) => renderQRCard(qr))
+              qrCodes.filter((qr) => isQRActive(qr)).map((qr) => renderQRCard(qr))
             )}
           </>
         )}
@@ -1377,11 +1421,12 @@ return (
     {/* ============================================ */}
     {/* VIEW QR MODAL - Diseño glassmorphism claro */}
     {/* ============================================ */}
+    {showQRModal && (
     <Modal
       visible={showQRModal}
       animationType="fade"
       transparent={true}
-      onRequestClose={() => setShowQRModal(false)}
+      onRequestClose={() => { setShowQRModal(false); setSelectedQR(null); }}
     >
       <View style={styles.qrModalOverlay}>
         <ScrollView
@@ -1563,7 +1608,7 @@ return (
               {/* Close Button */}
               <TouchableOpacity
                 style={styles.closeModalButton}
-                onPress={() => setShowQRModal(false)}
+                onPress={() => { setShowQRModal(false); setSelectedQR(null); }}
               >
                 <Text style={styles.closeModalButtonText} maxFontSizeMultiplier={1.2}>{t('visits.close')}</Text>
               </TouchableOpacity>
@@ -1572,6 +1617,7 @@ return (
         </ScrollView>
       </View>
       </Modal>
+    )}
     {/* ============================================ */}
     {/* QUICK DELIVERY MODAL */}
     {/* ============================================ */}

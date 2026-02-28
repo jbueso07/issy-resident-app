@@ -2556,3 +2556,19 @@ export const setDefaultBankAccount = async (accountId) => {
     return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
+
+// ==========================================
+// CAMBIAR CONTRASEÑA (usuario autenticado)
+// ==========================================
+export const changePassword = async (currentPassword, newPassword) => {
+  try {
+    const data = await authFetch('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    return { success: true, data: data.data || data, message: data.message };
+  } catch (error) {
+    console.error('Error changing password:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};

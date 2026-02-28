@@ -59,6 +59,7 @@ export default function EditProfileScreen() {
   const [newAvatarUri, setNewAvatarUri] = useState(null); // URI local de nueva imagen
   
   // Password form
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -135,8 +136,12 @@ export default function EditProfileScreen() {
   };
 
   const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
-      Alert.alert(t('common.error'), t('editProfile.errors.passwordLength'));
+    if (!currentPassword) {
+      Alert.alert(t('common.error'), t('editProfile.errors.currentPasswordRequired', { defaultValue: 'Ingresa tu contraseña actual' }));
+      return;
+    }
+    if (newPassword.length < 8) {
+      Alert.alert(t('common.error'), t('editProfile.errors.passwordLength', { defaultValue: 'La contraseña debe tener al menos 8 caracteres' }));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -145,11 +150,12 @@ export default function EditProfileScreen() {
     }
 
     setLoading(true);
-    const res = await changePassword(newPassword);
+    const res = await changePassword(currentPassword, newPassword);
     setLoading(false);
 
     if (res.success) {
       Alert.alert(t('common.success'), t('editProfile.success.passwordUpdated'));
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } else {
@@ -320,6 +326,24 @@ export default function EditProfileScreen() {
           </View>
         ) : activeTab === 'password' ? (
           <View style={styles.section}>
+            {/* Current Password */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>{t('editProfile.form.currentPassword', { defaultValue: 'Contraseña actual' })}</Text>
+              <View style={styles.passwordInput}>
+                <TextInput
+                  style={styles.passwordField}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder={t('editProfile.form.enterCurrentPassword', { defaultValue: 'Ingresa tu contraseña actual' })}
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* New Password */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('editProfile.form.newPassword')}</Text>
@@ -328,13 +352,10 @@ export default function EditProfileScreen() {
                   style={styles.passwordField}
                   value={newPassword}
                   onChangeText={setNewPassword}
-                  placeholder={t('editProfile.form.minChars')}
+                  placeholder={t('editProfile.form.minChars', { defaultValue: 'Mínimo 8 caracteres' })}
                   placeholderTextColor={COLORS.textMuted}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color={COLORS.textMuted} />
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -355,9 +376,9 @@ export default function EditProfileScreen() {
 
             {/* Change Password Button */}
             <TouchableOpacity
-              style={[styles.saveBtn, (loading || !newPassword) && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, (loading || !currentPassword || !newPassword) && styles.saveBtnDisabled]}
               onPress={handleChangePassword}
-              disabled={loading || !newPassword}
+              disabled={loading || !currentPassword || !newPassword}
             >
               {loading ? (
                 <ActivityIndicator color={COLORS.background} />

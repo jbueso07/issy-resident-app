@@ -6,6 +6,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { View, StyleSheet, Image, Platform } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Colors ProHome Theme
 const COLORS = {
@@ -119,12 +120,18 @@ const CenterLogoButton = () => (
 export default function TabsLayout() {
   const router = useRouter();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+
+  const tabBarStyle = {
+    ...styles.tabBar,
+    bottom: 28,
+  };
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: tabBarStyle,
         tabBarActiveTintColor: COLORS.white,
         tabBarInactiveTintColor: COLORS.white,
         tabBarShowLabel: false,
@@ -221,7 +228,7 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 20,
+    bottom: 28,
     left: 14,
     right: 14,
     height: 60,

@@ -92,7 +92,21 @@ export default function AdminCommonAreas() {
   const [selectedArea, setSelectedArea] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingRulesImage, setUploadingRulesImage] = useState(false);
   const [form, setForm] = useState(getInitialForm());
+  const [blockedSchedules, setBlockedSchedules] = useState([]);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [scheduleTab, setScheduleTab] = useState('hours');
+  const [blockForm, setBlockForm] = useState({
+    title: '',
+    repeat_type: 'once',
+    block_date: '',
+    repeat_days: [],
+    start_time: '08:00',
+    end_time: '20:00',
+    reason: '',
+  });
+  const [savingBlock, setSavingBlock] = useState(false);
 
   const isSuperAdmin = profile?.role === 'superadmin';
   const isAdmin = ['admin', 'superadmin'].includes(profile?.role);
@@ -114,6 +128,7 @@ export default function AdminCommonAreas() {
       available_from: '08:00',
       available_until: '20:00',
       image_url: '',
+      rules_image_url: '',
     };
   }
 
@@ -245,6 +260,153 @@ export default function AdminCommonAreas() {
     }
   };
 
+  const pickRulesImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(t('admin.commonAreas.permissionRequired'), t('admin.commonAreas.photoPermission'));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        await uploadRulesImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking rules image:', error);
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.imageSelectFailed'));
+    }
+  };
+
+  const uploadRulesImage = async (uri) => {
+    try {
+      setUploadingRulesImage(true);
+      const formData = new FormData();
+      formData.append('image', { uri, type: 'image/jpeg', name: 'rules-image.jpg' });
+      const response = await fetch(`${API_URL}/upload/common-area-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+        body: formData,
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setForm((prev) => ({ ...prev, rules_image_url: data.data.url }));
+      } else {
+        Alert.alert(t('common.error'), data.error || t('admin.commonAreas.errors.imageUploadFailed'));
+      }
+    } catch (error) {
+      console.error('Error uploading rules image:', error);
+      Alert.alert(t('common.error'), t('admin.commonAreas.errors.imageUploadFailed'));
+    } finally {
+      setUploadingRulesImage(false);
+    }
+  };
+
+  const loadBlockedSchedules = async (areaId) => {
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/common-areas/${areaId}/blocked-schedules`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setBlockedSchedules(data.data || data || []);
+      }
+    } catch (error) {
+      console.error('Error loading blocked schedules:', error);
+      setBlockedSchedules([]);
+    }
+  };
+
+  const handleSaveBlock = async () => {
+    if (!blockForm.title.trim()) {
+      Alert.alert(t('common.error'), 'El título es requerido');
+      return;
+    }
+    if (blockForm.repeat_type === 'once' && !blockForm.block_date) {
+      Alert.alert(t('common.error'), 'La fecha es requerida');
+      return;
+    }
+    if (blockForm.repeat_type === 'weekly' && blockForm.repeat_days.length === 0) {
+      Alert.alert(t('common.error'), 'Selecciona al menos un día');
+      return;
+    }
+    if (blockForm.start_time >= blockForm.end_time) {
+      Alert.alert(t('common.error'), 'La hora de inicio debe ser menor que la hora de fin');
+      return;
+    }
+    setSavingBlock(true);
+    try {
+      const payload = {
+        title: blockForm.title,
+        repeat_type: blockForm.repeat_type,
+        block_date: blockForm.repeat_type !== 'daily' ? blockForm.block_date : new Date().toISOString().split('T')[0],
+        repeat_days: blockForm.repeat_type === 'weekly' ? blockForm.repeat_days : [],
+        start_time: blockForm.start_time,
+        end_time: blockForm.end_time,
+        reason: blockForm.reason,
+      };
+      const response = await fetch(`${API_URL}/common-areas/${selectedArea?.id}/blocked-schedules`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (data.success || response.ok) {
+        setShowBlockModal(false);
+        setBlockForm({ title: '', repeat_type: 'once', block_date: '', repeat_days: [], start_time: '08:00', end_time: '20:00', reason: '' });
+        loadBlockedSchedules(selectedArea?.id);
+      } else {
+        Alert.alert(t('common.error'), data.error || 'Error al guardar bloqueo');
+      }
+    } catch (error) {
+      console.error('Error saving block:', error);
+      Alert.alert(t('common.error'), 'Error al guardar bloqueo');
+    } finally {
+      setSavingBlock(false);
+    }
+  };
+
+  const handleDeleteBlock = (block) => {
+    Alert.alert(
+      'Eliminar bloqueo',
+      '¿Estás seguro de eliminar este bloqueo?',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/common-areas/${selectedArea?.id}/blocked-schedules/${block.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (response.ok) {
+                loadBlockedSchedules(selectedArea?.id);
+              }
+            } catch (error) {
+              Alert.alert(t('common.error'), 'Error al eliminar bloqueo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleBlockDay = (dayId) => {
+    setBlockForm((prev) => ({
+      ...prev,
+      repeat_days: prev.repeat_days.includes(dayId)
+        ? prev.repeat_days.filter((d) => d !== dayId)
+        : [...prev.repeat_days, dayId],
+    }));
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) {
       Alert.alert(t('common.error'), t('admin.commonAreas.errors.nameRequired'));
@@ -259,13 +421,14 @@ export default function AdminCommonAreas() {
         hourly_rate: form.is_paid ? parseFloat(form.price_per_hour) || 0 : 0,
         min_duration_hours: parseInt(form.min_hours) || 1,
         max_duration_hours: parseInt(form.max_hours) || 4,
-        max_advance_days: parseInt(form.max_advance_days) || 30,
+        advance_booking_days: parseInt(form.max_advance_days) || 30,
         requires_approval: form.requires_approval,
         location_id: form.location_id || selectedLocationId,
         is_24_hours: form.is_24_hours,
         available_from: form.available_from,
         available_until: form.available_until,
         image_url: form.image_url,
+        rules_image_url: form.rules_image_url || null,
         is_active: true,
       };
       const url = editingArea ? `${API_URL}/common-areas/${editingArea.id}` : `${API_URL}/common-areas`;
@@ -307,6 +470,7 @@ export default function AdminCommonAreas() {
       available_from: area.available_from || '08:00',
       available_until: area.available_until || '20:00',
       image_url: area.image_url || '',
+      rules_image_url: area.rules_image_url || '',
     });
     setShowModal(true);
   };
@@ -354,7 +518,8 @@ export default function AdminCommonAreas() {
 
   const handleManageSchedule = async (area) => {
     setSelectedArea(area);
-    await loadSchedules(area.id);
+    setScheduleTab('hours');
+    await Promise.all([loadSchedules(area.id), loadBlockedSchedules(area.id)]);
     setShowScheduleModal(true);
   };
 
@@ -428,58 +593,111 @@ export default function AdminCommonAreas() {
     </View>
   );
 
-  // Schedule Row Component
-  const ScheduleRow = ({ day, schedule, areaId, onSaved }) => {
-    const [isActive, setIsActive] = useState(schedule?.is_active || false);
-    const [openTime, setOpenTime] = useState(schedule?.open_time || '08:00');
-    const [closeTime, setCloseTime] = useState(schedule?.close_time || '20:00');
+  // Schedule Day Row Component — supports multiple time blocks per day
+  const ScheduleDayRow = ({ day, daySchedules, areaId, onSaved }) => {
+    const initialBlocks = (daySchedules && daySchedules.length > 0)
+      ? daySchedules.map((s) => ({ id: s.id, is_active: s.is_active !== false, open_time: s.open_time || '08:00', close_time: s.close_time || '20:00' }))
+      : [{ id: null, is_active: true, open_time: '08:00', close_time: '20:00' }];
+    const [blocks, setBlocks] = useState(initialBlocks);
     const [saving, setSaving] = useState(false);
 
-    const handleSaveSchedule = async () => {
+    const addBlock = () => {
+      setBlocks((prev) => [...prev, { id: null, is_active: true, open_time: '08:00', close_time: '20:00' }]);
+    };
+
+    const removeBlock = async (index) => {
+      const block = blocks[index];
+      if (block.id) {
+        try {
+          await fetch(`${API_URL}/common-areas/${areaId}/schedules/${block.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (error) {
+          console.error('Error deleting schedule block:', error);
+        }
+      }
+      setBlocks((prev) => prev.filter((_, i) => i !== index));
+      onSaved();
+    };
+
+    const updateBlock = (index, field, value) => {
+      setBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)));
+    };
+
+    const handleSaveAll = async () => {
       setSaving(true);
       try {
-        const response = await fetch(`${API_URL}/common-areas/${areaId}/schedules`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ day_of_week: day.id, is_active: isActive, open_time: openTime, close_time: closeTime }),
-        });
-        if (response.ok) onSaved();
+        for (const block of blocks) {
+          const payload = { day_of_week: day.id, is_active: block.is_active, open_time: block.open_time, close_time: block.close_time };
+          if (block.id) {
+            await fetch(`${API_URL}/common-areas/${areaId}/schedules/${block.id}`, {
+              method: 'PUT',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          } else {
+            await fetch(`${API_URL}/common-areas/${areaId}/schedules`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          }
+        }
+        onSaved();
       } catch (error) {
-        console.error('Error saving schedule:', error);
+        console.error('Error saving schedule blocks:', error);
       } finally {
         setSaving(false);
       }
     };
 
     return (
-      <View style={[styles.scheduleRow, isActive && styles.scheduleRowActive]}>
-        <Switch
-          value={isActive}
-          onValueChange={setIsActive}
-          trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.success + '50' }}
-          thumbColor={isActive ? COLORS.success : COLORS.textMuted}
-        />
-        <Text style={[styles.scheduleDay, isActive && styles.scheduleDayActive]}>{day.label}</Text>
-        <TextInput
-          style={styles.scheduleTimeInput}
-          value={openTime}
-          onChangeText={setOpenTime}
-          editable={isActive}
-          placeholder="08:00"
-          placeholderTextColor={COLORS.textMuted}
-        />
-        <Text style={styles.scheduleTimeSeparator}>-</Text>
-        <TextInput
-          style={styles.scheduleTimeInput}
-          value={closeTime}
-          onChangeText={setCloseTime}
-          editable={isActive}
-          placeholder="20:00"
-          placeholderTextColor={COLORS.textMuted}
-        />
-        <TouchableOpacity style={styles.scheduleSaveButton} onPress={handleSaveSchedule} disabled={saving}>
-          {saving ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />}
-        </TouchableOpacity>
+      <View style={styles.scheduleDayContainer}>
+        <View style={styles.scheduleDayHeader}>
+          <Text style={styles.scheduleDayTitle}>{day.label}</Text>
+          <View style={styles.scheduleDayActions}>
+            <TouchableOpacity style={styles.scheduleAddBlockBtn} onPress={addBlock}>
+              <Ionicons name="add" size={16} color={COLORS.teal} />
+              <Text style={styles.scheduleAddBlockText}>{'Agregar'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.scheduleSaveButton} onPress={handleSaveAll} disabled={saving}>
+              {saving ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Ionicons name="checkmark" size={18} color={COLORS.textPrimary} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+        {blocks.map((block, idx) => (
+          <View key={idx} style={[styles.scheduleRow, block.is_active && styles.scheduleRowActive]}>
+            <Switch
+              value={block.is_active}
+              onValueChange={(val) => updateBlock(idx, 'is_active', val)}
+              trackColor={{ false: COLORS.backgroundTertiary, true: COLORS.success + '50' }}
+              thumbColor={block.is_active ? COLORS.success : COLORS.textMuted}
+            />
+            <TextInput
+              style={styles.scheduleTimeInput}
+              value={block.open_time}
+              onChangeText={(val) => updateBlock(idx, 'open_time', val)}
+              editable={block.is_active}
+              placeholder="08:00"
+              placeholderTextColor={COLORS.textMuted}
+            />
+            <Text style={styles.scheduleTimeSeparator}>-</Text>
+            <TextInput
+              style={styles.scheduleTimeInput}
+              value={block.close_time}
+              onChangeText={(val) => updateBlock(idx, 'close_time', val)}
+              editable={block.is_active}
+              placeholder="20:00"
+              placeholderTextColor={COLORS.textMuted}
+            />
+            {blocks.length > 1 && (
+              <TouchableOpacity style={styles.scheduleRemoveBlockBtn} onPress={() => removeBlock(idx)}>
+                <Ionicons name="close" size={16} color={COLORS.danger} />
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
       </View>
     );
   };
@@ -613,23 +831,28 @@ export default function AdminCommonAreas() {
               )}
             </TouchableOpacity>
 
-            {/* Location (SuperAdmin only) */}
-            {isSuperAdmin && (
-              <>
-                <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.location')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerContainer}>
-                  {locations.map((loc) => (
-                    <TouchableOpacity
-                      key={loc.id}
-                      style={[styles.locationChip, form.location_id === loc.id && styles.locationChipActive]}
-                      onPress={() => setForm((prev) => ({ ...prev, location_id: loc.id }))}
-                    >
-                      <Text style={[styles.locationChipText, form.location_id === loc.id && styles.locationChipTextActive]}>{loc.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            )}
+            {/* Rules Image Picker */}
+            <Text style={styles.sectionLabel}>{'Imagen de Reglas'}</Text>
+            <TouchableOpacity onPress={pickRulesImage} disabled={uploadingRulesImage}>
+              {uploadingRulesImage ? (
+                <View style={styles.imagePlaceholder}>
+                  <ActivityIndicator color={COLORS.lime} />
+                  <Text style={styles.imagePlaceholderText}>{t('admin.commonAreas.uploading')}</Text>
+                </View>
+              ) : form.rules_image_url ? (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: form.rules_image_url }} style={styles.rulesImagePreview} />
+                  <TouchableOpacity style={styles.removeImageButton} onPress={() => setForm((prev) => ({ ...prev, rules_image_url: '' }))}>
+                    <Ionicons name="close-circle" size={28} color={COLORS.danger} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="document-text-outline" size={40} color={COLORS.textMuted} />
+                  <Text style={styles.imagePlaceholderText}>{'Agregar imagen de reglas'}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
             {/* Name */}
             <Text style={styles.sectionLabel}>{t('admin.commonAreas.form.name')} *</Text>
@@ -809,30 +1032,237 @@ export default function AdminCommonAreas() {
         </SafeAreaView>
       </Modal>
 
-      {/* Schedule Modal */}
+      {/* Schedule Modal with Tabs */}
       <Modal visible={showScheduleModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer} edges={['top']}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
               <Text style={styles.modalCancel}>{t('common.close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{t('admin.commonAreas.schedules')}</Text>
+            <Text style={styles.modalTitle}>{'Horarios'}</Text>
             <View style={{ width: 60 }} />
           </View>
+
+          {/* Tab Bar */}
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tabItem, scheduleTab === 'hours' && styles.tabItemActive]}
+              onPress={() => setScheduleTab('hours')}
+            >
+              <Ionicons name="time" size={16} color={scheduleTab === 'hours' ? COLORS.lime : COLORS.textMuted} />
+              <Text style={[styles.tabItemText, scheduleTab === 'hours' && styles.tabItemTextActive]}>
+                {'Horarios'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabItem, scheduleTab === 'blocks' && styles.tabItemActive]}
+              onPress={() => setScheduleTab('blocks')}
+            >
+              <Ionicons name="ban" size={16} color={scheduleTab === 'blocks' ? COLORS.lime : COLORS.textMuted} />
+              <Text style={[styles.tabItemText, scheduleTab === 'blocks' && styles.tabItemTextActive]}>
+                {'Bloqueos'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <ScrollView style={styles.modalContent}>
-            <Text style={styles.scheduleNote}>{t('admin.commonAreas.scheduleNote')}</Text>
-            {DAYS_OF_WEEK.map((day) => (
-              <ScheduleRow
-                key={day.id}
-                day={day}
-                schedule={schedules.find((s) => s.day_of_week === day.id)}
-                areaId={selectedArea?.id}
-                onSaved={() => loadSchedules(selectedArea?.id)}
-              />
-            ))}
+            {scheduleTab === 'hours' ? (
+              <>
+                <Text style={styles.scheduleNote}>{t('admin.commonAreas.scheduleNote')}</Text>
+                {DAYS_OF_WEEK.map((day) => (
+                  <ScheduleDayRow
+                    key={day.id}
+                    day={day}
+                    daySchedules={schedules.filter((s) => s.day_of_week === day.id)}
+                    areaId={selectedArea?.id}
+                    onSaved={() => loadSchedules(selectedArea?.id)}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.addBlockButton}
+                  onPress={() => {
+                    setBlockForm({ title: '', repeat_type: 'once', block_date: '', repeat_days: [], start_time: '08:00', end_time: '20:00', reason: '' });
+                    setShowBlockModal(true);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={20} color={COLORS.background} />
+                  <Text style={styles.addBlockButtonText}>{'Crear Bloqueo'}</Text>
+                </TouchableOpacity>
+
+                {blockedSchedules.length === 0 ? (
+                  <View style={styles.emptyBlocks}>
+                    <Ionicons name="ban-outline" size={48} color={COLORS.textMuted} />
+                    <Text style={styles.emptyBlocksText}>{'No hay bloqueos configurados'}</Text>
+                  </View>
+                ) : (
+                  blockedSchedules.map((block) => (
+                    <View key={block.id} style={styles.blockCard}>
+                      <View style={styles.blockCardHeader}>
+                        <View style={styles.blockCardInfo}>
+                          <Text style={styles.blockCardTitle}>{block.title}</Text>
+                          <View style={[styles.blockTypeBadge, { backgroundColor: block.repeat_type === 'once' ? COLORS.warning + '20' : block.repeat_type === 'weekly' ? COLORS.purple + '20' : COLORS.teal + '20' }]}>
+                            <Text style={[styles.blockTypeBadgeText, { color: block.repeat_type === 'once' ? COLORS.warning : block.repeat_type === 'weekly' ? COLORS.purple : COLORS.teal }]}>
+                              {block.repeat_type === 'once' ? 'Una vez' : block.repeat_type === 'weekly' ? 'Semanal' : 'Diario'}
+                            </Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity onPress={() => handleDeleteBlock(block)} style={styles.blockDeleteBtn}>
+                          <Ionicons name="trash" size={18} color={COLORS.danger} />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.blockCardMeta}>
+                        <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+                        <Text style={styles.blockCardMetaText}>{block.start_time} - {block.end_time}</Text>
+                      </View>
+                      {block.repeat_type === 'once' && block.block_date && (
+                        <View style={styles.blockCardMeta}>
+                          <Ionicons name="calendar-outline" size={14} color={COLORS.textMuted} />
+                          <Text style={styles.blockCardMetaText}>{block.block_date}</Text>
+                        </View>
+                      )}
+                      {block.repeat_type === 'weekly' && Array.isArray(block.repeat_days) && (
+                        <View style={styles.blockDaysRow}>
+                          {DAYS_OF_WEEK.map((d) => (
+                            <View key={d.id} style={[styles.blockDayChip, block.repeat_days.includes(d.id) && styles.blockDayChipActive]}>
+                              <Text style={[styles.blockDayChipText, block.repeat_days.includes(d.id) && styles.blockDayChipTextActive]}>{d.short}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                      {block.reason ? <Text style={styles.blockCardReason}>{block.reason}</Text> : null}
+                    </View>
+                  ))
+                )}
+              </>
+            )}
             <View style={{ height: 40 }} />
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Block Creation Modal */}
+      <Modal visible={showBlockModal} animationType="slide" transparent>
+        <View style={styles.blockModalOverlay}>
+          <View style={styles.blockModalContent}>
+            <View style={styles.blockModalHeader}>
+              <Text style={styles.blockModalTitle}>{'Nuevo Bloqueo'}</Text>
+              <TouchableOpacity onPress={() => setShowBlockModal(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.blockFieldLabel}>{'Título'} *</Text>
+              <TextInput
+                style={styles.blockInput}
+                value={blockForm.title}
+                onChangeText={(text) => setBlockForm((prev) => ({ ...prev, title: text }))}
+                placeholder={'Ej: Mantenimiento'}
+                placeholderTextColor={COLORS.textMuted}
+              />
+
+              <Text style={styles.blockFieldLabel}>{'Tipo de repetición'}</Text>
+              <View style={styles.blockTypeRow}>
+                {[
+                  { id: 'once', label: 'Una vez', icon: 'calendar' },
+                  { id: 'weekly', label: 'Semanal', icon: 'repeat' },
+                  { id: 'daily', label: 'Diario', icon: 'today' },
+                ].map((rt) => (
+                  <TouchableOpacity
+                    key={rt.id}
+                    style={[styles.blockTypeChip, blockForm.repeat_type === rt.id && styles.blockTypeChipActive]}
+                    onPress={() => setBlockForm((prev) => ({ ...prev, repeat_type: rt.id }))}
+                  >
+                    <Ionicons name={rt.icon} size={16} color={blockForm.repeat_type === rt.id ? COLORS.background : COLORS.textSecondary} />
+                    <Text style={[styles.blockTypeChipText, blockForm.repeat_type === rt.id && styles.blockTypeChipTextActive]}>{rt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {blockForm.repeat_type === 'once' && (
+                <>
+                  <Text style={styles.blockFieldLabel}>{'Fecha (YYYY-MM-DD)'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.block_date}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, block_date: text }))}
+                    placeholder="2026-03-01"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </>
+              )}
+
+              {blockForm.repeat_type === 'weekly' && (
+                <>
+                  <Text style={styles.blockFieldLabel}>{'Días de la semana'}</Text>
+                  <View style={styles.blockDaysSelector}>
+                    {DAYS_OF_WEEK.map((d) => (
+                      <TouchableOpacity
+                        key={d.id}
+                        style={[styles.blockDaySelectorChip, blockForm.repeat_days.includes(d.id) && styles.blockDaySelectorChipActive]}
+                        onPress={() => toggleBlockDay(d.id)}
+                      >
+                        <Text style={[styles.blockDaySelectorText, blockForm.repeat_days.includes(d.id) && styles.blockDaySelectorTextActive]}>{d.short}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.blockFieldLabel}>{'Fecha de inicio (YYYY-MM-DD)'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.block_date}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, block_date: text }))}
+                    placeholder="2026-03-01"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </>
+              )}
+
+              <View style={styles.blockTimeRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blockFieldLabel}>{'Hora inicio'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.start_time}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, start_time: text }))}
+                    placeholder="08:00"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blockFieldLabel}>{'Hora fin'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.end_time}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, end_time: text }))}
+                    placeholder="20:00"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.blockFieldLabel}>{'Razón'}</Text>
+              <TextInput
+                style={[styles.blockInput, { minHeight: scale(60), textAlignVertical: 'top' }]}
+                value={blockForm.reason}
+                onChangeText={(text) => setBlockForm((prev) => ({ ...prev, reason: text }))}
+                placeholder={'Opcional - describe el motivo'}
+                placeholderTextColor={COLORS.textMuted}
+                multiline
+                numberOfLines={2}
+              />
+
+              <TouchableOpacity style={styles.blockSaveBtn} onPress={handleSaveBlock} disabled={savingBlock}>
+                {savingBlock ? (
+                  <ActivityIndicator color={COLORS.background} />
+                ) : (
+                  <Text style={styles.blockSaveBtnText}>{'Guardar Bloqueo'}</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
       
       <LocationPickerModal />
@@ -917,15 +1347,68 @@ const styles = StyleSheet.create({
   ruleInput: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), paddingHorizontal: scale(12), paddingVertical: scale(10), fontSize: scale(15), color: COLORS.textPrimary, textAlign: 'center', borderWidth: 1, borderColor: COLORS.border },
   imagePreviewContainer: { position: 'relative' },
   imagePreview: { width: '100%', height: scale(180), borderRadius: scale(12) },
+  rulesImagePreview: { width: '100%', height: scale(140), borderRadius: scale(12) },
   removeImageButton: { position: 'absolute', top: scale(8), right: scale(8), backgroundColor: COLORS.background, borderRadius: scale(14) },
   imagePlaceholder: { width: '100%', height: scale(140), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), borderWidth: 2, borderColor: COLORS.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   imagePlaceholderText: { fontSize: scale(14), color: COLORS.textMuted, fontWeight: '500', marginTop: scale(8) },
   scheduleNote: { fontSize: scale(13), color: COLORS.textSecondary, marginBottom: scale(16), lineHeight: scale(18) },
-  scheduleRow: { flexDirection: 'row', alignItems: 'center', padding: scale(12), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), marginBottom: scale(8), gap: scale(12), borderWidth: 1, borderColor: COLORS.border },
-  scheduleRowActive: { backgroundColor: COLORS.success + '15', borderColor: COLORS.success + '50' },
-  scheduleDay: { flex: 1, fontSize: scale(14), fontWeight: '500', color: COLORS.textSecondary },
-  scheduleDayActive: { color: COLORS.success },
-  scheduleTimeInput: { width: scale(70), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(6), paddingHorizontal: scale(10), paddingVertical: scale(8), fontSize: scale(14), textAlign: 'center', color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
-  scheduleTimeSeparator: { color: COLORS.textSecondary },
+  // ScheduleDayRow styles
+  scheduleDayContainer: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), marginBottom: scale(10), padding: scale(12), borderWidth: 1, borderColor: COLORS.border },
+  scheduleDayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(8) },
+  scheduleDayTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textPrimary },
+  scheduleDayActions: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
+  scheduleAddBlockBtn: { flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingHorizontal: scale(10), paddingVertical: scale(6), backgroundColor: COLORS.teal + '20', borderRadius: scale(6) },
+  scheduleAddBlockText: { fontSize: scale(12), color: COLORS.teal, fontWeight: '500' },
+  scheduleRemoveBlockBtn: { width: scale(28), height: scale(28), borderRadius: scale(6), backgroundColor: COLORS.danger + '20', alignItems: 'center', justifyContent: 'center' },
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', padding: scale(8), backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), marginBottom: scale(6), gap: scale(8), borderWidth: 1, borderColor: COLORS.border },
+  scheduleRowActive: { backgroundColor: COLORS.success + '10', borderColor: COLORS.success + '40' },
+  scheduleTimeInput: { width: scale(65), backgroundColor: COLORS.background, borderRadius: scale(6), paddingHorizontal: scale(8), paddingVertical: scale(6), fontSize: scale(13), textAlign: 'center', color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  scheduleTimeSeparator: { color: COLORS.textSecondary, fontSize: scale(12) },
   scheduleSaveButton: { width: scale(32), height: scale(32), borderRadius: scale(6), backgroundColor: COLORS.success, alignItems: 'center', justifyContent: 'center' },
+  // Tab bar styles
+  tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingHorizontal: scale(16) },
+  tabItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(6), paddingVertical: scale(12), borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabItemActive: { borderBottomColor: COLORS.lime },
+  tabItemText: { fontSize: scale(14), fontWeight: '500', color: COLORS.textMuted },
+  tabItemTextActive: { color: COLORS.lime },
+  // Blocked schedules styles
+  addBlockButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(8), backgroundColor: COLORS.lime, paddingVertical: scale(12), borderRadius: scale(10), marginBottom: scale(16) },
+  addBlockButtonText: { color: COLORS.background, fontSize: scale(14), fontWeight: '600' },
+  emptyBlocks: { alignItems: 'center', paddingVertical: scale(40) },
+  emptyBlocksText: { color: COLORS.textMuted, fontSize: scale(14), marginTop: scale(12) },
+  blockCard: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(14), marginBottom: scale(10), borderWidth: 1, borderColor: COLORS.border },
+  blockCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(8) },
+  blockCardInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: scale(8) },
+  blockCardTitle: { fontSize: scale(15), fontWeight: '600', color: COLORS.textPrimary },
+  blockTypeBadge: { paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(6) },
+  blockTypeBadgeText: { fontSize: scale(11), fontWeight: '600' },
+  blockDeleteBtn: { width: scale(34), height: scale(34), borderRadius: scale(8), backgroundColor: COLORS.danger + '15', alignItems: 'center', justifyContent: 'center' },
+  blockCardMeta: { flexDirection: 'row', alignItems: 'center', gap: scale(6), marginBottom: scale(4) },
+  blockCardMetaText: { fontSize: scale(13), color: COLORS.textSecondary },
+  blockDaysRow: { flexDirection: 'row', gap: scale(4), marginTop: scale(6), flexWrap: 'wrap' },
+  blockDayChip: { width: scale(30), height: scale(30), borderRadius: scale(15), backgroundColor: COLORS.backgroundTertiary, alignItems: 'center', justifyContent: 'center' },
+  blockDayChipActive: { backgroundColor: COLORS.purple + '30' },
+  blockDayChipText: { fontSize: scale(10), fontWeight: '500', color: COLORS.textMuted },
+  blockDayChipTextActive: { color: COLORS.purple },
+  blockCardReason: { fontSize: scale(12), color: COLORS.textMuted, fontStyle: 'italic', marginTop: scale(6) },
+  // Block creation modal styles
+  blockModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  blockModalContent: { backgroundColor: COLORS.background, borderTopLeftRadius: scale(20), borderTopRightRadius: scale(20), padding: scale(20), maxHeight: '85%' },
+  blockModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(16) },
+  blockModalTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
+  blockFieldLabel: { fontSize: scale(13), fontWeight: '600', color: COLORS.textSecondary, marginBottom: scale(6), marginTop: scale(12) },
+  blockInput: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), paddingHorizontal: scale(14), paddingVertical: scale(12), fontSize: scale(15), color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  blockTypeRow: { flexDirection: 'row', gap: scale(8) },
+  blockTypeChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(6), paddingVertical: scale(10), backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(10), borderWidth: 1, borderColor: COLORS.border },
+  blockTypeChipActive: { backgroundColor: COLORS.lime, borderColor: COLORS.lime },
+  blockTypeChipText: { fontSize: scale(12), fontWeight: '500', color: COLORS.textSecondary },
+  blockTypeChipTextActive: { color: COLORS.background },
+  blockTimeRow: { flexDirection: 'row', gap: scale(12) },
+  blockDaysSelector: { flexDirection: 'row', gap: scale(6), flexWrap: 'wrap' },
+  blockDaySelectorChip: { width: scale(42), height: scale(36), borderRadius: scale(8), backgroundColor: COLORS.backgroundSecondary, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
+  blockDaySelectorChipActive: { backgroundColor: COLORS.purple + '30', borderColor: COLORS.purple },
+  blockDaySelectorText: { fontSize: scale(12), fontWeight: '500', color: COLORS.textMuted },
+  blockDaySelectorTextActive: { color: COLORS.purple },
+  blockSaveBtn: { backgroundColor: COLORS.lime, paddingVertical: scale(14), borderRadius: scale(12), alignItems: 'center', marginTop: scale(20), marginBottom: scale(10) },
+  blockSaveBtnText: { fontSize: scale(15), fontWeight: '700', color: COLORS.background },
 });

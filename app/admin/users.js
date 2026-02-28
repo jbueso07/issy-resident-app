@@ -97,6 +97,8 @@ export default function AdminUsers() {
   
   // NUEVO: Método de creación (invite o direct)
   const [createMethod, setCreateMethod] = useState('invite');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [inviteForm, setInviteForm] = useState({
     role: 'resident',
@@ -1159,24 +1161,34 @@ export default function AdminUsers() {
                   {createMethod === 'direct' && (
                     <>
                       <Text style={styles.inputLabel}>{t('admin.users.form.password')} *</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={inviteForm.password}
-                        onChangeText={(text) => setInviteForm({...inviteForm, password: text})}
-                        placeholder={t('admin.users.form.passwordPlaceholder')}
-                        placeholderTextColor={COLORS.textMuted}
-                        secureTextEntry
-                      />
+                      <View style={styles.passwordContainer}>
+                        <TextInput
+                          style={styles.passwordInput}
+                          value={inviteForm.password}
+                          onChangeText={(text) => setInviteForm({...inviteForm, password: text})}
+                          placeholder={t('admin.users.form.passwordPlaceholder')}
+                          placeholderTextColor={COLORS.textMuted}
+                          secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      </View>
 
                       <Text style={styles.inputLabel}>{t('admin.users.form.confirmPassword')} *</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={inviteForm.confirm_password}
-                        onChangeText={(text) => setInviteForm({...inviteForm, confirm_password: text})}
-                        placeholder={t('admin.users.form.confirmPasswordPlaceholder')}
-                        placeholderTextColor={COLORS.textMuted}
-                        secureTextEntry
-                      />
+                      <View style={styles.passwordContainer}>
+                        <TextInput
+                          style={styles.passwordInput}
+                          value={inviteForm.confirm_password}
+                          onChangeText={(text) => setInviteForm({...inviteForm, confirm_password: text})}
+                          placeholder={t('admin.users.form.confirmPasswordPlaceholder')}
+                          placeholderTextColor={COLORS.textMuted}
+                          secureTextEntry={!showConfirmPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeButton}>
+                          <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={COLORS.textMuted} />
+                        </TouchableOpacity>
+                      </View>
                     </>
                   )}
 
@@ -1808,5 +1820,24 @@ const styles = StyleSheet.create({
     fontSize: scale(13),
     color: COLORS.teal,
     lineHeight: scale(20),
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
+    fontSize: scale(15),
+    color: COLORS.textPrimary,
+  },
+  eyeButton: {
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(14),
   },
 });
