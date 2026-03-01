@@ -161,29 +161,35 @@ export default function AdminReservationsScreen() {
   };
 
   const handleApprove = async (reservation) => {
-    setProcessing(reservation.id);
     try {
+      setProcessing(reservation.id);
       const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`https://api.joinissy.com/api/reservations/${reservation.id}/approve`, {
-        method: 'PATCH',
+      console.log('🔑 Token exists:', !!token);
+      console.log('🎯 Approving reservation:', reservation.id);
+
+      const API_URL = 'https://api.joinissy.com/api';
+      const response = await fetch(`${API_URL}/reservations/${reservation.id}/approve`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          approved_by: profile?.id || user?.id
-        })
+        body: JSON.stringify({ approved_by: profile?.id || user?.id })
       });
-      const res = await response.json();
 
-      if (res.success || res.qr_code) {
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📦 Response data:', JSON.stringify(data));
+
+      if (response.ok && (data.success || data.qr_code)) {
         Alert.alert(t('common.success'), 'Reservación aprobada. El usuario recibirá su QR de acceso.');
         loadReservations();
         setShowDetailModal(false);
       } else {
-        Alert.alert(t('common.error'), res.error || t('admin.reservations.errors.approveFailed'));
+        Alert.alert(t('common.error'), data.error || data.message || t('admin.reservations.errors.approveFailed'));
       }
     } catch (error) {
+      console.error('❌ handleApprove error:', error);
       Alert.alert(t('common.error'), error.message || t('admin.reservations.errors.approveFailed'));
     } finally {
       setProcessing(null);
