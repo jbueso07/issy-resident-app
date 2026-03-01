@@ -15,6 +15,7 @@ import {
   ActivityIndicator, 
   Linking,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -135,24 +136,26 @@ export default function Profile() {
     {
       title: t('profile.account'),
       items: [
-        { 
-          icon: 'person-outline', 
-          title: t('profile.personalData'), 
+        {
+          icon: 'person-outline',
+          title: t('profile.personalData'),
           subtitle: t('profile.personalDataDesc'),
           route: '/edit-profile',
           color: COLORS.teal,
         },
-        { 
-          icon: 'star-outline', 
-          title: t('profile.subscription'), 
-          subtitle: t('profile.subscriptionDesc'),
-          route: '/my-subscription',
-          badge: 'PRO',
-          color: COLORS.purple,
-        },
-        { 
-          icon: 'card-outline', 
-          title: t('profile.paymentMethods'), 
+        ...(Platform.OS !== 'ios' ? [
+          {
+            icon: 'star-outline',
+            title: t('profile.subscription'),
+            subtitle: t('profile.subscriptionDesc'),
+            route: '/my-subscription',
+            badge: 'PRO',
+            color: COLORS.purple,
+          },
+        ] : []),
+        {
+          icon: 'card-outline',
+          title: t('profile.paymentMethods'),
           subtitle: t('profile.paymentMethodsDesc'),
           route: '/payment-methods',
           color: COLORS.cyan,

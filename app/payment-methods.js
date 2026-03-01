@@ -71,7 +71,6 @@ export default function PaymentMethodsScreen() {
   const [expYear, setExpYear] = useState('');
   const [cvv, setCvv] = useState('');
   const [idNumber, setIdNumber] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
 
   const fetchCards = async () => {
     try {
@@ -104,7 +103,6 @@ export default function PaymentMethodsScreen() {
     setExpYear('');
     setCvv('');
     setIdNumber('');
-    setMobileNumber('');
   };
 
   const formatCardNumber = (text) => {
@@ -163,7 +161,6 @@ export default function PaymentMethodsScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: user?.email || '',
-        mobileNumber: mobileNumber.trim() || user?.phone || '',
         idNumber: idNumber.trim(),
         cardNumber: cleanNumber,
         cardExpiry: cardExpiry,
@@ -490,21 +487,6 @@ export default function PaymentMethodsScreen() {
                       placeholderTextColor={COLORS.textMuted}
                       value={idNumber}
                       onChangeText={setIdNumber}
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>{t('paymentMethods.form.phone')}</Text>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="call-outline" size={20} color={COLORS.textMuted} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="+504 9999-9999"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={mobileNumber}
-                      onChangeText={setMobileNumber}
-                      keyboardType="phone-pad"
                     />
                   </View>
                 </View>

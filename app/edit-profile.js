@@ -58,6 +58,9 @@ export default function EditProfileScreen() {
   const [avatar, setAvatar] = useState(user?.avatar_url || user?.profile_photo_url || null);
   const [newAvatarUri, setNewAvatarUri] = useState(null); // URI local de nueva imagen
   
+  // Currency preference
+  const [preferredCurrency, setPreferredCurrency] = useState(user?.preferred_currency || 'HNL');
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -112,10 +115,11 @@ export default function EditProfileScreen() {
       }
 
       // Actualizar perfil con todos los datos
-      const res = await updateUserProfile({ 
-        name, 
+      const res = await updateUserProfile({
+        name,
         phone,
-        profile_photo_url: avatarUrl
+        profile_photo_url: avatarUrl,
+        preferred_currency: preferredCurrency
       });
       
       setLoading(false);
@@ -304,6 +308,30 @@ export default function EditProfileScreen() {
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="phone-pad"
               />
+            </View>
+
+            {/* Selector de moneda */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Moneda preferida</Text>
+              <View style={styles.currencySelector}>
+                {['HNL', 'USD', 'GTQ', 'MXN', 'EUR'].map(code => (
+                  <TouchableOpacity
+                    key={code}
+                    style={[
+                      styles.currencyOption,
+                      preferredCurrency === code && styles.currencyOptionActive
+                    ]}
+                    onPress={() => setPreferredCurrency(code)}
+                  >
+                    <Text style={[
+                      styles.currencyOptionText,
+                      preferredCurrency === code && styles.currencyOptionTextActive
+                    ]}>
+                      {code}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             {/* Save Button */}
@@ -512,6 +540,13 @@ const styles = StyleSheet.create({
 
   passwordInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(12), paddingRight: scale(14), borderWidth: 1, borderColor: COLORS.cardBorder },
   passwordField: { flex: 1, padding: scale(14), fontSize: scale(16), color: COLORS.textPrimary },
+
+  // Currency selector
+  currencySelector: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
+  currencyOption: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)' },
+  currencyOptionActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
+  currencyOptionText: { color: COLORS.textSecondary, fontWeight: '600', fontSize: 13 },
+  currencyOptionTextActive: { color: COLORS.background },
 
   saveBtn: { backgroundColor: COLORS.lime, borderRadius: scale(12), padding: scale(16), alignItems: 'center', marginTop: scale(8) },
   saveBtnDisabled: { backgroundColor: COLORS.backgroundTertiary },

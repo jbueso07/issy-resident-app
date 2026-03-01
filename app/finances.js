@@ -11,7 +11,9 @@ import {
   Dimensions,
   ActivityIndicator,
   Image,
-  Modal
+  Modal,
+  Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -73,8 +75,11 @@ import {
   getReceivablePayments,
   // NEW - User Settings
   getFinanceSettings,
-  updateFinanceSettings
+  updateFinanceSettings,
+  // NEW - Reset
+  resetFinances,
 } from '../src/services/api';
+import { SUPPORTED_CURRENCIES, formatCurrency as formatCurrencyUtil } from '../src/utils/useCurrency';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -157,7 +162,8 @@ export default function FinancesScreen() {
   const [budgets, setBudgets] = useState([]);
   const [plans, setPlans] = useState([]);
   const [limits, setLimits] = useState(null);
-  
+  const [userCurrency, setUserCurrency] = useState('HNL');
+
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showContributionModal, setShowContributionModal] = useState(false);
@@ -247,7 +253,10 @@ export default function FinancesScreen() {
         getReceivables('paid').catch(() => ({ success: false }))
       ]);
       
-      if (dashRes.success) setDashboard(dashRes.data);
+      if (dashRes.success) {
+        setDashboard(dashRes.data);
+        if (dashRes.data?.preferred_currency) setUserCurrency(dashRes.data.preferred_currency);
+      }
       if (transRes.success) setTransactions(transRes.data || []);
       if (goalsRes.success) setGoals(goalsRes.data || []);
       if (catRes.success) setCategories(catRes.data || []);
@@ -336,7 +345,7 @@ export default function FinancesScreen() {
   const handleCreateTransaction = async () => {
     if (!transactionForm.amount || !transactionForm.category) { Alert.alert(t('common.error'), t('finances.errors.amountCategoryRequired')); return; }
     try {
-      const res = await createTransaction({ type: transactionType, amount: parseFloat(transactionForm.amount), category: transactionForm.category, description: transactionForm.description, date: transactionForm.date });
+      const res = await createTransaction({ type: transactionType, amount: sanitizeAmount(transactionForm.amount), category: transactionForm.category, description: transactionForm.description, date: transactionForm.date });
       if (res.success) { Alert.alert(t('finances.success.transactionTitle'), t('finances.success.transactionRegistered')); setShowTransactionModal(false); setTransactionForm({ amount: '', category: '', description: '', date: new Date().toISOString().split('T')[0] }); loadData(); }
       else Alert.alert(t('common.error'), res.error || t('finances.errors.registerFailed'));
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.transactionError')); }
@@ -345,16 +354,16 @@ export default function FinancesScreen() {
   const handleCreateGoal = async () => {
     if (!goalForm.name || !goalForm.target_amount) { Alert.alert(t('common.error'), t('finances.errors.goalNameAmountRequired')); return; }
     try {
-      const res = await createFinanceGoal({ name: goalForm.name, target_amount: parseFloat(goalForm.target_amount), icon: goalForm.icon, deadline: goalForm.deadline || null });
+      const res = await createFinanceGoal({ name: goalForm.name, target_amount: sanitizeAmount(goalForm.target_amount), icon: goalForm.icon, deadline: goalForm.deadline || null });
       if (res.success) { Alert.alert(t('finances.success.goalTitle'), t('finances.success.goalCreated')); setShowGoalModal(false); setGoalForm({ name: '', target_amount: '', icon: '🎯' }); loadData(); }
       else Alert.alert(t('common.error'), res.error || t('finances.errors.createGoalFailed'));
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.goalError')); }
   };
 
   const handleAddContribution = async () => {
-    if (!contributionAmount || parseFloat(contributionAmount) <= 0) { Alert.alert(t('common.error'), t('finances.errors.validAmountRequired')); return; }
+    if (!contributionAmount || sanitizeAmount(contributionAmount) <= 0) { Alert.alert(t('common.error'), t('finances.errors.validAmountRequired')); return; }
     try {
-      const res = await addGoalContribution(selectedGoal.id, { amount: parseFloat(contributionAmount) });
+      const res = await addGoalContribution(selectedGoal.id, { amount: sanitizeAmount(contributionAmount) });
       if (res.success) { Alert.alert(t('finances.success.contributionTitle'), res.message || t('finances.success.contributionAdded')); setShowContributionModal(false); setContributionAmount(''); setSelectedGoal(null); loadData(); }
       else Alert.alert(t('common.error'), res.error || t('finances.errors.contributionFailed'));
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.contributionError')); }
@@ -417,7 +426,7 @@ export default function FinancesScreen() {
       
       const res = await createInvoice({ 
         vendor_name: invoiceForm.vendor_name, 
-        amount: parseFloat(invoiceForm.amount), 
+        amount: sanitizeAmount(invoiceForm.amount),
         category: invoiceForm.category || 'Servicios', 
         due_date: invoiceForm.due_date || null, 
         description: invoiceForm.description, 
@@ -494,7 +503,7 @@ export default function FinancesScreen() {
   const handleCreateBudget = async () => {
     if (!budgetForm.category || !budgetForm.amount) { Alert.alert(t('common.error'), t('finances.errors.categoryAmountRequired')); return; }
     try {
-      const res = await createBudget({ category: budgetForm.category, amount: parseFloat(budgetForm.amount), icon: budgetForm.icon });
+      const res = await createBudget({ category: budgetForm.category, amount: sanitizeAmount(budgetForm.amount), icon: budgetForm.icon });
       if (res.success) { Alert.alert(t('finances.success.budgetTitle'), res.message || t('finances.success.budgetCreated')); setShowBudgetModal(false); setBudgetForm({ category: '', amount: '', icon: '💰' }); loadData(); }
       else Alert.alert(t('common.error'), res.error || t('finances.errors.createFailed'));
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.budgetError')); }
@@ -512,6 +521,18 @@ export default function FinancesScreen() {
   };
 
   const handleUpgrade = async (planName) => {
+    if (Platform.OS === 'ios') {
+      Alert.alert(
+        'Suscríbete en la web',
+        'Para activar un plan ISSY visita app.joinissy.com desde Safari.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Safari', onPress: () => Linking.openURL('https://app.joinissy.com/subscriptions') }
+        ]
+      );
+      return;
+    }
+
     try {
       const methodsRes = await getPaymentMethods();
       
@@ -551,7 +572,20 @@ export default function FinancesScreen() {
     } catch (error) { Alert.alert(t('common.error'), t('finances.errors.paymentMethodsError') + ': ' + error.message); }
   };
 
-  const formatCurrency = (amount) => `L ${parseFloat(amount || 0).toLocaleString('es-HN', { minimumFractionDigits: 0 })}`;
+  // Sanitiza montos ingresados por el usuario (soporta comas como separador de miles)
+  const sanitizeAmount = (value) => {
+    if (!value) return 0;
+    const cleaned = String(value)
+      .replace(/[^\d.,]/g, '')
+      .replace(/,(\d{3})/g, '$1')
+      .replace(',', '.');
+    const result = parseFloat(cleaned);
+    return isNaN(result) ? 0 : result;
+  };
+
+  // Formateo de moneda usando la preferencia del usuario
+  const formatCurrency = (amount) => formatCurrencyUtil(amount, userCurrency);
+
   const getProgressPercentage = (current, target) => Math.min((parseFloat(current) / parseFloat(target)) * 100, 100);
   const getLevelInfo = (level) => {
     const levels = { 1: { name: 'Principiante', color: COLORS.textMuted }, 2: { name: 'Aprendiz', color: COLORS.green }, 3: { name: 'Intermedio', color: COLORS.blue }, 4: { name: 'Avanzado', color: COLORS.purple }, 5: { name: 'Experto', color: COLORS.yellow } };
@@ -627,6 +661,21 @@ export default function FinancesScreen() {
       if (comparisonRes.success) setMonthComparison(comparisonRes.data);
     } catch (error) {
       console.error('Error loading reports:', error);
+    }
+  };
+
+  const handleResetFinances = async () => {
+    try {
+      const res = await resetFinances();
+      if (res.success) {
+        Alert.alert('Listo', 'Tu historial financiero fue reseteado.');
+        setShowReportsModal(false);
+        loadData();
+      } else {
+        Alert.alert(t('common.error'), res.error || 'No se pudo resetear.');
+      }
+    } catch (e) {
+      Alert.alert(t('common.error'), 'No se pudo conectar con el servidor.');
     }
   };
 
@@ -2333,6 +2382,24 @@ export default function FinancesScreen() {
             </View>
           </View>
         )}
+
+        {/* Reset acumulado */}
+        <TouchableOpacity
+          style={styles.resetBtn}
+          onPress={() => {
+            Alert.alert(
+              'Resetear acumulado',
+              'Esto eliminará todas tus transacciones, metas, facturas y presupuestos registrados. Esta acción no se puede deshacer.',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Resetear', style: 'destructive', onPress: handleResetFinances }
+              ]
+            );
+          }}
+        >
+          <Ionicons name="refresh-outline" size={18} color={COLORS.red} />
+          <Text style={styles.resetBtnText}>Resetear acumulado</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelButton} onPress={() => setShowReportsModal(false)}>
           <Text style={styles.cancelButtonText}>{t('common.close', 'Cerrar')}</Text>
@@ -4857,5 +4924,23 @@ const styles = StyleSheet.create({
     fontSize: scale(14),
     color: COLORS.textPrimary,
     flex: 1,
+  },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: scale(12),
+    marginTop: scale(8),
+    marginBottom: scale(4),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+  },
+  resetBtnText: {
+    fontSize: scale(14),
+    color: '#EF4444',
+    fontWeight: '500',
   },
 });

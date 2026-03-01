@@ -161,11 +161,23 @@ export default function ReservationsScreen() {
       const userId = profile?.id || user?.id;
       if (!userId) return;
 
-      const { data, error } = await supabase
+      const locationId = profile?.location_id || profile?.current_location?.location_id || user?.location_id;
+
+      let query = supabase
         .from('area_reservations')
-        .select('*')
-        .eq('user_id', userId)
-        .order('reservation_date', { ascending: false });
+        .select(`
+          *,
+          area:common_areas!area_id(id, name, type, image_url, location_id)
+        `)
+        .eq('user_id', userId);
+
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+
+      query = query.order('reservation_date', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setMyReservations(data || []);
@@ -494,7 +506,7 @@ export default function ReservationsScreen() {
             </View>
 
             {activeReservations.map((item) => {
-              const area = getAreaById(item.area_id);
+              const area = item.area || getAreaById(item.area_id);
               const typeInfo = getTypeInfo(area?.type);
               const status = STATUS_CONFIG[item.status];
 
@@ -556,7 +568,7 @@ export default function ReservationsScreen() {
             </View>
 
             {pastReservations.slice(0, 5).map((item) => {
-              const area = getAreaById(item.area_id);
+              const area = item.area || getAreaById(item.area_id);
               const status = STATUS_CONFIG[item.status];
 
               return (
@@ -800,7 +812,7 @@ export default function ReservationsScreen() {
           {selectedReservation && (
             <ScrollView style={styles.detailContent}>
               {(() => {
-                const area = getAreaById(selectedReservation.area_id);
+                const area = selectedReservation.area || getAreaById(selectedReservation.area_id);
                 const status = STATUS_CONFIG[selectedReservation.status];
 
                 return (

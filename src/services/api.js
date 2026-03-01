@@ -2463,6 +2463,36 @@ export const updateFinanceSettings = async (settings) => {
 };
 
 // ==========================================
+// RESET FINANZAS PERSONALES
+// ==========================================
+export const resetFinances = async () => {
+  try {
+    const data = await authFetch('/finance/reset', { method: 'DELETE' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error resetting finances:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// CURRENCY PREFERENCE
+// ==========================================
+
+export const updatePreferredCurrency = async (currency) => {
+  try {
+    const data = await authFetch('/finance/currency', {
+      method: 'PATCH',
+      body: JSON.stringify({ currency })
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error updating currency preference:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
 // BANK ACCOUNTS - Multiple accounts per location
 // ==========================================
 
