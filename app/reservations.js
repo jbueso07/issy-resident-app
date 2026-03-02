@@ -293,9 +293,17 @@ export default function ReservationsScreen() {
   const getAreaById = (areaId) => areas.find(a => a.id === areaId);
 
   // Handlers
+  // Helper: calcula el primer día disponible basado en advance_booking_days del área
+  const getFirstAvailableDate = (area) => {
+    const advanceDays = area?.advance_booking_days || 0;
+    const date = new Date();
+    date.setDate(date.getDate() + advanceDays);
+    return date.toISOString().split('T')[0];
+  };
+
   const handleOpenCreate = () => {
     setSelectedArea(null);
-    setSelectedDate(getTodayDate());
+    setSelectedDate(null);
     setSelectedSlots([]);
     setAttendees(2);
     setExpandedCategory(null);
@@ -306,9 +314,9 @@ export default function ReservationsScreen() {
   const handleSelectArea = (area) => {
     setSelectedArea(area);
     setSelectedSlots([]);
-    if (selectedDate) {
-      loadAvailability(area.id, selectedDate);
-    }
+    const firstDate = getFirstAvailableDate(area);
+    setSelectedDate(firstDate);
+    loadAvailability(area.id, firstDate);
   };
 
   const handleDateChange = (date) => {
@@ -445,13 +453,14 @@ export default function ReservationsScreen() {
   };
 
   // Generate dates for date picker
+  // advance_booking_days = 0 → empieza hoy, = 1 → empieza mañana, etc.
   const generateDates = () => {
     const dates = [];
-    const today = new Date();
-    const maxDays = selectedArea?.advance_booking_days || 30;
+    const advanceDays = selectedArea?.advance_booking_days || 0;
+    const maxDays = 30; // mostrar siempre 30 días hacia adelante
 
-    for (let i = 0; i < maxDays; i++) {
-      const date = new Date(today);
+    for (let i = advanceDays; i < advanceDays + maxDays; i++) {
+      const date = new Date();
       date.setDate(date.getDate() + i);
       dates.push({
         date: date.toISOString().split('T')[0],
