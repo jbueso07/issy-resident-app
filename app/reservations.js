@@ -224,6 +224,23 @@ export default function ReservationsScreen() {
     return new Date().toISOString().split('T')[0];
   }
 
+  // Filtra slots cuya hora de inicio ya pasó cuando la fecha seleccionada es hoy
+  const filterPastSlots = (slots) => {
+    if (!Array.isArray(slots) || !selectedDate) return slots;
+    const today = getTodayDate();
+    if (selectedDate !== today) return slots;
+
+    const now = new Date();
+    const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    return slots.map(slot => {
+      if (slot.start_time <= currentHHMM) {
+        return { ...slot, available: false };
+      }
+      return slot;
+    });
+  };
+
   const getTypeInfo = (type) => TYPE_INFO[type] || TYPE_INFO.other;
 
   const getAreaImage = (area) => {
@@ -714,7 +731,7 @@ export default function ReservationsScreen() {
                 ) : (
                   <>
                     <View style={styles.slotsGrid}>
-                      {(Array.isArray(availability) ? availability : []).map((slot, idx) => {
+                      {filterPastSlots(Array.isArray(availability) ? availability : []).map((slot, idx) => {
                         const slotKey = `${slot.start_time}-${slot.end_time}`;
                         const isSelected = selectedSlots.some(s => `${s.start_time}-${s.end_time}` === slotKey);
 
