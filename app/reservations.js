@@ -295,9 +295,9 @@ export default function ReservationsScreen() {
   // Handlers
   // Helper: calcula el primer día disponible basado en advance_booking_days del área
   const getFirstAvailableDate = (area) => {
-    const advanceDays = area?.advance_booking_days || 0;
+    const minAdvance = area?.advance_booking_days || 0;
     const date = new Date();
-    date.setDate(date.getDate() + advanceDays);
+    date.setDate(date.getDate() + minAdvance);
     return date.toISOString().split('T')[0];
   };
 
@@ -453,20 +453,23 @@ export default function ReservationsScreen() {
   };
 
   // Generate dates for date picker
-  // advance_booking_days = 0 → empieza hoy, = 1 → empieza mañana, etc.
+  // advance_booking_days = mínimo de días de anticipación requeridos
   const generateDates = () => {
     const dates = [];
-    const advanceDays = selectedArea?.advance_booking_days || 0;
-    const maxDays = 30; // mostrar siempre 30 días hacia adelante
+    const minAdvance = selectedArea?.advance_booking_days || 0;
+    const maxVisible = 30;
 
-    for (let i = advanceDays; i < advanceDays + maxDays; i++) {
+    for (let i = minAdvance; i < minAdvance + maxVisible; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
       dates.push({
-        date: date.toISOString().split('T')[0],
+        date: dateStr,
+        dateStr,
         dayName: date.toLocaleDateString('es-HN', { weekday: 'short' }),
         dayNum: date.getDate(),
-        month: date.toLocaleDateString('es-HN', { month: 'short' })
+        month: date.toLocaleDateString('es-HN', { month: 'short' }),
+        monthName: date.toLocaleDateString('es-HN', { month: 'short' }),
       });
     }
     return dates;

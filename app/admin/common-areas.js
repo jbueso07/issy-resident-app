@@ -101,9 +101,10 @@ export default function AdminCommonAreas() {
     title: '',
     repeat_type: 'once',
     block_date: '',
+    block_date_end: '',
+    end_date: '',
     repeat_days: [],
-    start_time: '08:00',
-    end_time: '20:00',
+    timeSlots: [{ start_time: '08:00', end_time: '20:00' }],
     reason: '',
   });
   const [savingBlock, setSavingBlock] = useState(false);
@@ -335,30 +336,55 @@ export default function AdminCommonAreas() {
       Alert.alert(t('common.error'), 'Selecciona al menos un día');
       return;
     }
-    if (blockForm.start_time >= blockForm.end_time) {
-      Alert.alert(t('common.error'), 'La hora de inicio debe ser menor que la hora de fin');
-      return;
+    // Validate all time slots
+    for (let i = 0; i < blockForm.timeSlots.length; i++) {
+      const slot = blockForm.timeSlots[i];
+      if (slot.start_time >= slot.end_time) {
+        Alert.alert(t('common.error'), `Slot ${i + 1}: La hora de inicio debe ser menor que la hora de fin`);
+        return;
+      }
     }
     setSavingBlock(true);
     try {
-      const payload = {
-        title: blockForm.title,
-        repeat_type: blockForm.repeat_type,
-        block_date: blockForm.repeat_type !== 'daily' ? blockForm.block_date : new Date().toISOString().split('T')[0],
-        repeat_days: blockForm.repeat_type === 'weekly' ? blockForm.repeat_days : [],
-        start_time: blockForm.start_time,
-        end_time: blockForm.end_time,
-        reason: blockForm.reason,
-      };
-      const response = await fetch(`${API_URL}/common-areas/${selectedArea?.id}/blocked-schedules`, {
+      // Generate dates array for 'once' type with date range
+      let dates = [];
+      if (blockForm.repeat_type === 'once' && blockForm.block_date_end && blockForm.block_date_end > blockForm.block_date) {
+        let current = new Date(blockForm.block_date + 'T12:00:00');
+        const end = new Date(blockForm.block_date_end + 'T12:00:00');
+        while (current <= end) {
+          dates.push(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
+        }
+      } else {
+        dates = [blockForm.block_date || new Date().toISOString().split('T')[0]];
+      }
+
+      // Build blocks array: one entry per date per time slot
+      const blocks = [];
+      for (const date of dates) {
+        for (const slot of blockForm.timeSlots) {
+          blocks.push({
+            title: blockForm.title,
+            repeat_type: blockForm.repeat_type,
+            block_date: date,
+            repeat_days: blockForm.repeat_type === 'weekly' ? blockForm.repeat_days : [],
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            end_date: (blockForm.repeat_type === 'weekly' || blockForm.repeat_type === 'daily') ? (blockForm.end_date || null) : null,
+            reason: blockForm.reason,
+          });
+        }
+      }
+
+      const response = await fetch(`${API_URL}/common-areas/${selectedArea?.id}/blocked-schedules/bulk`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ blocks }),
       });
       const data = await response.json();
       if (data.success || response.ok) {
         setShowBlockModal(false);
-        setBlockForm({ title: '', repeat_type: 'once', block_date: '', repeat_days: [], start_time: '08:00', end_time: '20:00', reason: '' });
+        setBlockForm({ title: '', repeat_type: 'once', block_date: '', block_date_end: '', end_date: '', repeat_days: [], timeSlots: [{ start_time: '08:00', end_time: '20:00' }], reason: '' });
         loadBlockedSchedules(selectedArea?.id);
       } else {
         Alert.alert(t('common.error'), data.error || 'Error al guardar bloqueo');
@@ -404,6 +430,27 @@ export default function AdminCommonAreas() {
       repeat_days: prev.repeat_days.includes(dayId)
         ? prev.repeat_days.filter((d) => d !== dayId)
         : [...prev.repeat_days, dayId],
+    }));
+  };
+
+  const addTimeSlot = () => {
+    setBlockForm((prev) => ({
+      ...prev,
+      timeSlots: [...prev.timeSlots, { start_time: '08:00', end_time: '20:00' }],
+    }));
+  };
+
+  const removeTimeSlot = (index) => {
+    setBlockForm((prev) => ({
+      ...prev,
+      timeSlots: prev.timeSlots.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateTimeSlot = (index, field, value) => {
+    setBlockForm((prev) => ({
+      ...prev,
+      timeSlots: prev.timeSlots.map((slot, i) => (i === index ? { ...slot, [field]: value } : slot)),
     }));
   };
 
@@ -463,7 +510,7 @@ export default function AdminCommonAreas() {
       capacity: area.capacity?.toString() || '10',
       min_hours: area.min_duration_hours?.toString() || '1',
       max_hours: area.max_duration_hours?.toString() || '4',
-      max_advance_days: area.max_advance_days?.toString() || '30',
+      max_advance_days: (area.advance_booking_days ?? area.max_advance_days ?? 30).toString(),
       requires_approval: area.requires_approval || false,
       location_id: area.location_id || '',
       is_24_hours: area.is_24_hours || false,
@@ -1084,7 +1131,7 @@ export default function AdminCommonAreas() {
                 <TouchableOpacity
                   style={styles.addBlockButton}
                   onPress={() => {
-                    setBlockForm({ title: '', repeat_type: 'once', block_date: '', repeat_days: [], start_time: '08:00', end_time: '20:00', reason: '' });
+                    setBlockForm({ title: '', repeat_type: 'once', block_date: '', block_date_end: '', end_date: '', repeat_days: [], timeSlots: [{ start_time: '08:00', end_time: '20:00' }], reason: '' });
                     setShowBlockModal(true);
                   }}
                 >
@@ -1183,12 +1230,20 @@ export default function AdminCommonAreas() {
 
               {blockForm.repeat_type === 'once' && (
                 <>
-                  <Text style={styles.blockFieldLabel}>{'Fecha (YYYY-MM-DD)'}</Text>
+                  <Text style={styles.blockFieldLabel}>{'Fecha inicio (YYYY-MM-DD)'}</Text>
                   <TextInput
                     style={styles.blockInput}
                     value={blockForm.block_date}
                     onChangeText={(text) => setBlockForm((prev) => ({ ...prev, block_date: text }))}
                     placeholder="2026-03-01"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
+                  <Text style={styles.blockFieldLabel}>{'Fecha fin (opcional, para rango)'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.block_date_end}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, block_date_end: text }))}
+                    placeholder="2026-03-05"
                     placeholderTextColor={COLORS.textMuted}
                   />
                 </>
@@ -1216,31 +1271,75 @@ export default function AdminCommonAreas() {
                     placeholder="2026-03-01"
                     placeholderTextColor={COLORS.textMuted}
                   />
+                  <Text style={styles.blockFieldLabel}>{'Fecha fin (opcional)'}</Text>
+                  <TextInput
+                    style={styles.blockInput}
+                    value={blockForm.end_date}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, end_date: text }))}
+                    placeholder="2026-06-30"
+                    placeholderTextColor={COLORS.textMuted}
+                  />
                 </>
               )}
 
-              <View style={styles.blockTimeRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.blockFieldLabel}>{'Hora inicio'}</Text>
+              {blockForm.repeat_type === 'daily' && (
+                <>
+                  <Text style={styles.blockFieldLabel}>{'Fecha de inicio (YYYY-MM-DD)'}</Text>
                   <TextInput
                     style={styles.blockInput}
-                    value={blockForm.start_time}
-                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, start_time: text }))}
-                    placeholder="08:00"
+                    value={blockForm.block_date}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, block_date: text }))}
+                    placeholder="2026-03-01"
                     placeholderTextColor={COLORS.textMuted}
                   />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.blockFieldLabel}>{'Hora fin'}</Text>
+                  <Text style={styles.blockFieldLabel}>{'Fecha fin (opcional)'}</Text>
                   <TextInput
                     style={styles.blockInput}
-                    value={blockForm.end_time}
-                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, end_time: text }))}
-                    placeholder="20:00"
+                    value={blockForm.end_date}
+                    onChangeText={(text) => setBlockForm((prev) => ({ ...prev, end_date: text }))}
+                    placeholder="2026-06-30"
                     placeholderTextColor={COLORS.textMuted}
                   />
-                </View>
+                </>
+              )}
+
+              {/* Time Slots */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: scale(12) }}>
+                <Text style={styles.blockFieldLabel}>{'Horarios'}</Text>
+                <TouchableOpacity onPress={addTimeSlot} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: scale(10), paddingVertical: scale(6), backgroundColor: COLORS.teal + '20', borderRadius: scale(6) }}>
+                  <Ionicons name="add" size={14} color={COLORS.teal} />
+                  <Text style={{ fontSize: scale(12), color: COLORS.teal, fontWeight: '500' }}>{'Agregar horario'}</Text>
+                </TouchableOpacity>
               </View>
+              {blockForm.timeSlots.map((slot, idx) => (
+                <View key={idx} style={[styles.blockTimeRow, { alignItems: 'center', marginTop: scale(6) }]}>
+                  <View style={{ flex: 1 }}>
+                    {idx === 0 && <Text style={styles.blockFieldLabel}>{'Hora inicio'}</Text>}
+                    <TextInput
+                      style={styles.blockInput}
+                      value={slot.start_time}
+                      onChangeText={(text) => updateTimeSlot(idx, 'start_time', text)}
+                      placeholder="08:00"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    {idx === 0 && <Text style={styles.blockFieldLabel}>{'Hora fin'}</Text>}
+                    <TextInput
+                      style={styles.blockInput}
+                      value={slot.end_time}
+                      onChangeText={(text) => updateTimeSlot(idx, 'end_time', text)}
+                      placeholder="20:00"
+                      placeholderTextColor={COLORS.textMuted}
+                    />
+                  </View>
+                  {blockForm.timeSlots.length > 1 && (
+                    <TouchableOpacity onPress={() => removeTimeSlot(idx)} style={{ width: scale(28), height: scale(28), borderRadius: scale(6), backgroundColor: COLORS.danger + '20', alignItems: 'center', justifyContent: 'center', marginTop: idx === 0 ? scale(18) : 0 }}>
+                      <Ionicons name="close" size={16} color={COLORS.danger} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
 
               <Text style={styles.blockFieldLabel}>{'Razón'}</Text>
               <TextInput
