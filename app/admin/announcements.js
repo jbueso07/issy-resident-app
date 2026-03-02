@@ -208,13 +208,13 @@ export default function AdminAnnouncements() {
     try {
       for (const image of selectedImages) {
         const formDataUpload = new FormData();
-        formDataUpload.append('file', {
+        formDataUpload.append('images', {
           uri: image.uri,
           type: 'image/jpeg',
           name: `announcement_${Date.now()}.jpg`,
         });
         const token = await AsyncStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/upload`, {
+        const response = await fetch(`${API_URL}/api/announcements/upload`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formDataUpload,
