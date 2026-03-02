@@ -295,10 +295,14 @@ export default function ReservationsScreen() {
   // Handlers
   // Helper: calcula el primer día disponible basado en advance_booking_days del área
   const getFirstAvailableDate = (area) => {
-    const minAdvance = area?.advance_booking_days || 0;
+    const minAdvanceDays = parseInt(area?.advance_booking_days) || 0;
     const date = new Date();
-    date.setDate(date.getDate() + minAdvance);
-    return date.toISOString().split('T')[0];
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + minAdvanceDays);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleOpenCreate = () => {
@@ -312,6 +316,7 @@ export default function ReservationsScreen() {
   };
 
   const handleSelectArea = (area) => {
+    console.log('📅 Area advance_booking_days:', area?.advance_booking_days, '| Type:', typeof area?.advance_booking_days);
     setSelectedArea(area);
     setSelectedSlots([]);
     const firstDate = getFirstAvailableDate(area);
@@ -455,14 +460,19 @@ export default function ReservationsScreen() {
   // Generate dates for date picker
   // advance_booking_days = mínimo de días de anticipación requeridos
   const generateDates = () => {
+    const area = selectedArea;
+    const minAdvanceDays = parseInt(area?.advance_booking_days) || 0;
+    const totalVisible = 30;
     const dates = [];
-    const minAdvance = selectedArea?.advance_booking_days || 0;
-    const maxVisible = 30;
 
-    for (let i = minAdvance; i < minAdvance + maxVisible; i++) {
+    for (let i = minAdvanceDays; i < minAdvanceDays + totalVisible; i++) {
       const date = new Date();
+      date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       dates.push({
         date: dateStr,
         dateStr,
