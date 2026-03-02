@@ -293,12 +293,11 @@ export default function ReservationsScreen() {
   const getAreaById = (areaId) => areas.find(a => a.id === areaId);
 
   // Handlers
-  // Helper: calcula el primer día disponible basado en advance_booking_days del área
+  // Helper: calcula el primer día disponible (siempre mañana)
   const getFirstAvailableDate = (area) => {
-    const minAdvanceDays = parseInt(area?.advance_booking_days) || 0;
     const date = new Date();
     date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + minAdvanceDays);
+    date.setDate(date.getDate() + 1);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -458,14 +457,12 @@ export default function ReservationsScreen() {
   };
 
   // Generate dates for date picker
-  // advance_booking_days = mínimo de días de anticipación requeridos
+  // advance_booking_days = total de días visibles, empezando desde mañana
   const generateDates = () => {
-    const area = selectedArea;
-    const minAdvanceDays = parseInt(area?.advance_booking_days) || 0;
-    const totalVisible = 30;
     const dates = [];
+    const advanceDays = parseInt(selectedArea?.advance_booking_days) || 1;
 
-    for (let i = minAdvanceDays; i < minAdvanceDays + totalVisible; i++) {
+    for (let i = 1; i <= advanceDays; i++) {
       const date = new Date();
       date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() + i);
