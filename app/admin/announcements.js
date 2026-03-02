@@ -131,7 +131,7 @@ export default function AdminAnnouncements() {
   const fetchAnnouncements = async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/api/announcements/admin?location_id=${selectedLocationId}`, { headers });
+      const response = await fetch(`${API_URL}/api/announcements?location_id=${selectedLocationId}`, { headers });
       const data = await response.json();
       if (data.success) {
         setAnnouncements(data.data || []);
