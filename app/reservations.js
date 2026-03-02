@@ -293,15 +293,13 @@ export default function ReservationsScreen() {
   const getAreaById = (areaId) => areas.find(a => a.id === areaId);
 
   // Handlers
-  // Helper: calcula el primer día disponible basado en advance_booking_days
+  // Helper: calcula el primer día disponible (hoy)
   const getFirstAvailableDate = (area) => {
-    const advanceDays = parseInt(area?.advance_booking_days) || 1;
-    const firstAvailable = new Date();
-    firstAvailable.setHours(firstAvailable.getHours() + (advanceDays * 24));
-    firstAvailable.setHours(0, 0, 0, 0);
-    const year = firstAvailable.getFullYear();
-    const month = String(firstAvailable.getMonth() + 1).padStart(2, '0');
-    const day = String(firstAvailable.getDate()).padStart(2, '0');
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -458,19 +456,15 @@ export default function ReservationsScreen() {
   };
 
   // Generate dates for date picker
-  // advance_booking_days = total de días visibles, primer día = ahora + advance_booking_days * 24h
+  // advance_booking_days = días hacia adelante visibles (hoy + advance_booking_days)
   const generateDates = () => {
     const dates = [];
     const advanceDays = parseInt(selectedArea?.advance_booking_days) || 1;
 
-    // Primer día disponible = ahora + advance_booking_days * 24 horas
-    const firstAvailable = new Date();
-    firstAvailable.setHours(firstAvailable.getHours() + (advanceDays * 24));
-    firstAvailable.setHours(0, 0, 0, 0);
-
-    // Total de días visibles = advance_booking_days (no hardcodeado)
-    for (let i = 0; i < advanceDays; i++) {
-      const date = new Date(firstAvailable);
+    // Mostrar hoy + los próximos advance_booking_days días
+    for (let i = 0; i <= advanceDays; i++) {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
       date.setDate(date.getDate() + i);
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
