@@ -124,7 +124,9 @@ export default function TabsLayout() {
 
   const tabBarStyle = {
     ...styles.tabBar,
-    bottom: 28,
+    bottom: Platform.OS === 'android'
+      ? Math.max(28, insets.bottom + 12)
+      : 28,
   };
 
   return (
