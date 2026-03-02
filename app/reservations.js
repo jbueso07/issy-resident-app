@@ -228,13 +228,16 @@ export default function ReservationsScreen() {
   const filterPastSlots = (slots) => {
     if (!Array.isArray(slots) || !selectedDate) return slots;
     const today = getTodayDate();
-    if (selectedDate !== today) return slots;
+    // Solo filtrar si la fecha seleccionada es exactamente hoy (YYYY-MM-DD)
+    if (selectedDate.trim() !== today) return slots;
 
     const now = new Date();
     const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     return slots.map(slot => {
-      if (slot.start_time <= currentHHMM) {
+      // Comparar solo HH:MM — si la hora de inicio ya pasó, marcar como no disponible
+      const slotStart = (slot.start_time || '').substring(0, 5);
+      if (slotStart <= currentHHMM) {
         return { ...slot, available: false };
       }
       return slot;
@@ -447,7 +450,7 @@ export default function ReservationsScreen() {
     const today = new Date();
     const maxDays = selectedArea?.advance_booking_days || 30;
 
-    for (let i = 0; i < Math.min(maxDays, 14); i++) {
+    for (let i = 0; i < maxDays; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       dates.push({
