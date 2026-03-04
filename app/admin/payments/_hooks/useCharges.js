@@ -105,6 +105,8 @@ export function useCharges(t, selectedLocationId) {
         due_date: formData.due_date,
         allowed_payment_methods: formData.allowed_payment_methods,
         location_id: selectedLocationId,
+        is_recurring: formData.is_recurring || false,
+        recurring_period: formData.is_recurring ? formData.recurring_period : null,
       };
       const response = await fetch(API_URL + '/api/community-payments/admin/charges', {
         method: 'POST',
