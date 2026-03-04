@@ -180,7 +180,7 @@ export default function AdminIncidents() {
     try {
       const result = await getIncidentById(incident.id);
       if (result.success) {
-        setSelectedIncident(result.data);
+        setSelectedIncident(result.data.incident || result.data);
       } else {
         setSelectedIncident(incident);
       }
@@ -463,7 +463,7 @@ export default function AdminIncidents() {
               <View style={styles.addCommentContainer}>
                 <TextInput
                   style={styles.commentInput}
-                  placeholder={t('admin.incidents.addComment')}
+                  placeholder={t('admin.incidents.addCommentPlaceholder')}
                   placeholderTextColor={COLORS.textMuted}
                   value={commentText}
                   onChangeText={setCommentText}
@@ -866,6 +866,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
+    paddingTop: scale(16),
     paddingVertical: scale(12),
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
