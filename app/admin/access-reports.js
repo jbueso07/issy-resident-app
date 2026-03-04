@@ -500,8 +500,10 @@ export default function AccessReportsScreen() {
                 <DetailRow icon="time" label={t('admin.accessReports.detail.dateTime')} value={formatFullDateTime(log.timestamp || log.created_at)} />
                 <DetailRow icon="qr-code" label={t('admin.accessReports.detail.qrType')} value={qrInfo.label} valueColor={qrInfo.color} />
                 {log.vehicle_plate && <DetailRow icon="car" label={t('admin.accessReports.detail.vehiclePlate')} value={log.vehicle_plate} />}
+                {log.vehicle_color && <DetailRow icon="color-palette" label={t('admin.accessReports.detail.vehicleColor') || 'Color'} value={log.vehicle_color} />}
                 {log.id_number && <DetailRow icon="id-card" label={t('admin.accessReports.detail.idNumber')} value={log.id_number} />}
                 {log.companions_count > 0 && <DetailRow icon="people" label={t('admin.accessReports.detail.companions')} value={`${log.companions_count} ${t('admin.accessReports.detail.persons')}`} />}
+                {log.companion_names && log.companion_names.length > 0 && <DetailRow icon="list" label={t('admin.accessReports.detail.companionNames') || 'Nombres'} value={Array.isArray(log.companion_names) ? log.companion_names.join(', ') : log.companion_names} />}
                 {log.notes && <DetailRow icon="document-text" label={t('admin.accessReports.detail.notes')} value={log.notes} />}
               </View>
             </View>
@@ -624,7 +626,7 @@ export default function AccessReportsScreen() {
                       <View style={styles.historyInfo}>
                         <View style={styles.historyNameRow}><Text style={styles.historyName}>{log.visitor_name}</Text>{hasPhotos(log) && <View style={styles.hasPhotoIndicator}><Ionicons name="camera" size={12} color={COLORS.teal} /></View>}</View>
                         <View style={styles.historyMeta}>
-                          {log.vehicle_plate && <View style={styles.historyMetaItem}><Ionicons name="car" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.vehicle_plate}</Text></View>}
+                          {log.vehicle_plate && <View style={styles.historyMetaItem}><Ionicons name="car" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.vehicle_plate}{log.vehicle_color ? ` (${log.vehicle_color})` : ''}</Text></View>}
                           {log.unit_number && <View style={styles.historyMetaItem}><Ionicons name="home" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.unit_number}</Text></View>}
                         </View>
                       </View>
@@ -656,7 +658,7 @@ export default function AccessReportsScreen() {
                           <View style={styles.visitorDetailItem}><Ionicons name="enter" size={14} color={COLORS.textMuted} /><Text style={styles.visitorDetail}>{t('admin.accessReports.entryTime')}: {formatTime(visitor.entry_time)}</Text></View>
                           <View style={styles.visitorDetailItem}><Ionicons name="home" size={14} color={COLORS.textMuted} /><Text style={styles.visitorDetail}>{t('admin.accessReports.detail.unit')}: {visitor.unit_number || '-'}</Text></View>
                         </View>
-                        {visitor.vehicle_plate && <View style={styles.visitorVehicle}><Ionicons name="car" size={14} color={COLORS.textMuted} /><Text style={styles.visitorDetail}>{visitor.vehicle_plate}</Text></View>}
+                        {visitor.vehicle_plate && <View style={styles.visitorVehicle}><Ionicons name="car" size={14} color={COLORS.textMuted} /><Text style={styles.visitorDetail}>{visitor.vehicle_plate}{visitor.vehicle_color ? ` (${visitor.vehicle_color})` : ''}</Text></View>}
                       </TouchableOpacity>
                     );
                   })
