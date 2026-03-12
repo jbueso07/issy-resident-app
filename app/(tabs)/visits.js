@@ -1346,75 +1346,222 @@ return (
           </ScrollView>
         </SafeAreaView>
 
-        {/* Date/Time Pickers */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={visitDate}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            onChange={(event, date) => {
-              setShowDatePicker(false);
-              if (date) setVisitDate(date);
-            }}
-          />
-        )}
-        {showTimePicker && (
-          <DateTimePicker
-            value={visitTime}
-            mode="time"
-            display="default"
-            onChange={(event, time) => {
-              setShowTimePicker(false);
-              if (time) setVisitTime(time);
-            }}
-          />
-        )}
-        {showStartDatePicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            onChange={(event, date) => {
-              setShowStartDatePicker(false);
-              if (date) setStartDate(date);
-            }}
-          />
-        )}
-        {showEndDatePicker && (
-          <DateTimePicker
-            value={endDate}
-            mode="date"
-            display="default"
-            minimumDate={startDate}
-            onChange={(event, date) => {
-              setShowEndDatePicker(false);
-              if (date) setEndDate(date);
-            }}
-          />
-        )}
-        {showStartTimePicker && (
-          <DateTimePicker
-            value={startTime}
-            mode="time"
-            display="default"
-            onChange={(event, time) => {
-              setShowStartTimePicker(false);
-              if (time) setStartTime(time);
-            }}
-          />
-        )}
-        {showEndTimePicker && (
-          <DateTimePicker
-            value={endTime}
-            mode="time"
-            display="default"
-            onChange={(event, time) => {
-              setShowEndTimePicker(false);
-              if (time) setEndTime(time);
-            }}
-          />
+        {/* Date/Time Pickers - wrapped in Modal for iOS */}
+        {Platform.OS === 'ios' ? (
+          <>
+            <Modal visible={showDatePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={visitDate}
+                    mode="date"
+                    display="spinner"
+                    minimumDate={new Date()}
+                    onChange={(event, date) => {
+                      if (date) setVisitDate(date);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={showTimePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={visitTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={(event, time) => {
+                      if (time) setVisitTime(time);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={showStartDatePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={startDate}
+                    mode="date"
+                    display="spinner"
+                    minimumDate={new Date()}
+                    onChange={(event, date) => {
+                      if (date) setStartDate(date);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={showEndDatePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={endDate}
+                    mode="date"
+                    display="spinner"
+                    minimumDate={startDate}
+                    onChange={(event, date) => {
+                      if (date) setEndDate(date);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={showStartTimePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={startTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={(event, time) => {
+                      if (time) setStartTime(time);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={showEndTimePicker} transparent animationType="slide">
+              <View style={styles.pickerModalOverlay}>
+                <View style={styles.pickerModalContent}>
+                  <View style={styles.pickerModalHeader}>
+                    <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
+                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
+                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={endTime}
+                    mode="time"
+                    display="spinner"
+                    onChange={(event, time) => {
+                      if (time) setEndTime(time);
+                    }}
+                  />
+                </View>
+              </View>
+            </Modal>
+          </>
+        ) : (
+          <>
+            {showDatePicker && (
+              <DateTimePicker
+                value={visitDate}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setVisitDate(date);
+                }}
+              />
+            )}
+            {showTimePicker && (
+              <DateTimePicker
+                value={visitTime}
+                mode="time"
+                display="default"
+                onChange={(event, time) => {
+                  setShowTimePicker(false);
+                  if (time) setVisitTime(time);
+                }}
+              />
+            )}
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(event, date) => {
+                  setShowStartDatePicker(false);
+                  if (date) setStartDate(date);
+                }}
+              />
+            )}
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display="default"
+                minimumDate={startDate}
+                onChange={(event, date) => {
+                  setShowEndDatePicker(false);
+                  if (date) setEndDate(date);
+                }}
+              />
+            )}
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={startTime}
+                mode="time"
+                display="default"
+                onChange={(event, time) => {
+                  setShowStartTimePicker(false);
+                  if (time) setStartTime(time);
+                }}
+              />
+            )}
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={endTime}
+                mode="time"
+                display="default"
+                onChange={(event, time) => {
+                  setShowEndTimePicker(false);
+                  if (time) setEndTime(time);
+                }}
+              />
+            )}
+          </>
         )}
       </View>
     </Modal>
@@ -2647,5 +2794,37 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: COLORS.orange,
     lineHeight: scale(17),
+  },
+
+  // iOS DateTimePicker Modal styles
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerModalContent: {
+    backgroundColor: '#1C2E35',
+    borderTopLeftRadius: scale(20),
+    borderTopRightRadius: scale(20),
+    paddingBottom: scale(30),
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: scale(20),
+    paddingVertical: scale(14),
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  pickerModalCancel: {
+    fontSize: scale(15),
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '500',
+  },
+  pickerModalDone: {
+    fontSize: scale(15),
+    color: '#AAFF00',
+    fontWeight: '600',
   },
 });
