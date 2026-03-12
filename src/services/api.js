@@ -83,8 +83,20 @@ const authFetch = async (endpoint, options = {}, isRetry = false) => {
     },
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, { ...config, signal: controller.signal });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Verifica tu conexión.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   // Si recibimos 401 y no es un retry, intentar refresh
   if (response.status === 401 && !isRetry) {
     console.log('🔐 Token expired, attempting refresh...');
