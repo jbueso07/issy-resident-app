@@ -460,7 +460,8 @@ export default function Visits() {
 
             const driverName = quickDriverName.trim() || 'conductor';
             const qrCode = newQR.qr_code || newQR.id || '';
-            const mensaje = `Hola ${driverName}, te comparto tu código de acceso para ${communityName}. Código: ${qrCode}. Válido hasta las ${expiryTime}. Muéstralo al guardia o acércalo al lector de la entrada.`;
+            const qrViewUrl = `https://api.joinissy.com/api/qr/view/${qrCode}`;
+            const mensaje = `Hola ${driverName}, te comparto tu código de acceso para ${communityName}. Código: ${qrCode}. Válido hasta las ${expiryTime}. Muéstralo al guardia o acércalo al lector de la entrada. Ver QR aquí: ${qrViewUrl}`;
             const waUrl = `https://wa.me/${phoneFormatted}?text=${encodeURIComponent(mensaje)}`;
 
             setTimeout(async () => {

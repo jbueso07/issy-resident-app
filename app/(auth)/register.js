@@ -16,7 +16,7 @@ import {
   Linking,
   Dimensions,
 } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { useRouter, Link, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
@@ -42,17 +42,42 @@ const COLORS = {
 
 export default function Register() {
   const { t } = useTranslation();
+  const params = useLocalSearchParams();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [invitationCode, setInvitationCode] = useState('');
+  const [invitationCode, setInvitationCode] = useState(params.code?.toUpperCase() || '');
+  const [houseNumber, setHouseNumber] = useState(params.house_number || '');
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signUp, verifyInvitation } = useAuth();
+
+  const handleCodeChange = (text) => {
+    setInvitationCode(text.toUpperCase());
+    if (codeVerified) {
+      setCodeVerified(false);
+      setHouseNumber('');
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!invitationCode.trim()) return;
+    setVerifyingCode(true);
+    const result = await verifyInvitation(invitationCode.trim().toUpperCase());
+    setVerifyingCode(false);
+    if (result.success) {
+      setCodeVerified(true);
+    } else {
+      setCodeVerified(false);
+      Alert.alert(t('common.error'), result.message || result.error || t('auth.errors.invalidInvitationCode'));
+    }
+  };
   const router = useRouter();
 
   const openTerms = () => {
@@ -103,15 +128,15 @@ export default function Register() {
     setLoading(true);
 
     try {
-      let invitationData = null;
-      if (invitationCode.trim()) {
+      // If code was entered but not yet verified, verify now
+      if (invitationCode.trim() && !codeVerified) {
         const invResult = await verifyInvitation(invitationCode.trim().toUpperCase());
         if (!invResult.success) {
-          Alert.alert(t('common.error'), invResult.error || t('auth.errors.invalidInvitationCode'));
+          Alert.alert(t('common.error'), invResult.message || invResult.error || t('auth.errors.invalidInvitationCode'));
           setLoading(false);
           return;
         }
-        invitationData = invResult.data;
+        setCodeVerified(true);
       }
 
       const result = await signUp({
@@ -120,14 +145,19 @@ export default function Register() {
         phone: phone.trim() || null,
         password,
         invitation_code: invitationCode.trim().toUpperCase() || null,
+        house_number: houseNumber.trim() || null,
       });
 
       if (result.success) {
-        Alert.alert(
-          t('auth.register.welcome'), 
-          t('auth.register.accountCreated'), 
-          [{ text: 'OK', onPress: () => router.replace('/(tabs)/home') }]
-        );
+        if (result.pending_approval) {
+          router.replace('/pending-approval');
+        } else {
+          Alert.alert(
+            t('auth.register.welcome'),
+            t('auth.register.accountCreated'),
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)/home') }]
+          );
+        }
       } else {
         Alert.alert(t('common.error'), result.error || t('auth.errors.registerFailed'));
       }
@@ -259,23 +289,58 @@ export default function Register() {
             {/* Invitation Code */}
             <View style={styles.invitationContainer}>
               <Text style={styles.invitationLabel}>{t('auth.register.haveInvitationCode')}</Text>
-              <TextInput
-                style={styles.invitationInput}
-                placeholder={t('auth.register.invitationCodePlaceholder')}
-                placeholderTextColor={COLORS.textMuted}
-                value={invitationCode}
-                onChangeText={(text) => setInvitationCode(text.toUpperCase())}
-                autoCapitalize="characters"
-                maxLength={20}
-                editable={!loading}
-              />
+              <View style={styles.codeRow}>
+                <TextInput
+                  style={[styles.invitationInput, { flex: 1 }]}
+                  placeholder={t('auth.register.invitationCodePlaceholder')}
+                  placeholderTextColor={COLORS.textMuted}
+                  value={invitationCode}
+                  onChangeText={handleCodeChange}
+                  autoCapitalize="characters"
+                  maxLength={20}
+                  editable={!loading && !verifyingCode}
+                />
+                {invitationCode.trim().length > 0 && !codeVerified && (
+                  <TouchableOpacity
+                    style={styles.verifyCodeButton}
+                    onPress={handleVerifyCode}
+                    disabled={verifyingCode}
+                  >
+                    {verifyingCode ? (
+                      <ActivityIndicator color={COLORS.purple} size="small" />
+                    ) : (
+                      <Text style={styles.verifyCodeText}>Verificar</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+                {codeVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                  </View>
+                )}
+              </View>
               <Text style={styles.invitationHint}>
                 {t('auth.register.invitationCodeHint')}
               </Text>
             </View>
 
+            {/* House/Unit Number - shown only after invitation code is verified */}
+            {codeVerified && invitationCode.trim().length > 0 && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Número de casa o unidad (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej: Casa 12, Apt 3B, Torre 2-501"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={houseNumber}
+                  onChangeText={setHouseNumber}
+                  editable={!loading}
+                />
+              </View>
+            )}
+
             {/* Terms Checkbox */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.termsContainer}
               onPress={() => setAcceptedTerms(!acceptedTerms)}
               activeOpacity={0.7}
@@ -434,6 +499,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     fontSize: scale(15),
     color: COLORS.textPrimary,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+  },
+  verifyCodeButton: {
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+  },
+  verifyCodeText: {
+    color: COLORS.purple,
+    fontSize: scale(13),
+    fontWeight: '600',
+  },
+  verifiedBadge: {
+    paddingHorizontal: scale(8),
   },
   invitationHint: {
     fontSize: scale(12),

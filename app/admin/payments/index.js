@@ -82,7 +82,7 @@ export default function AdminPayments() {
   const charges = useCharges(t, selectedLocationId);
   const proofs = useProofs(selectedLocationId, () => charges.refresh());
   const settings = useSettings(t);
-  const bankAccounts = useBankAccounts(t, selectedLocationId);
+  const bankAccounts = useBankAccounts(selectedLocationId);
 
   // ============================================
   // AUTH CHECK

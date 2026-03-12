@@ -288,32 +288,34 @@ export default function FinancesScreen() {
   useEffect(() => { loadData(); }, [loadData]);
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
+  // checkLimit - upgrade modal disabled for Apple 3.1.1 compliance
+  // Limits still checked but no upgrade modal shown - users hit limits silently
   const checkLimit = (type) => {
     if (!limits) return true;
     if (limits.is_premium) return true;
-    
+
     switch(type) {
       case 'transaction':
         if (!limits.transactions.unlimited && limits.transactions.remaining <= 0) {
-          setShowUpgradeModal(true);
+          Alert.alert('Límite alcanzado', 'Has alcanzado el límite de transacciones de tu plan actual.');
           return false;
         }
         break;
       case 'goal':
         if (!limits.goals.unlimited && limits.goals.remaining <= 0) {
-          setShowUpgradeModal(true);
+          Alert.alert('Límite alcanzado', 'Has alcanzado el límite de metas de tu plan actual.');
           return false;
         }
         break;
       case 'budget':
         if (!limits.budgets.available) {
-          setShowUpgradeModal(true);
+          Alert.alert('Función no disponible', 'Los presupuestos no están disponibles en tu plan actual.');
           return false;
         }
         break;
       case 'invoice':
         if (!limits.invoices.available) {
-          setShowUpgradeModal(true);
+          Alert.alert('Función no disponible', 'Las facturas no están disponibles en tu plan actual.');
           return false;
         }
         break;
@@ -520,56 +522,11 @@ export default function FinancesScreen() {
     ]);
   };
 
+  // handleUpgrade - DISABLED for Apple 3.1.1 compliance
+  // Will be re-implemented with StoreKit 2
   const handleUpgrade = async (planName) => {
-    if (Platform.OS === 'ios') {
-      Alert.alert(
-        'Suscríbete en la web',
-        'Para activar un plan ISSY visita app.joinissy.com desde Safari.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Abrir Safari', onPress: () => Linking.openURL('https://app.joinissy.com/subscriptions') }
-        ]
-      );
-      return;
-    }
-
-    try {
-      const methodsRes = await getPaymentMethods();
-      
-      if (!methodsRes.success || !methodsRes.data || methodsRes.data.length === 0) {
-        Alert.alert(
-          t('finances.upgrade.paymentRequired'),
-          t('finances.upgrade.addPaymentMethod'),
-          [
-            { text: t('common.cancel'), style: 'cancel' },
-            { text: t('finances.upgrade.addCard'), onPress: () => { setShowUpgradeModal(false); router.push('/payment-methods'); }}
-          ]
-        );
-        return;
-      }
-
-      const defaultMethod = methodsRes.data.find(m => m.is_default) || methodsRes.data[0];
-      
-      Alert.alert(
-        t('finances.upgrade.confirmTitle'),
-        t('finances.upgrade.confirmMessage', { plan: planName, lastFour: defaultMethod.last_four }),
-        [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('finances.upgrade.subscribe'), onPress: async () => {
-            try {
-              const selectedPlan = plans.find(p => p.name === planName || p.display_name === planName);
-              if (!selectedPlan) { Alert.alert(t('common.error'), t('finances.errors.planNotFound')); return; }
-              const result = await subscribeToPlan(selectedPlan.id, defaultMethod.id, 'monthly');
-              if (result.success) {
-                Alert.alert(t('finances.success.congratsTitle'), result.message || t('finances.success.subscriptionActivated'),
-                  [{ text: 'OK', onPress: () => { setShowUpgradeModal(false); loadData(); }}]
-                );
-              } else { Alert.alert(t('common.error'), result.error || t('finances.errors.subscriptionFailed')); }
-            } catch (error) { Alert.alert(t('common.error'), t('finances.errors.subscriptionError') + ': ' + error.message); }
-          }}
-        ]
-      );
-    } catch (error) { Alert.alert(t('common.error'), t('finances.errors.paymentMethodsError') + ': ' + error.message); }
+    // No-op: all purchase flows removed for App Store compliance
+    return;
   };
 
   // Sanitiza montos ingresados por el usuario (soporta comas como separador de miles)
@@ -988,13 +945,8 @@ export default function FinancesScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('finances.title')}</Text>
-        {isPremium ? (
-          <View style={styles.premiumBadgeHeader}><Text style={styles.premiumBadgeHeaderText}>💎 PRO</Text></View>
-        ) : (
-          <TouchableOpacity onPress={() => setShowUpgradeModal(true)} style={styles.upgradeButtonSmall}>
-            <Text style={styles.upgradeButtonSmallText}>Upgrade</Text>
-          </TouchableOpacity>
-        )}
+        {/* Upgrade button removed for Apple 3.1.1 compliance - will restore with StoreKit 2 */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView 
@@ -1022,23 +974,7 @@ export default function FinancesScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Usage Limit Banner */}
-        {!isPremium && limits && (
-          <TouchableOpacity style={styles.limitBanner} onPress={() => setShowUpgradeModal(true)}>
-            <View style={styles.limitBannerIcon}>
-              <Ionicons name="diamond" size={20} color={COLORS.purple} />
-            </View>
-            <View style={styles.limitBannerContent}>
-              <Text style={styles.limitBannerTitle}>Plan Gratuito</Text>
-              <Text style={styles.limitBannerText}>
-                {limits.transactions?.remaining > 0 
-                  ? `${limits.transactions.remaining} transacciones restantes`
-                  : '¡Límite alcanzado! Upgrade para continuar'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.purple} />
-          </TouchableOpacity>
-        )}
+        {/* Usage Limit Banner - removed for Apple 3.1.1 compliance */}
 
         {activeTab === 'dashboard' && (
           <>
@@ -1318,16 +1254,7 @@ export default function FinancesScreen() {
         
         {activeTab === 'invoices' && (
           <>
-            {!isPremium && (
-              <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
-                <Ionicons name="diamond" size={24} color={COLORS.yellow} />
-                <View style={styles.premiumFeatureContent}>
-                  <Text style={styles.premiumFeatureTitle}>{t('finances.premium.featureTitle')}</Text>
-                  <Text style={styles.premiumFeatureText}>{t('finances.premium.invoicesFeature')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
-              </TouchableOpacity>
-            )}
+            {/* Premium banner removed for Apple 3.1.1 compliance */}
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🧾 {t('finances.sections.pendingInvoices')}</Text>
               <TouchableOpacity onPress={() => { if (checkLimit('invoice')) setShowInvoiceModal(true); }}>
@@ -1380,16 +1307,7 @@ export default function FinancesScreen() {
 
           {activeTab === 'budgets' && (
             <>
-              {!isPremium && (
-                <TouchableOpacity style={styles.premiumFeatureBanner} onPress={() => setShowUpgradeModal(true)}>
-                  <Ionicons name="diamond" size={24} color={COLORS.yellow} />
-                  <View style={styles.premiumFeatureContent}>
-                    <Text style={styles.premiumFeatureTitle}>{t('finances.premium.featureTitle')}</Text>
-                    <Text style={styles.premiumFeatureText}>{t('finances.premium.budgetsFeature')}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.yellow} />
-                </TouchableOpacity>
-              )}
+              {/* Premium banner removed for Apple 3.1.1 compliance */}
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>📊 {t('finances.sections.myBudgets')}</Text>
                 <TouchableOpacity onPress={() => { if (checkLimit('budget')) setShowBudgetModal(true); }}>
@@ -1858,102 +1776,8 @@ export default function FinancesScreen() {
         )}
       </AppModal>
 
-      {/* Upgrade Modal - MEJORADO */}
-      <AppModal visible={showUpgradeModal} onClose={() => setShowUpgradeModal(false)}>
-        <View style={styles.upgradeHeader}>
-          <View style={styles.upgradeDiamondIcon}>
-            <Ionicons name="diamond" size={32} color={COLORS.purple} />
-          </View>
-          <Text style={styles.upgradeModalTitle}>{t('finances.upgrade.unlockAll')}</Text>
-          <Text style={styles.upgradeModalSubtitle}>{t('finances.upgrade.getControl')}</Text>
-        </View>
-        
-        {/* Plan Premium */}
-        <View style={styles.planCardPremium}>
-          <View style={styles.planBadgePopular}>
-            <Text style={styles.planBadgeText}>⭐ {t('finances.upgrade.popular')}</Text>
-          </View>
-          <Text style={styles.planNamePremium}>Premium</Text>
-          <View style={styles.planPriceRow}>
-            <Text style={styles.planPriceCurrency}>$</Text>
-            <Text style={styles.planPriceAmount}>2.99</Text>
-            <Text style={styles.planPricePeriod}>/{t('finances.upgrade.month')}</Text>
-          </View>
-          <Text style={styles.planYearlyPrice}>{t('finances.upgrade.yearlyPrice', { price: '29.99', save: '16' })}</Text>
-          
-          <View style={styles.planFeaturesList}>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconGreen}><Ionicons name="infinite" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.unlimitedTransactions')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconGreen}><Ionicons name="flag" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.unlimitedGoals')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconGreen}><Ionicons name="pie-chart" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.categoryBudgets')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconGreen}><Ionicons name="document-text" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.invoiceManagement')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconGreen}><Ionicons name="bulb" size={14} color={COLORS.green} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.personalizedTips')}</Text>
-            </View>
-          </View>
-          
-          <TouchableOpacity style={styles.planButtonPremium} onPress={() => handleUpgrade('Premium')}>
-            <Text style={styles.planButtonText}>{t('finances.upgrade.getPremium')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Plan Pro */}
-        <View style={styles.planCardPro}>
-          <View style={styles.planBadgeBestValue}>
-            <Text style={styles.planBadgeText}>💎 {t('finances.upgrade.bestValue')}</Text>
-          </View>
-          <Text style={styles.planNamePro}>Pro</Text>
-          <View style={styles.planPriceRow}>
-            <Text style={styles.planPriceCurrency}>$</Text>
-            <Text style={styles.planPriceAmount}>4.99</Text>
-            <Text style={styles.planPricePeriod}>/{t('finances.upgrade.month')}</Text>
-          </View>
-          <Text style={styles.planYearlyPrice}>{t('finances.upgrade.yearlyPrice', { price: '49.99', save: '17' })}</Text>
-          
-          <View style={styles.planFeaturesList}>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconTeal}><Ionicons name="checkmark-circle" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.allPremium')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconTeal}><Ionicons name="analytics" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.advancedReports')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconTeal}><Ionicons name="cloud-download" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.exportExcelPdf')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconTeal}><Ionicons name="notifications" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.smartAlerts')}</Text>
-            </View>
-            <View style={styles.planFeatureRow}>
-              <View style={styles.planFeatureIconTeal}><Ionicons name="shield-checkmark" size={14} color={COLORS.teal} /></View>
-              <Text style={styles.planFeatureText}>{t('finances.upgrade.features.prioritySupport')}</Text>
-            </View>
-          </View>
-          
-          <TouchableOpacity style={styles.planButtonPro} onPress={() => handleUpgrade('Pro')}>
-            <Text style={styles.planButtonTextPro}>{t('finances.upgrade.getPro')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.skipButton} onPress={() => setShowUpgradeModal(false)}>
-          <Text style={styles.skipButtonText}>{t('finances.upgrade.maybeLater')}</Text>
-        </TouchableOpacity>
-      </AppModal>
+      {/* Upgrade Modal - REMOVED for Apple 3.1.1 compliance */}
+      {/* Will be re-implemented with StoreKit 2 */}
       {/* ============================================ */}
       {/* MODAL: CREATE SUBSCRIPTION */}
       {/* ============================================ */}

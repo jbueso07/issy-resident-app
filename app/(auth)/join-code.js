@@ -21,6 +21,7 @@ export default function JoinCode() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [invitationData, setInvitationData] = useState(null);
+  const [houseNumber, setHouseNumber] = useState('');
   const [step, setStep] = useState('input'); // 'input' | 'preview' | 'login'
   const { verifyInvitation, acceptInvitation, isAuthenticated } = useAuth();
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function JoinCode() {
       setInvitationData(result.data);
       setStep('preview');
     } else {
-      Alert.alert(t('auth.joinCode.invalidCode'), result.error || t('auth.joinCode.codeNotExist'));
+      Alert.alert(t('common.error'), result.message || result.error || t('auth.joinCode.codeNotExist'));
     }
   };
 
@@ -212,6 +213,18 @@ export default function JoinCode() {
             )}
           </View>
 
+          {/* House/Unit Number - optional field shown after code validation */}
+          <View style={styles.houseNumberContainer}>
+            <Text style={styles.houseNumberLabel}>Número de casa o unidad (opcional)</Text>
+            <TextInput
+              style={styles.houseNumberInput}
+              placeholder="Ej: Casa 12, Apt 3B"
+              placeholderTextColor="#9CA3AF"
+              value={houseNumber}
+              onChangeText={setHouseNumber}
+            />
+          </View>
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleAcceptInvitation}
@@ -250,7 +263,7 @@ export default function JoinCode() {
               </TouchableOpacity>
             </Link>
 
-            <Link href={`/(auth)/register?code=${code}`} asChild>
+            <Link href={`/(auth)/register?code=${code}${houseNumber.trim() ? `&house_number=${encodeURIComponent(houseNumber.trim())}` : ''}`} asChild>
               <TouchableOpacity style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>{t('auth.joinCode.createNewAccount')}</Text>
               </TouchableOpacity>
@@ -421,5 +434,25 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
     marginBottom: 24,
+  },
+  houseNumberContainer: {
+    width: '100%',
+    maxWidth: 340,
+    marginBottom: 20,
+  },
+  houseNumberLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginBottom: 8,
+  },
+  houseNumberInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#1F2937',
   },
 });

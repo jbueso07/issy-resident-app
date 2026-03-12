@@ -13,6 +13,7 @@ import {
   TextInput,
   RefreshControl,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -240,7 +241,7 @@ export default function MarketplaceScreen() {
         </View>
 
         {/* Prime Banner */}
-        {!isPrime && (
+        {!isPrime && Platform.OS !== 'ios' && (
           <TouchableOpacity
             style={styles.primeBanner}
             activeOpacity={0.9}

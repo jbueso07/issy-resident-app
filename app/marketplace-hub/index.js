@@ -14,6 +14,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -255,7 +256,7 @@ export default function MarketplaceHomeScreen() {
         </View>
 
         {/* Prime Banner (if not Prime) */}
-        {!isPrime && (
+        {!isPrime && Platform.OS !== 'ios' && (
           <TouchableOpacity
             style={styles.primeBanner}
             activeOpacity={0.9}

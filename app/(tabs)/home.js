@@ -375,6 +375,10 @@ export default function Home() {
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
   const userLocations = profile?.user_locations || [];
   const hasMultipleLocations = userLocations.length > 1;
+
+  // Check if user has pending approval (registered with code but not yet approved)
+  const isPendingApproval = profile?.pending_locations?.some(ul => ul.status === 'pending')
+    && !userLocations.some(ul => ul.status === 'active');
   const currentLocation = profile?.current_location || profile?.location || null;
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
@@ -523,6 +527,13 @@ export default function Home() {
             <NotificationBell />
           </View>
 
+          {isPendingApproval && (
+            <View style={{ backgroundColor: '#1a1a1a', margin: 16, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 3, borderLeftColor: '#c6f135' }}>
+              <Ionicons name="time-outline" size={24} color="#c6f135" />
+              <Text style={{ color: '#ffffff', flex: 1, fontSize: 14 }}>Tu solicitud está pendiente de aprobación por el administrador.</Text>
+            </View>
+          )}
+
           <View style={styles.joinCard}>
             <View style={styles.joinIconContainer}>
               <Text style={styles.joinIcon}>🏡</Text>
@@ -536,24 +547,7 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* Create Location Card */}
-          <View style={styles.createLocationCard}>
-            <View style={styles.createLocationIconContainer}>
-              <Ionicons name="add-circle" size={scale(36)} color={COLORS.lime} />
-            </View>
-            <Text style={styles.createLocationTitle} maxFontSizeMultiplier={1.2}>
-              {t('home.createLocation.title', 'Crear Ubicación')}
-            </Text>
-            <Text style={styles.createLocationSubtitle} maxFontSizeMultiplier={1.2}>
-              {t('home.createLocation.subtitle', 'Registra una nueva comunidad o residencial para tus clientes')}
-            </Text>
-            <TouchableOpacity style={styles.createLocationButton} onPress={handleCreateLocation}>
-              <Ionicons name="add" size={18} color={COLORS.textDark} />
-              <Text style={styles.createLocationButtonText} maxFontSizeMultiplier={1.2}>
-                {t('home.createLocation.button', 'Crear Nueva Ubicación')}
-              </Text>
-            </TouchableOpacity>
-          </View>
+
 
           {/* B2C Services - Horizontal Scroll */}
           <Text style={[styles.sectionTitle, { paddingHorizontal: scale(16) }]} maxFontSizeMultiplier={1.2}>

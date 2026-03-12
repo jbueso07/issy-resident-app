@@ -279,13 +279,17 @@ export default function EditProfileScreen() {
             {/* Name */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>{t('editProfile.form.fullName')}</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Tu nombre"
-                placeholderTextColor={COLORS.textMuted}
-              />
+              <View style={[styles.input, styles.inputDisabled]}>
+                <Text style={styles.inputDisabledText}>{name}</Text>
+                <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6 }}>
+                <Ionicons name="information-circle-outline" size={14} color={COLORS.textMuted} />
+                <Text style={{ fontSize: 11, color: COLORS.textMuted, flex: 1 }}>
+                  Para cambiar tu nombre o correo, contacta al administrador de{' '}
+                  <Text style={{ fontWeight: '600' }}>{user?.location_name || 'tu comunidad'}</Text>
+                </Text>
+              </View>
             </View>
 
             {/* Email */}

@@ -631,7 +631,7 @@ const { expoPushToken } = useNotifications();
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
 
-        return { success: true, data: { token: tokenValue, user: userValue } };
+        return { success: true, pending_approval: data.data?.pending_approval || false, data: { token: tokenValue, user: userValue } };
       } else {
         return { success: false, error: data.error || data.message || 'Error al registrar' };
       }
@@ -663,7 +663,7 @@ const { expoPushToken } = useNotifications();
       if (response.ok && (data.success !== false)) {
         return { success: true, data: data.data || data };
       } else {
-        return { success: false, error: data.error || data.message || 'Código inválido' };
+        return { success: false, error: data.error || 'unknown_error', message: data.message || data.error || 'Código inválido' };
       }
     } catch (error) {
       console.error('Error verifying invitation:', error);

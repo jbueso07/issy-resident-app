@@ -17,6 +17,8 @@ import {
   Switch,
   Dimensions,
   Share,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -119,7 +121,7 @@ export default function CommunityManagement() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [customReason, setCustomReason] = useState('');
-  const [editForm, setEditForm] = useState({ role: '', unit_number: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', role: '', unit_number: '' });
   const [actionLoading, setActionLoading] = useState(false);
   
   // Card/Tag Management State
@@ -432,6 +434,8 @@ export default function CommunityManagement() {
   const handleEditMember = (member) => {
     setSelectedMember(member);
     setEditForm({
+      name: member.user?.name || '',
+      email: member.user?.email || '',
       role: member.role || 'resident',
       unit_number: member.unit_number || '',
     });
@@ -1155,6 +1159,7 @@ export default function CommunityManagement() {
       {/* Deactivation Modal */}
       <Modal visible={showDeactivateModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDeactivateModal(false)}>
               <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
@@ -1207,6 +1212,7 @@ export default function CommunityManagement() {
               />
             )}
           </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
@@ -1329,6 +1335,26 @@ export default function CommunityManagement() {
                   <Text style={styles.editMemberName}>{selectedMember?.user?.name}</Text>
                   <Text style={styles.editMemberEmail}>{selectedMember?.user?.email}</Text>
                 </View>
+
+                <Text style={styles.inputLabel}>Nombre</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editForm.name}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, name: text }))}
+                  placeholder="Nombre completo"
+                  placeholderTextColor={COLORS.textMuted}
+                />
+
+                <Text style={styles.inputLabel}>Correo electrónico</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editForm.email}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, email: text }))}
+                  placeholder="correo@ejemplo.com"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
 
                 <Text style={styles.inputLabel}>{t('admin.communityManagement.unitNumber')}</Text>
                 <TextInput
