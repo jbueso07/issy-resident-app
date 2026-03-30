@@ -8,7 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import useNotifications from '../hooks/useNotifications';
+import useNotifications, { sendTokenToBackend } from '../hooks/useNotifications';
 
 // Import Apple Authentication only on iOS
 let AppleAuthentication = null;
@@ -132,6 +132,10 @@ const { expoPushToken } = useNotifications();
               await AsyncStorage.setItem('refreshToken', storedRefreshToken);
             }
             hasBeenAuthenticated.current = true;
+            // Register push token after biometric login
+            if (expoPushToken) {
+              sendTokenToBackend(expoPushToken, storedToken);
+            }
             return { success: true };
           } else {
             // Token expired, clear biometric data
@@ -311,6 +315,11 @@ const { expoPushToken } = useNotifications();
         hasBeenAuthenticated.current = true;
 
         console.log('Backend sync successful:', userValue?.email);
+
+        // Register push token after successful Google login
+        if (expoPushToken) {
+          sendTokenToBackend(expoPushToken, tokenValue);
+        }
 
         // Prompt to enable biometric after successful login
         setTimeout(() => promptEnableBiometric(), 1000);
@@ -541,6 +550,11 @@ const { expoPushToken } = useNotifications();
 
         console.log('✅ Apple Sign In successful:', userValue?.email);
 
+        // Register push token after successful Apple login
+        if (expoPushToken) {
+          sendTokenToBackend(expoPushToken, tokenValue);
+        }
+
         // Prompt to enable biometric
         setTimeout(() => promptEnableBiometric(), 1000);
 
@@ -589,6 +603,11 @@ const { expoPushToken } = useNotifications();
         setUser(userValue);
         setProfile(userValue);
         hasBeenAuthenticated.current = true;
+
+        // Register push token after successful login
+        if (expoPushToken) {
+          sendTokenToBackend(expoPushToken, tokenValue);
+        }
 
         // Prompt to enable biometric after successful login
         setTimeout(() => promptEnableBiometric(), 1000);

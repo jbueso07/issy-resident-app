@@ -130,9 +130,11 @@ async function registerForPushNotificationsAsync() {
 }
 
 // Enviar token al backend
-async function sendTokenToBackend(pushToken) {
+// authToken opcional: si se pasa, lo usa directamente (post-login)
+// Si no se pasa, lo busca en AsyncStorage (fallback)
+export async function sendTokenToBackend(pushToken, authToken = null) {
   try {
-    const token = await AsyncStorage.getItem('token');
+    const token = authToken || await AsyncStorage.getItem('token');
     
     if (!token) {
       console.log('⚠️ No auth token, skipping push token registration');
