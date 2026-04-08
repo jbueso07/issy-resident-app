@@ -48,8 +48,13 @@ const xorBytes = (a, b) => {
 };
 
 /**
- * Compute HMAC-SHA256 manually using expo-crypto
+ * Compute HMAC-SHA256 using expo-crypto's Crypto.digest() with raw bytes.
  * HMAC(K, m) = H((K' ⊕ opad) || H((K' ⊕ ipad) || m))
+ *
+ * CRITICAL: Uses Crypto.digest(algo, Uint8Array) — NOT digestStringAsync().
+ * digestStringAsync() re-encodes input as UTF-8, which corrupts bytes > 127
+ * (each such byte becomes 2 bytes), producing a completely different hash
+ * than the backend's crypto.createHmac() which handles raw bytes correctly.
  */
 const hmacSha256 = async (keyBase64, message) => {
   const BLOCK_SIZE = 64; // SHA-256 block size
@@ -59,21 +64,20 @@ const hmacSha256 = async (keyBase64, message) => {
   // Decode the base64 key
   let key = base64ToUint8Array(keyBase64);
 
-  // If key is longer than block size, hash it
+  // If key is longer than block size, hash it (using raw bytes)
   if (key.length > BLOCK_SIZE) {
-    const keyHash = await Crypto.digestStringAsync(
+    const keyHashBuffer = await Crypto.digest(
       Crypto.CryptoDigestAlgorithm.SHA256,
-      String.fromCharCode(...key),
-      { encoding: Crypto.CryptoEncoding.HEX }
+      key
     );
-    key = new Uint8Array(keyHash.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+    key = new Uint8Array(keyHashBuffer);
   }
 
   // Pad key to block size
   const paddedKey = new Uint8Array(BLOCK_SIZE);
   paddedKey.set(key);
 
-  // Create ipad and opad
+  // Create ipad and opad keys
   const ipadKey = new Uint8Array(BLOCK_SIZE);
   const opadKey = new Uint8Array(BLOCK_SIZE);
   for (let i = 0; i < BLOCK_SIZE; i++) {
@@ -84,30 +88,28 @@ const hmacSha256 = async (keyBase64, message) => {
   // Convert message to bytes
   const messageBytes = stringToUint8Array(message);
 
-  // Inner hash: H((K' ⊕ ipad) || m)
+  // Inner hash: H((K' ⊕ ipad) || message)
   const innerData = new Uint8Array(BLOCK_SIZE + messageBytes.length);
   innerData.set(ipadKey);
   innerData.set(messageBytes, BLOCK_SIZE);
 
-  const innerHashHex = await Crypto.digestStringAsync(
+  const innerHashBuffer = await Crypto.digest(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    String.fromCharCode(...innerData),
-    { encoding: Crypto.CryptoEncoding.HEX }
+    innerData
   );
-  const innerHash = new Uint8Array(innerHashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+  const innerHash = new Uint8Array(innerHashBuffer);
 
   // Outer hash: H((K' ⊕ opad) || innerHash)
   const outerData = new Uint8Array(BLOCK_SIZE + innerHash.length);
   outerData.set(opadKey);
   outerData.set(innerHash, BLOCK_SIZE);
 
-  const outerHashHex = await Crypto.digestStringAsync(
+  const outerHashBuffer = await Crypto.digest(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    String.fromCharCode(...outerData),
-    { encoding: Crypto.CryptoEncoding.HEX }
+    outerData
   );
 
-  return new Uint8Array(outerHashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+  return new Uint8Array(outerHashBuffer);
 };
 
 /**
