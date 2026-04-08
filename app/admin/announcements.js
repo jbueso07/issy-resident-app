@@ -75,7 +75,7 @@ export default function AdminAnnouncements() {
   
   const [formData, setFormData] = useState({
     title: '',
-    content: '',
+    message: '',
     type: 'info',
     priority: 'normal',
     target_audience: 'all',
@@ -153,7 +153,7 @@ export default function AdminAnnouncements() {
     setEditingAnnouncement(null);
     setFormData({
       title: '',
-      content: '',
+      message: '',
       type: 'info',
       priority: 'normal',
       target_audience: 'all',
@@ -169,7 +169,7 @@ export default function AdminAnnouncements() {
     setEditingAnnouncement(announcement);
     setFormData({
       title: announcement.title || '',
-      content: announcement.content || '',
+      message: announcement.message || '',
       type: announcement.type || 'info',
       priority: announcement.priority || 'normal',
       target_audience: announcement.target_audience || 'all',
@@ -220,7 +220,9 @@ export default function AdminAnnouncements() {
           body: formDataUpload,
         });
         const data = await response.json();
-        if (data.success && data.url) {
+        if (data.success && data.data?.urls) {
+          uploadedUrls.push(...data.data.urls);
+        } else if (data.success && data.url) {
           uploadedUrls.push(data.url);
         }
       }
@@ -233,7 +235,7 @@ export default function AdminAnnouncements() {
   };
 
   const handleSave = async () => {
-    if (!formData.title.trim() || !formData.content.trim()) {
+    if (!formData.title.trim() || !formData.message.trim()) {
       Alert.alert(t('common.error'), t('admin.announcements.errors.titleContentRequired'));
       return;
     }
@@ -259,7 +261,7 @@ export default function AdminAnnouncements() {
         setShowModal(false);
         fetchAnnouncements();
       } else {
-        Alert.alert(t('common.error'), data.error || t('admin.announcements.errors.saveFailed'));
+        Alert.alert(t('common.error'), data.message || data.error || t('admin.announcements.errors.saveFailed'));
       }
     } catch (error) {
       console.error('Error saving:', error);
@@ -403,7 +405,7 @@ export default function AdminAnnouncements() {
           </View>
         </View>
         <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.cardContent} numberOfLines={2}>{item.content}</Text>
+        <Text style={styles.cardContent} numberOfLines={2}>{item.message}</Text>
         {item.images?.length > 0 && (
           <View style={styles.imageIndicator}>
             <Ionicons name="images-outline" size={14} color={COLORS.textSecondary} />
@@ -451,8 +453,8 @@ export default function AdminAnnouncements() {
               style={[styles.formInput, styles.formTextarea]}
               placeholder={t('admin.announcements.form.contentPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
-              value={formData.content}
-              onChangeText={(text) => setFormData({...formData, content: text})}
+              value={formData.message}
+              onChangeText={(text) => setFormData({...formData, message: text})}
               multiline
               textAlignVertical="top"
             />
@@ -590,7 +592,7 @@ export default function AdminAnnouncements() {
                 )}
               </View>
               <Text style={styles.detailTitle}>{selectedAnnouncement.title}</Text>
-              <Text style={styles.detailContentText}>{selectedAnnouncement.content}</Text>
+              <Text style={styles.detailContentText}>{selectedAnnouncement.message}</Text>
               <View style={styles.detailMeta}>
                 <View style={styles.metaItem}>
                   <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
