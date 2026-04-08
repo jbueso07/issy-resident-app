@@ -135,6 +135,22 @@ const { expoPushToken } = useNotifications();
             // Register push token after biometric login
             if (expoPushToken) {
               sendTokenToBackend(expoPushToken, storedToken);
+            } else {
+              // Race condition: hook aún no obtuvo el token. Reintentar obtenerlo directamente.
+              import('expo-notifications').then(async (Notifications) => {
+                try {
+                  const ConstantsMod = (await import('expo-constants')).default;
+                  const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
+                  if (projectId) {
+                    const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+                    if (tokenObj?.data) {
+                      sendTokenToBackend(tokenObj.data, storedToken);
+                    }
+                  }
+                } catch (e) {
+                  console.log('⚠️ Could not get push token on login retry:', e.message);
+                }
+              });
             }
             return { success: true };
           } else {
@@ -319,6 +335,22 @@ const { expoPushToken } = useNotifications();
         // Register push token after successful Google login
         if (expoPushToken) {
           sendTokenToBackend(expoPushToken, tokenValue);
+        } else {
+          // Race condition: hook aún no obtuvo el token. Reintentar obtenerlo directamente.
+          import('expo-notifications').then(async (Notifications) => {
+            try {
+              const ConstantsMod = (await import('expo-constants')).default;
+              const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
+              if (projectId) {
+                const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+                if (tokenObj?.data) {
+                  sendTokenToBackend(tokenObj.data, tokenValue);
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ Could not get push token on login retry:', e.message);
+            }
+          });
         }
 
         // Prompt to enable biometric after successful login
@@ -553,6 +585,22 @@ const { expoPushToken } = useNotifications();
         // Register push token after successful Apple login
         if (expoPushToken) {
           sendTokenToBackend(expoPushToken, tokenValue);
+        } else {
+          // Race condition: hook aún no obtuvo el token. Reintentar obtenerlo directamente.
+          import('expo-notifications').then(async (Notifications) => {
+            try {
+              const ConstantsMod = (await import('expo-constants')).default;
+              const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
+              if (projectId) {
+                const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+                if (tokenObj?.data) {
+                  sendTokenToBackend(tokenObj.data, tokenValue);
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ Could not get push token on login retry:', e.message);
+            }
+          });
         }
 
         // Prompt to enable biometric
@@ -607,6 +655,22 @@ const { expoPushToken } = useNotifications();
         // Register push token after successful login
         if (expoPushToken) {
           sendTokenToBackend(expoPushToken, tokenValue);
+        } else {
+          // Race condition: hook aún no obtuvo el token. Reintentar obtenerlo directamente.
+          import('expo-notifications').then(async (Notifications) => {
+            try {
+              const ConstantsMod = (await import('expo-constants')).default;
+              const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
+              if (projectId) {
+                const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+                if (tokenObj?.data) {
+                  sendTokenToBackend(tokenObj.data, tokenValue);
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ Could not get push token on login retry:', e.message);
+            }
+          });
         }
 
         // Prompt to enable biometric after successful login

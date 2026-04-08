@@ -33,8 +33,12 @@ export const useNotifications = () => {
       .then(token => {
         if (token) {
           setExpoPushToken(token);
-          // Enviar token al backend
-          sendTokenToBackend(token);
+          // No enviar aquí si no hay auth — el envío principal ocurre en AuthContext post-login
+          AsyncStorage.getItem('token').then(authToken => {
+            if (authToken) {
+              sendTokenToBackend(token, authToken);
+            }
+          });
         }
       })
       .catch(err => {
@@ -134,6 +138,10 @@ async function registerForPushNotificationsAsync() {
 // Si no se pasa, lo busca en AsyncStorage (fallback)
 export async function sendTokenToBackend(pushToken, authToken = null) {
   try {
+    if (!pushToken) {
+      console.log('⚠️ No push token provided, skipping registration');
+      return;
+    }
     const token = authToken || await AsyncStorage.getItem('token');
     
     if (!token) {
