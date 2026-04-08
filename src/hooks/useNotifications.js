@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 const API_URL = 'https://api.joinissy.com/api';
 
@@ -177,16 +178,26 @@ export async function sendTokenToBackend(pushToken, authToken = null) {
 // Manejar cuando el usuario toca una notificación
 function handleNotificationResponse(response) {
   const data = response.notification.request.content.data;
-  
+
   console.log('📱 Notification data:', data);
-  
-  // Aquí puedes navegar a diferentes pantallas según el tipo de notificación
-  // Por ejemplo:
-  // if (data.type === 'announcement') {
-  //   router.push('/announcements');
-  // } else if (data.type === 'reservation') {
-  //   router.push('/reservations');
-  // }
+
+  // Navegar a diferentes pantallas según el tipo de notificación
+  if (data?.type === 'access_request' && data?.access_request_id) {
+    // Resident tapped an access request notification → go to approval screen
+    router.push({
+      pathname: '/access-approval',
+      params: {
+        id: data.access_request_id,
+        visitor_name: data.visitor_name || '',
+        guard_name: data.guard_name || '',
+        expires_at: data.expires_at || '',
+      },
+    });
+  } else if (data?.type === 'announcement') {
+    router.push('/announcements');
+  } else if (data?.type === 'visitor_arrived') {
+    router.push('/notifications');
+  }
 }
 
 // Función helper para enviar notificación local (útil para testing)
