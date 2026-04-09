@@ -9,7 +9,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
   Alert,
   Dimensions,
   Platform,
@@ -19,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getIncidentById, addIncidentComment } from '../src/services/api';
+import { getIncidentById } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -52,31 +51,28 @@ const getSeverityConfig = (t) => ({
   critical: { label: t('incidentDetail.severity.critical'), color: COLORS.red },
 });
 
-const getTypeLabels = (t) => ({
-  security: t('incidentDetail.types.security'),
-  theft: t('incidentDetail.types.theft'),
-  vandalism: t('incidentDetail.types.vandalism'),
-  noise_complaint: t('incidentDetail.types.noiseComplaint'),
-  parking_violation: t('incidentDetail.types.parkingViolation'),
-  maintenance: t('incidentDetail.types.maintenance'),
-  cleaning: t('incidentDetail.types.cleaning'),
-  lighting: t('incidentDetail.types.lighting'),
-  water: t('incidentDetail.types.water'),
-  elevator: t('incidentDetail.types.elevator'),
-  other: t('incidentDetail.types.other'),
-});
+const UNIFIED_TYPES = {
+  security:            { label: 'Seguridad',            emoji: '🔒' },
+  theft:               { label: 'Robo / Hurto',         emoji: '🚨' },
+  vandalism:           { label: 'Vandalismo',           emoji: '🔨' },
+  suspicious_activity: { label: 'Actividad sospechosa', emoji: '👁️' },
+  noise_complaint:     { label: 'Ruido',                emoji: '🔊' },
+  parking_violation:   { label: 'Estacionamiento',      emoji: '🚗' },
+  fire:                { label: 'Incendio',             emoji: '🔥' },
+  medical:             { label: 'Médico',               emoji: '🏥' },
+  accident:            { label: 'Accidente',            emoji: '⚠️' },
+  maintenance:         { label: 'Mantenimiento',        emoji: '🔧' },
+  other:               { label: 'Otro',                 emoji: '📋' },
+};
 
 export default function IncidentDetailScreen() {
   const { t } = useTranslation();
   const STATUS_CONFIG = getStatusConfig(t);
   const SEVERITY_CONFIG = getSeverityConfig(t);
-  const TYPE_LABELS = getTypeLabels(t);
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -103,28 +99,6 @@ export default function IncidentDetailScreen() {
     }
   };
 
-  const handleAddComment = async () => {
-    if (!commentText.trim()) return;
-
-    try {
-      setSubmittingComment(true);
-      const result = await addIncidentComment(id, commentText.trim());
-      
-      if (result.success) {
-        setCommentText('');
-        // Reload incident to get updated comments
-        loadIncident();
-      } else {
-        Alert.alert(t('common.error'), result.error || t('incidentDetail.errors.commentFailed'));
-      }
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      Alert.alert(t('common.error'), t('incidentDetail.errors.commentError'));
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -133,17 +107,6 @@ export default function IncidentDetailScreen() {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatShortDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', {
-      day: '2-digit',
-      month: 'short',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -187,7 +150,8 @@ export default function IncidentDetailScreen() {
 
   const status = STATUS_CONFIG[incident.status] || STATUS_CONFIG.reported;
   const severity = SEVERITY_CONFIG[incident.severity] || SEVERITY_CONFIG.medium;
-  const typeLabel = TYPE_LABELS[incident.type] || incident.type;
+  const typeInfo = UNIFIED_TYPES[incident.type] || { label: incident.type, emoji: '📋' };
+  const typeLabel = `${typeInfo.emoji} ${typeInfo.label}`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -338,69 +302,8 @@ export default function IncidentDetailScreen() {
             </View>
           </View>
 
-          {/* Comments */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {t('incidentDetail.sections.comments')} ({incident.comments?.length || 0})
-            </Text>
-            
-            {incident.comments && incident.comments.length > 0 ? (
-              <View style={styles.commentsContainer}>
-                {incident.comments.map((comment, index) => (
-                  <View key={comment.id || index} style={styles.commentCard}>
-                    <View style={styles.commentHeader}>
-                      <View style={styles.commentAvatar}>
-                        <Ionicons name="person" size={14} color={COLORS.white} />
-                      </View>
-                      <View style={styles.commentMeta}>
-                        <Text style={styles.commentAuthor}>
-                          {comment.user?.name || t('incidentDetail.user')}
-                        </Text>
-                        <Text style={styles.commentDate}>
-                          {formatShortDate(comment.created_at)}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.commentText}>{comment.comment}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.sectionCard}>
-                <Text style={styles.noCommentsText}>{t('incidentDetail.noComments')}</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={{ height: scale(120) }} />
+          <View style={{ height: scale(40) }} />
         </ScrollView>
-
-        {/* Add Comment Input */}
-        <View style={styles.addCommentContainer}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder={t('incidentDetail.addCommentPlaceholder')}
-            placeholderTextColor={COLORS.gray}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              (!commentText.trim() || submittingComment) && styles.sendButtonDisabled
-            ]}
-            onPress={handleAddComment}
-            disabled={!commentText.trim() || submittingComment}
-          >
-            {submittingComment ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <Ionicons name="send" size={20} color={COLORS.white} />
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -602,83 +505,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Comments
-  commentsContainer: {
-    gap: scale(8),
-  },
-  commentCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: scale(12),
-    padding: scale(12),
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: scale(8),
-  },
-  commentAvatar: {
-    width: scale(28),
-    height: scale(28),
-    borderRadius: scale(14),
-    backgroundColor: COLORS.cyan,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(10),
-  },
-  commentMeta: {
-    flex: 1,
-  },
-  commentAuthor: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: COLORS.black,
-  },
-  commentDate: {
-    fontSize: scale(11),
-    color: COLORS.gray,
-  },
-  commentText: {
-    fontSize: scale(14),
-    color: COLORS.black,
-    lineHeight: scale(20),
-  },
-  noCommentsText: {
-    fontSize: scale(14),
-    color: COLORS.gray,
-    textAlign: 'center',
-    paddingVertical: scale(8),
-  },
-
-  // Add Comment
-  addCommentContainer: {
-    flexDirection: 'row',
-    padding: scale(12),
-    paddingHorizontal: scale(16),
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.grayLight,
-    gap: scale(8),
-    paddingBottom: Platform.OS === 'ios' ? scale(28) : scale(12),
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: COLORS.grayLight,
-    borderRadius: scale(20),
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(10),
-    fontSize: scale(14),
-    maxHeight: scale(80),
-    color: COLORS.black,
-  },
-  sendButton: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
-    backgroundColor: COLORS.cyan,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: COLORS.grayLight,
-  },
 });

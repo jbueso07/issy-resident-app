@@ -81,13 +81,12 @@ export default function IncidentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('all');
 
   const loadIncidents = async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
-      
-      const params = filter === 'my_incidents' ? { my_incidents: 'true' } : {};
+
+      const params = { my_incidents: 'true' };
       const result = await getIncidents(params);
       
       if (result.success) {
@@ -104,7 +103,7 @@ export default function IncidentsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadIncidents();
-    }, [filter])
+    }, [])
   );
 
   const onRefresh = () => {
@@ -187,9 +186,7 @@ export default function IncidentsScreen() {
       </View>
       <Text style={styles.emptyTitle}>{t('incidents.empty.title')}</Text>
       <Text style={styles.emptySubtitle}>
-        {filter === 'my_incidents' 
-          ? t('incidents.empty.myReports')
-          : t('incidents.empty.community')}
+        {t('incidents.empty.myReports')}
       </Text>
     </View>
   );
@@ -236,30 +233,10 @@ export default function IncidentsScreen() {
           <Ionicons name="chevron-forward" size={20} color={COLORS.background} />
         </TouchableOpacity>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterRow}>
-          <TouchableOpacity
-            style={[styles.filterTab, filter === 'all' && styles.filterTabActive]}
-            onPress={() => setFilter('all')}
-          >
-            <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-              {t('incidents.filters.all')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterTab, filter === 'my_incidents' && styles.filterTabActive]}
-            onPress={() => setFilter('my_incidents')}
-          >
-            <Text style={[styles.filterText, filter === 'my_incidents' && styles.filterTextActive]}>
-              {t('incidents.filters.myReports')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Section Header */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            {filter === 'my_incidents' ? t('incidents.myIncidents') : t('incidents.recentIncidents')}
+            {t('incidents.myIncidents')}
           </Text>
           <Text style={styles.sectionCount}>{incidents.length}</Text>
         </View>
@@ -362,33 +339,6 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: 'rgba(0,0,0,0.6)',
     marginTop: scale(2),
-  },
-
-  // Filter Tabs
-  filterRow: {
-    flexDirection: 'row',
-    marginBottom: scale(20),
-    gap: scale(10),
-  },
-  filterTab: {
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(10),
-    borderRadius: scale(25),
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-  },
-  filterTabActive: {
-    backgroundColor: COLORS.teal,
-    borderColor: COLORS.teal,
-  },
-  filterText: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  filterTextActive: {
-    color: COLORS.background,
   },
 
   // Section Header
