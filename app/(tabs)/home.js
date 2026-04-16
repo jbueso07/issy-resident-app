@@ -213,13 +213,22 @@ export default function Home() {
       color: COLORS.orange,
       available: true,
     },
-    { 
+    {
       id: 'services',
       title: t('services.servicesTitle'),
       subtitle: t('services.servicesDesc'),
       route: '/services',
       icon: 'construct-outline',
       color: COLORS.purple,
+      available: true,
+    },
+    {
+      id: 'airin',
+      title: 'Restaurantes',
+      subtitle: 'Pide y reserva',
+      route: '/airin',
+      icon: 'restaurant-outline',
+      color: '#FF6B35',
       available: true,
     },
   ], [t]);
