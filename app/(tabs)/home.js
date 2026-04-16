@@ -2,7 +2,7 @@
 // ISSY Resident App - Home Dashboard ProHome Style + i18n
 // Admin carrusel horizontal, Más Servicios horizontal, Font accessibility
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -126,7 +126,28 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [switchingLocation, setSwitchingLocation] = useState(false);
-  
+
+  // Feature flags (loaded from backend, fail-safe = hidden)
+  const [featureFlags, setFeatureFlags] = useState({});
+
+  useEffect(() => {
+    const loadFeatureFlags = async () => {
+      try {
+        const res = await fetch(`${API_URL}/feature-flags`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const flags = {};
+          json.data.forEach(f => { flags[f.key] = f.enabled; });
+          setFeatureFlags(flags);
+        }
+      } catch (e) {
+        // Fail-safe: flags stay empty → flagged features hidden
+        console.warn('[FeatureFlags] Could not load:', e.message);
+      }
+    };
+    loadFeatureFlags();
+  }, []);
+
   // Estados para toggles
   const [activeServices, setActiveServices] = useState({
     visitors: true,
@@ -186,14 +207,14 @@ export default function Home() {
   ], [t]);
 
   const B2C_SERVICES = useMemo(() => [
-    { 
-      id: 'pms', 
-      title: t('services.pms'), 
+    {
+      id: 'pms',
+      title: t('services.pms'),
       subtitle: t('services.pmsDesc'),
       route: '/pms',
       icon: 'business-outline',
       color: COLORS.teal,
-      available: true,
+      available: false,
     },
     { 
       id: 'finances',
@@ -220,7 +241,7 @@ export default function Home() {
       route: '/services',
       icon: 'construct-outline',
       color: COLORS.purple,
-      available: true,
+      available: false,
     },
     {
       id: 'airin',
@@ -230,6 +251,7 @@ export default function Home() {
       icon: 'restaurant-outline',
       color: '#FF6B35',
       available: true,
+      featureFlag: 'airin_restaurants',
     },
   ], [t]);
 
@@ -567,12 +589,15 @@ export default function Home() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalScroll}
           >
-            {B2C_SERVICES.map((service) => (
+            {B2C_SERVICES.filter(s => {
+              if (s.available === false) return false;
+              if (s.featureFlag && !featureFlags[s.featureFlag]) return false;
+              return true;
+            }).map((service) => (
               <TouchableOpacity
                 key={service.id}
-                style={[styles.b2cCardHorizontal, !service.available && styles.cardDisabled]}
+                style={styles.b2cCardHorizontal}
                 onPress={() => handleServicePress(service)}
-                disabled={!service.available}
               >
                 <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
                   <Ionicons name={service.icon} size={24} color={service.color} />
@@ -583,11 +608,6 @@ export default function Home() {
                 <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
                   {service.subtitle}
                 </Text>
-                {!service.available && (
-                  <View style={styles.comingSoonBadge}>
-                    <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>{t('common.comingSoon')}</Text>
-                  </View>
-                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -614,9 +634,9 @@ export default function Home() {
         <View style={styles.homeHeader}>
           <View style={styles.homeHeaderLeft}>
             {(user?.avatar_url || user?.profile_photo_url) ? (
-              <Image 
-                source={{ uri: user?.avatar_url || user?.profile_photo_url }} 
-                style={styles.avatarImage} 
+              <Image
+                source={{ uri: user?.avatar_url || user?.profile_photo_url }}
+                style={styles.avatarImage}
               />
             ) : (
               <View style={styles.avatarCircle}>
@@ -632,7 +652,7 @@ export default function Home() {
         </View>
 
         {/* Location Card - Gradient */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.locationCard}
           onPress={() => hasMultipleLocations && setShowLocationModal(true)}
           activeOpacity={hasMultipleLocations ? 0.8 : 1}
@@ -728,8 +748,8 @@ export default function Home() {
                   styles.serviceIconBox,
                   isActive ? styles.serviceIconBoxActive : styles.serviceIconBoxOff
                 ]}>
-                  <ServiceIcon 
-                    serviceId={service.id} 
+                  <ServiceIcon
+                    serviceId={service.id}
                     color={isActive ? service.activeColor : COLORS.textMuted}
                     size={24}
                   />
@@ -757,12 +777,15 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScroll}
         >
-          {B2C_SERVICES.map((service) => (
+          {B2C_SERVICES.filter(s => {
+              if (s.available === false) return false;
+              if (s.featureFlag && !featureFlags[s.featureFlag]) return false;
+              return true;
+            }).map((service) => (
             <TouchableOpacity
               key={service.id}
-              style={[styles.b2cCardHorizontal, !service.available && styles.cardDisabled]}
+              style={styles.b2cCardHorizontal}
               onPress={() => handleServicePress(service)}
-              disabled={!service.available}
             >
               <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
                 <Ionicons name={service.icon} size={24} color={service.color} />
@@ -773,11 +796,6 @@ export default function Home() {
               <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
                 {service.subtitle}
               </Text>
-              {!service.available && (
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText} maxFontSizeMultiplier={1}>{t('common.comingSoon')}</Text>
-                </View>
-              )}
             </TouchableOpacity>
           ))}
         </ScrollView>
