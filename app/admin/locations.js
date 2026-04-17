@@ -34,7 +34,7 @@ const COLORS = {
   background: '#0F1A1A',
   backgroundSecondary: '#1A2C2C',
   backgroundTertiary: '#243636',
-  lime: '#D4FE48',
+  lime: '#7C3AED',
   teal: '#5DDED8',
   purple: '#8B5CF6',
   success: '#10B981',
@@ -104,6 +104,7 @@ export default function LocationsScreen() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Settings modal
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -828,6 +829,10 @@ export default function LocationsScreen() {
     );
   }
 
+  const filteredLocations = locations.filter(loc =>
+    loc.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -843,6 +848,40 @@ export default function LocationsScreen() {
           {isSuperAdmin && (
             <TouchableOpacity onPress={openCreateModal} style={styles.addButton}>
               <Ionicons name="add" size={24} color={COLORS.background} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Search */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginHorizontal: 16,
+          marginTop: 12,
+          backgroundColor: COLORS.backgroundSecondary,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: COLORS.border,
+          paddingHorizontal: 12,
+        }}>
+          <Ionicons name="search" size={20} color={COLORS.textMuted} />
+          <TextInput
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              paddingHorizontal: 10,
+              fontSize: 15,
+              color: COLORS.textPrimary,
+            }}
+            placeholder="Buscar comunidad..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            autoCorrect={false}
+          />
+          {searchTerm.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchTerm('')}>
+              <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -888,8 +927,16 @@ export default function LocationsScreen() {
                 </TouchableOpacity>
               )}
             </View>
+          ) : filteredLocations.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search" size={48} color={COLORS.textMuted} />
+              <Text style={styles.emptyTitle}>Sin resultados</Text>
+              <Text style={styles.emptySubtitle}>
+                No se encontraron comunidades con "{searchTerm}"
+              </Text>
+            </View>
           ) : (
-            locations.map(renderLocationCard)
+            filteredLocations.map(renderLocationCard)
           )}
 
           <View style={{ height: 100 }} />

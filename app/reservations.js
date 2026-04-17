@@ -23,9 +23,12 @@ import { supabase } from '../src/config/supabase';
 import { useAuth } from '../src/context/AuthContext';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from '../src/hooks/useTranslation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
@@ -138,19 +141,17 @@ export default function ReservationsScreen() {
 
   const loadAreas = async () => {
     try {
-      const locationId = profile?.location_id || profile?.current_location?.location_id || user?.location_id;
-      console.log('🔍 locationId:', locationId, '| profile.location_id:', profile?.location_id, '| current_location:', profile?.current_location?.location_id, '| user.location_id:', user?.location_id, '| profile keys:', profile ? Object.keys(profile) : 'null');
-      if (!locationId) return;
-
-      const { data, error } = await supabase
-        .from('common_areas')
-        .select('*')
-        .eq('is_active', true)
-        .eq('location_id', locationId)
-        .order('name');
-
-      if (error) throw error;
-      setAreas(data || []);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch(`${API_URL}/common-areas`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Error fetching areas');
+      const result = await response.json();
+      setAreas(result.data || []);
     } catch (error) {
       console.error('Error loading areas:', error);
     }
