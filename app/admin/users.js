@@ -99,6 +99,14 @@ export default function AdminUsers() {
   const [createMethod, setCreateMethod] = useState('invite');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Password reset state
+  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   
   const [inviteForm, setInviteForm] = useState({
     role: 'resident',
@@ -318,6 +326,44 @@ export default function AdminUsers() {
         }
       ]
     );
+  };
+
+  // Resetear contraseña de usuario
+  const handlePasswordReset = async () => {
+    if (!selectedUser) return;
+    if (resetNewPassword.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        `${API_URL}/users/${selectedUser.user_id}/reset-password`,
+        {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ new_password: resetNewPassword }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.success) {
+        Alert.alert('✅ Éxito', `Contraseña de ${selectedUser.name || selectedUser.full_name} actualizada exitosamente`);
+        setShowPasswordResetModal(false);
+        setResetNewPassword('');
+        setResetConfirmPassword('');
+      } else {
+        Alert.alert('Error', data.message || 'No se pudo resetear la contraseña');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Error de conexión al resetear la contraseña');
+    } finally {
+      setResettingPassword(false);
+    }
   };
 
   // NUEVO: Crear usuario directamente
@@ -951,16 +997,38 @@ export default function AdminUsers() {
                   ]}
                   onPress={handleToggleStatus}
                 >
-                  <Ionicons 
-                    name={selectedUser.is_active ? 'close-circle' : 'checkmark-circle'} 
-                    size={20} 
-                    color={selectedUser.is_active ? COLORS.danger : COLORS.success} 
+                  <Ionicons
+                    name={selectedUser.is_active ? 'close-circle' : 'checkmark-circle'}
+                    size={20}
+                    color={selectedUser.is_active ? COLORS.danger : COLORS.success}
                   />
                   <Text style={[
                     styles.toggleButtonText,
                     { color: selectedUser.is_active ? COLORS.danger : COLORS.success }
                   ]}>
                     {selectedUser.is_active ? t('admin.users.deactivateUser') : t('admin.users.activateUser')}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Resetear Contraseña */}
+              {selectedUser.user_id !== user?.id && (
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    { backgroundColor: COLORS.warning + '15', marginTop: 12 }
+                  ]}
+                  onPress={() => {
+                    setResetNewPassword('');
+                    setResetConfirmPassword('');
+                    setShowResetPassword(false);
+                    setShowResetConfirmPassword(false);
+                    setShowPasswordResetModal(true);
+                  }}
+                >
+                  <Ionicons name="lock-closed" size={20} color={COLORS.warning} />
+                  <Text style={[styles.toggleButtonText, { color: COLORS.warning }]}>
+                    Resetear Contraseña
                   </Text>
                 </TouchableOpacity>
               )}
@@ -1209,6 +1277,165 @@ export default function AdminUsers() {
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </SafeAreaView>
+      </Modal>
+      {/* Password Reset Modal */}
+      <Modal
+        visible={showPasswordResetModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPasswordResetModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}>
+            <View style={{
+              backgroundColor: COLORS.backgroundSecondary,
+              borderRadius: 16,
+              padding: 24,
+              width: '100%',
+              maxWidth: 400,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Ionicons name="lock-closed" size={22} color={COLORS.warning} />
+                <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginLeft: 10 }}>
+                  Resetear Contraseña
+                </Text>
+              </View>
+
+              <Text style={{ color: COLORS.textSecondary, fontSize: 14, marginBottom: 20 }}>
+                Cambiar contraseña de{' '}
+                <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>
+                  {selectedUser?.name || selectedUser?.full_name}
+                </Text>
+              </Text>
+
+              {/* Nueva contraseña */}
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 6 }}>
+                Nueva contraseña *
+              </Text>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: COLORS.backgroundTertiary,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                marginBottom: 14,
+              }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    color: COLORS.textPrimary,
+                    padding: 12,
+                    fontSize: 15,
+                  }}
+                  placeholder="Mínimo 8 caracteres"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry={!showResetPassword}
+                  value={resetNewPassword}
+                  onChangeText={setResetNewPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowResetPassword(!showResetPassword)}
+                  style={{ padding: 12 }}
+                >
+                  <Ionicons
+                    name={showResetPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={COLORS.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirmar contraseña */}
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 6 }}>
+                Confirmar contraseña *
+              </Text>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: COLORS.backgroundTertiary,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                marginBottom: 24,
+              }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    color: COLORS.textPrimary,
+                    padding: 12,
+                    fontSize: 15,
+                  }}
+                  placeholder="Repetir contraseña"
+                  placeholderTextColor={COLORS.textMuted}
+                  secureTextEntry={!showResetConfirmPassword}
+                  value={resetConfirmPassword}
+                  onChangeText={setResetConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowResetConfirmPassword(!showResetConfirmPassword)}
+                  style={{ padding: 12 }}
+                >
+                  <Ionicons
+                    name={showResetConfirmPassword ? 'eye-off' : 'eye'}
+                    size={20}
+                    color={COLORS.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Botones */}
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => {
+                    setShowPasswordResetModal(false);
+                    setResetNewPassword('');
+                    setResetConfirmPassword('');
+                  }}
+                >
+                  <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 15 }}>
+                    Cancelar
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    borderRadius: 10,
+                    backgroundColor: resettingPassword ? COLORS.warning + '50' : COLORS.warning,
+                    alignItems: 'center',
+                  }}
+                  onPress={handlePasswordReset}
+                  disabled={resettingPassword}
+                >
+                  {resettingPassword ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                      Resetear
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
