@@ -356,6 +356,7 @@ export default function AdminUsers() {
         setShowPasswordResetModal(false);
         setResetNewPassword('');
         setResetConfirmPassword('');
+        setTimeout(() => setShowModal(true), 300);
       } else {
         Alert.alert('Error', data.message || 'No se pudo resetear la contraseña');
       }
@@ -1023,7 +1024,8 @@ export default function AdminUsers() {
                     setResetConfirmPassword('');
                     setShowResetPassword(false);
                     setShowResetConfirmPassword(false);
-                    setShowPasswordResetModal(true);
+                    setShowModal(false);
+                    setTimeout(() => setShowPasswordResetModal(true), 300);
                   }}
                 >
                   <Ionicons name="lock-closed" size={20} color={COLORS.warning} />
@@ -1407,6 +1409,7 @@ export default function AdminUsers() {
                     setShowPasswordResetModal(false);
                     setResetNewPassword('');
                     setResetConfirmPassword('');
+                    setTimeout(() => setShowModal(true), 300);
                   }}
                 >
                   <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 15 }}>
