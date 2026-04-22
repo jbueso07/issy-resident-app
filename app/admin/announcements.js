@@ -250,7 +250,7 @@ export default function AdminAnnouncements() {
       const response = await fetch(url, {
         method: editingAnnouncement ? 'PUT' : 'POST',
         headers,
-        body: JSON.stringify({ ...formData, images: allImages }),
+        body: JSON.stringify({ ...formData, images: allImages, location_id: selectedLocationId }),
       });
       const data = await response.json();
       if (data.success) {
