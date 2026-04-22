@@ -244,13 +244,16 @@ export default function AdminAnnouncements() {
       const newImageUrls = await uploadImages();
       const allImages = [...existingImages, ...newImageUrls];
       const headers = await getAuthHeaders();
-      const url = editingAnnouncement 
+      const url = editingAnnouncement
         ? `${API_URL}/api/announcements/${editingAnnouncement.id}`
         : `${API_URL}/api/announcements`;
+      const debugBody = { ...formData, images: allImages, location_id: selectedLocationId };
+      console.warn('🔴 [DEBUG-ANUNCIO-CLIENT] selectedLocationId:', selectedLocationId);
+      console.warn('🔴 [DEBUG-ANUNCIO-CLIENT] Body completo:', JSON.stringify(debugBody, null, 2));
       const response = await fetch(url, {
         method: editingAnnouncement ? 'PUT' : 'POST',
         headers,
-        body: JSON.stringify({ ...formData, images: allImages, location_id: selectedLocationId }),
+        body: JSON.stringify(debugBody),
       });
       const data = await response.json();
       if (data.success) {
