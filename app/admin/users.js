@@ -197,7 +197,7 @@ export default function AdminUsers() {
       if (membersData.success) {
         const transformedUsers = (membersData.data || []).map(member => ({
           id: member.id,
-          user_id: member.user_id,
+          user_id: member.user?.id,
           name: member.user?.name || member.user?.full_name || 'Sin nombre',
           full_name: member.user?.full_name || member.user?.name,
           email: member.user?.email || '',
