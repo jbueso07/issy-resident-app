@@ -34,7 +34,7 @@ const COLORS = {
   background: '#0F1A1A',
   backgroundSecondary: '#1A2C2C',
   backgroundTertiary: '#243636',
-  lime: '#7C3AED',
+  lime: '#D4FE48',
   teal: '#5DDED8',
   purple: '#8B5CF6',
   success: '#10B981',
