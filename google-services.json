@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "747025378642",
+    "project_id": "issy-app",
+    "storage_bucket": "issy-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:747025378642:android:ce1b25745fe79fc9181e8b",
+        "android_client_info": {
+          "package_name": "com.issy.resident"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC32nMt6jpf6CK-dQLzbXp33kUnGc5FXYk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

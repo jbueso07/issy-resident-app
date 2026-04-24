@@ -41,6 +41,7 @@
         "backgroundColor": "#0F1A1E"
       },
       "package": "com.issy.resident",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
