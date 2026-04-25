@@ -493,13 +493,13 @@
       },
       "panicButton": {
         "question": "Comment fonctionne le bouton de panique ?",
-        "answer": "Le bouton de panique est un service premium qui envoie des alertes immédiates à la sécurité et aux contacts d'urgence."
+        "answer": "Le bouton de panique envoie des alertes immédiates à la sécurité et aux contacts d'urgence."
       }
     },
     "panicButton": {
       "title": "Bouton de Panique",
       "subtitle": "Protection personnelle 24h/24",
-      "message": "Le service Bouton de Panique est disponible en abonnement premium. Voulez-vous en savoir plus ?",
+      "message": "Le Bouton de Panique envoie des alertes immédiates à la sécurité et aux contacts d'urgence. Bientôt disponible.",
       "viewPlans": "Voir les forfaits"
     },
     "premium": "Premium",

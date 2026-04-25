@@ -711,13 +711,13 @@
       },
       "panicButton": {
         "question": "¿Cómo funciona el botón de pánico?",
-        "answer": "El botón de pánico es un servicio premium que envía alertas inmediatas a seguridad y contactos de emergencia."
+        "answer": "El botón de pánico envía alertas inmediatas a seguridad y contactos de emergencia."
       }
     },
     "panicButton": {
       "title": "Botón de Pánico",
       "subtitle": "Protección personal 24/7",
-      "message": "El servicio de Botón de Pánico está disponible como suscripción premium. ¿Te gustaría conocer más?",
+      "message": "El Botón de Pánico envía alertas inmediatas a seguridad y contactos de emergencia. Próximamente disponible.",
       "viewPlans": "Ver planes"
     },
     "premium": "Premium",

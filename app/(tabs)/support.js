@@ -81,8 +81,7 @@ export default function Support() {
       t('support.panicButton.title'),
       t('support.panicButton.message'),
       [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('support.panicButton.viewPlans'), onPress: () => {} }
+        { text: t('common.ok'), style: 'default' }
       ]
     );
   };
@@ -156,9 +155,6 @@ export default function Support() {
             <View style={styles.emergencyTextContainer}>
               <Text style={styles.emergencyTitle}>{t('support.panicButton.title')}</Text>
               <Text style={styles.emergencySubtitle}>{t('support.panicButton.subtitle')}</Text>
-            </View>
-            <View style={styles.emergencyBadge}>
-              <Text style={styles.emergencyBadgeText}>{t('support.premium')}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>

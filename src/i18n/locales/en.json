@@ -607,13 +607,13 @@
       },
       "panicButton": {
         "question": "How does the panic button work?",
-        "answer": "The panic button is a premium service that sends immediate alerts to security and emergency contacts."
+        "answer": "The panic button sends immediate alerts to security and emergency contacts."
       }
     },
     "panicButton": {
       "title": "Panic Button",
       "subtitle": "24/7 personal protection",
-      "message": "The Panic Button service is available as a premium subscription. Would you like to learn more?",
+      "message": "The Panic Button sends immediate alerts to security and emergency contacts. Coming soon.",
       "viewPlans": "View plans"
     },
     "premium": "Premium",
