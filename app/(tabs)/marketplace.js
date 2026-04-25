@@ -240,32 +240,6 @@ export default function MarketplaceScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Prime Banner */}
-        {!isPrime && Platform.OS !== 'ios' && (
-          <TouchableOpacity
-            style={styles.primeBanner}
-            activeOpacity={0.9}
-            onPress={() => router.push('/my-subscription')}
-          >
-            <LinearGradient
-              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-              style={styles.primeBannerGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.primeBannerContent}>
-                <Ionicons name="diamond" size={28} color={COLORS.textDark} />
-                <View style={styles.primeBannerText}>
-                  <Text style={styles.primeBannerTitle}>ISSY Prime</Text>
-                  <Text style={styles.primeBannerSubtitle}>
-                    Ahorra hasta 15% en todos los servicios
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color={COLORS.textDark} />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
 
         {/* Categories */}
         <View style={styles.section}>

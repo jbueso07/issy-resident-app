@@ -143,16 +143,6 @@ export default function Profile() {
           route: '/edit-profile',
           color: COLORS.teal,
         },
-        ...(Platform.OS !== 'ios' ? [
-          {
-            icon: 'star-outline',
-            title: t('profile.subscription'),
-            subtitle: t('profile.subscriptionDesc'),
-            route: '/my-subscription',
-            badge: 'PRO',
-            color: COLORS.purple,
-          },
-        ] : []),
         {
           icon: 'card-outline',
           title: t('profile.paymentMethods'),
