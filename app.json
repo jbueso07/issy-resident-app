@@ -22,9 +22,9 @@
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSFaceIDUsageDescription": "Usa Face ID para acceder a tu cuenta de forma segura",
-        "NSCameraUsageDescription": "ISSY necesita acceso a la camara para escanear codigos QR",
-        "NSPhotoLibraryUsageDescription": "ISSY necesita acceso a tus fotos para subir imagenes",
+        "NSFaceIDUsageDescription": "ISSY usa Face ID para que puedas acceder a tu cuenta sin escribir tu contraseña cada vez, manteniendo tu información segura.",
+        "NSCameraUsageDescription": "ISSY usa la cámara para escanear códigos QR de visitantes, registrar fotos en reportes de incidentes, y capturar comprobantes de pago.",
+        "NSPhotoLibraryUsageDescription": "ISSY accede a tus fotos para que puedas subir tu foto de perfil, adjuntar comprobantes de pago, y agregar evidencia fotográfica en reportes de incidentes.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
