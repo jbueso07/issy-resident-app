@@ -43,3 +43,6 @@ yarn-error.*
 # Backups locales
 *.backup-*
 *.bak
+
+# Local npm/yarn config
+.npmrc
