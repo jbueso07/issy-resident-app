@@ -96,8 +96,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ISSY necesita acceso a tus fotos para subir imagenes",
-          "cameraPermission": "ISSY necesita acceso a la camara para tomar fotos"
+          "photosPermission": "ISSY accede a tus fotos para que puedas subir tu foto de perfil, adjuntar comprobantes de pago, y agregar evidencia fotográfica en reportes de incidentes.",
+          "cameraPermission": "ISSY usa la cámara para escanear códigos QR de visitantes, registrar fotos en reportes de incidentes, y capturar comprobantes de pago."
         }
       ],
       [
