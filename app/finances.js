@@ -45,9 +45,7 @@ import {
   deleteBudget,
   getFinancePlans,
   getFinanceUsageLimits,
-  upgradeFinancePlan,
   getPaymentMethods,
-  subscribeToPlan,
   // NEW - Budget Assistant
   getBudgetAssistant,
   applyBudgetSuggestion,
@@ -171,8 +169,7 @@ export default function FinancesScreen() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showInvoiceDetailModal, setShowInvoiceDetailModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
+
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [selectedTip, setSelectedTip] = useState(null);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -297,25 +294,25 @@ export default function FinancesScreen() {
     switch(type) {
       case 'transaction':
         if (!limits.transactions.unlimited && limits.transactions.remaining <= 0) {
-          Alert.alert('Límite alcanzado', 'Has alcanzado el límite de transacciones de tu plan actual.');
+          Alert.alert('Límite alcanzado', 'Has alcanzado el máximo de transacciones disponibles.');
           return false;
         }
         break;
       case 'goal':
         if (!limits.goals.unlimited && limits.goals.remaining <= 0) {
-          Alert.alert('Límite alcanzado', 'Has alcanzado el límite de metas de tu plan actual.');
+          Alert.alert('Límite alcanzado', 'Has alcanzado el máximo de metas disponibles.');
           return false;
         }
         break;
       case 'budget':
         if (!limits.budgets.available) {
-          Alert.alert('Función no disponible', 'Los presupuestos no están disponibles en tu plan actual.');
+          Alert.alert('Función no disponible', 'Esta función no está disponible en este momento.');
           return false;
         }
         break;
       case 'invoice':
         if (!limits.invoices.available) {
-          Alert.alert('Función no disponible', 'Las facturas no están disponibles en tu plan actual.');
+          Alert.alert('Función no disponible', 'Esta función no está disponible en este momento.');
           return false;
         }
         break;
