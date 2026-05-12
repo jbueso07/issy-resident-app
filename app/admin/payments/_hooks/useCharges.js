@@ -4,6 +4,36 @@ import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { API_URL, getDefaultFormData } from '../_constants';
 import { getAuthHeaders, validateChargeForm, getPaymentTypeLabel } from '../_helpers';
+
+/**
+ * Stats agregadas server-side por cada cobro padre.
+ * Sprint 2 D4 (backend): getCharges devuelve estas stats ya calculadas.
+ * @typedef {Object} ChargeStats
+ * @property {number} total_payments
+ * @property {number} paid_count
+ * @property {number} pending_count
+ * @property {number} proof_submitted_count
+ * @property {number} rejected_count
+ * @property {number} cancelled_count
+ * @property {number} total_amount_expected
+ * @property {number} total_amount_collected
+ */
+
+/**
+ * Cobro padre tal como lo expone el backend post-Sprint 2 D4.
+ * Cada cobro masivo es UNA entrada (no aplanado por residente).
+ * El detalle per-residente se obtiene con useChargePayments(chargeId).
+ * @typedef {Object} Charge
+ * @property {string} id
+ * @property {string} title
+ * @property {number} amount
+ * @property {'active'|'cancelled'} status
+ * @property {'all'|'specific'} applies_to
+ * @property {boolean} is_recurring
+ * @property {string|null} cancelled_at - ISO timestamp; null si no cancelado
+ * @property {ChargeStats} stats
+ */
+
 export function useCharges(t, selectedLocationId) {
   const [charges, setCharges] = useState([]);
   const [stats, setStats] = useState(null);
@@ -20,7 +50,14 @@ export function useCharges(t, selectedLocationId) {
   // Form state
   const [formData, setFormData] = useState(getDefaultFormData());
   /**
-   * Fetch charges and stats from API
+   * Fetch charges and stats from API.
+   *
+   * Sprint 2 D4: el endpoint /admin/charges ahora devuelve 1 entrada por cobro
+   * padre con `stats` agregadas server-side (paid_count, pending_count,
+   * total_amount_collected, etc.). NO se aplana por residente. Para detalle
+   * per-residente usar useChargePayments(chargeId).
+   *
+   * @returns {Promise<{charges: Charge[], stats: object}>}
    */
   const fetchCharges = useCallback(async () => {
     try {

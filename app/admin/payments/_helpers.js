@@ -89,18 +89,28 @@ export const isOverdue = (dueDate) => {
 };
 
 /**
- * Group charges by month/year
- * @param {Array} charges - Array of charge objects
- * @returns {Object} Charges grouped by period
+ * Group charges by month/year of their due_date, with totals summed from
+ * server-side aggregated stats (Sprint 2 D4 shape).
+ *
+ * Filter behavior:
+ *   - filter === 'cancelled': include ONLY cancelled charges
+ *   - filter !== 'cancelled' (incluye 'all'): exclude cancelled charges
+ *
+ * @param {Array} charges - Array of charge objects (con `stats` agregadas)
+ * @param {string} [filter='all'] - status filter from the tab UI
+ * @returns {Array} Periods sorted desc by key, con totals listos para mostrar.
  */
-export const groupChargesByPeriod = (charges) => {
+export const groupChargesByPeriod = (charges, filter = 'all') => {
+  const visibleCharges = (charges || []).filter(c =>
+    filter === 'cancelled' ? c.status === 'cancelled' : c.status !== 'cancelled'
+  );
+
   const groups = {};
-  
-  charges.forEach(charge => {
+  visibleCharges.forEach(charge => {
     const date = new Date(charge.due_date || charge.created_at);
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const label = date.toLocaleDateString('es-HN', { month: 'long', year: 'numeric' });
-    
+
     if (!groups[key]) {
       groups[key] = {
         key,
@@ -111,19 +121,131 @@ export const groupChargesByPeriod = (charges) => {
         pending: 0,
       };
     }
-    
+
     groups[key].charges.push(charge);
-    groups[key].total += parseFloat(charge.amount || 0);
-    
-    if (charge.display_status === 'paid' || charge.payment_status === 'paid') {
-      groups[key].collected += parseFloat(charge.amount || 0);
-    } else {
-      groups[key].pending += parseFloat(charge.amount || 0);
-    }
+    const expected = parseFloat(charge.stats?.total_amount_expected || 0);
+    const collected = parseFloat(charge.stats?.total_amount_collected || 0);
+    groups[key].total += expected;
+    groups[key].collected += collected;
   });
-  
-  // Sort by key descending (most recent first)
-  return Object.values(groups).sort((a, b) => b.key.localeCompare(a.key));
+
+  // Calcular pending después de acumular (estable contra NaN)
+  Object.values(groups).forEach(g => { g.pending = g.total - g.collected; });
+
+  return Object.values(groups)
+    .filter(g => g.charges.length > 0)
+    .sort((a, b) => b.key.localeCompare(a.key));
+};
+
+/**
+ * Format due_date as relative human-readable label:
+ *   - "Vence hoy"           (diffDays === 0)
+ *   - "Vence en N días"     (diffDays > 0)
+ *   - "Vencido hace N días" (diffDays < 0)
+ *
+ * @param {string} dueDate - ISO date string
+ * @param {function} [t] - i18n translation function (optional)
+ * @returns {{ label: string, severity: 'today'|'future'|'overdue'|'neutral', diffDays: number|null }}
+ */
+export const formatRelativeDueDate = (dueDate, t) => {
+  if (!dueDate) return { label: '', severity: 'neutral', diffDays: null };
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) {
+    return { label: '', severity: 'neutral', diffDays: null };
+  }
+  const now = new Date();
+  due.setUTCHours(0, 0, 0, 0);
+  now.setUTCHours(0, 0, 0, 0);
+  const diffDays = Math.round((due.getTime() - now.getTime()) / 86400000);
+  const tr = (key, fallback, vars) => (t ? t(key, fallback, vars) : fallback);
+
+  if (diffDays === 0) {
+    return { label: tr('admin.payments.due.today', 'Vence hoy'), severity: 'today', diffDays };
+  }
+  if (diffDays > 0) {
+    const noun = diffDays === 1 ? 'día' : 'días';
+    return {
+      label: tr('admin.payments.due.future', `Vence en ${diffDays} ${noun}`, { n: diffDays }),
+      severity: 'future',
+      diffDays,
+    };
+  }
+  const overdue = Math.abs(diffDays);
+  const noun = overdue === 1 ? 'día' : 'días';
+  return {
+    label: tr('admin.payments.due.overdue', `Vencido hace ${overdue} ${noun}`, { n: overdue }),
+    severity: 'overdue',
+    diffDays,
+  };
+};
+
+/**
+ * Map a recurring_period value to a Spanish label.
+ * Returns null if no period provided.
+ *
+ * @param {string|null} period
+ * @param {function} [t]
+ * @returns {string|null}
+ */
+const RECURRING_LABELS = {
+  monthly: 'Mensual',
+  bimonthly: 'Bimestral',
+  quarterly: 'Trimestral',
+  semiannual: 'Semestral',
+  annual: 'Anual',
+};
+export const formatRecurringPeriodLabel = (period, t) => {
+  if (!period) return null;
+  const fallback = RECURRING_LABELS[period] || 'Recurrente';
+  return t ? t(`admin.payments.recurring.${period}`, fallback) : fallback;
+};
+
+/**
+ * Format the applies_to / specific_users target as a human-readable label.
+ *   - "Todos los residentes" (applies_to === 'all')
+ *   - "N residentes" / "1 residente" (applies_to === 'specific')
+ *
+ * @param {Object} charge
+ * @param {function} [t]
+ * @returns {string}
+ */
+export const formatAppliesToLabel = (charge, t) => {
+  if (charge?.applies_to === 'all') {
+    return t ? t('admin.payments.appliesTo.all', 'Todos los residentes') : 'Todos los residentes';
+  }
+  const n = charge?.specific_users?.length ?? charge?.total_users ?? 0;
+  const noun = n === 1 ? 'residente' : 'residentes';
+  return t
+    ? t('admin.payments.appliesTo.specific', `${n} ${noun}`, { n })
+    : `${n} ${noun}`;
+};
+
+/**
+ * Format cancelled_at as relative human-readable label:
+ *   - "Cancelado hoy"
+ *   - "Cancelado hace N días"
+ *
+ * @param {string|null} cancelledAt - ISO timestamp
+ * @param {function} [t]
+ * @returns {string}
+ */
+export const formatRelativeCancelledAt = (cancelledAt, t) => {
+  if (!cancelledAt) return t ? t('admin.payments.cancelled.noDate', 'Cancelado') : 'Cancelado';
+  const c = new Date(cancelledAt);
+  if (Number.isNaN(c.getTime())) {
+    return t ? t('admin.payments.cancelled.noDate', 'Cancelado') : 'Cancelado';
+  }
+  const now = new Date();
+  c.setUTCHours(0, 0, 0, 0);
+  now.setUTCHours(0, 0, 0, 0);
+  const diffDays = Math.round((now.getTime() - c.getTime()) / 86400000);
+  if (diffDays <= 0) {
+    return t ? t('admin.payments.cancelled.today', 'Cancelado hoy') : 'Cancelado hoy';
+  }
+  const noun = diffDays === 1 ? 'día' : 'días';
+  return t
+    ? t('admin.payments.cancelled.past', `Cancelado hace ${diffDays} ${noun}`, { n: diffDays })
+    : `Cancelado hace ${diffDays} ${noun}`;
 };
 
 /**

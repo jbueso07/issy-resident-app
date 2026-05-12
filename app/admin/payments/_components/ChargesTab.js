@@ -13,7 +13,21 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, scale, getFilterOptions } from '../_constants';
-import { formatCurrency, formatDate, isOverdue, groupChargesByPeriod, calculateCollectionPercentage } from '../_helpers';
+import {
+  formatCurrency,
+  groupChargesByPeriod,
+  calculateCollectionPercentage,
+  formatRelativeDueDate,
+  formatRecurringPeriodLabel,
+  formatAppliesToLabel,
+  formatRelativeCancelledAt,
+} from '../_helpers';
+
+// TODO Sprint 2 D7: el set FILTER_OPTIONS del frontend incluye opciones
+// (paid/pending/overdue) que el backend post-D4 no soporta — `community_charges`
+// solo tiene status 'active'|'cancelled'. Filtros mismatch devuelven listas
+// vacías. Ajustar getFilterOptions a ('all', 'active', 'cancelled') o agregar
+// mapeo en el hook antes de mandar al backend.
 
 export function ChargesTab({
   charges,
@@ -29,16 +43,16 @@ export function ChargesTab({
   const { t } = useTranslation();
   const FILTER_OPTIONS = getFilterOptions(t);
   const [expandedPeriods, setExpandedPeriods] = useState({});
-  
+
   const getPaymentTypeIconLocal = (type) => {
     return PAYMENT_TYPES?.find(pt => pt.value === type)?.icon || 'document-text';
   };
 
-  // Group charges by period
+  // Group charges by period (con filtro de cancelados aplicado por el helper)
   const groupedCharges = useMemo(() => {
     if (!charges || charges.length === 0) return [];
-    return groupChargesByPeriod(charges);
-  }, [charges]);
+    return groupChargesByPeriod(charges, filter);
+  }, [charges, filter]);
 
   // Initialize all periods as expanded on first render
   useMemo(() => {
@@ -218,7 +232,6 @@ function PeriodSection({ group, expanded, onToggle, onChargePress, paymentStatus
             <ChargeCard
               key={charge.id}
               charge={charge}
-              paymentStatus={paymentStatus}
               onPress={() => onChargePress(charge)}
               t={t}
               getPaymentTypeIconFn={getPaymentTypeIconFn}
@@ -232,36 +245,99 @@ function PeriodSection({ group, expanded, onToggle, onChargePress, paymentStatus
 }
 
 // Charge Card Sub-component
-function ChargeCard({ charge, paymentStatus, onPress, t, getPaymentTypeIconFn, compact }) {
-  const status = charge.display_status || charge.payment_status || charge.status || 'pending';
-  const statusInfo = paymentStatus[status] || paymentStatus.pending;
-  const chargeIsOverdue = status === 'pending' && isOverdue(charge.due_date);
-  const displayStatus = chargeIsOverdue ? paymentStatus.overdue : statusInfo;
-  
-  const payment = charge.payment || charge.payments?.[0];
-  const userName = payment?.user?.name || payment?.user?.full_name || charge.user?.name || charge.user_name || t('common.user', 'Usuario');
-  const userUnit = payment?.user?.unit_number || charge.user?.unit_number || '';
-  
+// Sprint 2 D5: 1 card = 1 cobro padre (no por residente).
+// Lee de charge.stats agregadas server-side.
+function ChargeCard({ charge, onPress, t, getPaymentTypeIconFn, compact }) {
+  const stats = charge.stats || {
+    paid_count: 0,
+    total_payments: 0,
+    total_amount_expected: 0,
+    total_amount_collected: 0,
+  };
+  const isCancelled = charge.status === 'cancelled';
+  const hasResidents = stats.total_payments > 0;
+  const isCompleted = !isCancelled && hasResidents && stats.paid_count === stats.total_payments;
+  const isInProgress = !isCancelled && hasResidents && stats.paid_count < stats.total_payments;
+
+  // Stats badge: color y texto dependen del estado
+  let statsBadgeColor;
+  let statsBadgeIcon;
+  let statsBadgeText;
+  if (isCancelled) {
+    statsBadgeColor = COLORS.textMuted;
+    statsBadgeIcon = 'close-circle';
+    statsBadgeText = formatRelativeCancelledAt(charge.cancelled_at, t);
+  } else if (isCompleted) {
+    statsBadgeColor = COLORS.success;
+    statsBadgeIcon = 'checkmark-circle';
+    statsBadgeText = t(
+      'admin.payments.stats.allPaid',
+      `${stats.paid_count} de ${stats.total_payments} pagaron`,
+      { paid: stats.paid_count, total: stats.total_payments }
+    );
+  } else if (isInProgress) {
+    statsBadgeColor = COLORS.warning;
+    statsBadgeIcon = 'time';
+    statsBadgeText = t(
+      'admin.payments.stats.partial',
+      `${stats.paid_count} de ${stats.total_payments} pagaron`,
+      { paid: stats.paid_count, total: stats.total_payments }
+    );
+  } else {
+    // active + sin residentes (edge case post-D3 roster vacío)
+    statsBadgeColor = COLORS.textMuted;
+    statsBadgeIcon = 'people-outline';
+    statsBadgeText = t('admin.payments.stats.noResidents', 'Sin residentes');
+  }
+
+  // Due date relativo (solo cards no canceladas)
+  const dueDateInfo = !isCancelled ? formatRelativeDueDate(charge.due_date, t) : null;
+  let dueDateColor = COLORS.textSecondary;
+  if (dueDateInfo) {
+    if (dueDateInfo.severity === 'overdue') dueDateColor = COLORS.danger;
+    else if (dueDateInfo.severity === 'today') dueDateColor = COLORS.warning;
+  }
+
+  // Type badges
+  const appliesLabel = formatAppliesToLabel(charge, t);
+  const recurringLabel = charge.is_recurring
+    ? formatRecurringPeriodLabel(charge.recurring_period, t)
+    : null;
+
   return (
     <TouchableOpacity
-      style={[styles.chargeCard, compact && styles.chargeCardCompact]}
+      style={[
+        styles.chargeCard,
+        compact && styles.chargeCardCompact,
+        isCancelled && styles.chargeCardCancelled,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {/* Header: icon + title + amount */}
       <View style={styles.cardHeader}>
-        <View style={[styles.cardIconContainer, compact && styles.cardIconContainerCompact, { backgroundColor: COLORS.teal + '20' }]}>
-          <Ionicons 
-            name={getPaymentTypeIconFn(charge.charge_type || charge.payment_type)} 
-            size={compact ? 16 : 20} 
-            color={COLORS.teal} 
+        <View
+          style={[
+            styles.cardIconContainer,
+            compact && styles.cardIconContainerCompact,
+            { backgroundColor: COLORS.teal + '20' },
+          ]}
+        >
+          <Ionicons
+            name={getPaymentTypeIconFn(charge.charge_type || charge.payment_type)}
+            size={compact ? 16 : 20}
+            color={COLORS.teal}
           />
         </View>
         <View style={styles.cardHeaderLeft}>
-          <Text style={[styles.chargeConcept, compact && styles.chargeConceptCompact]}>
-            {charge.title || charge.concept || t('admin.payments.types.maintenance', 'Mantenimiento')}
-          </Text>
-          <Text style={styles.chargeUser}>
-            {userUnit ? `${userUnit} - ${userName}` : userName}
+          <Text
+            style={[
+              styles.chargeConcept,
+              compact && styles.chargeConceptCompact,
+              isCancelled && styles.chargeTitleCancelled,
+            ]}
+          >
+            {charge.title || t('admin.payments.types.maintenance', 'Mantenimiento')}
           </Text>
         </View>
         <View style={styles.cardHeaderRight}>
@@ -271,18 +347,36 @@ function ChargeCard({ charge, paymentStatus, onPress, t, getPaymentTypeIconFn, c
           <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
         </View>
       </View>
-      
-      <View style={styles.cardFooter}>
-        <View style={[styles.statusBadge, { backgroundColor: displayStatus.color + '20' }]}>
-          <Ionicons name={displayStatus.icon} size={12} color={displayStatus.color} />
-          <Text style={[styles.statusText, { color: displayStatus.color }]}>
-            {displayStatus.label}
+
+      {/* Middle: stats badge + due date relativo */}
+      <View style={styles.cardMiddle}>
+        <View style={[styles.statsBadge, { backgroundColor: statsBadgeColor + '20' }]}>
+          <Ionicons name={statsBadgeIcon} size={12} color={statsBadgeColor} />
+          <Text style={[styles.statusText, { color: statsBadgeColor }]}>
+            {statsBadgeText}
           </Text>
         </View>
-        <View style={styles.dueDateContainer}>
-          <Ionicons name="calendar-outline" size={12} color={COLORS.textSecondary} />
-          <Text style={styles.dueDate}>{formatDate(charge.due_date)}</Text>
+        {dueDateInfo && !!dueDateInfo.label && (
+          <View style={styles.dueDateContainer}>
+            <Ionicons name="calendar-outline" size={12} color={dueDateColor} />
+            <Text style={[styles.dueDate, { color: dueDateColor }]}>
+              {dueDateInfo.label}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Footer: applies_to + recurring badges */}
+      <View style={styles.cardFooter}>
+        <View style={styles.typeBadge}>
+          <Text style={styles.typeBadgeText}>{appliesLabel}</Text>
         </View>
+        {recurringLabel && (
+          <View style={styles.typeBadge}>
+            <Ionicons name="repeat" size={11} color={COLORS.textSecondary} />
+            <Text style={styles.typeBadgeText}>{recurringLabel}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -537,10 +631,18 @@ const styles = StyleSheet.create({
   chargeAmountCompact: {
     fontSize: scale(15),
   },
-  cardFooter: {
+  cardMiddle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: scale(8),
+    gap: scale(8),
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    flexWrap: 'wrap',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -550,6 +652,15 @@ const styles = StyleSheet.create({
     borderRadius: scale(6),
     gap: scale(4),
   },
+  statsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(4),
+    flexShrink: 1,
+  },
   statusText: {
     fontSize: scale(11),
     fontWeight: '500',
@@ -558,10 +669,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(4),
+    flexShrink: 0,
   },
   dueDate: {
     fontSize: scale(11),
     color: COLORS.textSecondary,
+  },
+  chargeCardCancelled: {
+    opacity: 0.6,
+  },
+  chargeTitleCancelled: {
+    textDecorationLine: 'line-through',
+    color: COLORS.textMuted,
+  },
+  typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
+    backgroundColor: COLORS.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    gap: scale(4),
+  },
+  typeBadgeText: {
+    fontSize: scale(10),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
 });
 
