@@ -24,6 +24,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +83,12 @@ export function ChargeDetailModal({
   // UI state para resaltar el chip activo del filtro de status
   const [statusFilterUI, setStatusFilterUI] = useState(null);
 
+  // Confirmación robusta (Sprint 2 D7): un solo state controla los 3 casos
+  // (cancel-massive, cancel-payment, reject-proof). Cuando es null el modal
+  // de confirmación está cerrado.
+  // shape: { type, payment?, isLoading }
+  const [confirmModalConfig, setConfirmModalConfig] = useState(null);
+
   // Hook paginado para los community_payments del cobro.
   // chargeId=null cuando !visible → idle (no fetch).
   const {
@@ -102,6 +109,7 @@ export function ChargeDetailModal({
       setSelectedPayment(null);
       setStatusFilterUI(null);
       setActionLoading(false);
+      setConfirmModalConfig(null);
     }
   }, [visible]);
 
@@ -162,131 +170,216 @@ export function ChargeDetailModal({
     }
   };
 
-  // TODO Sprint 2 D7: reactivar botones verify/reject/revert en PaymentView.
-  // Las funciones se mantienen acá para que D7 las re-conecte a la UI sin
-  // tener que re-escribir la lógica.
-  // eslint-disable-next-line no-unused-vars
-  const handleVerify = async (payment) => {
-    if (onVerifyProof) {
-      setActionLoading(true);
-      await onVerifyProof(payment);
-      setActionLoading(false);
-    }
-  };
-  // eslint-disable-next-line no-unused-vars
-  const handleReject = async (payment) => {
-    Alert.prompt(
-      'Rechazar Comprobante',
-      'Ingresa la razón del rechazo:',
-      async (reason) => {
-        if (reason && reason.trim()) {
-          if (onRejectProof) {
+  // Sprint 2 D7: handlers reactivados desde PaymentView.
+  // Aprobar: confirmación simple Alert.alert (acción positiva, no destructiva).
+  // Rechazar: dispara CancelConfirmationModal con requireReason=true.
+  // Revertir: confirmación simple Alert.alert + advertencia.
+  const handleVerify = (payment) => {
+    Alert.alert(
+      t('admin.payments.approve', 'Aprobar'),
+      t(
+        'admin.payments.approveConfirm',
+        '¿Aprobar este pago? El residente verá su pago como verificado.'
+      ),
+      [
+        { text: t('common.no', 'No'), style: 'cancel' },
+        {
+          text: t('common.yes', 'Sí'),
+          onPress: async () => {
+            if (!onVerifyProof) return;
             setActionLoading(true);
-            await onRejectProof(payment, reason.trim());
-            setActionLoading(false);
-          }
-        } else {
-          Alert.alert('Error', 'La razón es requerida');
-        }
-      },
-      'plain-text',
-      '',
-      'default'
+            try {
+              await onVerifyProof(payment);
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
     );
   };
-  // eslint-disable-next-line no-unused-vars
-  const handleRevert = async (payment) => {
-    if (onRevertPayment) {
-      setActionLoading(true);
-      await onRevertPayment(payment);
-      setActionLoading(false);
-    }
+
+  // handleReject dispara el modal con type='reject-proof' (requireReason=true).
+  // La llamada efectiva a onRejectProof se hace desde handleConfirmModalAction.
+  const handleReject = (payment) => {
+    setConfirmModalConfig({ type: 'reject-proof', payment, isLoading: false });
   };
 
-  // Cancelar cobro masivo (vista padre): delega al consumidor.
-  // El consumidor cierra el modal y refresca la lista.
-  const handleCancelMassiveCharge = useCallback(() => {
+  const handleRevert = (payment) => {
     Alert.alert(
-      t('admin.payments.cancelCharge', 'Cancelar Cobro'),
+      t('admin.payments.revert', 'Revertir verificación'),
       t(
-        'admin.payments.cancelChargeConfirm',
-        '¿Estás seguro de cancelar este cobro masivo?'
+        'admin.payments.revertConfirm',
+        '¿Revertir la verificación de este pago? El estado volverá a "comprobante enviado" para re-revisión.'
       ),
       [
         { text: t('common.no', 'No'), style: 'cancel' },
         {
           text: t('common.yes', 'Sí'),
           style: 'destructive',
-          onPress: () => {
-            if (onCancelCharge) onCancelCharge();
+          onPress: async () => {
+            if (!onRevertPayment) return;
+            setActionLoading(true);
+            try {
+              await onRevertPayment(payment);
+            } finally {
+              setActionLoading(false);
+            }
           },
         },
       ]
     );
-  }, [onCancelCharge, t]);
+  };
 
-  // Cancelar UN pago individual (vista pago): llama el endpoint nuevo
-  // POST /admin/payments/:id/cancel.
-  const cancelSinglePayment = useCallback(
-    async (payment) => {
-      if (!payment?.id) return;
-      Alert.alert(
-        t('admin.payments.cancelPayment', 'Cancelar este pago'),
-        t(
-          'admin.payments.cancelPaymentConfirm',
-          '¿Estás seguro de cancelar este pago? El cobro padre y los demás residentes no se ven afectados.'
-        ),
-        [
-          { text: t('common.no', 'No'), style: 'cancel' },
-          {
-            text: t('common.yes', 'Sí'),
-            style: 'destructive',
-            onPress: async () => {
-              setActionLoading(true);
-              try {
-                const headers = await getAuthHeaders();
-                const response = await fetch(
-                  API_URL +
-                    '/api/community-payments/admin/payments/' +
-                    payment.id +
-                    '/cancel',
-                  {
-                    method: 'POST',
-                    headers: { ...headers, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ reason: null }),
-                  }
-                );
-                const json = await response.json();
-                if (!response.ok || !json.success) {
-                  Alert.alert(
-                    t('admin.payments.cancel.error', 'No se pudo cancelar'),
-                    json.error || t('common.error', 'Error desconocido')
-                  );
-                  return;
-                }
-                Alert.alert(
-                  t('common.success', 'Éxito'),
-                  t('admin.payments.cancel.paymentSuccess', 'Pago cancelado')
-                );
-                backToParentView();
-                refresh();
-                if (onPaymentChanged) onPaymentChanged();
-              } catch (err) {
-                console.error('Error cancelling single payment:', err);
-                Alert.alert(
-                  t('common.error', 'Error'),
-                  err.message || 'Error'
-                );
-              } finally {
-                setActionLoading(false);
-              }
-            },
-          },
-        ]
-      );
+  // Sprint 2 D7: dispara el CancelConfirmationModal en lugar del Alert simple.
+  const handleCancelMassiveCharge = useCallback(() => {
+    setConfirmModalConfig({ type: 'cancel-massive', isLoading: false });
+  }, []);
+
+  // Helper para manejo fino de errores HTTP (Sprint 2 D7).
+  // Devuelve { title, message } listos para Alert.alert.
+  const getErrorAlert = useCallback(
+    (response, json, kind) => {
+      // kind ∈ 'payment' | 'reject'
+      let title = t('common.error', 'Error');
+      let message =
+        (json && json.error) ||
+        t('common.errorUnknown', 'Error desconocido');
+
+      switch (response.status) {
+        case 409:
+          title = t('admin.payments.error.alreadyCancelled', 'Ya cancelado');
+          message = t(
+            'admin.payments.error.alreadyCancelledMsg',
+            'Este pago ya fue cancelado previamente.'
+          );
+          break;
+        case 422:
+          title = t('admin.payments.error.cannotCancel', 'No se puede cancelar');
+          message = t(
+            'admin.payments.error.paidCannotCancel',
+            'No se puede cancelar un pago verificado. Próximamente: opción de reembolso.'
+          );
+          break;
+        case 403:
+          title = t('common.forbidden', 'Sin permisos');
+          message = t(
+            'admin.payments.error.noPermission',
+            'No tenés permisos para esta acción.'
+          );
+          break;
+        case 404:
+          title = t('common.notFound', 'No encontrado');
+          message = t(
+            kind === 'payment'
+              ? 'admin.payments.error.paymentNotFound'
+              : 'admin.payments.error.notFound',
+            kind === 'payment'
+              ? 'El pago ya no existe o fue eliminado.'
+              : 'Recurso no encontrado.'
+          );
+          break;
+        case 500:
+        case 502:
+        case 503:
+          title = t('common.serverError', 'Error del servidor');
+          message = t(
+            'admin.payments.error.serverRetry',
+            'Algo falló del lado del servidor. Probá de nuevo en un momento.'
+          );
+          break;
+      }
+      return { title, message };
     },
-    [t, refresh, backToParentView, onPaymentChanged]
+    [t]
   );
+
+  // Dispatch único del CancelConfirmationModal: ejecuta la acción según `type`.
+  // Recibe el `reason` que el admin tipeó (puede ser null si optó por no escribir).
+  const handleConfirmModalAction = useCallback(
+    async (reason) => {
+      if (!confirmModalConfig) return;
+      const { type, payment } = confirmModalConfig;
+      setConfirmModalConfig((prev) => (prev ? { ...prev, isLoading: true } : prev));
+
+      try {
+        if (type === 'cancel-massive') {
+          // Delegamos al consumidor que ya pasa reason al hook useCharges.cancelCharge.
+          // El consumidor cierra el modal y muestra Alert de éxito/error.
+          if (onCancelCharge) onCancelCharge(reason);
+          setConfirmModalConfig(null);
+          return;
+        }
+
+        if (type === 'cancel-payment') {
+          if (!payment?.id) return;
+          const headers = await getAuthHeaders();
+          const response = await fetch(
+            API_URL +
+              '/api/community-payments/admin/payments/' +
+              payment.id +
+              '/cancel',
+            {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason }),
+            }
+          );
+          const json = await response.json().catch(() => ({}));
+          if (!response.ok || !json.success) {
+            const { title, message } = getErrorAlert(response, json, 'payment');
+            Alert.alert(title, message);
+            setConfirmModalConfig((prev) =>
+              prev ? { ...prev, isLoading: false } : prev
+            );
+            return;
+          }
+          Alert.alert(
+            t('common.success', 'Éxito'),
+            t('admin.payments.cancel.paymentSuccess', 'Pago cancelado')
+          );
+          setConfirmModalConfig(null);
+          backToParentView();
+          refresh();
+          if (onPaymentChanged) onPaymentChanged();
+          return;
+        }
+
+        if (type === 'reject-proof') {
+          if (!payment || !onRejectProof) return;
+          await onRejectProof(payment, reason);
+          // El consumidor de onRejectProof (index.js) ya cierra el modal y
+          // refresca la lista en caso de éxito. Aquí solo cerramos el confirm.
+          setConfirmModalConfig(null);
+          return;
+        }
+      } catch (err) {
+        console.error('Error in confirm modal action:', err);
+        Alert.alert(
+          t('common.error', 'Error'),
+          err.message || t('common.errorUnknown', 'Error desconocido')
+        );
+        setConfirmModalConfig((prev) =>
+          prev ? { ...prev, isLoading: false } : prev
+        );
+      }
+    },
+    [
+      confirmModalConfig,
+      onCancelCharge,
+      onRejectProof,
+      onPaymentChanged,
+      refresh,
+      backToParentView,
+      getErrorAlert,
+      t,
+    ]
+  );
+
+  // Trigger desde PaymentView para abrir el modal en modo 'cancel-payment'.
+  const triggerCancelPayment = useCallback((payment) => {
+    setConfirmModalConfig({ type: 'cancel-payment', payment, isLoading: false });
+  }, []);
 
   if (!charge) return null;
 
@@ -370,13 +463,93 @@ export function ChargeDetailModal({
             onClose={onClose}
             onBack={backToParentView}
             onOpenImage={openImageFullscreen}
-            onCancelPayment={cancelSinglePayment}
+            onCancelPayment={triggerCancelPayment}
+            onVerify={handleVerify}
+            onReject={handleReject}
+            onRevert={handleRevert}
             PAYMENT_STATUS={PAYMENT_STATUS}
           />
         )}
+
+        {/* CancelConfirmationModal: render condicional sobre confirmModalConfig.
+            Maneja los 3 casos de cancelación/rechazo con input de razón. */}
+        {confirmModalConfig ? (
+          <CancelConfirmationModal
+            t={t}
+            visible={true}
+            onClose={() => setConfirmModalConfig(null)}
+            onConfirm={handleConfirmModalAction}
+            isLoading={confirmModalConfig.isLoading}
+            {...getConfirmModalProps(confirmModalConfig.type, t)}
+          />
+        ) : null}
       </SafeAreaView>
     </Modal>
   );
+}
+
+// Helper: traduce el `type` del confirmModalConfig a las props visuales
+// del CancelConfirmationModal.
+function getConfirmModalProps(type, t) {
+  switch (type) {
+    case 'cancel-massive':
+      return {
+        title: t('admin.payments.confirm.cancelMassiveTitle', 'Cancelar cobro masivo'),
+        description: t(
+          'admin.payments.confirm.cancelMassiveDescription',
+          'Esta acción cancelará el cobro para todos los residentes pendientes. Los pagos ya verificados no se ven afectados.'
+        ),
+        inputPlaceholder: t(
+          'admin.payments.confirm.reasonPlaceholder',
+          'Razón (opcional)'
+        ),
+        confirmLabel: t(
+          'admin.payments.confirm.cancelMassiveConfirm',
+          'Confirmar cancelación'
+        ),
+        confirmButtonStyle: 'danger',
+        requireReason: false,
+      };
+    case 'cancel-payment':
+      return {
+        title: t('admin.payments.confirm.cancelPaymentTitle', 'Cancelar este pago'),
+        description: t(
+          'admin.payments.confirm.cancelPaymentDescription',
+          'Este pago será cancelado. El cobro padre y los demás residentes no se ven afectados.'
+        ),
+        inputPlaceholder: t(
+          'admin.payments.confirm.reasonPlaceholder',
+          'Razón (opcional)'
+        ),
+        confirmLabel: t('admin.payments.confirm.cancelPaymentConfirm', 'Confirmar'),
+        confirmButtonStyle: 'danger',
+        requireReason: false,
+      };
+    case 'reject-proof':
+      return {
+        title: t('admin.payments.confirm.rejectProofTitle', 'Rechazar comprobante'),
+        description: t(
+          'admin.payments.confirm.rejectProofDescription',
+          'El residente verá la razón del rechazo y podrá subir un nuevo comprobante.'
+        ),
+        inputPlaceholder: t(
+          'admin.payments.confirm.rejectReasonPlaceholder',
+          'Razón del rechazo (requerida)'
+        ),
+        confirmLabel: t('admin.payments.confirm.rejectProofConfirm', 'Rechazar'),
+        confirmButtonStyle: 'danger',
+        requireReason: true,
+      };
+    default:
+      return {
+        title: '',
+        description: '',
+        inputPlaceholder: '',
+        confirmLabel: 'OK',
+        confirmButtonStyle: 'danger',
+        requireReason: false,
+      };
+  }
 }
 
 // ============================================
@@ -720,6 +893,9 @@ function PaymentView({
   onBack,
   onOpenImage,
   onCancelPayment,
+  onVerify,
+  onReject,
+  onRevert,
   PAYMENT_STATUS,
 }) {
   if (!payment) return null;
@@ -730,6 +906,10 @@ function PaymentView({
     { label: status, color: COLORS.textSecondary, icon: 'help-circle' };
 
   const dueDateInfo = formatRelativeDueDate(charge.due_date, t);
+  // Sprint 2 D7: visibility de botones según status del pago
+  const canApprove = status === 'proof_submitted';
+  const canReject = status === 'proof_submitted';
+  const canRevert = status === 'paid';
   const canCancel = ['pending', 'proof_submitted', 'rejected', 'not_started'].includes(status);
   const proofUrl = payment.proof_of_payment || payment.proof_url;
 
@@ -931,14 +1111,63 @@ function PaymentView({
           </Text>
         </View>
 
-        {/* TODO Sprint 2 D7: reactivar botones aquí.
-            - Verify:  hasPendingProof(payment) && handleVerify(payment)
-            - Reject:  hasPendingProof(payment) && handleReject(payment)
-            - Revert:  payment.status === 'paid' && handleRevert(payment)
-            Las funciones handleVerify/handleReject/handleRevert ya existen
-            en el componente padre con la lógica conectada a las props. */}
+        {/* Approve/Reject (proof_submitted) — row de 2 columnas */}
+        {(canApprove || canReject) && (onVerify || onReject) ? (
+          <View style={styles.actionButtonsContainer}>
+            {canReject && onReject ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.rejectButton]}
+                onPress={() => onReject(payment)}
+                disabled={actionLoading}
+              >
+                <Ionicons name="close-circle" size={20} color={COLORS.danger} />
+                <Text style={styles.rejectButtonText}>
+                  {t('admin.payments.reject', 'Rechazar')}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {canApprove && onVerify ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.approveButton]}
+                onPress={() => onVerify(payment)}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.background} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color={COLORS.background} />
+                    <Text style={styles.approveButtonText}>
+                      {t('admin.payments.approve', 'Aprobar')}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
-        {/* Cancel single payment button */}
+        {/* Revert (paid) — botón full-width naranja */}
+        {canRevert && onRevert ? (
+          <TouchableOpacity
+            style={[styles.cancelButton, styles.revertFullButton]}
+            onPress={() => onRevert(payment)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator size="small" color={COLORS.warning} />
+            ) : (
+              <>
+                <Ionicons name="refresh-circle" size={20} color={COLORS.warning} />
+                <Text style={styles.revertButtonText}>
+                  {t('admin.payments.revert', 'Revertir verificación')}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Cancel single payment — full-width rojo */}
         {canCancel ? (
           <TouchableOpacity
             style={styles.cancelButton}
@@ -961,6 +1190,97 @@ function PaymentView({
         <View style={{ height: scale(80) }} />
       </ScrollView>
     </>
+  );
+}
+
+// ============================================
+// CancelConfirmationModal — reusable para los 3 casos
+// (cancel-massive, cancel-payment, reject-proof).
+// Sprint 2 D7.
+// ============================================
+function CancelConfirmationModal({
+  t,
+  visible,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  inputPlaceholder,
+  confirmLabel,
+  confirmButtonStyle = 'danger',
+  isLoading = false,
+  requireReason = false,
+}) {
+  const [reason, setReason] = useState('');
+
+  // Reset reason cuando el modal se cierra (state stale prevention)
+  useEffect(() => {
+    if (!visible) setReason('');
+  }, [visible]);
+
+  const canConfirm = !isLoading && (!requireReason || reason.trim().length > 0);
+
+  const handleConfirm = () => {
+    if (!canConfirm) return;
+    onConfirm(reason.trim() || null);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.confirmModalOverlay}>
+        <View style={styles.confirmModalCard}>
+          <Text style={styles.confirmModalTitle}>{title}</Text>
+          {description ? (
+            <Text style={styles.confirmModalDescription}>{description}</Text>
+          ) : null}
+
+          <TextInput
+            style={styles.confirmModalInput}
+            placeholder={inputPlaceholder}
+            placeholderTextColor={COLORS.textMuted}
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+            editable={!isLoading}
+            textAlignVertical="top"
+          />
+
+          <View style={styles.confirmModalButtonRow}>
+            <TouchableOpacity
+              style={styles.confirmModalButtonCancel}
+              onPress={onClose}
+              disabled={isLoading}
+            >
+              <Text style={styles.confirmModalButtonCancelText}>
+                {t('common.cancel', 'Cancelar')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.confirmModalButtonConfirm,
+                confirmButtonStyle === 'warning' && styles.confirmModalButtonConfirmWarning,
+                !canConfirm && styles.confirmModalButtonConfirmDisabled,
+              ]}
+              onPress={handleConfirm}
+              disabled={!canConfirm}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.confirmModalButtonConfirmText}>{confirmLabel}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1437,6 +1757,87 @@ const styles = StyleSheet.create({
     fontSize: scale(13),
     color: COLORS.textMuted,
     fontStyle: 'italic',
+  },
+
+  // Revert full-width button (Sprint 2 D7)
+  revertFullButton: {
+    backgroundColor: COLORS.warning + '15',
+  },
+
+  // CancelConfirmationModal styles (Sprint 2 D7)
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: scale(16),
+  },
+  confirmModalCard: {
+    width: '100%',
+    maxWidth: scale(360),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(16),
+    padding: scale(20),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  confirmModalTitle: {
+    fontSize: scale(17),
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: scale(8),
+  },
+  confirmModalDescription: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginBottom: scale(16),
+    lineHeight: scale(18),
+  },
+  confirmModalInput: {
+    backgroundColor: COLORS.backgroundTertiary,
+    borderRadius: scale(10),
+    padding: scale(12),
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minHeight: scale(80),
+    marginBottom: scale(16),
+  },
+  confirmModalButtonRow: {
+    flexDirection: 'row',
+    gap: scale(10),
+    justifyContent: 'flex-end',
+  },
+  confirmModalButtonCancel: {
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(10),
+  },
+  confirmModalButtonCancelText: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  confirmModalButtonConfirm: {
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(16),
+    borderRadius: scale(10),
+    backgroundColor: COLORS.danger,
+    minWidth: scale(120),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmModalButtonConfirmWarning: {
+    backgroundColor: COLORS.warning,
+  },
+  confirmModalButtonConfirmDisabled: {
+    opacity: 0.5,
+  },
+  confirmModalButtonConfirmText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: scale(14),
   },
 
   // Fullscreen Image Styles (existente)

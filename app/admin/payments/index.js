@@ -173,10 +173,13 @@ export default function AdminPayments() {
     setShowChargeDetailModal(true);
   };
 
-  const handleCancelCharge = async () => {
+  const handleCancelCharge = async (reason = null) => {
+    // Sprint 2 D7: el modal ahora pasa una razón opcional desde el
+    // CancelConfirmationModal. El backend D1 ya la persiste en
+    // community_charges.cancellation_reason.
     if (selectedChargeDetail) {
       setShowChargeDetailModal(false);
-      await charges.cancelCharge(selectedChargeDetail);
+      await charges.cancelCharge(selectedChargeDetail, reason);
       setSelectedChargeDetail(null);
     }
   };

@@ -173,41 +173,88 @@ export function useCharges(t, selectedLocationId) {
     }
   }, [formData, selectedUsers, selectedLocationId, t, fetchCharges]);
   /**
-   * Cancel a charge
+   * Cancel a charge.
+   *
+   * Sprint 2 D7: la confirmación ahora la maneja el componente que llama
+   * (típicamente ChargeDetailModal con CancelConfirmationModal), así que
+   * el hook ya no muestra su propio Alert de confirmación. El reason
+   * (opcional) se envía en el body del DELETE para que el backend lo
+   * persista en community_charges.cancellation_reason.
+   *
+   * @param {Object} charge - cobro padre a cancelar
+   * @param {string|null} [reason] - razón opcional
+   * @returns {Promise<boolean>} true si éxito
    */
-  const cancelCharge = useCallback(async (charge) => {
-    return new Promise((resolve) => {
-      Alert.alert(
-        t('admin.payments.cancelCharge', 'Cancelar Cobro'),
-        t('admin.payments.cancelChargeConfirm', '¿Estás seguro de cancelar este cobro?'),
-        [
-          { text: t('common.no', 'No'), style: 'cancel', onPress: () => resolve(false) },
-          {
-            text: t('common.yes', 'Sí'),
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                const headers = await getAuthHeaders();
-                const response = await fetch(API_URL + '/api/community-payments/admin/charges/' + charge.id, {
-                  method: 'DELETE',
-                  headers,
-                });
-                if (response.ok) {
-                  Alert.alert(t('common.success', 'Éxito'), t('admin.payments.success.chargeCancelled', 'Cobro cancelado'));
-                  fetchCharges();
-                  resolve(true);
-                } else {
-                  resolve(false);
-                }
-              } catch (error) {
-                Alert.alert(t('common.error', 'Error'), t('admin.payments.errors.cancelFailed', 'Error al cancelar'));
-                resolve(false);
-              }
-            },
-          },
-        ]
+  const cancelCharge = useCallback(async (charge, reason = null) => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(
+        API_URL + '/api/community-payments/admin/charges/' + charge.id,
+        {
+          method: 'DELETE',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        }
       );
-    });
+
+      if (response.ok) {
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.success.chargeCancelled', 'Cobro cancelado')
+        );
+        fetchCharges();
+        return true;
+      }
+
+      // Manejo fino de errores con switch sobre response.status (Sprint 2 D7)
+      const json = await response.json().catch(() => ({}));
+      let errorTitle = t('common.error', 'Error');
+      let errorMessage =
+        json.error || t('admin.payments.errors.cancelFailed', 'Error al cancelar');
+
+      switch (response.status) {
+        case 409:
+          errorTitle = t('admin.payments.error.alreadyCancelled', 'Ya cancelado');
+          errorMessage = t(
+            'admin.payments.error.chargeAlreadyCancelledMsg',
+            'Este cobro ya fue cancelado previamente.'
+          );
+          break;
+        case 403:
+          errorTitle = t('common.forbidden', 'Sin permisos');
+          errorMessage = t(
+            'admin.payments.error.noPermission',
+            'No tenés permisos para esta acción.'
+          );
+          break;
+        case 404:
+          errorTitle = t('common.notFound', 'No encontrado');
+          errorMessage = t(
+            'admin.payments.error.chargeNotFound',
+            'El cobro ya no existe o fue eliminado.'
+          );
+          break;
+        case 500:
+        case 502:
+        case 503:
+          errorTitle = t('common.serverError', 'Error del servidor');
+          errorMessage = t(
+            'admin.payments.error.serverRetry',
+            'Algo falló del lado del servidor. Probá de nuevo en un momento.'
+          );
+          break;
+      }
+
+      Alert.alert(errorTitle, errorMessage);
+      return false;
+    } catch (error) {
+      console.error('Error cancelling charge:', error);
+      Alert.alert(
+        t('common.error', 'Error'),
+        t('admin.payments.errors.cancelFailed', 'Error al cancelar')
+      );
+      return false;
+    }
   }, [t, fetchCharges]);
   /**
    * Reset form to initial state

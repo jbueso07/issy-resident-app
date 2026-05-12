@@ -170,12 +170,15 @@ export const getPaymentMethodOptions = (t) => [
   { value: 'proof', label: t('admin.payments.methods.proofOnly', 'Solo Comprobante'), icon: 'document-attach' },
 ];
 
-// Filter options for charges list
+// Filter options for charges list.
+// Sprint 2 D7: reducido a 3 opciones para alinear con `community_charges.status`
+// que solo tiene 'active'|'cancelled' post-Sprint 1. Las opciones legacy
+// (pending/paid/overdue) eran de payment status, no de charge status — esas
+// están disponibles en los chips dentro del ChargeDetailModal.
 export const getFilterOptions = (t) => [
   { key: 'all', label: t('admin.payments.filters.all', 'Todos'), icon: 'list' },
-  { key: 'pending', label: t('admin.payments.filters.pending', 'Pendientes'), icon: 'time' },
-  { key: 'paid', label: t('admin.payments.filters.paid', 'Pagados'), icon: 'checkmark-circle' },
-  { key: 'overdue', label: t('admin.payments.filters.overdue', 'Vencidos'), icon: 'alert-circle' },
+  { key: 'active', label: t('admin.payments.filters.active', 'Activos'), icon: 'flash' },
+  { key: 'cancelled', label: t('admin.payments.filters.cancelled', 'Cancelados'), icon: 'close-circle' },
 ];
 
 // Default form data for creating charges

@@ -120,10 +120,10 @@ export function ChargesTab({
               style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
               onPress={() => setFilter(f.key)}
             >
-              <Ionicons 
-                name={f.icon} 
-                size={16} 
-                color={filter === f.key ? COLORS.background : COLORS.textSecondary} 
+              <Ionicons
+                name={f.icon}
+                size={16}
+                color={filter === f.key ? COLORS.background : COLORS.textSecondary}
               />
               <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
                 {f.label}
@@ -133,16 +133,45 @@ export function ChargesTab({
         </View>
       </ScrollView>
 
+      {/* Banner sutil cuando se muestran cancelados (Sprint 2 D7) */}
+      {filter === 'cancelled' ? (
+        <View style={styles.cancelledBanner}>
+          <Ionicons name="information-circle-outline" size={14} color={COLORS.textSecondary} />
+          <Text style={styles.cancelledBannerText}>
+            {t(
+              'admin.payments.banner.cancelled',
+              'Mostrando cobros cancelados (historial)'
+            )}
+          </Text>
+        </View>
+      ) : null}
+
       {/* Charges List - Grouped by Period */}
       {charges.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cash-outline" size={64} color={COLORS.textMuted} />
-          <Text style={styles.emptyTitle}>{t('admin.payments.empty.noCharges', 'No hay cobros')}</Text>
-          <Text style={styles.emptySubtitle}>{t('admin.payments.empty.createFirst', 'Crea tu primer cobro')}</Text>
-          <TouchableOpacity style={styles.createButton} onPress={onCreatePress}>
-            <Ionicons name="add-circle" size={20} color={COLORS.background} />
-            <Text style={styles.createButtonText}>{t('admin.payments.newCharge', 'Nuevo Cobro')}</Text>
-          </TouchableOpacity>
+          <Ionicons
+            name={filter === 'cancelled' ? 'archive-outline' : 'cash-outline'}
+            size={64}
+            color={COLORS.textMuted}
+          />
+          <Text style={styles.emptyTitle}>
+            {filter === 'cancelled'
+              ? t('admin.payments.empty.noCancelled', 'No hay cobros cancelados')
+              : t('admin.payments.empty.noCharges', 'No hay cobros')}
+          </Text>
+          {filter !== 'cancelled' ? (
+            <>
+              <Text style={styles.emptySubtitle}>
+                {t('admin.payments.empty.createFirst', 'Crea tu primer cobro')}
+              </Text>
+              <TouchableOpacity style={styles.createButton} onPress={onCreatePress}>
+                <Ionicons name="add-circle" size={20} color={COLORS.background} />
+                <Text style={styles.createButtonText}>
+                  {t('admin.payments.newCharge', 'Nuevo Cobro')}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
       ) : (
         groupedCharges.map((group) => (
@@ -449,6 +478,25 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: COLORS.background,
+  },
+  // Banner sutil cuando filter === 'cancelled' (Sprint 2 D7)
+  cancelledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+    marginBottom: scale(12),
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: scale(8),
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cancelledBannerText: {
+    fontSize: scale(12),
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    flex: 1,
   },
   emptyContainer: {
     alignItems: 'center',
