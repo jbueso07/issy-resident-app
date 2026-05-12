@@ -456,6 +456,12 @@ export default function AdminPayments() {
         }}
         charge={selectedChargeDetail}
         onCancelCharge={handleCancelCharge}
+        onPaymentChanged={() => {
+          // Sprint 2 D6: tras cancelar un pago individual desde la vista
+          // del modal, refrescamos la lista padre para que stats y badges
+          // del cobro se actualicen.
+          charges.fetchCharges();
+        }}
         onVerifyProof={async (payment) => {
           console.log("Verificando payment:", payment.id);
           const success = await proofs.verifyProof(payment);
