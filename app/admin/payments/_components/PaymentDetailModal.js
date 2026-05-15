@@ -34,7 +34,9 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Share,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
@@ -53,6 +55,7 @@ import { colors, spacing, typography, radii } from '../_styles/theme';
 import {
   registerCashPayment as registerCashPaymentApi,
   sendPaymentReminder as sendReminderApi,
+  createPaymentLink as createLinkApi,
 } from '../../../../src/services/api';
 import usePayments from '../_hooks/usePayments';
 
@@ -424,6 +427,304 @@ function CashRegisterSubModal({
   );
 }
 
+// =============== Sub-componente: Payment Link Sub-Modal (Sprint 3 D7) ===
+
+function PaymentLinkSubModal({ visible, payment, onClose, t }) {
+  // State machine local: 'form' | 'loading' | 'result' | 'error'
+  const [phase, setPhase] = useState('form');
+  const [sendEmail, setSendEmail] = useState(true);
+  const [linkData, setLinkData] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const residentEmail = payment?.user?.email || null;
+  const hasEmail = !!residentEmail;
+
+  // Reset cuando se cierra
+  React.useEffect(() => {
+    if (!visible) {
+      setPhase('form');
+      setSendEmail(true);
+      setLinkData(null);
+      setErrorMsg('');
+      setCopied(false);
+    }
+  }, [visible]);
+
+  // Si el residente NO tiene email, forzar sendEmail=false (checkbox queda disabled)
+  React.useEffect(() => {
+    if (visible && !hasEmail) {
+      setSendEmail(false);
+    }
+  }, [visible, hasEmail]);
+
+  const handleGenerate = async () => {
+    if (!payment?.id) return;
+    setPhase('loading');
+    const result = await createLinkApi(payment.id, { sendEmail });
+    if (!result.success) {
+      setErrorMsg(
+        result.error ||
+          t('admin.payments.detail.linkError', 'No se pudo generar el link')
+      );
+      setPhase('error');
+      return;
+    }
+    setLinkData(result.data);
+    setPhase('result');
+  };
+
+  const handleCopy = async () => {
+    if (!linkData?.url) return;
+    try {
+      await Clipboard.setStringAsync(linkData.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Clipboard error:', err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!linkData?.url) return;
+    try {
+      const chargeTitle = payment?.charge?.title || 'Pago pendiente';
+      await Share.share({
+        message: t(
+          'admin.payments.detail.linkShareMessage',
+          `${chargeTitle}: ${linkData.url}`,
+          { title: chargeTitle, url: linkData.url }
+        ),
+        url: linkData.url, // iOS-only, mejora preview
+      });
+    } catch (err) {
+      console.error('Share error:', err);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.subModalOverlay}>
+        <View style={styles.subModalCard}>
+          {/* -------- PHASE: form -------- */}
+          {phase === 'form' && (
+            <>
+              <Text style={styles.subModalTitle}>
+                {t('admin.payments.detail.linkTitle', 'Generar Link de Pago')}
+              </Text>
+              <Text style={styles.subModalSubtitle}>
+                {t(
+                  'admin.payments.detail.linkDesc',
+                  'Se generará un link de Clinpays válido por 24 horas. El residente puede pagar desde su navegador.'
+                )}
+              </Text>
+
+              {/* Resumen */}
+              <View style={styles.linkSummaryBox}>
+                <Text style={styles.linkSummaryLabel}>
+                  {t('admin.payments.detail.linkSummaryAmount', 'Monto')}
+                </Text>
+                <Text style={styles.linkSummaryValue}>
+                  {payment?.currency || 'HNL'}{' '}
+                  {parseFloat(payment?.amount || 0).toFixed(2)}
+                </Text>
+                <Text style={styles.linkSummaryLabel}>
+                  {t('admin.payments.detail.linkSummaryConcept', 'Concepto')}
+                </Text>
+                <Text style={styles.linkSummaryValue}>
+                  {payment?.charge?.title || '—'}
+                </Text>
+              </View>
+
+              {/* Checkbox email */}
+              <Pressable
+                onPress={() => hasEmail && setSendEmail((v) => !v)}
+                disabled={!hasEmail}
+                style={[
+                  styles.checkboxRow,
+                  !hasEmail && styles.checkboxRowDisabled,
+                ]}
+              >
+                <View style={[styles.checkbox, sendEmail && styles.checkboxChecked]}>
+                  {sendEmail && (
+                    <CheckCircle2
+                      size={14}
+                      color={colors.onPrimaryContainer}
+                      strokeWidth={2.5}
+                    />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.checkboxLabel}>
+                    {t(
+                      'admin.payments.detail.linkSendEmail',
+                      'Enviar por email al residente'
+                    )}
+                  </Text>
+                  {hasEmail ? (
+                    <Text style={styles.checkboxSublabel}>{residentEmail}</Text>
+                  ) : (
+                    <Text style={styles.checkboxSublabelMuted}>
+                      {t(
+                        'admin.payments.detail.linkNoEmail',
+                        'El residente no tiene email registrado'
+                      )}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+
+              <View style={styles.subModalBtnRow}>
+                <Pressable onPress={onClose} style={styles.subModalBtnCancel}>
+                  <Text style={styles.subModalBtnCancelText}>
+                    {t('common.cancel', 'Cancelar')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleGenerate}
+                  style={styles.subModalBtnConfirm}
+                >
+                  <Text style={styles.subModalBtnConfirmText}>
+                    {t('admin.payments.detail.linkGenerate', 'Generar')}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {/* -------- PHASE: loading -------- */}
+          {phase === 'loading' && (
+            <View style={styles.linkLoadingWrap}>
+              <ActivityIndicator size="large" color={colors.primaryContainer} />
+              <Text style={styles.linkLoadingText}>
+                {t('admin.payments.detail.linkGenerating', 'Generando link...')}
+              </Text>
+            </View>
+          )}
+
+          {/* -------- PHASE: result -------- */}
+          {phase === 'result' && linkData && (
+            <>
+              <Text style={styles.subModalTitle}>
+                {t('admin.payments.detail.linkReady', 'Link Generado')}
+              </Text>
+              <Text style={styles.subModalSubtitle}>
+                {t(
+                  'admin.payments.detail.linkReadyDesc',
+                  'Compartí el link con el residente. Vence en 24 horas.'
+                )}
+              </Text>
+
+              <View style={styles.linkUrlBox}>
+                <Text
+                  style={styles.linkUrlText}
+                  numberOfLines={2}
+                  ellipsizeMode="middle"
+                >
+                  {linkData.url}
+                </Text>
+              </View>
+
+              {/* Feedback email */}
+              {linkData.email?.sent ? (
+                <View style={styles.linkEmailSentBadge}>
+                  <CheckCircle2
+                    size={14}
+                    color={colors.primaryContainer}
+                    strokeWidth={2.5}
+                  />
+                  <Text style={styles.linkEmailSentText}>
+                    {t(
+                      'admin.payments.detail.linkEmailSent',
+                      `Enviado a ${linkData.email.recipient}`,
+                      { email: linkData.email.recipient }
+                    )}
+                  </Text>
+                </View>
+              ) : null}
+              {linkData.email?.requested &&
+              !linkData.email?.sent &&
+              linkData.email?.skipped_reason === 'resident_has_no_email' ? (
+                <Text style={styles.linkEmailNoteMuted}>
+                  {t(
+                    'admin.payments.detail.linkEmailSkipped',
+                    'El residente no tiene email registrado. Compartí el link manualmente.'
+                  )}
+                </Text>
+              ) : null}
+              {linkData.email?.requested &&
+              !linkData.email?.sent &&
+              linkData.email?.error ? (
+                <Text style={styles.linkEmailNoteMuted}>
+                  {t(
+                    'admin.payments.detail.linkEmailError',
+                    'No se pudo enviar el email automáticamente. Compartí el link manualmente.'
+                  )}
+                </Text>
+              ) : null}
+
+              <View style={styles.linkActionsRow}>
+                <Pressable onPress={handleCopy} style={styles.linkActionBtn}>
+                  <Text style={styles.linkActionBtnText}>
+                    {copied
+                      ? t('admin.payments.detail.linkCopied', '¡Copiado!')
+                      : t('admin.payments.detail.linkCopy', 'Copiar')}
+                  </Text>
+                </Pressable>
+                <Pressable onPress={handleShare} style={styles.linkActionBtn}>
+                  <Text style={styles.linkActionBtnText}>
+                    {t('admin.payments.detail.linkShare', 'Compartir')}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={onClose}
+                style={[
+                  styles.subModalBtnConfirm,
+                  { marginTop: spacing.unit * 3, alignSelf: 'stretch' },
+                ]}
+              >
+                <Text style={styles.subModalBtnConfirmText}>
+                  {t('common.close', 'Cerrar')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+
+          {/* -------- PHASE: error -------- */}
+          {phase === 'error' && (
+            <>
+              <Text style={styles.subModalTitle}>{t('common.error', 'Error')}</Text>
+              <Text style={styles.subModalSubtitle}>{errorMsg}</Text>
+              <View style={styles.subModalBtnRow}>
+                <Pressable onPress={onClose} style={styles.subModalBtnCancel}>
+                  <Text style={styles.subModalBtnCancelText}>
+                    {t('common.close', 'Cerrar')}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setPhase('form')}
+                  style={styles.subModalBtnConfirm}
+                >
+                  <Text style={styles.subModalBtnConfirmText}>
+                    {t('common.retry', 'Reintentar')}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // =============== Main Component ===============
 
 export function PaymentDetailModal({
@@ -436,12 +737,15 @@ export function PaymentDetailModal({
   const [cashModalVisible, setCashModalVisible] = useState(false);
   // Sprint 3 D6: loading state del botón "Enviar Recordatorio"
   const [reminderLoading, setReminderLoading] = useState(false);
+  // Sprint 3 D7: visibility del sub-modal de "Generar Link de Pago"
+  const [linkModalVisible, setLinkModalVisible] = useState(false);
 
   // Reset sub-modales / loading cuando se cierra el principal
   React.useEffect(() => {
     if (!visible) {
       setCashModalVisible(false);
       setReminderLoading(false);
+      setLinkModalVisible(false);
     }
   }, [visible]);
 
@@ -605,7 +909,7 @@ export function PaymentDetailModal({
                   label={t('admin.payments.detail.linkLabel', 'Generar Link')}
                   primary={false}
                   disabled={false}
-                  onPress={() => placeholderAlert(t('admin.payments.detail.linkLabel', 'Generar Link'))}
+                  onPress={() => setLinkModalVisible(true)}
                 />
                 <ActionButton
                   icon={QrCode}
@@ -666,6 +970,14 @@ export function PaymentDetailModal({
             // 3. cerrar el modal principal también — el payment ya cambió de estado
             onClose();
           }}
+          t={t}
+        />
+
+        {/* Sprint 3 D7: Payment Link sub-modal (Clinpays Option Lite) */}
+        <PaymentLinkSubModal
+          visible={linkModalVisible}
+          payment={payment}
+          onClose={() => setLinkModalVisible(false)}
           t={t}
         />
       </SafeAreaView>
@@ -1049,6 +1361,126 @@ const styles = StyleSheet.create({
   subModalBtnConfirmText: {
     ...typography.bodyMd,
     color: colors.onPrimaryContainer,
+    fontWeight: '700',
+  },
+
+  // Sprint 3 D7: Payment Link sub-modal
+  linkSummaryBox: {
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: radii.md,
+    padding: 12,
+    gap: 4,
+    marginVertical: 4,
+  },
+  linkSummaryLabel: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    textTransform: 'uppercase',
+  },
+  linkSummaryValue: {
+    ...typography.bodyLg,
+    color: colors.onSurface,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  checkboxRowDisabled: {
+    opacity: 0.5,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: radii.sm,
+    borderWidth: 2,
+    borderColor: colors.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primaryContainer,
+    borderColor: colors.primaryContainer,
+  },
+  checkboxLabel: {
+    ...typography.bodyMd,
+    color: colors.onSurface,
+    fontWeight: '500',
+  },
+  checkboxSublabel: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  checkboxSublabelMuted: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  linkLoadingWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 12,
+  },
+  linkLoadingText: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+  },
+  linkUrlBox: {
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+    marginVertical: 8,
+  },
+  linkUrlText: {
+    ...typography.bodyMd,
+    color: colors.onSurface,
+    fontVariant: ['tabular-nums'],
+  },
+  linkEmailSentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.primaryContainer + '1a',
+    borderRadius: radii.sm,
+    alignSelf: 'flex-start',
+  },
+  linkEmailSentText: {
+    ...typography.labelMd,
+    color: colors.primaryContainer,
+    fontWeight: '600',
+  },
+  linkEmailNoteMuted: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    fontStyle: 'italic',
+  },
+  linkActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  linkActionBtn: {
+    flex: 1,
+    backgroundColor: colors.secondaryContainer,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkActionBtnText: {
+    ...typography.labelMd,
+    color: colors.onSecondaryContainer,
     fontWeight: '700',
   },
 });

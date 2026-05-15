@@ -2076,6 +2076,37 @@ export const cancelCommunityCharge = async (chargeId) => {
 };
 
 /**
+ * Sprint 3 D7: generar link de pago Clinpays (Option Lite).
+ * POST /api/community-payments/admin/payments/:paymentId/create-link
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {{ sendEmail?: boolean }} [options]
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const createPaymentLink = async (paymentId, options = {}) => {
+  try {
+    const body = {};
+    if (options.sendEmail === false) body.sendEmail = false;
+    // Si sendEmail no se pasa o es true → backend default true (no enviar el flag)
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/create-link`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating payment link:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
  * Sprint 3 D6: enviar recordatorio push al residente.
  * POST /api/community-payments/admin/payments/:paymentId/send-reminder
  *
