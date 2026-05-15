@@ -1,21 +1,21 @@
 // app/admin/payments/_components/ChargesTab.js
-// ISSY Admin - Lista-Cobros tab (Sprint 3 D3 refactor)
+// ISSY Admin - Lista-Cobros tab (Sprint 3 D4 refactor)
 //
 // Vista plana por pago individual (un row = un community_payment).
-// Header: search bar (debounced) + filter button (deshabilitado en D3, D6 lo activa).
+// Header: KPIs visuales (Sprint 3 D4) + search bar (debounced) + filter button
+//         (deshabilitado en D4, D6 lo activa) + chips de status (D4).
 // Body: FlatList de ChargeCard.
 //
-// NO incluido en D3 (entran en D4-D7):
-//   - chips de status (Todos/Activos/Cancelados)
-//   - KPIs financieros
-//   - filtros avanzados (botón tune)
-//   - month grouper con bar chart
-//   - scroll infinito / paginación
-//   - pull-to-refresh
+// NO incluido todavía (entran en D5-D7):
+//   - filtros avanzados (botón tune) → D6
+//   - month grouper con bar chart → D7
+//   - scroll infinito / paginación → D7
+//   - pull-to-refresh → D7
 //
 // Mantengo la firma de props (charges/stats/filter/setFilter/PAYMENT_STATUS/
-// PAYMENT_TYPES) para compat con el consumer `app/admin/payments/index.js`,
-// pero internamente ignoro las del hook legacy y uso `usePayments` (nuevo D3).
+// PAYMENT_TYPES) para compat con el consumer `app/admin/payments/index.js`.
+// `charges` se usa como cache para resolver shape completo del cobro padre
+// cuando se tap'ea un card. `stats` alimenta los KPIs. El resto se ignora.
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -23,18 +23,29 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TextInput,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Search, X, SlidersHorizontal, Inbox, SearchX, AlertCircle } from 'lucide-react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS as LEGACY_COLORS, scale } from '../_constants';
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  Inbox,
+  SearchX,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Hourglass,
+} from 'lucide-react-native';
 import { formatCurrency } from '../_helpers';
 import { colors, spacing, typography, radii } from '../_styles/theme';
 import usePayments from '../_hooks/usePayments';
 import ChargeCard from './cards/ChargeCard';
+import KpiCard from './cards/KpiCard';
+import StatusChips from './StatusChips';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -81,6 +92,14 @@ export function ChargesTab({
   }, [searchInput, setParams]);
 
   const handleClearSearch = () => setSearchInput('');
+
+  // Status chip (Sprint 3 D4): Todos / Activos / Cancelados.
+  // 'all' no envía el param (backend lista todo); 'active' lo agrega como
+  // tal y el endpoint lo expande a NOT IN ('paid','cancelled') post-D4.
+  const [statusChip, setStatusChip] = useState('all');
+  useEffect(() => {
+    setParams({ status: statusChip === 'all' ? undefined : statusChip });
+  }, [statusChip, setParams]);
 
   // Render del item de la FlatList
   const renderItem = ({ item }) => (
@@ -167,33 +186,35 @@ export function ChargesTab({
 
   return (
     <View style={styles.container}>
-      {/* Stats Cards (legacy COLORS/Ionicons) — Sprint 3 D3: restaurado tal cual
-          el diseño anterior para evitar regresión funcional. D4 los migrará al
-          look del mockup nuevo. */}
+      {/* KPIs (Sprint 3 D4): ScrollView horizontal con 3 KpiCard.
+          Datos: `stats` prop (viene de useCharges via index.js). NO se filtra
+          por search ni chips — son totales del location. D9 evaluará si conviene
+          agregar endpoint /admin/payments/stats con filtros aplicados. */}
       {stats && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="checkmark-circle" size={22} color={LEGACY_COLORS.success} />
-            <Text style={[styles.statValue, { color: LEGACY_COLORS.success }]}>
-              {formatCurrency(stats.total_collected || 0)}
-            </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.collected', 'Cobrado')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={22} color={LEGACY_COLORS.warning} />
-            <Text style={[styles.statValue, { color: LEGACY_COLORS.warning }]}>
-              {formatCurrency(stats.total_pending || 0)}
-            </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.pending', 'Pendiente')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="hourglass" size={22} color={LEGACY_COLORS.blue} />
-            <Text style={[styles.statValue, { color: LEGACY_COLORS.blue }]}>
-              {stats.pending_proofs || 0}
-            </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.proofs', 'Por verificar')}</Text>
-          </View>
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.kpisRow}
+        >
+          <KpiCard
+            label={t('admin.payments.stats.collected', 'Cobrado')}
+            value={formatCurrency(stats.total_collected || 0)}
+            icon={CheckCircle2}
+            accent="primary"
+          />
+          <KpiCard
+            label={t('admin.payments.stats.pending', 'Pendiente')}
+            value={formatCurrency(stats.total_pending || 0)}
+            icon={Clock}
+            accent="warning"
+          />
+          <KpiCard
+            label={t('admin.payments.stats.proofs', 'En verificación')}
+            value={String(stats.pending_proofs || 0)}
+            icon={Hourglass}
+            accent="info"
+          />
+        </ScrollView>
       )}
 
       {/* Header: search bar + filter button (placeholder D6) */}
@@ -229,6 +250,11 @@ export function ChargesTab({
         </Pressable>
       </View>
 
+      {/* Status chips (Sprint 3 D4): Todos / Activos / Cancelados */}
+      <View style={styles.chipsWrap}>
+        <StatusChips value={statusChip} onChange={setStatusChip} />
+      </View>
+
       {/* Body */}
       {showFullSpinner ? (
         <View style={styles.fullSpinner}>
@@ -253,33 +279,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  // Stats Cards (legacy look) — Sprint 3 D3: restaurado para evitar regresión.
-  // D4 los migra al diseño nuevo.
-  statsContainer: {
-    flexDirection: 'row',
-    gap: scale(10),
-    marginHorizontal: spacing.containerPadding,
+  // KPIs row (Sprint 3 D4): horizontal scroll de KpiCard
+  kpisRow: {
+    paddingHorizontal: spacing.containerPadding,
+    gap: spacing.cardGap,
     marginTop: 12,
-    marginBottom: scale(8),
+    marginBottom: 8,
   },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: scale(12),
-    borderRadius: scale(12),
-    backgroundColor: LEGACY_COLORS.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: LEGACY_COLORS.border,
-  },
-  statValue: {
-    fontSize: scale(13),
-    fontWeight: '700',
-    marginTop: scale(4),
-  },
-  statLabel: {
-    fontSize: scale(10),
-    color: LEGACY_COLORS.textSecondary,
-    marginTop: scale(2),
+  // Wrapper para StatusChips (chips ya tienen su propio padding/gap interno)
+  chipsWrap: {
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
