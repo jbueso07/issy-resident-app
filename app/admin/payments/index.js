@@ -46,6 +46,7 @@ import { BankAccountModal } from './_components/BankAccountModal';
 import { UserPickerModal } from './_components/UserPickerModal';
 import { ProofReviewModal } from './_components/ProofReviewModal';
 import { ChargeDetailModal } from './_components/ChargeDetailModal';
+import { PaymentDetailModal } from './_components/PaymentDetailModal';
 import { StatementModal } from './_components/StatementModal';
 export default function AdminPayments() {
   const { t } = useTranslation();
@@ -75,6 +76,11 @@ export default function AdminPayments() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [showChargeDetailModal, setShowChargeDetailModal] = useState(false);
   const [selectedChargeDetail, setSelectedChargeDetail] = useState(null);
+  // Sprint 3 D5: modal nuevo por-residente (PaymentDetailModal).
+  // El ChargeDetailModal legacy queda en el JSX por compat (cobros masivos
+  // legacy) pero la Lista-Cobros del rediseño ya no lo abre.
+  const [showPaymentDetailModal, setShowPaymentDetailModal] = useState(false);
+  const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
 
   // ============================================
   // HOOKS
@@ -168,9 +174,12 @@ export default function AdminPayments() {
     }
   };
 
-  const handleOpenChargeDetail = (charge) => {
-    setSelectedChargeDetail(charge);
-    setShowChargeDetailModal(true);
+  // Sprint 3 D5: el callback recibe un `payment` (no charge). Abre el modal
+  // nuevo PaymentDetailModal. El ChargeDetailModal legacy queda inalcanzable
+  // desde Lista-Cobros (se mantiene en el JSX por compat — D13 lo limpia).
+  const handleOpenChargeDetail = (payment) => {
+    setSelectedPaymentDetail(payment);
+    setShowPaymentDetailModal(true);
   };
 
   const handleCancelCharge = async (reason = null) => {
@@ -493,6 +502,24 @@ export default function AdminPayments() {
         }}
         PAYMENT_STATUS={PAYMENT_STATUS}
         PAYMENT_TYPES={PAYMENT_TYPES}
+      />
+
+      {/* Sprint 3 D5: nuevo modal por-residente (Detalle-Cobro mockup #3).
+          Coexiste con ChargeDetailModal legacy de arriba (que ya no se abre
+          desde Lista-Cobros pero queda hasta D13 polish). */}
+      <PaymentDetailModal
+        visible={showPaymentDetailModal}
+        payment={selectedPaymentDetail}
+        onClose={() => {
+          setShowPaymentDetailModal(false);
+          setSelectedPaymentDetail(null);
+        }}
+        onRegisterCashSuccess={() => {
+          // Refrescar lista de cobros y stats KPIs tras cobro en efectivo
+          if (charges?.fetchCharges) {
+            charges.fetchCharges();
+          }
+        }}
       />
 
       <StatementModal

@@ -2076,6 +2076,31 @@ export const cancelCommunityCharge = async (chargeId) => {
 };
 
 /**
+ * Sprint 3 D5: registrar un pago en efectivo (manual, admin-side).
+ * POST /api/community-payments/admin/payments/:paymentId/register-cash
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {{ amount: number, notes?: string }} body
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const registerCashPayment = async (paymentId, body) => {
+  try {
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/register-cash`,
+      { method: 'POST', body: JSON.stringify(body) }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error registering cash payment:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
  * Get all payments (Admin).
  *
  * Sprint 3 D3 (frontend) ⇄ D2 (backend): soporta los 13 query params del

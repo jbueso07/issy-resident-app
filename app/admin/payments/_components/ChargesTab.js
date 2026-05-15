@@ -50,16 +50,14 @@ import StatusChips from './StatusChips';
 const SEARCH_DEBOUNCE_MS = 300;
 
 export function ChargesTab({
-  // Sprint 3 D3: `charges` (cache de useCharges del padre) se USA como lookup
-  // para resolver el shape completo del charge cuando el usuario toca un card.
-  // El ChargeDetailModal espera shape completo de community_charges (con stats,
-  // is_recurring, description, cancelled_at, currency, status); el payment del
-  // endpoint D2 solo trae 5 campos en `payment.charge`. El fallback defensivo
-  // cubre race conditions donde el cache aún no tiene el charge buscado.
-  charges,
-  // `stats` se RESTAURA en D3 con look-and-feel legacy (KPIs Cobrado /
-  // Pendiente / Por verificar). D4 los migrará al diseño nuevo del mockup.
+  // `stats` alimenta los 3 KpiCard (post D4). Viene de useCharges via index.js.
   stats,
+  // Sprint 3 D5: `charges` ya no se usa como cache de lookup — el callback
+  // onChargePress ahora pasa el payment directo (el modal nuevo PaymentDetailModal
+  // consume shape de getAllPayments, no de getCharges). Lo dejamos en la firma
+  // para no romper la API del consumer (index.js sigue pasándolo).
+  // eslint-disable-next-line no-unused-vars
+  charges,
   // Props legacy ignoradas internamente — el componente usa usePayments propio
   // eslint-disable-next-line no-unused-vars
   loading: _loadingLegacy,
@@ -101,36 +99,15 @@ export function ChargesTab({
     setParams({ status: statusChip === 'all' ? undefined : statusChip });
   }, [statusChip, setParams]);
 
-  // Render del item de la FlatList
+  // Render del item de la FlatList.
+  // Sprint 3 D5: el callback ahora pasa el payment directo (no el charge
+  // adapter del D3). El consumidor (index.js) abre PaymentDetailModal nuevo
+  // que consume shape de getAllPayments.
   const renderItem = ({ item }) => (
     <ChargeCard
       payment={item}
       onPress={() => {
-        if (!onChargePress) return;
-        // Buscar el charge completo desde el cache de useCharges (prop charges)
-        const fullCharge = charges?.find((c) => c.id === item.charge_id);
-        if (fullCharge) {
-          onChargePress(fullCharge);
-          return;
-        }
-        // Fallback defensivo si el charge no está en el cache (race condition)
-        onChargePress({
-          ...(item.charge || {}),
-          id: item.charge_id,
-          currency: item.currency,
-          amount: item.charge?.amount ?? item.amount,
-          status: 'active',
-          stats: {
-            total_amount_collected: 0,
-            total_amount_expected: item.amount || 0,
-            paid_count: 0,
-            total_payments: 0,
-          },
-          is_recurring: false,
-          recurring_period: null,
-          description: '',
-          cancelled_at: null,
-        });
+        if (onChargePress) onChargePress(item);
       }}
     />
   );
