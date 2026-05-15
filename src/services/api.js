@@ -2076,22 +2076,66 @@ export const cancelCommunityCharge = async (chargeId) => {
 };
 
 /**
- * Get all payments (Admin)
+ * Get all payments (Admin).
+ *
+ * Sprint 3 D3 (frontend) ⇄ D2 (backend): soporta los 13 query params del
+ * endpoint /admin/payments (status, search, date_field, from_date, to_date,
+ * min_amount, max_amount, charge_id, user_id, unit_number, payment_method,
+ * limit, offset). Compat con callers legacy (StatementModal.js, etc.) que
+ * pasan solo status/charge_id/user_id se preserva — params extra que no
+ * vienen no se appendean.
+ *
+ * Return shape:
+ *   - success: boolean
+ *   - data: array de payments (con joins charge/user/unit/verifier post-D2)
+ *   - pagination: { total, limit, offset } (nuevo, post-D2)
+ *   - error / sessionExpired: en caso de fallo
  */
 export const getAdminCommunityPayments = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
     if (params.status) queryParams.append('status', params.status);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.date_field) queryParams.append('date_field', params.date_field);
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+    if (params.to_date) queryParams.append('to_date', params.to_date);
+    if (params.min_amount !== undefined && params.min_amount !== null && params.min_amount !== '') {
+      queryParams.append('min_amount', String(params.min_amount));
+    }
+    if (params.max_amount !== undefined && params.max_amount !== null && params.max_amount !== '') {
+      queryParams.append('max_amount', String(params.max_amount));
+    }
     if (params.charge_id) queryParams.append('charge_id', params.charge_id);
-    
+    if (params.user_id) queryParams.append('user_id', params.user_id);
+    if (params.unit_number) queryParams.append('unit_number', params.unit_number);
+    if (params.payment_method) queryParams.append('payment_method', params.payment_method);
+    if (params.limit !== undefined && params.limit !== null) {
+      queryParams.append('limit', String(params.limit));
+    }
+    if (params.offset !== undefined && params.offset !== null) {
+      queryParams.append('offset', String(params.offset));
+    }
+
     const query = queryParams.toString();
-    const endpoint = query ? `/community-payments/admin/payments?${query}` : '/community-payments/admin/payments';
-    
+    const endpoint = query
+      ? `/community-payments/admin/payments?${query}`
+      : '/community-payments/admin/payments';
+
     const data = await authFetch(endpoint);
-    return { success: true, data: data.data || data };
+    return {
+      success: true,
+      data: data.data || [],
+      pagination: data.pagination || { total: 0, limit: null, offset: 0 },
+    };
   } catch (error) {
     console.error('Error fetching admin payments:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+      data: [],
+      pagination: { total: 0, limit: null, offset: 0 },
+    };
   }
 };
 
