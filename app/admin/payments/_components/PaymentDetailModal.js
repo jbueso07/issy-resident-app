@@ -50,7 +50,10 @@ import {
   CheckCircle2,
 } from 'lucide-react-native';
 import { colors, spacing, typography, radii } from '../_styles/theme';
-import { registerCashPayment as registerCashPaymentApi } from '../../../../src/services/api';
+import {
+  registerCashPayment as registerCashPaymentApi,
+  sendPaymentReminder as sendReminderApi,
+} from '../../../../src/services/api';
 import usePayments from '../_hooks/usePayments';
 
 // =============== Helpers locales ===============
@@ -431,11 +434,79 @@ export function PaymentDetailModal({
 }) {
   const { t } = useTranslation();
   const [cashModalVisible, setCashModalVisible] = useState(false);
+  // Sprint 3 D6: loading state del botón "Enviar Recordatorio"
+  const [reminderLoading, setReminderLoading] = useState(false);
 
-  // Reset cash sub-modal cuando se cierra el principal
+  // Reset sub-modales / loading cuando se cierra el principal
   React.useEffect(() => {
-    if (!visible) setCashModalVisible(false);
+    if (!visible) {
+      setCashModalVisible(false);
+      setReminderLoading(false);
+    }
   }, [visible]);
+
+  // Sprint 3 D6: handler real para "Enviar Recordatorio".
+  // Confirmación → POST /admin/payments/:id/send-reminder → Alert resultado.
+  // Backend hace throttle 1/día por payment; el caso 409 muestra mensaje
+  // específico en lugar del genérico.
+  const handleSendReminder = () => {
+    if (!payment?.id || reminderLoading) return;
+    Alert.alert(
+      t('admin.payments.detail.reminderConfirmTitle', 'Enviar recordatorio'),
+      t(
+        'admin.payments.detail.reminderConfirmBody',
+        `¿Enviar push notification a ${payment.user?.name || 'el residente'} para recordarle este cobro?`,
+        { name: payment.user?.name || 'el residente' }
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('admin.payments.detail.send', 'Enviar'),
+          onPress: async () => {
+            setReminderLoading(true);
+            const result = await sendReminderApi(payment.id);
+            setReminderLoading(false);
+            if (!result.success) {
+              const errStr = result.error || '';
+              // Caso throttle backend (409 con "already sent today")
+              const isThrottled = errStr.includes('already sent today');
+              // Caso sin push token (422)
+              const isNoToken =
+                errStr.includes('no valid push token') ||
+                errStr.includes('No push token') ||
+                errStr.includes('Resident user record not found');
+              Alert.alert(
+                t('common.error', 'Error'),
+                isThrottled
+                  ? t(
+                      'admin.payments.detail.reminderThrottle',
+                      'Ya se envió un recordatorio hoy a este residente. Esperá hasta mañana para enviar otro.'
+                    )
+                  : isNoToken
+                  ? t(
+                      'admin.payments.detail.reminderNoToken',
+                      'El residente no tiene la app instalada o nunca habilitó notificaciones. No se pudo enviar el recordatorio.'
+                    )
+                  : errStr ||
+                    t(
+                      'admin.payments.detail.reminderError',
+                      'No se pudo enviar el recordatorio.'
+                    )
+              );
+              return;
+            }
+            Alert.alert(
+              t('common.success', 'Éxito'),
+              t(
+                'admin.payments.detail.reminderSuccess',
+                'Recordatorio enviado al residente.'
+              )
+            );
+          },
+        },
+      ]
+    );
+  };
 
   if (!payment) {
     return null;
@@ -556,10 +627,18 @@ export function PaymentDetailModal({
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => placeholderAlert(t('admin.payments.detail.sendReminder', 'Enviar Recordatorio'))}
-                style={styles.reminderBtn}
+                onPress={handleSendReminder}
+                disabled={reminderLoading}
+                style={[
+                  styles.reminderBtn,
+                  reminderLoading && styles.reminderBtnDisabled,
+                ]}
               >
-                <Bell size={16} color={colors.onSurfaceVariant} strokeWidth={2} />
+                {reminderLoading ? (
+                  <ActivityIndicator size="small" color={colors.onSurfaceVariant} />
+                ) : (
+                  <Bell size={16} color={colors.onSurfaceVariant} strokeWidth={2} />
+                )}
                 <Text style={styles.reminderBtnText}>
                   {t('admin.payments.detail.sendReminder', 'Enviar Recordatorio')}
                 </Text>
@@ -833,6 +912,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 8,
+  },
+  reminderBtnDisabled: {
+    opacity: 0.5,
   },
   reminderBtnText: {
     ...typography.bodyMd,

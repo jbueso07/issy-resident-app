@@ -2076,6 +2076,33 @@ export const cancelCommunityCharge = async (chargeId) => {
 };
 
 /**
+ * Sprint 3 D6: enviar recordatorio push al residente.
+ * POST /api/community-payments/admin/payments/:paymentId/send-reminder
+ *
+ * Sin body — el mensaje se construye server-side desde charge + payment.
+ * Throttle backend: máx 1 recordatorio por día UTC por payment.
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const sendPaymentReminder = async (paymentId) => {
+  try {
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/send-reminder`,
+      { method: 'POST' }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error sending payment reminder:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
  * Sprint 3 D5: registrar un pago en efectivo (manual, admin-side).
  * POST /api/community-payments/admin/payments/:paymentId/register-cash
  *
