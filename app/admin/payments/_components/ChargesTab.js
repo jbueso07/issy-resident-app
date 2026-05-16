@@ -46,6 +46,7 @@ import usePayments from '../_hooks/usePayments';
 import ChargeCard from './cards/ChargeCard';
 import KpiCard from './cards/KpiCard';
 import StatusChips from './StatusChips';
+import { AdvancedFiltersSheet, countAdvancedFilters } from './AdvancedFiltersSheet';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -98,6 +99,11 @@ export function ChargesTab({
   useEffect(() => {
     setParams({ status: statusChip === 'all' ? undefined : statusChip });
   }, [statusChip, setParams]);
+
+  // Sprint 3 D9: sheet de filtros avanzados (rango fechas + monto + método
+  // + unit). El sheet mantiene su propio draft local y aplica via setParams.
+  const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
+  const advancedFilterCount = countAdvancedFilters(params);
 
   // Render del item de la FlatList.
   // Sprint 3 D5: el callback ahora pasa el payment directo (no el charge
@@ -217,13 +223,19 @@ export function ChargesTab({
             </Pressable>
           ) : null}
         </View>
-        {/* Filter button — Sprint 3 D6 lo activa con modal de filtros avanzados */}
+        {/* Filter button (Sprint 3 D9 lo activa con AdvancedFiltersSheet).
+            Badge con conteo de filtros avanzados activos. */}
         <Pressable
-          style={[styles.filterBtn, styles.filterBtnDisabled]}
-          disabled={true}
-          accessibilityLabel="Filtros (próximamente)"
+          style={styles.filterBtn}
+          onPress={() => setFiltersSheetVisible(true)}
+          accessibilityLabel="Abrir filtros avanzados"
         >
           <SlidersHorizontal size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+          {advancedFilterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{advancedFilterCount}</Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
 
@@ -247,6 +259,17 @@ export function ChargesTab({
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Sprint 3 D9: Sheet de filtros avanzados. Aplica via setParams,
+          mergea con los params existentes (status, search no se tocan). */}
+      <AdvancedFiltersSheet
+        visible={filtersSheetVisible}
+        currentParams={params}
+        onApply={(newParams) => {
+          setParams((p) => ({ ...p, ...newParams }));
+        }}
+        onClose={() => setFiltersSheetVisible(false)}
+      />
     </View>
   );
 }
@@ -297,9 +320,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainer,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
+  // Legacy: usado por el placeholder pre-D9 — mantenido por si algún consumer
+  // externo lo referencia. Sprint D9 ya no lo aplica.
   filterBtnDisabled: {
     opacity: 0.5,
+  },
+  // Sprint 3 D9: badge contador en el botón "tune"
+  filterBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    ...typography.labelSm,
+    color: colors.onPrimaryContainer,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: spacing.containerPadding,
