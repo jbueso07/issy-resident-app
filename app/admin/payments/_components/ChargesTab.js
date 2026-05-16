@@ -17,7 +17,7 @@
 // `charges` se usa como cache para resolver shape completo del cobro padre
 // cuando se tap'ea un card. `stats` alimenta los KPIs. El resto se ignora.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -47,6 +48,8 @@ import ChargeCard from './cards/ChargeCard';
 import KpiCard from './cards/KpiCard';
 import StatusChips from './StatusChips';
 import { AdvancedFiltersSheet, countAdvancedFilters } from './AdvancedFiltersSheet';
+import { MonthHeader } from './MonthHeader';
+import { groupByMonth } from '../_utils/groupByMonth';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -76,8 +79,31 @@ export function ChargesTab({
 }) {
   const { t } = useTranslation();
 
-  // Hook nuevo: consume /admin/payments (endpoint D2)
-  const { data, loading, error, pagination, setParams, refetch } = usePayments();
+  // Hook nuevo: consume /admin/payments (endpoint D2).
+  // Sprint 3 D10: el hook ahora expone paginación interna (loadingMore /
+  // refreshing / hasMore / loadMore / refresh) además de los campos de D3.
+  const {
+    data,
+    loading,
+    loadingMore,
+    refreshing,
+    hasMore,
+    error,
+    pagination,
+    params,
+    setParams,
+    loadMore,
+    refresh,
+    refetch,
+  } = usePayments();
+
+  // Sprint 3 D10: agrupar los items VISIBLES por mes (header + items
+  // intercalados). Se recalcula cuando llegan páginas nuevas (data cambia)
+  // o cuando cambia el dateField que define a qué mes pertenece el row.
+  const groupedData = useMemo(
+    () => groupByMonth(data, params.date_field || 'created_at'),
+    [data, params.date_field]
+  );
 
   // Search input (controlled) + debounce a setParams
   const [searchInput, setSearchInput] = useState('');
@@ -106,17 +132,36 @@ export function ChargesTab({
   const advancedFilterCount = countAdvancedFilters(params);
 
   // Render del item de la FlatList.
-  // Sprint 3 D5: el callback ahora pasa el payment directo (no el charge
-  // adapter del D3). El consumidor (index.js) abre PaymentDetailModal nuevo
-  // que consume shape de getAllPayments.
-  const renderItem = ({ item }) => (
-    <ChargeCard
-      payment={item}
-      onPress={() => {
-        if (onChargePress) onChargePress(item);
-      }}
-    />
-  );
+  // Sprint 3 D5: el callback pasa el payment directo (no el charge adapter
+  // del D3). El consumidor (index.js) abre PaymentDetailModal nuevo que
+  // consume shape de getAllPayments.
+  // Sprint 3 D10: ahora la FlatList recibe array agrupado — cada row es
+  // header (mes) o item (payment). El renderItem discrimina por `type`.
+  const renderItem = ({ item }) => {
+    if (item.type === 'header') {
+      return <MonthHeader label={item.label} stats={item.stats} />;
+    }
+    return (
+      <ChargeCard
+        payment={item.payment}
+        onPress={() => {
+          if (onChargePress) onChargePress(item.payment);
+        }}
+      />
+    );
+  };
+
+  // Footer: spinner mientras carga la siguiente página (scroll infinito).
+  // Solo aparece si ya hay data renderizada — la carga inicial usa el
+  // full-spinner del body. Si no hay más páginas, no renderiza nada.
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.loadingMoreWrap}>
+        <ActivityIndicator size="small" color={colors.primaryContainer} />
+      </View>
+    );
+  };
 
   // Empty / error / loading states
   const renderEmpty = () => {
@@ -251,12 +296,28 @@ export function ChargesTab({
         </View>
       ) : (
         <FlatList
-          data={data}
+          data={groupedData}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
           showsVerticalScrollIndicator={false}
+          // Sprint 3 D10: scroll infinito. onEndReachedThreshold=0.5 dispara
+          // loadMore cuando el usuario está a media pantalla del final.
+          // loadMore es no-op si !hasMore o ya hay un fetch en curso.
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          // Pull-to-refresh: vuelve a pedir desde offset=0 con los params
+          // actuales (mantiene filtros aplicados).
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primaryContainer}
+              colors={[colors.primaryContainer]}
+            />
+          }
         />
       )}
 
@@ -353,6 +414,12 @@ const styles = StyleSheet.create({
   },
   fullSpinner: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Sprint 3 D10: footer del FlatList mientras carga la siguiente página
+  loadingMoreWrap: {
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
