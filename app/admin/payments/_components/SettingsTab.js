@@ -1,19 +1,61 @@
-// app/admin/payments/components/SettingsTab.js
-// ISSY Admin - Settings Tab Component
+// app/admin/payments/_components/SettingsTab.js
+// ISSY Admin - Settings Tab (Sprint 3 D12 refactor)
+//
+// Refactor visual del tab de configuración del módulo de pagos al theme
+// MD3 + lucide (consistente con ChargesTab post-D10 y ProofsTab post-D11).
+//
+// Contenido:
+//   - 2 toggles: card_payments_enabled, proof_payments_enabled (vienen de
+//     useSettings).
+//   - Lista de cuentas bancarias (multi-account, viene de useBankAccounts)
+//     condicionada a proof_payments_enabled=true.
+//   - Botón "Guardar configuración" (solo persiste los 2 toggles — las
+//     cuentas bancarias persisten en su propio CRUD).
+//
+// NO toca la lógica/handlers, solo el shell visual. Los 6 fixes de
+// referencias rotas en index.js se aplican en T2 del mismo PR.
+//
+// Tech debt para D13:
+//   - useSettings.bank_name / bank_account_* (legacy single-account, ya no
+//     se usa porque las cuentas viven en useBankAccounts).
 
 import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  ScrollView,
   Switch,
+  Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { COLORS, scale } from '../_constants';
+import {
+  CreditCard,
+  FileText,
+  Building2,
+  Plus,
+  Star,
+  Pencil,
+  Trash2,
+  Save,
+} from 'lucide-react-native';
+import { colors, spacing, typography, radii } from '../_styles/theme';
 
+/**
+ * @param {Object} props
+ * @param {Object} props.settings - { card_payments_enabled, proof_payments_enabled, ... }
+ * @param {boolean} props.loadingSettings
+ * @param {boolean} props.savingSettings
+ * @param {Array} props.bankAccounts
+ * @param {boolean} props.loadingBankAccounts
+ * @param {(key: string, value: any) => void} props.onSettingChange
+ * @param {() => void} props.onSaveSettings
+ * @param {() => void} props.onAddBankAccount
+ * @param {(account: Object) => void} props.onEditBankAccount
+ * @param {(account: Object) => void} props.onDeleteBankAccount
+ * @param {(account: Object) => void} props.onSetDefaultBankAccount
+ */
 export function SettingsTab({
   settings,
   loadingSettings,
@@ -31,363 +73,429 @@ export function SettingsTab({
 
   if (loadingSettings) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.lime} />
-        <Text style={styles.loadingText}>{t('admin.payments.loadingSettings', 'Cargando configuración...')}</Text>
+      <View style={styles.fullSpinner}>
+        <ActivityIndicator size="large" color={colors.primaryContainer} />
+        <Text style={styles.loadingText}>
+          {t('admin.payments.settings.loading', 'Cargando configuración...')}
+        </Text>
       </View>
     );
   }
 
+  const cardEnabled = !!settings?.card_payments_enabled;
+  const proofEnabled = !!settings?.proof_payments_enabled;
+
   return (
-    <View style={styles.container}>
-      {/* Payment Methods Section */}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Sección 1: Métodos de Pago */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {t('admin.payments.settings.paymentMethods', 'Métodos de Pago')}
+        <Text style={styles.sectionHeader}>
+          {t('admin.payments.settings.methodsTitle', 'Métodos de pago')}
         </Text>
-        
+
+        {/* Toggle 1: card payments */}
         <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Ionicons name="card" size={24} color={COLORS.teal} />
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.settingLabel}>
-                {t('admin.payments.settings.cardPayments', 'Pagos con Tarjeta')}
+          <View style={styles.settingLabelGroup}>
+            <CreditCard size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+            <View style={styles.settingTexts}>
+              <Text style={styles.settingTitle}>
+                {t('admin.payments.settings.cardTitle', 'Pagos con tarjeta')}
               </Text>
-              <Text style={styles.settingDescription}>
-                {t('admin.payments.settings.cardPaymentsDesc', 'Permitir pagos con tarjeta de crédito/débito')}
+              <Text style={styles.settingSubtitle}>
+                {t(
+                  'admin.payments.settings.cardSubtitle',
+                  'Permite cobrar con tarjeta vía Clinpays.'
+                )}
               </Text>
             </View>
           </View>
           <Switch
-            value={settings.card_payments_enabled}
-            onValueChange={(value) => onSettingChange('card_payments_enabled', value)}
-            trackColor={{ false: COLORS.border, true: COLORS.lime + '50' }}
-            thumbColor={settings.card_payments_enabled ? COLORS.lime : COLORS.textMuted}
+            value={cardEnabled}
+            onValueChange={(v) => onSettingChange?.('card_payments_enabled', v)}
+            trackColor={{ false: colors.outline, true: colors.primaryContainer }}
+            thumbColor={cardEnabled ? colors.onPrimaryContainer : '#fff'}
           />
         </View>
-        
-        <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
-          <View style={styles.settingInfo}>
-            <Ionicons name="document-attach" size={24} color={COLORS.purple} />
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.settingLabel}>
-                {t('admin.payments.settings.proofPayments', 'Comprobantes de Pago')}
+
+        {/* Toggle 2: proof payments */}
+        <View style={[styles.settingRow, styles.settingRowLast]}>
+          <View style={styles.settingLabelGroup}>
+            <FileText size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+            <View style={styles.settingTexts}>
+              <Text style={styles.settingTitle}>
+                {t('admin.payments.settings.proofTitle', 'Comprobantes de pago')}
               </Text>
-              <Text style={styles.settingDescription}>
-                {t('admin.payments.settings.proofPaymentsDesc', 'Permitir subir comprobantes de transferencia')}
+              <Text style={styles.settingSubtitle}>
+                {t(
+                  'admin.payments.settings.proofSubtitle',
+                  'Permite que los residentes envíen comprobante de transferencia.'
+                )}
               </Text>
             </View>
           </View>
           <Switch
-            value={settings.proof_payments_enabled}
-            onValueChange={(value) => onSettingChange('proof_payments_enabled', value)}
-            trackColor={{ false: COLORS.border, true: COLORS.lime + '50' }}
-            thumbColor={settings.proof_payments_enabled ? COLORS.lime : COLORS.textMuted}
+            value={proofEnabled}
+            onValueChange={(v) => onSettingChange?.('proof_payments_enabled', v)}
+            trackColor={{ false: colors.outline, true: colors.primaryContainer }}
+            thumbColor={proofEnabled ? colors.onPrimaryContainer : '#fff'}
           />
         </View>
       </View>
 
-      {/* Bank Accounts Section */}
-      {settings.proof_payments_enabled && (
+      {/* Sección 2: Bank Accounts — solo si proof_payments_enabled */}
+      {proofEnabled && (
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>
-                {t('admin.payments.settings.bankAccounts', 'Cuentas Bancarias')}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeader}>
+              {t('admin.payments.settings.bankAccountsTitle', 'Cuentas bancarias')}
+            </Text>
+            <Pressable
+              onPress={onAddBankAccount}
+              style={({ pressed }) => [styles.addBtn, pressed && styles.btnPressed]}
+              accessibilityLabel={t('admin.payments.settings.addAccount', 'Agregar cuenta')}
+            >
+              <Plus size={18} color={colors.onPrimaryContainer} strokeWidth={2} />
+              <Text style={styles.addBtnText}>
+                {t('admin.payments.settings.addAccount', 'Agregar')}
               </Text>
-              <Text style={styles.sectionSubtitle}>
-                {t('admin.payments.settings.bankAccountsDesc', 'Agrega las cuentas donde los residentes pueden depositar')}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.addButton} onPress={onAddBankAccount}>
-              <Ionicons name="add-circle" size={24} color={COLORS.lime} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {loadingBankAccounts ? (
-            <ActivityIndicator size="small" color={COLORS.lime} style={{ marginVertical: 20 }} />
-          ) : bankAccounts.length === 0 ? (
-            <View style={styles.emptyBankAccounts}>
-              <Ionicons name="wallet-outline" size={48} color={COLORS.textMuted} />
-              <Text style={styles.emptyBankAccountsText}>
-                {t('admin.payments.noBankAccounts', 'No hay cuentas bancarias')}
+            <ActivityIndicator
+              size="small"
+              color={colors.primaryContainer}
+              style={styles.bankSpinner}
+            />
+          ) : !bankAccounts || bankAccounts.length === 0 ? (
+            <View style={styles.emptyAccountsWrap}>
+              <Building2 size={40} color={colors.onSurfaceVariant} strokeWidth={1.5} />
+              <Text style={styles.emptyAccountsText}>
+                {t(
+                  'admin.payments.settings.noBankAccounts',
+                  'No hay cuentas bancarias configuradas. Agregá al menos una para recibir comprobantes.'
+                )}
               </Text>
-              <TouchableOpacity style={styles.addFirstButton} onPress={onAddBankAccount}>
-                <Ionicons name="add" size={20} color={COLORS.background} />
-                <Text style={styles.addFirstButtonText}>
-                  {t('admin.payments.addFirstBankAccount', 'Agregar cuenta')}
-                </Text>
-              </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.bankAccountsList}>
-              {bankAccounts.map((account) => (
-                <BankAccountCard
-                  key={account.id}
-                  account={account}
-                  onEdit={() => onEditBankAccount(account)}
-                  onDelete={() => onDeleteBankAccount(account)}
-                  onSetDefault={() => onSetDefaultBankAccount(account)}
-                  t={t}
-                />
-              ))}
-            </View>
+            bankAccounts.map((account) => (
+              <BankAccountCard
+                key={account.id}
+                account={account}
+                onEdit={() => onEditBankAccount?.(account)}
+                onDelete={() => onDeleteBankAccount?.(account)}
+                onSetDefault={() => onSetDefaultBankAccount?.(account)}
+                t={t}
+              />
+            ))
           )}
         </View>
       )}
 
-      {/* Save Button */}
-      <TouchableOpacity 
-        style={styles.saveButton}
+      {/* Botón Guardar Configuración (solo persiste los 2 toggles) */}
+      <Pressable
         onPress={onSaveSettings}
+        style={({ pressed }) => [
+          styles.saveBtn,
+          pressed && styles.btnPressed,
+          savingSettings && styles.saveBtnDisabled,
+        ]}
         disabled={savingSettings}
       >
         {savingSettings ? (
-          <ActivityIndicator size="small" color={COLORS.background} />
+          <ActivityIndicator size="small" color={colors.onPrimaryContainer} />
         ) : (
           <>
-            <Ionicons name="save" size={20} color={COLORS.background} />
-            <Text style={styles.saveButtonText}>
-              {t('admin.payments.settings.save', 'Guardar Configuración')}
+            <Save size={18} color={colors.onPrimaryContainer} strokeWidth={2} />
+            <Text style={styles.saveBtnText}>
+              {t('admin.payments.settings.save', 'Guardar configuración')}
             </Text>
           </>
         )}
-      </TouchableOpacity>
-    </View>
+      </Pressable>
+    </ScrollView>
   );
 }
 
-// Bank Account Card Sub-component
+/**
+ * Sub-componente BankAccountCard — usado solo dentro de SettingsTab.
+ * Campos del shape: bank_name, account_number, account_name, account_type,
+ * instructions, is_default. (Confirmado contra useBankAccounts + endpoint
+ * /admin/bank-accounts.)
+ */
 function BankAccountCard({ account, onEdit, onDelete, onSetDefault, t }) {
+  const accountTypeLabel =
+    account.account_type === 'savings'
+      ? t('admin.payments.settings.accountTypeSavings', 'Ahorro')
+      : account.account_type === 'checking'
+      ? t('admin.payments.settings.accountTypeChecking', 'Cheques')
+      : account.account_type;
+
   return (
-    <View style={[styles.bankCard, account.is_default && styles.bankCardDefault]}>
-      <View style={styles.bankHeader}>
-        <View style={styles.bankInfo}>
-          <Text style={styles.bankName}>{account.bank_name}</Text>
-          {account.is_default && (
-            <View style={styles.defaultBadge}>
-              <Text style={styles.defaultBadgeText}>{t('common.default', 'Principal')}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.bankActions}>
-          {!account.is_default && (
-            <TouchableOpacity onPress={onSetDefault} style={styles.bankAction}>
-              <Ionicons name="star-outline" size={18} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={onEdit} style={styles.bankAction}>
-            <Ionicons name="pencil" size={18} color={COLORS.teal} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} style={styles.bankAction}>
-            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.bankDetails}>
-        <Text style={styles.accountNumber}>{account.account_number}</Text>
-        <Text style={styles.accountHolder}>{account.account_name}</Text>
-        {account.account_type && (
-          <Text style={styles.accountType}>
-            {account.account_type === 'savings' ? 'Ahorro' : 
-             account.account_type === 'checking' ? 'Cheques' : 
-             account.account_type}
+    <View
+      style={[
+        styles.accountCard,
+        account.is_default && styles.accountCardDefault,
+      ]}
+    >
+      <View style={styles.accountHeader}>
+        <View style={styles.accountTitleRow}>
+          {account.is_default ? (
+            <Star
+              size={14}
+              color={colors.primaryContainer}
+              strokeWidth={2}
+              fill={colors.primaryContainer}
+            />
+          ) : null}
+          <Text style={styles.accountName} numberOfLines={1}>
+            {account.bank_name}
           </Text>
-        )}
+        </View>
+        <View style={styles.accountActions}>
+          {!account.is_default && (
+            <Pressable
+              onPress={onSetDefault}
+              style={styles.iconBtn}
+              hitSlop={6}
+              accessibilityLabel={t('admin.payments.settings.setDefault', 'Marcar como predeterminada')}
+            >
+              <Star size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
+            </Pressable>
+          )}
+          <Pressable
+            onPress={onEdit}
+            style={styles.iconBtn}
+            hitSlop={6}
+            accessibilityLabel={t('common.edit', 'Editar')}
+          >
+            <Pencil size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            onPress={onDelete}
+            style={styles.iconBtn}
+            hitSlop={6}
+            accessibilityLabel={t('common.delete', 'Eliminar')}
+          >
+            <Trash2 size={18} color={colors.error} strokeWidth={2} />
+          </Pressable>
+        </View>
       </View>
-      {account.instructions && (
-        <Text style={styles.bankInstructions}>{account.instructions}</Text>
-      )}
+
+      <Text style={styles.accountFieldMono}>{account.account_number}</Text>
+      <Text style={styles.accountField}>{account.account_name}</Text>
+      {accountTypeLabel ? (
+        <Text style={styles.accountType}>{accountTypeLabel}</Text>
+      ) : null}
+      {account.instructions ? (
+        <Text style={styles.accountInstructions} numberOfLines={3}>
+          {account.instructions}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: scale(20),
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  loadingContainer: {
+  scrollContent: {
+    paddingHorizontal: spacing.containerPadding,
+    paddingTop: spacing.unit * 3,
+    paddingBottom: spacing.unit * 12,
+  },
+
+  fullSpinner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scale(60),
+    paddingVertical: 80,
+    gap: 12,
   },
   loadingText: {
-    marginTop: scale(12),
-    color: COLORS.textSecondary,
-    fontSize: scale(14),
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
   },
+
   section: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(16),
-    padding: scale(16),
-    marginBottom: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.unit * 3,
+    paddingVertical: spacing.unit * 2,
+    marginBottom: spacing.unit * 3,
   },
   sectionHeader: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.unit * 2,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: scale(16),
+    marginBottom: spacing.unit * 2,
   },
-  sectionTitle: {
-    fontSize: scale(16),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
-  },
-  sectionSubtitle: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-  },
+
+  // Setting row (toggle)
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: scale(12),
+    paddingVertical: spacing.unit * 2,
+    gap: spacing.unit * 2,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.outlineVariant,
   },
-  settingInfo: {
+  settingRowLast: {
+    borderBottomWidth: 0,
+  },
+  settingLabelGroup: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: scale(12),
-  },
-  settingTextContainer: {
-    marginLeft: scale(12),
-    flex: 1,
-  },
-  settingLabel: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  settingDescription: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-  addButton: {
-    padding: scale(4),
-  },
-  emptyBankAccounts: {
-    alignItems: 'center',
-    padding: scale(32),
-    backgroundColor: COLORS.surface,
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-  },
-  emptyBankAccountsText: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    marginTop: scale(12),
-    marginBottom: scale(16),
-  },
-  addFirstButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lime,
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(10),
-    borderRadius: scale(8),
-    gap: scale(6),
-  },
-  addFirstButtonText: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.background,
-  },
-  bankAccountsList: {
-    gap: scale(12),
-  },
-  bankCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: scale(12),
-    padding: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  bankCardDefault: {
-    borderColor: COLORS.lime,
-    borderWidth: 2,
-  },
-  bankHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(12),
-  },
-  bankInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(8),
+    alignItems: 'flex-start',
+    gap: spacing.unit * 2,
     flex: 1,
   },
-  bankName: {
-    fontSize: scale(16),
+  settingTexts: {
+    flex: 1,
+    gap: spacing.unit / 2,
+  },
+  settingTitle: {
+    ...typography.bodyLg,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: COLORS.textPrimary,
   },
-  defaultBadge: {
-    backgroundColor: COLORS.lime + '20',
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(2),
-    borderRadius: scale(4),
+  // Theme no expone bodySm — uso bodyMd con fontSize override
+  settingSubtitle: {
+    ...typography.bodyMd,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
   },
-  defaultBadgeText: {
-    fontSize: scale(10),
-    fontWeight: '600',
-    color: COLORS.lime,
-    textTransform: 'uppercase',
-  },
-  bankActions: {
+
+  // Add button (header de bank accounts)
+  addBtn: {
     flexDirection: 'row',
-    gap: scale(8),
+    alignItems: 'center',
+    gap: spacing.unit,
+    paddingHorizontal: spacing.unit * 2,
+    paddingVertical: spacing.unit,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primaryContainer,
   },
-  bankAction: {
-    padding: scale(6),
-  },
-  bankDetails: {
-    gap: scale(4),
-  },
-  accountNumber: {
-    fontSize: scale(18),
+  addBtnText: {
+    ...typography.labelMd,
+    color: colors.onPrimaryContainer,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+  },
+  btnPressed: {
+    opacity: 0.85,
+  },
+
+  // Bank account: empty state
+  bankSpinner: {
+    marginVertical: spacing.unit * 4,
+  },
+  emptyAccountsWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.unit * 5,
+    gap: spacing.unit * 2,
+  },
+  emptyAccountsText: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+    paddingHorizontal: spacing.unit * 3,
+  },
+
+  // Bank account card
+  accountCard: {
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: radii.md,
+    padding: spacing.unit * 2.5,
+    marginBottom: spacing.unit * 2,
+    gap: spacing.unit / 2,
+  },
+  accountCardDefault: {
+    borderWidth: 1,
+    borderColor: colors.primaryContainer,
+  },
+  accountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.unit,
+    gap: spacing.unit * 2,
+  },
+  accountTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit,
+    flex: 1,
+  },
+  accountName: {
+    ...typography.bodyLg,
+    color: colors.onSurface,
+    fontWeight: '600',
+    flex: 1,
+  },
+  accountActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit / 2,
+  },
+  iconBtn: {
+    padding: spacing.unit,
+  },
+  accountFieldMono: {
+    ...typography.monoData,
+    color: colors.onSurface,
     letterSpacing: 1,
   },
-  accountHolder: {
-    fontSize: scale(14),
-    color: COLORS.textSecondary,
+  accountField: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
   },
   accountType: {
-    fontSize: scale(12),
-    color: COLORS.textMuted,
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
     textTransform: 'capitalize',
   },
-  bankInstructions: {
-    fontSize: scale(12),
-    color: COLORS.textMuted,
-    marginTop: scale(8),
+  accountInstructions: {
+    ...typography.bodyMd,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.onSurfaceVariant,
     fontStyle: 'italic',
+    marginTop: spacing.unit,
   },
-  saveButton: {
+
+  // Save button (primary CTA)
+  saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
-    padding: scale(16),
-    borderRadius: scale(12),
-    gap: scale(8),
+    gap: spacing.unit,
+    paddingVertical: spacing.unit * 2.5,
+    paddingHorizontal: spacing.unit * 4,
+    borderRadius: radii.lg,
+    backgroundColor: colors.primaryContainer,
+    marginTop: spacing.unit * 2,
   },
-  saveButtonText: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.background,
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveBtnText: {
+    ...typography.bodyLg,
+    color: colors.onPrimaryContainer,
+    fontWeight: '700',
   },
 });
 

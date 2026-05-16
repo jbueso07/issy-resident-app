@@ -232,14 +232,70 @@ export default function AdminPayments() {
     }
   };
 
+  // Sprint 3 D12 (Fix 2): openAddBankAccount no existe en useBankAccounts.
+  // Antes crasheaba al tap. El hook expone resetBankAccountForm para limpiar
+  // el form antes de abrir el modal en modo "agregar".
   const handleOpenAddBankAccount = () => {
-    bankAccounts.openAddBankAccount();
+    if (typeof bankAccounts.resetBankAccountForm === 'function') {
+      bankAccounts.resetBankAccountForm();
+    }
     setShowBankAccountModal(true);
   };
 
+  // Sprint 3 D12 (Fix 3): rename openEditBankAccount → editBankAccount.
+  // Antes era undefined function — crash al tap "Editar".
   const handleOpenEditBankAccount = (account) => {
-    bankAccounts.openEditBankAccount(account);
+    bankAccounts.editBankAccount(account);
     setShowBankAccountModal(true);
+  };
+
+  // Sprint 3 D12 (Fix 4): handler nuevo con Alert.alert confirm. Antes la
+  // prop apuntaba directo a bankAccounts.handleDeleteBankAccount (no existía
+  // — crash al tap Eliminar). Safety net obligatoria para acción destructiva.
+  const handleDeleteBankAccount = (account) => {
+    Alert.alert(
+      t('admin.payments.settings.deleteTitle', 'Eliminar cuenta bancaria'),
+      t(
+        'admin.payments.settings.deleteConfirm',
+        `¿Eliminar la cuenta "${account.bank_name}"? Los residentes ya no podrán enviar comprobantes a esta cuenta.`
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('common.delete', 'Eliminar'),
+          style: 'destructive',
+          onPress: async () => {
+            if (typeof bankAccounts.deleteBankAccount === 'function') {
+              await bankAccounts.deleteBankAccount(account.id);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Sprint 3 D12 (Fix 5): handler nuevo con confirm. Antes apuntaba a
+  // bankAccounts.handleSetDefaultBankAccount (no existía — crash).
+  const handleSetDefaultBankAccount = (account) => {
+    if (account.is_default) return; // ya es default, no-op
+    Alert.alert(
+      t('admin.payments.settings.setDefaultTitle', 'Cuenta predeterminada'),
+      t(
+        'admin.payments.settings.setDefaultConfirm',
+        `Marcar "${account.bank_name}" como cuenta predeterminada para nuevos comprobantes?`
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('admin.payments.settings.setDefault', 'Marcar'),
+          onPress: async () => {
+            if (typeof bankAccounts.setDefaultBankAccount === 'function') {
+              await bankAccounts.setDefaultBankAccount(account.id);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSaveBankAccount = async () => {
@@ -411,18 +467,23 @@ export default function AdminPayments() {
         )}
         
         {activeTab === 'settings' && (
+          // Sprint 3 D12: fixes de 6 referencias rotas al hook useBankAccounts.
+          //   Fix 1: loadingBankAccounts → bankAccounts.loading (rename)
+          //   Fix 4: onDeleteBankAccount → handleDeleteBankAccount con confirm
+          //   Fix 5: onSetDefaultBankAccount → handleSetDefaultBankAccount con confirm
+          // Los fixes 2, 3, 6, 7 se aplican en otros lugares (handlers + modal).
           <SettingsTab
             settings={settings.settings}
             loadingSettings={settings.loadingSettings}
             savingSettings={settings.savingSettings}
             bankAccounts={bankAccounts.bankAccounts}
-            loadingBankAccounts={bankAccounts.loadingBankAccounts}
+            loadingBankAccounts={bankAccounts.loading}
             onSettingChange={settings.updateSetting}
             onSaveSettings={settings.saveSettings}
             onAddBankAccount={handleOpenAddBankAccount}
             onEditBankAccount={handleOpenEditBankAccount}
-            onDeleteBankAccount={bankAccounts.handleDeleteBankAccount}
-            onSetDefaultBankAccount={bankAccounts.handleSetDefaultBankAccount}
+            onDeleteBankAccount={handleDeleteBankAccount}
+            onSetDefaultBankAccount={handleSetDefaultBankAccount}
           />
         )}
 
@@ -459,9 +520,16 @@ export default function AdminPayments() {
         onClose={handleCloseBankAccountModal}
         editingBankAccount={bankAccounts.editingBankAccount}
         bankAccountForm={bankAccounts.bankAccountForm}
-        onFieldChange={bankAccounts.updateBankAccountField}
+        // Sprint 3 D12 (Fix 6): el modal invoca onFieldChange(key, value)
+        // pero useBankAccounts.updateBankAccountForm espera un partial object.
+        // Adapter inline para preservar la API del modal sin tocar el hook.
+        // Antes: bankAccounts.updateBankAccountField (no existía — modal inútil).
+        onFieldChange={(key, value) =>
+          bankAccounts.updateBankAccountForm({ [key]: value })
+        }
         onSave={handleSaveBankAccount}
-        saving={bankAccounts.savingBankAccount}
+        // Sprint 3 D12 (Fix 7): rename savingBankAccount → saving.
+        saving={bankAccounts.saving}
       />
 
       {/* Sprint 3 D11: `proof` ahora viene del state local `selectedProof`
