@@ -1,224 +1,233 @@
-// app/admin/payments/components/ProofsTab.js
-// ISSY Admin - Proofs/Receipts Tab Component
+// app/admin/payments/_components/ProofsTab.js
+// ISSY Admin - Proofs Tab (Sprint 3 D11 refactor)
+//
+// Lista paginada de comprobantes pendientes (status='proof_submitted').
+// Reusa `usePayments` (refactor D10 con paginación interna). El listado
+// pre-D11 venía de `useProofs.fetchPendingProofs` (endpoint legacy
+// /admin/payments/pending sin paginación) — ahora todo sale de
+// /admin/payments con el filter `status=proof_submitted`.
+//
+// IMPORTANTE: `useProofs` queda VIVO solo para mutations (verifyProof /
+// rejectProof / revertPayment) que se siguen disparando desde index.js
+// y desde ProofReviewModal legacy. Cleanup completo del fetch en D13.
+//
+// El callback `onProofPress` viene de index.js y abre <ProofReviewModal>
+// (legacy, sin tocar en D11). El shape del payment que se pasa es
+// compatible con el modal (mismo backend).
 
 import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  FlatList,
+  RefreshControl,
   ActivityIndicator,
-  Image,
+  Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { COLORS, scale } from '../_constants';
-import { formatCurrency, formatDateTime } from '../_helpers';
+import { FileText, AlertCircle } from 'lucide-react-native';
+import { colors, spacing, typography, radii } from '../_styles/theme';
+import usePayments from '../_hooks/usePayments';
+import ProofCard from './cards/ProofCard';
 
-export function ProofsTab({
-  pendingProofs,
-  loadingProofs,
-  onProofPress,
-}) {
+/**
+ * @param {Object} props
+ * @param {(payment: Object) => void} props.onProofPress - abre ProofReviewModal
+ *   (legacy) en index.js. NO modificar el flow de verificación en D11.
+ */
+export function ProofsTab({ onProofPress }) {
   const { t } = useTranslation();
 
-  if (loadingProofs) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.lime} />
-        <Text style={styles.loadingText}>{t('admin.payments.loadingProofs', 'Cargando comprobantes...')}</Text>
-      </View>
-    );
-  }
+  // Sprint 3 D11: hook nuevo con filter dedicado. Page size 20, idéntico
+  // a ChargesTab post-D10.
+  const {
+    data: pendingProofs,
+    loading,
+    loadingMore,
+    refreshing,
+    hasMore,
+    error,
+    loadMore,
+    refresh,
+    refetch,
+  } = usePayments({ status: 'proof_submitted' });
 
-  if (pendingProofs.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="checkmark-done-circle-outline" size={64} color={COLORS.success} />
-        <Text style={styles.emptyTitle}>{t('admin.payments.empty.noProofs', '¡Todo al día!')}</Text>
-        <Text style={styles.emptySubtitle}>
-          {t('admin.payments.empty.noProofsSubtitle', 'No hay comprobantes pendientes de verificar')}
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <>
-      {/* Pending Count Banner */}
-      <View style={styles.pendingBanner}>
-        <Ionicons name="document-text" size={20} color={COLORS.blue} />
-        <Text style={styles.pendingBannerText}>
-          {t('admin.payments.pendingCount', { count: pendingProofs.length }, `${pendingProofs.length} comprobante(s) pendiente(s)`)}
-        </Text>
-      </View>
-
-      {/* Proofs List */}
-      {pendingProofs.map((proof) => (
-        <ProofCard
-          key={proof.id}
-          proof={proof}
-          onPress={() => onProofPress(proof)}
-          t={t}
-        />
-      ))}
-    </>
+  // Render de cada card. Discrimina solo por payment (sin headers — la spec
+  // confirma single-view para D11, sin month grouper).
+  const renderItem = ({ item }) => (
+    <ProofCard
+      payment={item}
+      onPress={(payment) => {
+        if (onProofPress) onProofPress(payment);
+      }}
+    />
   );
-}
 
-// Proof Card Sub-component
-function ProofCard({ proof, onPress, t }) {
+  // Footer: spinner mientras carga la siguiente página
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.loadingMoreWrap}>
+        <ActivityIndicator size="small" color={colors.primaryContainer} />
+      </View>
+    );
+  };
+
+  // Empty / error states
+  const renderEmpty = () => {
+    if (loading) return null; // spinner principal abajo
+    if (error) {
+      return (
+        <View style={styles.emptyWrap}>
+          <AlertCircle size={48} color={colors.error} strokeWidth={1.5} />
+          <Text style={styles.emptyTitle}>
+            {t('admin.payments.proofs.errorTitle', 'No se pudo cargar')}
+          </Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <Pressable style={styles.retryBtn} onPress={refetch}>
+            <Text style={styles.retryBtnText}>
+              {t('common.retry', 'Reintentar')}
+            </Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.emptyWrap}>
+        <FileText size={48} color={colors.onSurfaceVariant} strokeWidth={1.5} />
+        <Text style={styles.emptyTitle}>
+          {t('admin.payments.proofs.emptyTitle', 'Sin comprobantes pendientes')}
+        </Text>
+        <Text style={styles.emptySubtitle}>
+          {t(
+            'admin.payments.proofs.emptySubtitle',
+            'Todos los comprobantes están verificados.'
+          )}
+        </Text>
+      </View>
+    );
+  };
+
+  // Loading inicial (sin data, sin error)
+  const showFullSpinner = loading && pendingProofs.length === 0 && !error;
+
   return (
-    <TouchableOpacity 
-      style={styles.proofCard}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.proofHeader}>
-        <View style={styles.proofIconContainer}>
-          <Ionicons name="document-attach" size={24} color={COLORS.blue} />
-        </View>
-        <View style={styles.proofInfo}>
-          <Text style={styles.proofTitle}>
-            {proof.charge?.title || proof.concept || t('admin.payments.proofPayment', 'Comprobante de Pago')}
+    <View style={styles.container}>
+      {/* KPI header: contador de pendientes. Si hay más páginas, muestra "N+".
+          Solo se renderiza cuando hay items (no en empty/loading/error). */}
+      {!loading && pendingProofs.length > 0 && (
+        <View style={styles.kpiHeader}>
+          <Text style={styles.kpiCount}>
+            {pendingProofs.length}{hasMore ? '+' : ''}
           </Text>
-          <Text style={styles.proofUser}>
-            {proof.user?.full_name || proof.user?.name || t('common.user', 'Usuario')}
-          </Text>
-          <Text style={styles.proofDate}>
-            {t('admin.payments.submittedAt', 'Enviado')}: {formatDateTime(proof.created_at)}
+          <Text style={styles.kpiLabel}>
+            {t(
+              'admin.payments.proofs.pendingCount',
+              'comprobantes pendientes de verificación'
+            )}
           </Text>
         </View>
-        <Text style={styles.proofAmount}>{formatCurrency(proof.amount, proof.currency)}</Text>
-      </View>
-      
-      <View style={styles.proofPreview}>
-        {proof.proof_url && (
-          <Image 
-            source={{ uri: proof.proof_url }} 
-            style={styles.proofThumbnail}
-            resizeMode="cover"
-          />
-        )}
-        <View style={styles.proofActions}>
-          <Text style={styles.proofActionHint}>{t('admin.payments.tapToReview', 'Toca para revisar')}</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+      )}
+
+      {showFullSpinner ? (
+        <View style={styles.fullSpinner}>
+          <ActivityIndicator size="large" color={colors.primaryContainer} />
         </View>
-      </View>
-    </TouchableOpacity>
+      ) : (
+        <FlatList
+          data={pendingProofs}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          showsVerticalScrollIndicator={false}
+          // Scroll infinito (mismo patrón que ChargesTab post-D10)
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          // Pull-to-refresh interno (el global del index.js ya no aplica
+          // a este tab — post-D11)
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primaryContainer}
+              colors={[colors.primaryContainer]}
+            />
+          }
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  // KPI header: número grande + label descriptivo
+  kpiHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.unit * 2,
+    paddingHorizontal: spacing.containerPadding,
+    paddingVertical: spacing.unit * 3,
+  },
+  kpiCount: {
+    ...typography.headlineMd,
+    color: colors.primaryContainer,
+    fontVariant: ['tabular-nums'],
+  },
+  kpiLabel: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 80,
+    flexGrow: 1,
+  },
+  fullSpinner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scale(60),
   },
-  loadingText: {
-    marginTop: scale(12),
-    color: COLORS.textSecondary,
-    fontSize: scale(14),
-  },
-  emptyContainer: {
+  loadingMoreWrap: {
+    paddingVertical: 16,
     alignItems: 'center',
-    paddingVertical: scale(60),
+    justifyContent: 'center',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
   },
   emptyTitle: {
-    fontSize: scale(18),
+    ...typography.bodyLg,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: scale(16),
-  },
-  emptySubtitle: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    marginTop: scale(4),
     textAlign: 'center',
   },
-  pendingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.blue + '15',
-    padding: scale(12),
-    borderRadius: scale(10),
-    marginBottom: scale(16),
-    gap: scale(8),
+  emptySubtitle: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
   },
-  pendingBannerText: {
-    fontSize: scale(14),
-    color: COLORS.blue,
-    fontWeight: '500',
+  retryBtn: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceContainerHigh,
   },
-  proofCard: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginBottom: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.blue + '30',
-  },
-  proofHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  proofIconContainer: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(12),
-    backgroundColor: COLORS.blue + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(12),
-  },
-  proofInfo: {
-    flex: 1,
-  },
-  proofTitle: {
-    fontSize: scale(15),
+  retryBtnText: {
+    ...typography.bodyMd,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  proofUser: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-  proofDate: {
-    fontSize: scale(11),
-    color: COLORS.textMuted,
-    marginTop: scale(4),
-  },
-  proofAmount: {
-    fontSize: scale(16),
-    fontWeight: '700',
-    color: COLORS.lime,
-  },
-  proofPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: scale(12),
-    paddingTop: scale(12),
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  proofThumbnail: {
-    width: scale(60),
-    height: scale(60),
-    borderRadius: scale(8),
-    backgroundColor: COLORS.backgroundTertiary,
-  },
-  proofActions: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  proofActionHint: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    marginRight: scale(4),
   },
 });
 

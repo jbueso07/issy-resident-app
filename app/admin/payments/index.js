@@ -82,6 +82,15 @@ export default function AdminPayments() {
   const [showPaymentDetailModal, setShowPaymentDetailModal] = useState(false);
   const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
 
+  // Sprint 3 D11: el listado de proofs se movió a usePayments dentro de
+  // ProofsTab. useProofs queda VIVO solo para mutations (verifyProof,
+  // rejectProof, revertPayment) que se siguen disparando desde index.js /
+  // ChargesTab. El proof seleccionado para <ProofReviewModal> ahora vive
+  // en state local — antes era `proofs.selectedProof` (referencia rota
+  // pre-D11: el hook nunca exportó ese getter). Cleanup completo del
+  // fetch de useProofs en D13.
+  const [selectedProof, setSelectedProof] = useState(null);
+
   // ============================================
   // HOOKS
   // ============================================
@@ -112,12 +121,12 @@ export default function AdminPayments() {
   useEffect(() => {
     if (activeTab === 'charges') {
       charges.fetchCharges();
-    } else if (activeTab === 'proofs') {
-      proofs.fetchPendingProofs();
     } else if (activeTab === 'settings') {
       settings.fetchSettings();
       bankAccounts.fetchBankAccounts();
     }
+    // Sprint 3 D11: 'proofs' tab ya no necesita fetch desde index.js —
+    // ProofsTab usa usePayments internamente y se auto-carga al montar.
   }, [activeTab, charges.filter, selectedLocationId]);
 
   // Clear users when location changes
@@ -131,12 +140,12 @@ export default function AdminPayments() {
   const onRefresh = useCallback(() => {
     if (activeTab === 'charges') {
       charges.refresh();
-    } else if (activeTab === 'proofs') {
-      proofs.refresh();
     } else if (activeTab === 'settings') {
       settings.fetchSettings();
       bankAccounts.fetchBankAccounts();
     }
+    // Sprint 3 D11: 'proofs' ya tiene RefreshControl interno (en ProofsTab
+    // via usePayments) — no participa del refresh global de index.js.
   }, [activeTab]);
 
   const handleOpenStatementModal = async () => {
@@ -193,29 +202,33 @@ export default function AdminPayments() {
     }
   };
 
+  // Sprint 3 D11: state local en vez de proofs.selectProof / proofs.clearSelectedProof
+  // (que nunca existieron en useProofs — referencias rotas pre-D11).
   const handleOpenProofReview = (proof) => {
-    proofs.selectProof(proof);
+    setSelectedProof(proof);
     setShowProofModal(true);
   };
 
   const handleCloseProofReview = () => {
-    proofs.clearSelectedProof();
+    setSelectedProof(null);
     setShowProofModal(false);
   };
 
   const handleVerifyProof = async () => {
-    const success = await proofs.verifyProof(proofs.selectedProof);
+    const success = await proofs.verifyProof(selectedProof);
     if (success) {
             setSelectedChargeDetail(null);
       setShowProofModal(false);
+      setSelectedProof(null);
     }
   };
 
   const handleRejectProof = async () => {
-    const success = await proofs.rejectProof(proofs.selectedProof);
+    const success = await proofs.rejectProof(selectedProof);
     if (success) {
             setSelectedChargeDetail(null);
       setShowProofModal(false);
+      setSelectedProof(null);
     }
   };
 
@@ -273,11 +286,11 @@ export default function AdminPayments() {
         <Text style={[styles.mainTabText, activeTab === 'proofs' && styles.mainTabTextActive]}>
           {t('admin.payments.tabs.proofs', 'Comprobantes')}
         </Text>
-        {proofs.pendingProofs.length > 0 && (
-          <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>{proofs.pendingProofs.length}</Text>
-          </View>
-        )}
+        {/* Sprint 3 D11: badge eliminado — el count de proofs pendientes ahora
+            vive dentro de ProofsTab (usePayments) y no es accesible desde acá
+            sin lifting up o un endpoint dedicado de count. Si se necesita el
+            badge de vuelta, se puede agregar con un endpoint /admin/payments/
+            count?status=proof_submitted en un sprint futuro. */}
       </TouchableOpacity>
       
       <TouchableOpacity
@@ -353,9 +366,11 @@ export default function AdminPayments() {
         style={styles.content}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={charges.refreshing || proofs.refreshing} 
-            onRefresh={onRefresh} 
+          // Sprint 3 D11: el tab 'proofs' tiene su propio RefreshControl
+          // dentro del FlatList — ya no participa del refresh global.
+          <RefreshControl
+            refreshing={charges.refreshing}
+            onRefresh={onRefresh}
             tintColor={COLORS.lime}
           />
         }
@@ -388,9 +403,9 @@ export default function AdminPayments() {
         )}
         
         {activeTab === 'proofs' && (
+          // Sprint 3 D11: ProofsTab maneja su propio fetch/loading/refresh
+          // via usePayments. index.js solo wirea el callback de tap.
           <ProofsTab
-            pendingProofs={proofs.pendingProofs}
-            loadingProofs={proofs.loadingProofs}
             onProofPress={handleOpenProofReview}
           />
         )}
@@ -449,10 +464,16 @@ export default function AdminPayments() {
         saving={bankAccounts.savingBankAccount}
       />
 
+      {/* Sprint 3 D11: `proof` ahora viene del state local `selectedProof`
+          (antes era `proofs.selectedProof`, referencia rota pre-D11).
+          Las props `rejectReason`, `onRejectReasonChange`, `processingProof`
+          también son referencias rotas (useProofs nunca las exportó) —
+          quedan como tech debt para limpiar junto a ProofReviewModal en D13.
+          El modal probablemente maneja esas con state interno. */}
       <ProofReviewModal
         visible={showProofModal}
         onClose={handleCloseProofReview}
-        proof={proofs.selectedProof}
+        proof={selectedProof}
         rejectReason={proofs.rejectReason}
         onRejectReasonChange={proofs.setRejectReason}
         onVerify={handleVerifyProof}
