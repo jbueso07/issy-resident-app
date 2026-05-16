@@ -37,6 +37,7 @@ import {
   Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import QRCode from 'react-native-qrcode-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
@@ -725,6 +726,208 @@ function PaymentLinkSubModal({ visible, payment, onClose, t }) {
   );
 }
 
+// =============== Sub-componente: Payment QR Sub-Modal (Sprint 3 D8) ===
+
+function PaymentQRSubModal({ visible, payment, onClose, t }) {
+  // State machine local: 'loading' | 'result' | 'error'.
+  // No tiene 'form' — el link se genera automáticamente al abrir.
+  const [phase, setPhase] = useState('loading');
+  const [linkData, setLinkData] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Auto-generar link al abrir el modal. Reusa endpoint create-link de D7
+  // con sendEmail=false (no queremos mandar email también).
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function generateLink() {
+      if (!payment?.id) return;
+      setPhase('loading');
+      const result = await createLinkApi(payment.id, { sendEmail: false });
+      if (cancelled) return;
+      if (!result.success) {
+        setErrorMsg(
+          result.error ||
+            t('admin.payments.detail.qrError', 'No se pudo generar el QR')
+        );
+        setPhase('error');
+        return;
+      }
+      setLinkData(result.data);
+      setPhase('result');
+    }
+
+    if (visible) {
+      generateLink();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, payment?.id, t]);
+
+  // Reset cuando se cierra
+  React.useEffect(() => {
+    if (!visible) {
+      setPhase('loading');
+      setLinkData(null);
+      setErrorMsg('');
+      setCopied(false);
+    }
+  }, [visible]);
+
+  const handleCopy = async () => {
+    if (!linkData?.url) return;
+    try {
+      await Clipboard.setStringAsync(linkData.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Clipboard error:', err);
+    }
+  };
+
+  const handleRetry = () => {
+    if (!payment?.id) return;
+    setPhase('loading');
+    setErrorMsg('');
+    (async () => {
+      const result = await createLinkApi(payment.id, { sendEmail: false });
+      if (!result.success) {
+        setErrorMsg(
+          result.error ||
+            t('admin.payments.detail.qrError', 'No se pudo generar el QR')
+        );
+        setPhase('error');
+        return;
+      }
+      setLinkData(result.data);
+      setPhase('result');
+    })();
+  };
+
+  // Resumen para mostrar debajo del QR
+  const residentName =
+    payment?.user?.name || t('admin.payments.detail.qrResident', 'Residente');
+  const amount = parseFloat(payment?.amount || 0).toFixed(2);
+  const currency = payment?.currency || 'HNL';
+  const chargeTitle = payment?.charge?.title || '—';
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.subModalOverlay}>
+        <View style={styles.subModalCard}>
+          <Text style={styles.subModalTitle}>
+            {t('admin.payments.detail.qrTitle', 'QR de Pago')}
+          </Text>
+
+          {/* -------- PHASE: loading -------- */}
+          {phase === 'loading' && (
+            <View style={styles.qrLoadingWrap}>
+              <ActivityIndicator size="large" color={colors.primaryContainer} />
+              <Text style={styles.qrLoadingText}>
+                {t('admin.payments.detail.qrGenerating', 'Generando QR...')}
+              </Text>
+            </View>
+          )}
+
+          {/* -------- PHASE: result -------- */}
+          {phase === 'result' && linkData?.url && (
+            <>
+              <Text style={styles.subModalSubtitle}>
+                {t(
+                  'admin.payments.detail.qrDesc',
+                  'El residente puede escanear este QR para pagar. Vence en 24 horas.'
+                )}
+              </Text>
+
+              {/* QR centrado con fondo blanco fijo para máximo contraste de scan.
+                  Los colores son hardcoded (no del theme MD3) intencionalmente. */}
+              <View style={styles.qrWrap}>
+                <QRCode
+                  value={linkData.url}
+                  size={240}
+                  backgroundColor="#ffffff"
+                  color="#000000"
+                />
+              </View>
+
+              {/* Info debajo del QR */}
+              <View style={styles.qrInfoBox}>
+                <Text style={styles.qrInfoLabel}>
+                  {t('admin.payments.detail.qrInfoResident', 'Residente')}
+                </Text>
+                <Text style={styles.qrInfoValue}>{residentName}</Text>
+
+                <Text style={styles.qrInfoLabel}>
+                  {t('admin.payments.detail.qrInfoAmount', 'Monto')}
+                </Text>
+                <Text style={styles.qrInfoValue}>
+                  {currency} {amount}
+                </Text>
+
+                <Text style={styles.qrInfoLabel}>
+                  {t('admin.payments.detail.qrInfoConcept', 'Concepto')}
+                </Text>
+                <Text style={styles.qrInfoValue}>{chargeTitle}</Text>
+              </View>
+
+              {/* URL truncada + botón Copiar */}
+              <View style={styles.qrUrlBox}>
+                <Text
+                  style={styles.qrUrlText}
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {linkData.url}
+                </Text>
+                <Pressable onPress={handleCopy} style={styles.qrCopyBtn}>
+                  <Text style={styles.qrCopyBtnText}>
+                    {copied
+                      ? t('admin.payments.detail.linkCopied', '¡Copiado!')
+                      : t('admin.payments.detail.linkCopy', 'Copiar')}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Pressable onPress={onClose} style={styles.subModalBtnConfirm}>
+                <Text style={styles.subModalBtnConfirmText}>
+                  {t('common.close', 'Cerrar')}
+                </Text>
+              </Pressable>
+            </>
+          )}
+
+          {/* -------- PHASE: error -------- */}
+          {phase === 'error' && (
+            <>
+              <Text style={styles.subModalSubtitle}>{errorMsg}</Text>
+              <View style={styles.subModalBtnRow}>
+                <Pressable onPress={onClose} style={styles.subModalBtnCancel}>
+                  <Text style={styles.subModalBtnCancelText}>
+                    {t('common.close', 'Cerrar')}
+                  </Text>
+                </Pressable>
+                <Pressable onPress={handleRetry} style={styles.subModalBtnConfirm}>
+                  <Text style={styles.subModalBtnConfirmText}>
+                    {t('common.retry', 'Reintentar')}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // =============== Main Component ===============
 
 export function PaymentDetailModal({
@@ -739,6 +942,8 @@ export function PaymentDetailModal({
   const [reminderLoading, setReminderLoading] = useState(false);
   // Sprint 3 D7: visibility del sub-modal de "Generar Link de Pago"
   const [linkModalVisible, setLinkModalVisible] = useState(false);
+  // Sprint 3 D8: visibility del sub-modal de "Mostrar QR"
+  const [qrModalVisible, setQrModalVisible] = useState(false);
 
   // Reset sub-modales / loading cuando se cierra el principal
   React.useEffect(() => {
@@ -746,6 +951,7 @@ export function PaymentDetailModal({
       setCashModalVisible(false);
       setReminderLoading(false);
       setLinkModalVisible(false);
+      setQrModalVisible(false);
     }
   }, [visible]);
 
@@ -916,7 +1122,7 @@ export function PaymentDetailModal({
                   label={t('admin.payments.detail.qrLabel', 'Mostrar QR')}
                   primary={false}
                   disabled={false}
-                  onPress={() => placeholderAlert(t('admin.payments.detail.qrLabel', 'Mostrar QR'))}
+                  onPress={() => setQrModalVisible(true)}
                 />
               </View>
 
@@ -978,6 +1184,14 @@ export function PaymentDetailModal({
           visible={linkModalVisible}
           payment={payment}
           onClose={() => setLinkModalVisible(false)}
+          t={t}
+        />
+
+        {/* Sprint 3 D8: Payment QR sub-modal (reusa create-link con sendEmail=false) */}
+        <PaymentQRSubModal
+          visible={qrModalVisible}
+          payment={payment}
+          onClose={() => setQrModalVisible(false)}
           t={t}
         />
       </SafeAreaView>
@@ -1479,6 +1693,68 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkActionBtnText: {
+    ...typography.labelMd,
+    color: colors.onSecondaryContainer,
+    fontWeight: '700',
+  },
+
+  // Sprint 3 D8: Payment QR sub-modal
+  qrLoadingWrap: {
+    alignItems: 'center',
+    paddingVertical: spacing.unit * 8,
+  },
+  qrLoadingText: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    marginTop: spacing.unit * 3,
+  },
+  qrWrap: {
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    padding: spacing.unit * 3,
+    borderRadius: radii.md,
+    marginVertical: spacing.unit * 3,
+  },
+  qrInfoBox: {
+    backgroundColor: colors.surfaceContainerHigh,
+    padding: spacing.unit * 3,
+    borderRadius: radii.md,
+    marginBottom: spacing.unit * 3,
+  },
+  qrInfoLabel: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: spacing.unit * 1.5,
+  },
+  qrInfoValue: {
+    ...typography.bodyLg,
+    color: colors.onSurface,
+    marginBottom: spacing.unit,
+  },
+  qrUrlBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceContainerLow,
+    padding: spacing.unit * 2,
+    borderRadius: radii.md,
+    marginBottom: spacing.unit * 3,
+    gap: spacing.unit * 2,
+  },
+  qrUrlText: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    flex: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  qrCopyBtn: {
+    paddingHorizontal: spacing.unit * 3,
+    paddingVertical: spacing.unit,
+    borderRadius: radii.pill,
+    backgroundColor: colors.secondaryContainer,
+  },
+  qrCopyBtnText: {
     ...typography.labelMd,
     color: colors.onSecondaryContainer,
     fontWeight: '700',
