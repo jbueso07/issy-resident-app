@@ -8,7 +8,7 @@
 // VENCIDO y se agrega border-left rojo.
 
 import React, { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 import {
   Wrench,
   Shield,
@@ -126,8 +126,16 @@ function ChargeCard({ payment, onPress }) {
     return '';
   }, [isOverdue, status, dueDate, payment.paid_at]);
 
-  // Icon del charge_type
+  // Icon del charge_type (fallback cuando no hay foto de comprobante).
   const IconComponent = CHARGE_TYPE_ICONS[charge?.charge_type] || Receipt;
+
+  // Hotfix Sprint 3: si el payment tiene foto de comprobante, mostrar
+  // thumbnail en vez del icono genérico. Fallback chain proof_url
+  // (alias D2) → proof_of_payment (campo original del backend) — mismo
+  // patrón que ProofCard.js. Si la URL falla en runtime, RN deja el
+  // background del iconWrap visible (sin onError handler — consistente
+  // con ProofCard, trade-off aceptado por la memory D11).
+  const proofUrl = payment?.proof_url || payment?.proof_of_payment || null;
 
   // Residente subtitle
   const unitLabel = unit?.unit_number ? `Casa ${unit.unit_number}` : '';
@@ -144,10 +152,18 @@ function ChargeCard({ payment, onPress }) {
       ]}
       android_ripple={{ color: colors.surfaceContainerHigh }}
     >
-      {/* Top row: icon + title/subtitle + amount */}
+      {/* Top row: icon-o-thumbnail + title/subtitle + amount */}
       <View style={styles.topRow}>
         <View style={styles.iconWrap}>
-          <IconComponent size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+          {proofUrl ? (
+            <Image
+              source={{ uri: proofUrl }}
+              style={styles.thumb}
+              resizeMode="cover"
+            />
+          ) : (
+            <IconComponent size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+          )}
         </View>
         <View style={styles.titleCol}>
           <Text style={styles.title} numberOfLines={1}>
@@ -207,6 +223,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerHigh,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden', // clip al borde redondeado cuando se renderiza Image
+  },
+  // Hotfix Sprint 3: thumbnail del comprobante de pago. Ocupa todo el
+  // iconWrap (mismo slot visual). El borderRadius lo provee el wrap via
+  // overflow:hidden, así no hay que duplicarlo acá.
+  thumb: {
+    width: '100%',
+    height: '100%',
   },
   titleCol: {
     flex: 1,
