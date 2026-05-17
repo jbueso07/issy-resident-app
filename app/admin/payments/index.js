@@ -7,11 +7,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,16 +143,13 @@ export default function AdminPayments() {
   // ============================================
   // HANDLERS
   // ============================================
-  const onRefresh = useCallback(() => {
-    if (activeTab === 'charges') {
-      charges.refresh();
-    } else if (activeTab === 'settings') {
-      settings.fetchSettings();
-      bankAccounts.fetchBankAccounts();
-    }
-    // Sprint 3 D11: 'proofs' ya tiene RefreshControl interno (en ProofsTab
-    // via usePayments) — no participa del refresh global de index.js.
-  }, [activeTab]);
+  // Sprint 3 Hotfix: `onRefresh` global eliminado. El outer <ScrollView>
+  // con RefreshControl ya no existe (causaba nested-virtualized-list warning).
+  // Cada tab maneja su propio pull-to-refresh ahora:
+  //   - ChargesTab → FlatList interno con RefreshControl (D10)
+  //   - ProofsTab → FlatList interno con RefreshControl (D11)
+  //   - SettingsTab → sin pull-to-refresh; auto-fetchea en tab change via
+  //     el useEffect de arriba. Trade-off aceptado en hotfix.
 
   const handleOpenStatementModal = async () => {
     await charges.fetchUsers();
@@ -446,24 +441,17 @@ export default function AdminPayments() {
       {/* Main Tabs */}
       {renderTabs()}
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          // Sprint 3 D11: el tab 'proofs' tiene su propio RefreshControl
-          // dentro del FlatList — ya no participa del refresh global.
-          <RefreshControl
-            refreshing={charges.refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.lime}
-          />
-        }
-      >
-        {activeTab === 'charges' && (
-          <TouchableOpacity style={styles.statementButton} onPress={handleOpenStatementModal}>
-            <Ionicons name="document-text" size={20} color={COLORS.teal} />
-          </TouchableOpacity>
-        )}
+      {/* Sprint 3 Hotfix: el outer <ScrollView> que envolvía los 3 tabs fue
+          reemplazado por <View flex:1>. Razón: los FlatList internos de
+          ChargesTab + ProofsTab (post-D10/D11) emitían el warning
+          "VirtualizedLists should never be nested inside plain ScrollViews
+          with the same orientation" — la virtualización se rompía y todas
+          las cards se renderizaban a la vez. Cada tab ahora maneja su propio
+          scroll + RefreshControl internamente. SettingsTab (con ScrollView
+          interno propio) también gana: deja de estar doble-nested.
+          Side effect aceptado: el pull-to-refresh global del SettingsTab
+          desaparece — el tab ya auto-fetchea en mount via useEffect. */}
+      <View style={{ flex: 1 }}>
         {activeTab === 'charges' && (
           <ChargesTab
             charges={charges.charges}
@@ -514,9 +502,7 @@ export default function AdminPayments() {
             onSetDefaultBankAccount={handleSetDefaultBankAccount}
           />
         )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      </View>
 
       {/* Modals */}
       <CreateChargeModal
@@ -775,10 +761,6 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
     fontWeight: '700',
   },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: scale(16),
-  },
+  // Sprint 3 Hotfix: estilos `content` y `scrollContent` eliminados — eran
+  // del outer ScrollView que se reemplazó por <View flex:1>.
 });
