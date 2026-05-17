@@ -9,6 +9,13 @@ import { getAuthHeaders } from '../_helpers';
 const DEFAULT_SETTINGS = {
   card_payments_enabled: true,
   proof_payments_enabled: true,
+  // @deprecated Sprint 3 D13: campos legacy single-account.
+  // El UI ya no los muestra (reemplazados por useBankAccounts multi-account post-D12).
+  // El backend sigue devolviéndolos y el hook los hidrata, pero NO se persisten
+  // desde el frontend (saveSettings hace PUT con el objeto entero pero el UI
+  // nunca los modifica, así que viajan vacíos o con el valor remoto unchanged).
+  // Limpieza completa en Sprint 4: remover del DEFAULT_SETTINGS + del fetchSettings
+  // hydration + del schema del backend si nadie más los usa.
   bank_name: '',
   bank_account_number: '',
   bank_account_name: '',

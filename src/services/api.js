@@ -2222,18 +2222,11 @@ export const getAdminCommunityPayments = async (params = {}) => {
   }
 };
 
-/**
- * Get pending proof verifications (Admin)
- */
-export const getPendingPaymentProofs = async () => {
-  try {
-    const data = await authFetch('/community-payments/admin/pending-proofs');
-    return { success: true, data: data.data || data };
-  } catch (error) {
-    console.error('Error fetching pending proofs:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
-  }
-};
+// Sprint 3 D13: helper getPendingPaymentProofs eliminado (era el único
+// cliente del endpoint /admin/pending-proofs, pero NO tenía callers en todo
+// el codebase — huérfano). El endpoint backend también se eliminó en D13.
+// El listado de proofs sale de getAdminCommunityPayments con
+// status='proof_submitted' desde post-D11.
 
 /**
  * Verify/approve proof of payment (Admin)

@@ -87,9 +87,17 @@ export default function AdminPayments() {
   // rejectProof, revertPayment) que se siguen disparando desde index.js /
   // ChargesTab. El proof seleccionado para <ProofReviewModal> ahora vive
   // en state local — antes era `proofs.selectedProof` (referencia rota
-  // pre-D11: el hook nunca exportó ese getter). Cleanup completo del
-  // fetch de useProofs en D13.
+  // pre-D11: el hook nunca exportó ese getter).
   const [selectedProof, setSelectedProof] = useState(null);
+
+  // Sprint 3 D13: state local para las 3 props que <ProofReviewModal> requiere
+  // pero useProofs nunca exportó. El modal usa rejectReason como value del
+  // TextInput de razón de rechazo, processingProof para deshabilitar botones
+  // y mostrar spinner mientras la mutation está en flight. Antes pasábamos
+  // `proofs.X` (undefined) — input uncontrolled, sin spinner, doble-tap
+  // posible. Ahora controlados localmente.
+  const [rejectReason, setRejectReason] = useState('');
+  const [processingProof, setProcessingProof] = useState(false);
 
   // ============================================
   // HOOKS
@@ -204,31 +212,51 @@ export default function AdminPayments() {
 
   // Sprint 3 D11: state local en vez de proofs.selectProof / proofs.clearSelectedProof
   // (que nunca existieron en useProofs — referencias rotas pre-D11).
+  // Sprint 3 D13: reset de rejectReason al abrir/cerrar para que el modal
+  // arranque limpio en cada review.
   const handleOpenProofReview = (proof) => {
     setSelectedProof(proof);
+    setRejectReason('');
     setShowProofModal(true);
   };
 
   const handleCloseProofReview = () => {
     setSelectedProof(null);
+    setRejectReason('');
     setShowProofModal(false);
   };
 
+  // Sprint 3 D13: wrappers que togglean processingProof local para que el
+  // modal pueda deshabilitar botones + mostrar spinner durante la mutation.
+  // Pasamos rejectReason explícitamente a rejectProof (la mutation acepta
+  // el reason como 2do arg desde antes — solo no se estaba conectando).
   const handleVerifyProof = async () => {
-    const success = await proofs.verifyProof(selectedProof);
-    if (success) {
-            setSelectedChargeDetail(null);
-      setShowProofModal(false);
-      setSelectedProof(null);
+    setProcessingProof(true);
+    try {
+      const success = await proofs.verifyProof(selectedProof);
+      if (success) {
+        setSelectedChargeDetail(null);
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+      }
+    } finally {
+      setProcessingProof(false);
     }
   };
 
   const handleRejectProof = async () => {
-    const success = await proofs.rejectProof(selectedProof);
-    if (success) {
-            setSelectedChargeDetail(null);
-      setShowProofModal(false);
-      setSelectedProof(null);
+    setProcessingProof(true);
+    try {
+      const success = await proofs.rejectProof(selectedProof, rejectReason);
+      if (success) {
+        setSelectedChargeDetail(null);
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+      }
+    } finally {
+      setProcessingProof(false);
     }
   };
 
@@ -532,21 +560,22 @@ export default function AdminPayments() {
         saving={bankAccounts.saving}
       />
 
-      {/* Sprint 3 D11: `proof` ahora viene del state local `selectedProof`
-          (antes era `proofs.selectedProof`, referencia rota pre-D11).
-          Las props `rejectReason`, `onRejectReasonChange`, `processingProof`
-          también son referencias rotas (useProofs nunca las exportó) —
-          quedan como tech debt para limpiar junto a ProofReviewModal en D13.
-          El modal probablemente maneja esas con state interno. */}
+      {/* Sprint 3 D11: `proof` viene del state local `selectedProof` (antes
+          era `proofs.selectedProof`, referencia rota).
+          Sprint 3 D13: rejectReason / onRejectReasonChange / processing
+          ahora vienen de state local en este componente (antes eran
+          `proofs.rejectReason` / `proofs.setRejectReason` / `proofs.processingProof`
+          — useProofs nunca exportó esos campos. El modal SÍ requiere las 3
+          props para funcionar: TextInput controlado + botones disabled + spinner). */}
       <ProofReviewModal
         visible={showProofModal}
         onClose={handleCloseProofReview}
         proof={selectedProof}
-        rejectReason={proofs.rejectReason}
-        onRejectReasonChange={proofs.setRejectReason}
+        rejectReason={rejectReason}
+        onRejectReasonChange={setRejectReason}
         onVerify={handleVerifyProof}
         onReject={handleRejectProof}
-        processing={proofs.processingProof}
+        processing={processingProof}
       />
 
       <ChargeDetailModal
