@@ -15,7 +15,7 @@
 // (legacy, sin tocar en D11). El shape del payment que se pasa es
 // compatible con el modal (mismo backend).
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,12 +35,18 @@ import ProofCard from './cards/ProofCard';
  * @param {Object} props
  * @param {(payment: Object) => void} props.onProofPress - abre ProofReviewModal
  *   (legacy) en index.js. NO modificar el flow de verificación en D11.
+ * @param {string|null} [props.selectedLocationId] - Hotfix super admin:
+ *   location_id explícito desde index.js (de useAdminLocation context).
+ *   Para super admin, req.user.location_id es null y el backend retorna
+ *   0 resultados sin este param.
  */
-export function ProofsTab({ onProofPress }) {
+export function ProofsTab({ onProofPress, selectedLocationId }) {
   const { t } = useTranslation();
 
   // Sprint 3 D11: hook nuevo con filter dedicado. Page size 20, idéntico
   // a ChargesTab post-D10.
+  // Hotfix super admin: seed location_id en initialParams + sync via
+  // useEffect (mismo patrón que ChargesTab).
   const {
     data: pendingProofs,
     loading,
@@ -48,10 +54,18 @@ export function ProofsTab({ onProofPress }) {
     refreshing,
     hasMore,
     error,
+    setParams,
     loadMore,
     refresh,
     refetch,
-  } = usePayments({ status: 'proof_submitted' });
+  } = usePayments({ status: 'proof_submitted', location_id: selectedLocationId });
+
+  // Hotfix super admin: re-aplicar location_id si cambia (admin cambia
+  // de comunidad desde el location picker). Sin esto, el hook se queda
+  // con el location_id inicial.
+  useEffect(() => {
+    setParams({ location_id: selectedLocationId });
+  }, [selectedLocationId, setParams]);
 
   // Render de cada card. Discrimina solo por payment (sin headers — la spec
   // confirma single-view para D11, sin month grouper).

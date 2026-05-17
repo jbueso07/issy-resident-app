@@ -2177,6 +2177,12 @@ export const registerCashPayment = async (paymentId, body) => {
 export const getAdminCommunityPayments = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
+    // Hotfix super admin: el backend usa req.user.location_id como scope
+    // por default, pero un super admin tiene location_id=null y el query
+    // cae a un fallback que devuelve 0 resultados. El frontend debe
+    // mandar location_id explícito cuando el caller lo provee (mismo
+    // patrón que useCharges.js:69 y useBankAccounts).
+    if (params.location_id) queryParams.append('location_id', params.location_id);
     if (params.status) queryParams.append('status', params.status);
     if (params.search) queryParams.append('search', params.search);
     if (params.date_field) queryParams.append('date_field', params.date_field);

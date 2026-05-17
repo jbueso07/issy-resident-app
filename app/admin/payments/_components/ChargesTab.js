@@ -54,6 +54,11 @@ import { groupByMonth } from '../_utils/groupByMonth';
 const SEARCH_DEBOUNCE_MS = 300;
 
 export function ChargesTab({
+  // Hotfix super admin: location_id explícito desde index.js (proveniente
+  // de useAdminLocation context). Para super admin, req.user.location_id
+  // es null y el backend retorna 0 resultados sin este param explícito.
+  // Mismo patrón que useCharges(t, selectedLocationId) que ya existía.
+  selectedLocationId,
   // `stats` alimenta los 3 KpiCard (post D4). Viene de useCharges via index.js.
   stats,
   // Sprint 3 D5: `charges` ya no se usa como cache de lookup — el callback
@@ -82,6 +87,8 @@ export function ChargesTab({
   // Hook nuevo: consume /admin/payments (endpoint D2).
   // Sprint 3 D10: el hook ahora expone paginación interna (loadingMore /
   // refreshing / hasMore / loadMore / refresh) además de los campos de D3.
+  // Hotfix super admin: seed location_id en initialParams. El sync dinámico
+  // (cuando el super admin cambia de comunidad) lo hace el useEffect de abajo.
   const {
     data,
     loading,
@@ -95,7 +102,15 @@ export function ChargesTab({
     loadMore,
     refresh,
     refetch,
-  } = usePayments();
+  } = usePayments({ location_id: selectedLocationId });
+
+  // Hotfix super admin: si selectedLocationId cambia (admin cambia de
+  // comunidad desde el location picker), reflejarlo en los params del hook
+  // para que dispare un nuevo fetch contra esa comunidad. Sin esto, el
+  // hook se quedaría con el location_id inicial.
+  useEffect(() => {
+    setParams({ location_id: selectedLocationId });
+  }, [selectedLocationId, setParams]);
 
   // Sprint 3 D10: agrupar los items VISIBLES por mes (header + items
   // intercalados). Se recalcula cuando llegan páginas nuevas (data cambia)

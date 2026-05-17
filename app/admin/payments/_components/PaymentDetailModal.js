@@ -258,13 +258,17 @@ function ActionButton({ icon: Icon, label, primary, disabled, onPress }) {
 
 // =============== Sub-componente: Recent History ===============
 
-function RecentHistory({ userId, t, currentPaymentId }) {
+function RecentHistory({ userId, t, currentPaymentId, locationId }) {
   // Pull últimos paid del residente. Pedimos 4 y descartamos el actual si aparece,
   // dejando hasta 3 visibles. Sin loadMore en D5 (placeholder de "Ver todo").
+  // Hotfix super admin: location_id explícito — sin él, super admin (sin
+  // req.user.location_id) caía al fallback del backend con 0 resultados.
+  // Mismo patrón que ChargesTab/ProofsTab post-hotfix.
   const { data, loading } = usePayments({
     user_id: userId,
     status: 'paid',
     limit: 4,
+    location_id: locationId,
   });
 
   const items = useMemo(
@@ -1157,9 +1161,13 @@ export function PaymentDetailModal({
           )}
 
           {/* Historial reciente */}
+          {/* Hotfix super admin: pasamos location_id del propio payment para
+              que el fetch de historial scope correctamente cuando el admin
+              es super admin (req.user.location_id = null). */}
           <RecentHistory
             userId={payment?.user_id}
             currentPaymentId={payment?.id}
+            locationId={payment?.location_id}
             t={t}
           />
         </ScrollView>

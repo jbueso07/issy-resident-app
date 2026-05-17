@@ -454,6 +454,10 @@ export default function AdminPayments() {
       <View style={{ flex: 1 }}>
         {activeTab === 'charges' && (
           <ChargesTab
+            // Hotfix super admin: el tab usa usePayments internamente y
+            // necesita el location_id explícito para que el backend devuelva
+            // resultados cuando req.user.location_id es null (super admin).
+            selectedLocationId={selectedLocationId}
             charges={charges.charges}
             stats={charges.stats}
             loading={charges.loading}
@@ -477,8 +481,11 @@ export default function AdminPayments() {
         {activeTab === 'proofs' && (
           // Sprint 3 D11: ProofsTab maneja su propio fetch/loading/refresh
           // via usePayments. index.js solo wirea el callback de tap.
+          // Hotfix super admin: location_id explícito (mismo motivo que
+          // ChargesTab — backend retorna 0 si super admin sin scope).
           <ProofsTab
             onProofPress={handleOpenProofReview}
+            selectedLocationId={selectedLocationId}
           />
         )}
         
