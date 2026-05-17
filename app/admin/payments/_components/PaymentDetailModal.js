@@ -346,10 +346,17 @@ function CashRegisterSubModal({
   const handleConfirm = async () => {
     if (!canConfirm || !payment?.id) return;
     setLoading(true);
-    const result = await registerCashPaymentApi(payment.id, {
-      amount: parseFloat(amount),
-      notes: notes.trim() || undefined,
-    });
+    // Hotfix sistémico super admin: pasar payment.location_id para que el
+    // backend lo resuelva via getAdminLocationId (req.user.location_id es
+    // null para super admin).
+    const result = await registerCashPaymentApi(
+      payment.id,
+      {
+        amount: parseFloat(amount),
+        notes: notes.trim() || undefined,
+      },
+      payment.location_id
+    );
     setLoading(false);
     if (!result.success) {
       Alert.alert(
@@ -466,7 +473,8 @@ function PaymentLinkSubModal({ visible, payment, onClose, t }) {
   const handleGenerate = async () => {
     if (!payment?.id) return;
     setPhase('loading');
-    const result = await createLinkApi(payment.id, { sendEmail });
+    // Hotfix sistémico super admin: pasar location_id.
+    const result = await createLinkApi(payment.id, { sendEmail }, payment.location_id);
     if (!result.success) {
       setErrorMsg(
         result.error ||
@@ -748,7 +756,12 @@ function PaymentQRSubModal({ visible, payment, onClose, t }) {
     async function generateLink() {
       if (!payment?.id) return;
       setPhase('loading');
-      const result = await createLinkApi(payment.id, { sendEmail: false });
+      // Hotfix sistémico super admin: pasar location_id.
+      const result = await createLinkApi(
+        payment.id,
+        { sendEmail: false },
+        payment.location_id
+      );
       if (cancelled) return;
       if (!result.success) {
         setErrorMsg(
@@ -797,7 +810,12 @@ function PaymentQRSubModal({ visible, payment, onClose, t }) {
     setPhase('loading');
     setErrorMsg('');
     (async () => {
-      const result = await createLinkApi(payment.id, { sendEmail: false });
+      // Hotfix sistémico super admin: pasar location_id.
+      const result = await createLinkApi(
+        payment.id,
+        { sendEmail: false },
+        payment.location_id
+      );
       if (!result.success) {
         setErrorMsg(
           result.error ||
@@ -978,7 +996,8 @@ export function PaymentDetailModal({
           text: t('admin.payments.detail.send', 'Enviar'),
           onPress: async () => {
             setReminderLoading(true);
-            const result = await sendReminderApi(payment.id);
+            // Hotfix sistémico super admin: pasar location_id.
+            const result = await sendReminderApi(payment.id, payment.location_id);
             setReminderLoading(false);
             if (!result.success) {
               const errStr = result.error || '';

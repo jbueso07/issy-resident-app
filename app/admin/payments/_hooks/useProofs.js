@@ -31,11 +31,15 @@ export function useProofs(locationId, onRefresh) {
   const verifyProof = useCallback(async (payment) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body para que
+      // getAdminLocationId() del backend lo resuelva. Sin esto, super admin
+      // recibía "Payment not found in this location".
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/verify',
         {
           method: 'POST',
-          headers,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location_id: payment.location_id || null }),
         }
       );
       const data = await response.json();
@@ -58,6 +62,7 @@ export function useProofs(locationId, onRefresh) {
   const rejectProof = useCallback(async (payment, reason) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/reject',
         {
@@ -66,7 +71,10 @@ export function useProofs(locationId, onRefresh) {
             ...headers,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ reason: reason || '' }),
+          body: JSON.stringify({
+            reason: reason || '',
+            location_id: payment.location_id || null,
+          }),
         }
       );
       const data = await response.json();
@@ -89,6 +97,7 @@ export function useProofs(locationId, onRefresh) {
   const revertPayment = useCallback(async (payment, reason) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/revert',
         {
@@ -97,7 +106,10 @@ export function useProofs(locationId, onRefresh) {
             ...headers,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ reason: reason || '' }),
+          body: JSON.stringify({
+            reason: reason || '',
+            location_id: payment.location_id || null,
+          }),
         }
       );
       const data = await response.json();

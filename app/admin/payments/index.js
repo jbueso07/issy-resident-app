@@ -102,7 +102,9 @@ export default function AdminPayments() {
   // ============================================
   const charges = useCharges(t, selectedLocationId);
   const proofs = useProofs(selectedLocationId, () => charges.refresh());
-  const settings = useSettings(t);
+  // Hotfix sistémico super admin: pasar selectedLocationId al hook para que
+  // saveSettings lo incluya en el body del PUT /admin/settings.
+  const settings = useSettings(t, selectedLocationId);
   const bankAccounts = useBankAccounts(selectedLocationId);
 
   // ============================================

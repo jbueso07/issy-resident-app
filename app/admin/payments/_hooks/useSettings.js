@@ -22,7 +22,11 @@ const DEFAULT_SETTINGS = {
   bank_instructions: '',
 };
 
-export function useSettings(t) {
+// Hotfix sistémico super admin: el hook ahora acepta locationId para
+// incluirlo en el body del PUT /admin/settings. Super admin tiene
+// req.user.location_id = null; sin el body explícito, el backend
+// resolvía a null y el update fallaba silenciosamente.
+export function useSettings(t, locationId = null) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -62,10 +66,14 @@ export function useSettings(t) {
     setSavingSettings(true);
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
+      const payload = locationId
+        ? { ...settings, location_id: locationId }
+        : settings;
       const response = await fetch(`${API_URL}/api/community-payments/admin/settings`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -86,7 +94,7 @@ export function useSettings(t) {
     } finally {
       setSavingSettings(false);
     }
-  }, [settings, t]);
+  }, [settings, t, locationId]);
 
   /**
    * Update a single setting

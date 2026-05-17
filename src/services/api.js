@@ -2081,13 +2081,17 @@ export const cancelCommunityCharge = async (chargeId) => {
  *
  * @param {string} paymentId - UUID del community_payment
  * @param {{ sendEmail?: boolean }} [options]
+ * @param {string|null} [locationId] - Hotfix sistémico super admin:
+ *   incluir en body para que getAdminLocationId() lo resuelva. Sin esto,
+ *   super admin (req.user.location_id = null) recibe error 404.
  * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
  */
-export const createPaymentLink = async (paymentId, options = {}) => {
+export const createPaymentLink = async (paymentId, options = {}, locationId = null) => {
   try {
     const body = {};
     if (options.sendEmail === false) body.sendEmail = false;
     // Si sendEmail no se pasa o es true → backend default true (no enviar el flag)
+    if (locationId) body.location_id = locationId;
     const data = await authFetch(
       `/community-payments/admin/payments/${paymentId}/create-link`,
       {
@@ -2110,17 +2114,23 @@ export const createPaymentLink = async (paymentId, options = {}) => {
  * Sprint 3 D6: enviar recordatorio push al residente.
  * POST /api/community-payments/admin/payments/:paymentId/send-reminder
  *
- * Sin body — el mensaje se construye server-side desde charge + payment.
+ * El mensaje se construye server-side desde charge + payment.
  * Throttle backend: máx 1 recordatorio por día UTC por payment.
  *
  * @param {string} paymentId - UUID del community_payment
+ * @param {string|null} [locationId] - Hotfix sistémico super admin: incluir
+ *   en body para que getAdminLocationId() lo resuelva. Antes mandaba sin
+ *   body y super admin recibía "Payment not found in this location".
  * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
  */
-export const sendPaymentReminder = async (paymentId) => {
+export const sendPaymentReminder = async (paymentId, locationId = null) => {
   try {
+    const body = locationId ? { location_id: locationId } : undefined;
     const data = await authFetch(
       `/community-payments/admin/payments/${paymentId}/send-reminder`,
-      { method: 'POST' }
+      body
+        ? { method: 'POST', body: JSON.stringify(body) }
+        : { method: 'POST' }
     );
     return { success: true, data: data.data || data };
   } catch (error) {
@@ -2139,13 +2149,16 @@ export const sendPaymentReminder = async (paymentId) => {
  *
  * @param {string} paymentId - UUID del community_payment
  * @param {{ amount: number, notes?: string }} body
+ * @param {string|null} [locationId] - Hotfix sistémico super admin: incluir
+ *   en body para que getAdminLocationId() lo resuelva.
  * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
  */
-export const registerCashPayment = async (paymentId, body) => {
+export const registerCashPayment = async (paymentId, body, locationId = null) => {
   try {
+    const finalBody = locationId ? { ...body, location_id: locationId } : body;
     const data = await authFetch(
       `/community-payments/admin/payments/${paymentId}/register-cash`,
-      { method: 'POST', body: JSON.stringify(body) }
+      { method: 'POST', body: JSON.stringify(finalBody) }
     );
     return { success: true, data: data.data || data };
   } catch (error) {
