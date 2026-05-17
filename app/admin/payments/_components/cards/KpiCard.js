@@ -50,6 +50,12 @@ function KpiCard({ label, value, icon: IconComponent, accent = 'primary' }) {
 const styles = StyleSheet.create({
   card: {
     width: 128,
+    // Sprint 3 hotfix: minHeight explícito. Sin esto, el horizontal ScrollView
+    // padre en ChargesTab colapsaba la altura medida y el `value` Text
+    // quedaba renderizado fuera del border del card (visible debajo, cubierto
+    // por el search bar). 120 garantiza icono (22) + label (16) + value (24)
+    // + paddings (32) + margins (12) con un poco de buffer.
+    minHeight: 120,
     padding: spacing.gutter,
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: radii.lg,

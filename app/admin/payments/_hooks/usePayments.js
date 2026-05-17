@@ -161,8 +161,18 @@ export default function usePayments(initialParams = {}) {
         // Función actualizadora para evitar stale closure de `data`.
         nextData = null; // se calcula dentro del setter
         setData((prev) => {
-          const merged = [...prev, ...newPayments];
-          // Actualizar offsetRef en sync con la data acumulada
+          // Sprint 3 hotfix: dedup por ID. Re-fetches en cascada (cambio
+          // de location_id + search + status simultáneos) hacían que los
+          // mismos payments se appendearan 2+ veces, causando
+          // "Encountered two children with the same key" en FlatList.
+          // Filtramos los nuevos contra los IDs ya presentes en `prev`.
+          // NOTE: offsetRef.current usa newPayments.length (no
+          // uniqueNew.length) porque representa la posición server-side
+          // — si todos eran dups, igual ya pasamos por esa página y el
+          // próximo fetch debe arrancar después.
+          const seenIds = new Set(prev.map((p) => p.id));
+          const uniqueNew = newPayments.filter((p) => !seenIds.has(p.id));
+          const merged = [...prev, ...uniqueNew];
           offsetRef.current = targetOffset + newPayments.length;
           return merged;
         });
