@@ -40,7 +40,17 @@ function KpiCard({ label, value, icon: IconComponent, accent = 'primary' }) {
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
-      <Text style={[styles.value, { color: accentColor }]} numberOfLines={1}>
+      {/* Sprint 3 hotfix commit 2: adjustsFontSizeToFit + minimumFontScale
+          para que montos grandes (ej. "L 1,234,567.89") no se trunquen con
+          ellipsis ni wrappeen a 2 líneas — el texto se encoge hasta 60% del
+          fontSize original si no cabe en el ancho del card. iOS lo hace
+          perfecto; Android lo aproxima con renderizado discreto. */}
+      <Text
+        style={[styles.value, { color: accentColor }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+      >
         {value}
       </Text>
     </View>

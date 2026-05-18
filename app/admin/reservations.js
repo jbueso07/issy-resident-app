@@ -91,7 +91,12 @@ export default function AdminReservationsScreen() {
 
   const fetchData = async () => {
     try {
-      await Promise.all([loadReservations(), loadAreas(), loadUsers()]);
+      // Hotfix mobile admin reservas: loadUsers ahora necesita la lista de
+      // reservaciones para filtrar el SELECT a users.id IN (...) y evitar
+      // el límite default de 1000 rows que rompía el render con 5,400+ users
+      // globales en producción.
+      const reservationsData = await loadReservations();
+      await Promise.all([loadAreas(), loadUsers(reservationsData)]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -108,8 +113,12 @@ export default function AdminReservationsScreen() {
 
       if (error) throw error;
       setReservations(data || []);
+      // Hotfix mobile admin reservas: retornamos la data para que el caller
+      // (fetchData) la pase a loadUsers — necesario para filtrar por user_ids.
+      return data || [];
     } catch (error) {
       console.error('Error loading reservations:', error);
+      return [];
     }
   };
 
@@ -127,11 +136,26 @@ export default function AdminReservationsScreen() {
     }
   };
 
-  const loadUsers = async () => {
+  // Hotfix mobile admin reservas: filtrar por los user_id que aparecen
+  // en las reservaciones cargadas. Antes hacíamos un SELECT sin filtros
+  // y Supabase aplicaba su límite default de 1000 rows — con ~5,400 users
+  // globales en producción, la mayoría de los residentes que reservaban
+  // NO entraban en los primeros 1000 y getUserById() devolvía undefined →
+  // el render caía al fallback "Usuario". Mismo patrón que ya se usa en
+  // el endpoint Express /reservations/admin/all (backend hotfix anterior).
+  const loadUsers = async (reservationsList) => {
     try {
+      const userIds = [...new Set(
+        (reservationsList || []).map(r => r.user_id).filter(Boolean)
+      )];
+      if (userIds.length === 0) {
+        setUsers([]);
+        return;
+      }
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, phone');
+        .select('id, name, email, phone')
+        .in('id', userIds);
 
       if (error) throw error;
       setUsers(data || []);

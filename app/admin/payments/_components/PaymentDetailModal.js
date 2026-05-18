@@ -51,12 +51,35 @@ import {
   Bell,
   Calendar,
   CheckCircle2,
+  Mail,
+  Phone,
+  Share2,
+  Trash2,
+  XCircle,
+  Download,
 } from 'lucide-react-native';
+// Sprint 3 hotfix commit 2: para descarga + share del comprobante (visor).
+// Patrón portado de ChargeDetailModal legacy (D6 stack), libs ya instaladas.
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+// Sprint 3 hotfix commit 2 (upgrade visor):
+//   - expo-media-library para download a galería del usuario (Save Image
+//     en iOS / DCIM en Android). Permiso ya declarado en app.json
+//     (NSPhotoLibraryUsageDescription + WRITE_EXTERNAL_STORAGE).
+//   - react-native-image-zoom-viewer para zoom pinch + double-tap nativo.
+//     Decisión: usamos esta lib (no zoom-toolkit) porque NO requiere
+//     reanimated (proyecto no la tiene instalada y agregarla implica
+//     crear babel.config.js + plugin nuevo). Usa RN Animated + PanResponder
+//     interno, compat con newArch.
+import * as MediaLibrary from 'expo-media-library';
+import ImageViewer from 'react-native-image-zoom-viewer';
 import { colors, spacing, typography, radii } from '../_styles/theme';
 import {
   registerCashPayment as registerCashPaymentApi,
   sendPaymentReminder as sendReminderApi,
   createPaymentLink as createLinkApi,
+  // Sprint 3 hotfix commit 2: cancel individual payment (1 residente).
+  cancelPayment as cancelPaymentApi,
 } from '../../../../src/services/api';
 import usePayments from '../_hooks/usePayments';
 
@@ -127,18 +150,52 @@ function ResidentProfileCard({ user, unit }) {
   const role = roleLabel(unit?.role);
   const subtitle = unitNumber ? `Casa ${unitNumber} • ${role}` : role;
 
+  // Sprint 3 hotfix commit 2: info usuario extendida.
+  //   - email viene del JOIN user (siempre disponible si el user existe).
+  //   - phone agregado al SELECT del backend en este mismo commit.
+  //   - joined_at viene del user_locations join (en payment.unit.joined_at).
+  // Si algún campo viene null/undefined → "—" como fallback.
+  const email = user?.email || null;
+  const phone = user?.phone || null;
+  const joinedAt = unit?.joined_at || null;
+  const joinedLabel = joinedAt ? formatLongDate(joinedAt) : null;
+
   return (
     <View style={styles.profileCard}>
-      {photo ? (
-        <Image source={{ uri: photo }} style={styles.profileAvatar} />
-      ) : (
-        <View style={[styles.profileAvatar, styles.profileAvatarPlaceholder]}>
-          <Text style={styles.profileAvatarInitial}>{getInitial(name)}</Text>
+      <View style={styles.profileTopRow}>
+        {photo ? (
+          <Image source={{ uri: photo }} style={styles.profileAvatar} />
+        ) : (
+          <View style={[styles.profileAvatar, styles.profileAvatarPlaceholder]}>
+            <Text style={styles.profileAvatarInitial}>{getInitial(name)}</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.profileName} numberOfLines={1}>{name}</Text>
+          <Text style={styles.profileSubtitle} numberOfLines={1}>{subtitle}</Text>
         </View>
-      )}
-      <View style={{ flex: 1 }}>
-        <Text style={styles.profileName} numberOfLines={1}>{name}</Text>
-        <Text style={styles.profileSubtitle} numberOfLines={1}>{subtitle}</Text>
+      </View>
+
+      {/* Info extendida — email, phone, joined_at */}
+      <View style={styles.profileExtraWrap}>
+        <View style={styles.profileExtraRow}>
+          <Mail size={14} color={colors.onSurfaceVariant} strokeWidth={2} />
+          <Text style={styles.profileExtraText} numberOfLines={1}>
+            {email || '—'}
+          </Text>
+        </View>
+        <View style={styles.profileExtraRow}>
+          <Phone size={14} color={colors.onSurfaceVariant} strokeWidth={2} />
+          <Text style={styles.profileExtraText} numberOfLines={1}>
+            {phone || '—'}
+          </Text>
+        </View>
+        <View style={styles.profileExtraRow}>
+          <Calendar size={14} color={colors.onSurfaceVariant} strokeWidth={2} />
+          <Text style={styles.profileExtraText} numberOfLines={1}>
+            Miembro desde: {joinedLabel || '—'}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -957,6 +1014,14 @@ export function PaymentDetailModal({
   payment,
   onClose,
   onRegisterCashSuccess,
+  // Sprint 3 hotfix commit 2: callback compartido tras cancel-payment o
+  // cancel-charge exitoso. Mismo contrato que onRegisterCashSuccess —
+  // index.js debería refrescar la lista de cobros + cerrar el modal.
+  onCancelSuccess,
+  // Sprint 3 hotfix commit 2: handler de "Cancelar Cobro Completo".
+  // Inyectado desde index.js que ya tiene `charges.cancelCharge` del hook.
+  // Signature: (chargeId, reason, locationId) => Promise<boolean>
+  onCancelCharge,
 }) {
   const { t } = useTranslation();
   const [cashModalVisible, setCashModalVisible] = useState(false);
@@ -966,6 +1031,10 @@ export function PaymentDetailModal({
   const [linkModalVisible, setLinkModalVisible] = useState(false);
   // Sprint 3 D8: visibility del sub-modal de "Mostrar QR"
   const [qrModalVisible, setQrModalVisible] = useState(false);
+  // Sprint 3 hotfix commit 2: visor fullscreen del comprobante de pago
+  const [proofViewerVisible, setProofViewerVisible] = useState(false);
+  // Sprint 3 hotfix commit 2: loading state de los 2 cancel buttons
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // Reset sub-modales / loading cuando se cierra el principal
   React.useEffect(() => {
@@ -974,6 +1043,8 @@ export function PaymentDetailModal({
       setReminderLoading(false);
       setLinkModalVisible(false);
       setQrModalVisible(false);
+      setProofViewerVisible(false);
+      setCancelLoading(false);
     }
   }, [visible]);
 
@@ -1041,6 +1112,251 @@ export function PaymentDetailModal({
     );
   };
 
+  // Sprint 3 hotfix commit 2: handler "Cancelar este Pago" (1 residente).
+  // Alert.prompt iOS-only para razón. En Android se usa Alert.alert (sin prompt
+  // de texto nativo) — la razón queda vacía allá. Aceptable para hotfix.
+  const handleCancelThisPayment = () => {
+    if (!payment?.id || cancelLoading) return;
+    const doCancel = async (reason) => {
+      setCancelLoading(true);
+      try {
+        const result = await cancelPaymentApi(
+          payment.id,
+          reason || '',
+          payment.location_id
+        );
+        if (!result || !result.success) {
+          Alert.alert(
+            t('common.error', 'Error'),
+            (result && result.error) ||
+              t('admin.payments.detail.cancelPaymentError', 'No se pudo cancelar el pago')
+          );
+          return;
+        }
+        Alert.alert(
+          t('common.success', 'Éxito'),
+          t('admin.payments.detail.cancelPaymentSuccess', 'Pago cancelado')
+        );
+        if (onCancelSuccess) onCancelSuccess(result.data);
+        onClose();
+      } finally {
+        setCancelLoading(false);
+      }
+    };
+
+    if (Alert.prompt) {
+      // iOS: prompt nativo con campo de texto para la razón
+      Alert.prompt(
+        t('admin.payments.detail.cancelPaymentTitle', 'Cancelar este Pago'),
+        t(
+          'admin.payments.detail.cancelPaymentBody',
+          'Solo se cancela este pago (1 residente). Ingresá razón opcional.'
+        ),
+        [
+          { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+          {
+            text: t('admin.payments.detail.confirm', 'Confirmar'),
+            style: 'destructive',
+            onPress: (reason) => doCancel(reason),
+          },
+        ],
+        'plain-text'
+      );
+    } else {
+      // Android: confirm sin razón
+      Alert.alert(
+        t('admin.payments.detail.cancelPaymentTitle', 'Cancelar este Pago'),
+        t(
+          'admin.payments.detail.cancelPaymentBodyAndroid',
+          'Solo se cancela este pago (1 residente).'
+        ),
+        [
+          { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+          {
+            text: t('admin.payments.detail.confirm', 'Confirmar'),
+            style: 'destructive',
+            onPress: () => doCancel(''),
+          },
+        ]
+      );
+    }
+  };
+
+  // Sprint 3 hotfix commit 2: handler "Cancelar Cobro Completo" (todos los
+  // residentes). Doble confirm + razón. Llama onCancelCharge inyectado desde
+  // index.js que usa charges.cancelCharge del hook (ya pasa location_id).
+  const handleCancelEntireCharge = () => {
+    if (!payment?.charge_id || !onCancelCharge || cancelLoading) return;
+    const chargeTitle = payment?.charge?.title || 'este cobro';
+
+    const promptForReason = () => {
+      const doCancel = async (reason) => {
+        setCancelLoading(true);
+        try {
+          const ok = await onCancelCharge(
+            payment.charge_id,
+            reason || '',
+            payment.location_id
+          );
+          if (ok) {
+            if (onCancelSuccess) onCancelSuccess();
+            onClose();
+          }
+          // onCancelCharge maneja su propio Alert de error (via useCharges).
+        } finally {
+          setCancelLoading(false);
+        }
+      };
+      if (Alert.prompt) {
+        Alert.prompt(
+          t('admin.payments.detail.cancelChargeReasonTitle', 'Razón de cancelación'),
+          t(
+            'admin.payments.detail.cancelChargeReasonBody',
+            'Indicá motivo de la cancelación masiva.'
+          ),
+          [
+            { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+            {
+              text: t('admin.payments.detail.confirm', 'Confirmar'),
+              style: 'destructive',
+              onPress: (reason) => doCancel(reason),
+            },
+          ],
+          'plain-text'
+        );
+      } else {
+        doCancel('');
+      }
+    };
+
+    Alert.alert(
+      t('admin.payments.detail.cancelChargeTitle', '⚠️ Cancelar cobro completo'),
+      t(
+        'admin.payments.detail.cancelChargeBody',
+        `Esto cancelará el cobro "${chargeTitle}" para TODOS los residentes asociados. Esta acción no se puede deshacer.`
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t(
+            'admin.payments.detail.cancelChargeConfirm',
+            'Sí, cancelar para todos'
+          ),
+          style: 'destructive',
+          onPress: promptForReason,
+        },
+      ]
+    );
+  };
+
+  // Sprint 3 hotfix commit 2 (upgrade visor): handlers separados de
+  // Compartir y Descargar.
+  //   - Compartir: descarga a cache + share-sheet del sistema.
+  //   - Descargar: requiere permiso de Photos (iOS) / WRITE_EXTERNAL_STORAGE
+  //     (Android, ya en app.json), descarga a cache + save a Photos library
+  //     via expo-media-library.
+  const [proofSharing, setProofSharing] = useState(false);
+  const [proofDownloading, setProofDownloading] = useState(false);
+  // Permission hook de expo-media-library — el hook expone status +
+  // requestPermission() para flujo manual cuando el usuario tocó Descargar.
+  // `writeOnly=true` pide solo permiso de escritura (más mínimo que el
+  // permiso completo de Photos).
+  const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions({
+    writeOnly: true,
+  });
+  const proofUri = payment?.proof_url || payment?.proof_of_payment || null;
+
+  const handleShareProof = async () => {
+    if (!proofUri || proofSharing) return;
+    try {
+      setProofSharing(true);
+      const filename = `comprobante_${Date.now()}.jpg`;
+      const localUri = FileSystem.cacheDirectory + filename;
+      const downloadResult = await FileSystem.downloadAsync(proofUri, localUri);
+      if (downloadResult.status === 200) {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'image/jpeg',
+            dialogTitle: t(
+              'admin.payments.detail.shareProof',
+              'Compartir comprobante'
+            ),
+          });
+        } else {
+          Alert.alert(
+            t('common.error', 'Error'),
+            t(
+              'admin.payments.detail.sharingNotAvailable',
+              'Compartir no disponible'
+            )
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Error sharing proof:', err);
+      Alert.alert(
+        t('common.error', 'Error'),
+        t('admin.payments.detail.shareError', 'Error al compartir')
+      );
+    } finally {
+      setProofSharing(false);
+    }
+  };
+
+  // Sprint 3 hotfix commit 2 (upgrade visor): descargar comprobante a la
+  // galería del usuario. Flujo:
+  //   1. Verificar permiso de write (Photos en iOS / MediaStore en Android).
+  //   2. Si no granted, pedirlo via requestMediaPermission().
+  //   3. Si rechazado → Alert explicativo.
+  //   4. Si OK → FileSystem.downloadAsync(remote → cache) + MediaLibrary.saveToLibraryAsync(cacheUri).
+  const handleDownloadProof = async () => {
+    if (!proofUri || proofDownloading) return;
+    try {
+      setProofDownloading(true);
+      // Step 1+2: asegurar permiso
+      let perm = mediaPermission;
+      if (!perm?.granted) {
+        const next = await requestMediaPermission();
+        perm = next;
+      }
+      if (!perm?.granted) {
+        Alert.alert(
+          t('admin.payments.detail.permissionRequiredTitle', 'Permiso requerido'),
+          t(
+            'admin.payments.detail.permissionRequiredBody',
+            'Necesitamos permiso para guardar el comprobante en tu galería de fotos. Activalo en Ajustes > ISSY > Fotos.'
+          )
+        );
+        return;
+      }
+      // Step 3: download remote → local cache (reusa pattern del share).
+      const filename = `comprobante_${Date.now()}.jpg`;
+      const localUri = FileSystem.cacheDirectory + filename;
+      const downloadResult = await FileSystem.downloadAsync(proofUri, localUri);
+      if (downloadResult.status !== 200) {
+        throw new Error('Download failed with status ' + downloadResult.status);
+      }
+      // Step 4: save a galería del usuario.
+      await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
+      Alert.alert(
+        t('common.success', 'Éxito'),
+        t(
+          'admin.payments.detail.downloadSuccess',
+          'Comprobante guardado en tu galería'
+        )
+      );
+    } catch (err) {
+      console.error('Error downloading proof:', err);
+      Alert.alert(
+        t('common.error', 'Error'),
+        t('admin.payments.detail.downloadError', 'No se pudo descargar el comprobante')
+      );
+    } finally {
+      setProofDownloading(false);
+    }
+  };
+
   if (!payment) {
     return null;
   }
@@ -1050,6 +1366,9 @@ export function PaymentDetailModal({
   const isCancelled = status === 'cancelled';
   const isProofSubmitted = status === 'proof_submitted';
   const canRegisterCash = !isPaid && !isCancelled;
+  // Sprint 3 hotfix commit 2: los 2 cancel buttons visibles solo si el payment
+  // no está ya en estado final (paid/cancelled).
+  const canCancel = !isPaid && !isCancelled;
 
   const placeholderAlert = (label) => {
     Alert.alert(
@@ -1087,6 +1406,33 @@ export function PaymentDetailModal({
 
           {/* Breakdown */}
           <BreakdownSection payment={payment} t={t} />
+
+          {/* Sprint 3 hotfix commit 2: Visor de comprobantes (regresión).
+              Existía en ChargeDetailModal legacy; recuperado acá. Solo se
+              renderiza si el payment tiene proof_url (fallback chain a
+              proof_of_payment per memory D2). Thumbnail tap → fullscreen. */}
+          {(payment.proof_url || payment.proof_of_payment) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('admin.payments.detail.proofTitle', 'Comprobante de Pago')}
+              </Text>
+              <Pressable
+                onPress={() => setProofViewerVisible(true)}
+                style={styles.proofThumbWrap}
+                accessibilityRole="button"
+                accessibilityLabel={t('admin.payments.detail.openProof', 'Abrir comprobante')}
+              >
+                <Image
+                  source={{ uri: payment.proof_url || payment.proof_of_payment }}
+                  style={styles.proofThumbImg}
+                  resizeMode="cover"
+                />
+              </Pressable>
+              <Text style={styles.proofThumbHint}>
+                {t('admin.payments.detail.tapToView', 'Tocá para ver, descargar o compartir')}
+              </Text>
+            </View>
+          )}
 
           {/* Acciones (oculto si pagado/cancelado) */}
           {isPaid ? (
@@ -1176,6 +1522,56 @@ export function PaymentDetailModal({
                   {t('admin.payments.detail.sendReminder', 'Enviar Recordatorio')}
                 </Text>
               </Pressable>
+
+              {/* Sprint 3 hotfix commit 2: 2 cancel buttons. Botón A scope =
+                  payment (1 residente), Botón B scope = charge entero (todos
+                  los residentes). Ambos solo se renderizan si canCancel. */}
+              {canCancel ? (
+                <View style={styles.cancelBtnWrap}>
+                  <Pressable
+                    onPress={handleCancelThisPayment}
+                    disabled={cancelLoading}
+                    style={[
+                      styles.cancelBtn,
+                      cancelLoading && styles.cancelBtnDisabled,
+                    ]}
+                  >
+                    {cancelLoading ? (
+                      <ActivityIndicator size="small" color={colors.error} />
+                    ) : (
+                      <XCircle size={16} color={colors.error} strokeWidth={2} />
+                    )}
+                    <Text style={styles.cancelBtnText}>
+                      {t(
+                        'admin.payments.detail.cancelThisPayment',
+                        'Cancelar este Pago'
+                      )}
+                    </Text>
+                  </Pressable>
+                  {onCancelCharge && payment?.charge_id ? (
+                    <Pressable
+                      onPress={handleCancelEntireCharge}
+                      disabled={cancelLoading}
+                      style={[
+                        styles.cancelBtnDanger,
+                        cancelLoading && styles.cancelBtnDisabled,
+                      ]}
+                    >
+                      {cancelLoading ? (
+                        <ActivityIndicator size="small" color={colors.onErrorContainer} />
+                      ) : (
+                        <Trash2 size={16} color={colors.onErrorContainer} strokeWidth={2} />
+                      )}
+                      <Text style={styles.cancelBtnDangerText}>
+                        {t(
+                          'admin.payments.detail.cancelEntireCharge',
+                          'Cancelar Cobro Completo'
+                        )}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           )}
 
@@ -1221,7 +1617,108 @@ export function PaymentDetailModal({
           onClose={() => setQrModalVisible(false)}
           t={t}
         />
+
+        {/* Sprint 3 hotfix commit 2: Proof Viewer fullscreen con zoom +
+            download separado de share. */}
+        <ProofViewerSubModal
+          visible={proofViewerVisible}
+          uri={proofUri}
+          onClose={() => setProofViewerVisible(false)}
+          onShare={handleShareProof}
+          onDownload={handleDownloadProof}
+          sharing={proofSharing}
+          downloading={proofDownloading}
+          t={t}
+        />
       </SafeAreaView>
+    </Modal>
+  );
+}
+
+// =============== Sub-componente: Proof Viewer (Hotfix commit 2) ===============
+
+/**
+ * Visor fullscreen del comprobante. Sprint 3 hotfix commit 2 (upgrade):
+ *   - Body: <ImageViewer> de react-native-image-zoom-viewer con zoom pinch
+ *     + double-tap + pan nativo (RN Animated + PanResponder interno).
+ *   - Header: 3 botones — Close (izq), Download (centro-der), Compartir (der).
+ *   - Loading states independientes para descarga y compartir.
+ */
+function ProofViewerSubModal({
+  visible,
+  uri,
+  onClose,
+  onShare,
+  onDownload,
+  sharing,
+  downloading,
+  t,
+}) {
+  if (!uri) return null;
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View style={styles.proofViewerContainer}>
+        <SafeAreaView style={styles.proofViewerSafeArea}>
+          <View style={styles.proofViewerHeader}>
+            <Pressable onPress={onClose} style={styles.proofViewerHeaderBtn} hitSlop={8}>
+              <ArrowLeft size={24} color="#fff" strokeWidth={2} />
+            </Pressable>
+            <Text style={styles.proofViewerTitle}>
+              {t('admin.payments.detail.proof', 'Comprobante')}
+            </Text>
+            <View style={styles.proofViewerHeaderActions}>
+              <Pressable
+                onPress={onDownload}
+                disabled={downloading || sharing}
+                style={styles.proofViewerHeaderBtn}
+                hitSlop={8}
+                accessibilityLabel={t('admin.payments.detail.downloadProof', 'Descargar comprobante')}
+              >
+                {downloading ? (
+                  <ActivityIndicator size="small" color={colors.primaryContainer} />
+                ) : (
+                  <Download size={22} color={colors.primaryContainer} strokeWidth={2} />
+                )}
+              </Pressable>
+              <Pressable
+                onPress={onShare}
+                disabled={sharing || downloading}
+                style={styles.proofViewerHeaderBtn}
+                hitSlop={8}
+                accessibilityLabel={t('admin.payments.detail.shareProof', 'Compartir comprobante')}
+              >
+                {sharing ? (
+                  <ActivityIndicator size="small" color={colors.primaryContainer} />
+                ) : (
+                  <Share2 size={22} color={colors.primaryContainer} strokeWidth={2} />
+                )}
+              </Pressable>
+            </View>
+          </View>
+          {/* Body con zoom interactivo. ImageViewer maneja pinch + double-tap
+              + pan internamente. enableSwipeDown=false porque ya tenemos el
+              botón Close en el header (UX más predecible). saveToLocalByLongPress
+              false porque ya tenemos botón Download dedicado. */}
+          <View style={styles.proofViewerImageWrap}>
+            <ImageViewer
+              imageUrls={[{ url: uri }]}
+              enableImageZoom
+              enableSwipeDown={false}
+              saveToLocalByLongPress={false}
+              backgroundColor="#000"
+              renderIndicator={() => null}
+              loadingRender={() => (
+                <ActivityIndicator size="large" color={colors.primaryContainer} />
+              )}
+            />
+          </View>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -1261,13 +1758,18 @@ const styles = StyleSheet.create({
   },
 
   // Profile
+  // Hotfix commit 2: ahora es columna para alojar topRow (avatar+name) +
+  // extraWrap (email/phone/miembro desde) apilados verticalmente.
   profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     padding: 16,
     backgroundColor: colors.surfaceContainer,
     borderRadius: radii.lg,
+    gap: 12,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   profileAvatar: {
     width: 48,
@@ -1293,6 +1795,24 @@ const styles = StyleSheet.create({
     ...typography.bodyMd,
     color: colors.onSurfaceVariant,
     marginTop: 2,
+  },
+  // Hotfix commit 2: info usuario extendida
+  profileExtraWrap: {
+    gap: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.outlineVariant,
+  },
+  profileExtraRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileExtraText: {
+    ...typography.bodyMd,
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    flex: 1,
   },
 
   // Main card
@@ -1785,6 +2305,112 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.onSecondaryContainer,
     fontWeight: '700',
+  },
+
+  // ============================================
+  // Sprint 3 hotfix commit 2 — visor de comprobantes
+  // ============================================
+  proofThumbWrap: {
+    width: '100%',
+    height: 180,
+    borderRadius: radii.md,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  proofThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  proofThumbHint: {
+    ...typography.bodyMd,
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  // Visor fullscreen (sub-modal)
+  proofViewerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  proofViewerSafeArea: {
+    flex: 1,
+  },
+  proofViewerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.containerPadding,
+    paddingVertical: 12,
+  },
+  proofViewerHeaderBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Sprint 3 hotfix commit 2 (upgrade visor): cluster de Download + Share
+  // a la derecha del header.
+  proofViewerHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  proofViewerTitle: {
+    ...typography.bodyLg,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  proofViewerImageWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proofViewerImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // ============================================
+  // Sprint 3 hotfix commit 2 — cancel buttons
+  // ============================================
+  cancelBtnWrap: {
+    gap: 8,
+    marginTop: 4,
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: 'transparent',
+  },
+  cancelBtnText: {
+    ...typography.bodyMd,
+    color: colors.error,
+    fontWeight: '600',
+  },
+  cancelBtnDanger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: radii.md,
+    backgroundColor: colors.errorContainer,
+  },
+  cancelBtnDangerText: {
+    ...typography.bodyMd,
+    color: colors.onErrorContainer,
+    fontWeight: '700',
+  },
+  cancelBtnDisabled: {
+    opacity: 0.5,
   },
 });
 

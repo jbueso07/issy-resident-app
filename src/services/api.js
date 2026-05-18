@@ -2248,6 +2248,39 @@ export const getAdminCommunityPayments = async (params = {}) => {
 // status='proof_submitted' desde post-D11.
 
 /**
+ * Sprint 3 hotfix commit 2: cancelar UN payment individual (1 residente).
+ * POST /api/community-payments/admin/payments/:paymentId/cancel
+ *
+ * Soft-cancel: el backend marca status='cancelled' + cancelled_at + cancelled_by
+ * + cancellation_reason, preservando el row. NO afecta a los demás payments
+ * del mismo charge padre. Para cancelar todos los residentes de un charge,
+ * usar DELETE /admin/charges/:chargeId (useCharges.cancelCharge).
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {string} reason - razón opcional (puede ser '')
+ * @param {string|null} [locationId] - Hotfix sistémico super admin.
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const cancelPayment = async (paymentId, reason, locationId = null) => {
+  try {
+    const body = { reason: reason || '' };
+    if (locationId) body.location_id = locationId;
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/cancel`,
+      { method: 'POST', body: JSON.stringify(body) }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error cancelling payment:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
  * Verify/approve proof of payment (Admin)
  */
 export const verifyPaymentProof = async (paymentId, verifyData = {}) => {

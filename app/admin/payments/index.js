@@ -633,6 +633,29 @@ export default function AdminPayments() {
             charges.fetchCharges();
           }
         }}
+        // Sprint 3 hotfix commit 2: callback genérico después de
+        // cancel-payment o cancel-charge exitoso. Refresca lista (mismo
+        // patrón que onRegisterCashSuccess).
+        onCancelSuccess={() => {
+          if (charges?.fetchCharges) {
+            charges.fetchCharges();
+          }
+        }}
+        // Sprint 3 hotfix commit 2: handler para "Cancelar Cobro Completo".
+        // Delega en useCharges.cancelCharge que ya maneja el confirm Alert
+        // de error + location_id propagación (hotfix sistémico). El modal
+        // hace su propio doble-confirm UX antes de invocarlo.
+        // Signature: (chargeId, reason, locationId) => Promise<boolean>
+        onCancelCharge={async (chargeId, reason) => {
+          // useCharges.cancelCharge espera (charge, reason). Construyo un
+          // shape mínimo {id, location_id} consistente con lo que el hook
+          // lee para el fetch.
+          const ok = await charges.cancelCharge(
+            { id: chargeId, location_id: selectedPaymentDetail?.location_id },
+            reason
+          );
+          return ok;
+        }}
       />
 
       <StatementModal
