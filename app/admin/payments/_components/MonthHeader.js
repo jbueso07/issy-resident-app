@@ -9,7 +9,8 @@
 // re-renderizar — comportamiento esperado.
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { colors, spacing, typography, radii } from '../_styles/theme';
 
 /**
@@ -17,8 +18,20 @@ import { colors, spacing, typography, radii } from '../_styles/theme';
  * @param {string} props.label - "Octubre 2025"
  * @param {{ collected: number, pending: number, total: number, count: number }} props.stats
  * @param {string} [props.currency='HNL']
+ * @param {boolean} [props.collapsed=false] - si true, muestra chevron derecha (mes oculto).
+ *   Hotfix month grouper: agregado en post-D10 para permitir colapsar grupos
+ *   de mes. Si `onToggle` no se provee, el chevron NO se renderiza y el
+ *   componente queda en modo "siempre expandido" (retrocompat con consumers
+ *   que no quieran la feature).
+ * @param {() => void} [props.onToggle] - handler de tap sobre el header.
  */
-export function MonthHeader({ label, stats, currency = 'HNL' }) {
+export function MonthHeader({
+  label,
+  stats,
+  currency = 'HNL',
+  collapsed = false,
+  onToggle,
+}) {
   const { collected = 0, pending = 0, total = 0, count = 0 } = stats || {};
 
   // % por segmento (flex en el bar chart)
@@ -29,13 +42,38 @@ export function MonthHeader({ label, stats, currency = 'HNL' }) {
   // tiene los decimales completos)
   const fmt = (n) => parseFloat(n || 0).toFixed(0);
 
+  // Hotfix month grouper: Pressable solo "activo" si hay handler. Sin
+  // handler queda inerte (disabled=true) y no muestra chevron — preserva
+  // el comportamiento original del componente para consumers que no
+  // quieran la feature de colapsar.
+  const Chevron = collapsed ? ChevronRight : ChevronDown;
+
   return (
-    <View style={styles.wrap}>
+    <Pressable
+      style={styles.wrap}
+      onPress={onToggle}
+      disabled={!onToggle}
+      accessibilityRole={onToggle ? 'button' : undefined}
+      accessibilityLabel={
+        onToggle
+          ? `${label}, ${collapsed ? 'expandir' : 'colapsar'}`
+          : undefined
+      }
+    >
       <View style={styles.topRow}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.count}>
-          {count} {count === 1 ? 'cobro' : 'cobros'}
-        </Text>
+        <View style={styles.topRowRight}>
+          <Text style={styles.count}>
+            {count} {count === 1 ? 'cobro' : 'cobros'}
+          </Text>
+          {onToggle ? (
+            <Chevron
+              size={20}
+              color={colors.onSurface}
+              strokeWidth={2}
+            />
+          ) : null}
+        </View>
       </View>
 
       {/* Bar chart 2-segmentos. Si total=0 (todos cancelled) muestra un
@@ -70,7 +108,7 @@ export function MonthHeader({ label, stats, currency = 'HNL' }) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -86,8 +124,16 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
     marginBottom: spacing.unit,
+  },
+  // Hotfix month grouper: cluster a la derecha del topRow (count + chevron).
+  // alignItems del topRow cambió de 'baseline' a 'center' para que el chevron
+  // (que tiene altura propia mayor que el text) quede vertical-centered.
+  topRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.unit,
   },
   label: {
     ...typography.headlineSm,

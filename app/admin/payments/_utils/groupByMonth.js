@@ -20,7 +20,12 @@ const MONTHS_ES = [
  * Agrupa payments por mes (year+month) según el dateField indicado.
  *
  * @param {Array} payments - lista de payments del endpoint /admin/payments
- * @param {string} [dateField='created_at'] - 'created_at' | 'paid_at' | 'verified_at'
+ * @param {string} [dateField='charge_due_date'] - 'charge_due_date' | 'created_at' | 'paid_at' | 'verified_at'
+ * @description charge_due_date es el "mes objetivo" del cobro (cuándo aplica),
+ *              independiente de cuándo se creó o se pagó. Es el default desde
+ *              que el backend lo expone como alias top-level del JOIN con
+ *              community_charges. Fallback automático a created_at si null
+ *              (ej. payments huérfanos sin charge padre).
  * @returns {Array<{
  *   type: 'header' | 'item',
  *   key: string,
@@ -33,7 +38,7 @@ const MONTHS_ES = [
  *   payment?: Object,
  * }>}
  */
-export function groupByMonth(payments = [], dateField = 'created_at') {
+export function groupByMonth(payments = [], dateField = 'charge_due_date') {
   if (!Array.isArray(payments) || payments.length === 0) return [];
 
   // 1. Agrupar por (year, month)

@@ -17,7 +17,7 @@
 // `charges` se usa como cache para resolver shape completo del cobro padre
 // cuando se tap'ea un card. `stats` alimenta los KPIs. El resto se ignora.
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -115,10 +115,51 @@ export function ChargesTab({
   // Sprint 3 D10: agrupar los items VISIBLES por mes (header + items
   // intercalados). Se recalcula cuando llegan páginas nuevas (data cambia)
   // o cuando cambia el dateField que define a qué mes pertenece el row.
+  // Hotfix month grouper: default = 'charge_due_date' (mes al que aplica
+  // el cobro, no cuándo se creó). El backend lo expone como alias top-level
+  // del JOIN con community_charges. Extraemos `dateField` como variable
+  // única para que el filter de visibleItems (más abajo) use el mismo
+  // campo sin riesgo de drift.
+  const dateField = params.date_field || 'charge_due_date';
   const groupedData = useMemo(
-    () => groupByMonth(data, params.date_field || 'created_at'),
-    [data, params.date_field]
+    () => groupByMonth(data, dateField),
+    [data, dateField]
   );
+
+  // Hotfix month grouper: state de meses colapsados. Set de monthKeys
+  // (formato `${year}-${MM}` — mismo que groupByMonth.js). Empieza vacío
+  // (todos expandidos por default, comportamiento previo intacto).
+  const [collapsedMonths, setCollapsedMonths] = useState(new Set());
+
+  const toggleMonthCollapse = useCallback((monthKey) => {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) {
+        next.delete(monthKey);
+      } else {
+        next.add(monthKey);
+      }
+      return next;
+    });
+  }, []);
+
+  // Hotfix month grouper: filtra items cuyo mes está colapsado. Los headers
+  // SIEMPRE se renderizan (el chevron permite re-expandir). Recalcula
+  // monthKey usando el mismo `dateField` + fallback chain a created_at que
+  // `groupByMonth` — staying in sync.
+  const visibleItems = useMemo(() => {
+    if (collapsedMonths.size === 0) return groupedData;
+    return groupedData.filter((node) => {
+      if (node.type === 'header') return true;
+      const dateStr =
+        node.payment?.[dateField] || node.payment?.created_at;
+      if (!dateStr) return true; // payment sin fecha — defensivo, mantener visible
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return true;
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      return !collapsedMonths.has(monthKey);
+    });
+  }, [groupedData, collapsedMonths, dateField]);
 
   // Search input (controlled) + debounce a setParams
   const [searchInput, setSearchInput] = useState('');
@@ -154,7 +195,18 @@ export function ChargesTab({
   // header (mes) o item (payment). El renderItem discrimina por `type`.
   const renderItem = ({ item }) => {
     if (item.type === 'header') {
-      return <MonthHeader label={item.label} stats={item.stats} />;
+      // Hotfix month grouper: monthKey debe matchear el formato de
+      // groupByMonth.js (`${year}-${month padded}`). El header expone
+      // year + month como props top-level.
+      const monthKey = `${item.year}-${String(item.month).padStart(2, '0')}`;
+      return (
+        <MonthHeader
+          label={item.label}
+          stats={item.stats}
+          collapsed={collapsedMonths.has(monthKey)}
+          onToggle={() => toggleMonthCollapse(monthKey)}
+        />
+      );
     }
     return (
       <ChargeCard
@@ -311,7 +363,7 @@ export function ChargesTab({
         </View>
       ) : (
         <FlatList
-          data={groupedData}
+          data={visibleItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.key}
           contentContainerStyle={styles.listContent}
