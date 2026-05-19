@@ -54,7 +54,6 @@ import {
   Mail,
   Phone,
   Share2,
-  Trash2,
   XCircle,
   Download,
 } from 'lucide-react-native';
@@ -1014,14 +1013,14 @@ export function PaymentDetailModal({
   payment,
   onClose,
   onRegisterCashSuccess,
-  // Sprint 3 hotfix commit 2: callback compartido tras cancel-payment o
-  // cancel-charge exitoso. Mismo contrato que onRegisterCashSuccess —
-  // index.js debería refrescar la lista de cobros + cerrar el modal.
+  // Sprint 3 hotfix commit 2: callback compartido tras cancel-payment
+  // exitoso. Mismo contrato que onRegisterCashSuccess — index.js debería
+  // refrescar la lista de cobros + cerrar el modal.
+  // Hotfix commit 3: comment editado — el otro caso (cancel-charge) ya no
+  // existe porque se removió el botón "Cancelar Cobro Completo".
   onCancelSuccess,
-  // Sprint 3 hotfix commit 2: handler de "Cancelar Cobro Completo".
-  // Inyectado desde index.js que ya tiene `charges.cancelCharge` del hook.
-  // Signature: (chargeId, reason, locationId) => Promise<boolean>
-  onCancelCharge,
+  // Hotfix commit 3: removida la prop `onCancelCharge` — el botón
+  // "Cancelar Cobro Completo" se eliminó (UX confuso en vista por-residente).
 }) {
   const { t } = useTranslation();
   const [cashModalVisible, setCashModalVisible] = useState(false);
@@ -1182,72 +1181,8 @@ export function PaymentDetailModal({
     }
   };
 
-  // Sprint 3 hotfix commit 2: handler "Cancelar Cobro Completo" (todos los
-  // residentes). Doble confirm + razón. Llama onCancelCharge inyectado desde
-  // index.js que usa charges.cancelCharge del hook (ya pasa location_id).
-  const handleCancelEntireCharge = () => {
-    if (!payment?.charge_id || !onCancelCharge || cancelLoading) return;
-    const chargeTitle = payment?.charge?.title || 'este cobro';
-
-    const promptForReason = () => {
-      const doCancel = async (reason) => {
-        setCancelLoading(true);
-        try {
-          const ok = await onCancelCharge(
-            payment.charge_id,
-            reason || '',
-            payment.location_id
-          );
-          if (ok) {
-            if (onCancelSuccess) onCancelSuccess();
-            onClose();
-          }
-          // onCancelCharge maneja su propio Alert de error (via useCharges).
-        } finally {
-          setCancelLoading(false);
-        }
-      };
-      if (Alert.prompt) {
-        Alert.prompt(
-          t('admin.payments.detail.cancelChargeReasonTitle', 'Razón de cancelación'),
-          t(
-            'admin.payments.detail.cancelChargeReasonBody',
-            'Indicá motivo de la cancelación masiva.'
-          ),
-          [
-            { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
-            {
-              text: t('admin.payments.detail.confirm', 'Confirmar'),
-              style: 'destructive',
-              onPress: (reason) => doCancel(reason),
-            },
-          ],
-          'plain-text'
-        );
-      } else {
-        doCancel('');
-      }
-    };
-
-    Alert.alert(
-      t('admin.payments.detail.cancelChargeTitle', '⚠️ Cancelar cobro completo'),
-      t(
-        'admin.payments.detail.cancelChargeBody',
-        `Esto cancelará el cobro "${chargeTitle}" para TODOS los residentes asociados. Esta acción no se puede deshacer.`
-      ),
-      [
-        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
-        {
-          text: t(
-            'admin.payments.detail.cancelChargeConfirm',
-            'Sí, cancelar para todos'
-          ),
-          style: 'destructive',
-          onPress: promptForReason,
-        },
-      ]
-    );
-  };
+  // Hotfix commit 3: handler `handleCancelEntireCharge` eliminado junto al
+  // botón "Cancelar Cobro Completo" (UX confuso en vista por-residente).
 
   // Sprint 3 hotfix commit 2 (upgrade visor): handlers separados de
   // Compartir y Descargar.
@@ -1523,9 +1458,13 @@ export function PaymentDetailModal({
                 </Text>
               </Pressable>
 
-              {/* Sprint 3 hotfix commit 2: 2 cancel buttons. Botón A scope =
-                  payment (1 residente), Botón B scope = charge entero (todos
-                  los residentes). Ambos solo se renderizan si canCancel. */}
+              {/* Sprint 3 hotfix commit 2: cancel button para el payment
+                  individual (1 residente). El detalle del modal es por-residente,
+                  así que solo cancelamos el pago de este residente.
+                  Hotfix commit 3: removido el botón "Cancelar Cobro Completo"
+                  (charge entero, todos los residentes) — UX confuso para una
+                  vista por-residente. La acción a nivel charge debería vivir
+                  en la pantalla de listado, no acá. */}
               {canCancel ? (
                 <View style={styles.cancelBtnWrap}>
                   <Pressable
@@ -1548,28 +1487,6 @@ export function PaymentDetailModal({
                       )}
                     </Text>
                   </Pressable>
-                  {onCancelCharge && payment?.charge_id ? (
-                    <Pressable
-                      onPress={handleCancelEntireCharge}
-                      disabled={cancelLoading}
-                      style={[
-                        styles.cancelBtnDanger,
-                        cancelLoading && styles.cancelBtnDisabled,
-                      ]}
-                    >
-                      {cancelLoading ? (
-                        <ActivityIndicator size="small" color={colors.onErrorContainer} />
-                      ) : (
-                        <Trash2 size={16} color={colors.onErrorContainer} strokeWidth={2} />
-                      )}
-                      <Text style={styles.cancelBtnDangerText}>
-                        {t(
-                          'admin.payments.detail.cancelEntireCharge',
-                          'Cancelar Cobro Completo'
-                        )}
-                      </Text>
-                    </Pressable>
-                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -1663,7 +1580,10 @@ function ProofViewerSubModal({
       onRequestClose={onClose}
     >
       <View style={styles.proofViewerContainer}>
-        <SafeAreaView style={styles.proofViewerSafeArea}>
+        {/* Hotfix commit 3: edges={['top']} para que los botones del header
+            (Close / Download / Share) no queden tapados por el notch o
+            Dynamic Island en iOS. Sin esto eran intocables en iPhone 14+. */}
+        <SafeAreaView style={styles.proofViewerSafeArea} edges={['top']}>
           <View style={styles.proofViewerHeader}>
             <Pressable onPress={onClose} style={styles.proofViewerHeaderBtn} hitSlop={8}>
               <ArrowLeft size={24} color="#fff" strokeWidth={2} />
@@ -1715,6 +1635,12 @@ function ProofViewerSubModal({
               loadingRender={() => (
                 <ActivityIndicator size="large" color={colors.primaryContainer} />
               )}
+              // Hotfix commit 3 (Fix B.1): style flex:1 explícito. La lib
+              // react-native-image-zoom-viewer@3.0.1 tiene un bug de measurement
+              // cuando se monta dentro de <Modal presentationStyle="fullScreen">
+              // — sin style propio no obtenía dimensiones y renderizaba pantalla
+              // negra. Si esto no resuelve en runtime, probar Fix B.2 (Dimensions).
+              style={{ flex: 1 }}
             />
           </View>
         </SafeAreaView>
@@ -2394,21 +2320,9 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontWeight: '600',
   },
-  cancelBtnDanger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: radii.md,
-    backgroundColor: colors.errorContainer,
-  },
-  cancelBtnDangerText: {
-    ...typography.bodyMd,
-    color: colors.onErrorContainer,
-    fontWeight: '700',
-  },
+  // Hotfix commit 3: estilos `cancelBtnDanger` y `cancelBtnDangerText`
+  // eliminados — solo los usaba el botón "Cancelar Cobro Completo" que
+  // se removió en este mismo commit.
   cancelBtnDisabled: {
     opacity: 0.5,
   },

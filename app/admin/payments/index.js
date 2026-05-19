@@ -641,21 +641,10 @@ export default function AdminPayments() {
             charges.fetchCharges();
           }
         }}
-        // Sprint 3 hotfix commit 2: handler para "Cancelar Cobro Completo".
-        // Delega en useCharges.cancelCharge que ya maneja el confirm Alert
-        // de error + location_id propagación (hotfix sistémico). El modal
-        // hace su propio doble-confirm UX antes de invocarlo.
-        // Signature: (chargeId, reason, locationId) => Promise<boolean>
-        onCancelCharge={async (chargeId, reason) => {
-          // useCharges.cancelCharge espera (charge, reason). Construyo un
-          // shape mínimo {id, location_id} consistente con lo que el hook
-          // lee para el fetch.
-          const ok = await charges.cancelCharge(
-            { id: chargeId, location_id: selectedPaymentDetail?.location_id },
-            reason
-          );
-          return ok;
-        }}
+        // Hotfix commit 3: prop `onCancelCharge` removida — el botón
+        // "Cancelar Cobro Completo" se eliminó del PaymentDetailModal
+        // (UX confuso en vista por-residente). La acción a nivel charge
+        // sigue disponible vía useCharges.cancelCharge desde el listado.
       />
 
       <StatementModal
