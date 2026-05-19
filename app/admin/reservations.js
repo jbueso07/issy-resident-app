@@ -175,7 +175,7 @@ export default function AdminReservationsScreen() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = new Date(dateStr + 'T00:00:00'); // Fix timezone: interpretar como local, no UTC
     return date.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
