@@ -35,10 +35,11 @@ import {
   Alert,
   Image,
   Share,
+  Dimensions,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
@@ -81,6 +82,11 @@ import {
   cancelPayment as cancelPaymentApi,
 } from '../../../../src/services/api';
 import usePayments from '../_hooks/usePayments';
+
+// Hotfix 4: width explícito para el ImageViewer. react-native-image-zoom-viewer
+// @3.0.1 no se mide bien dentro de Modal fullScreen — necesita un width
+// concreto. Solo width; el height lo da el flex: 1 del padre.
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // =============== Helpers locales ===============
 
@@ -1571,6 +1577,15 @@ function ProofViewerSubModal({
   downloading,
   t,
 }) {
+  // Hotfix 4: useSafeAreaInsets en vez de SafeAreaView edges. El SafeAreaView
+  // del react-native-safe-area-context se comporta inconsistente dentro de
+  // <Modal presentationStyle="fullScreen"> — los edges={['top']} no
+  // aplicaban el padding correctamente y los iconos del header quedaban
+  // tapados por el status bar / Dynamic Island. El hook devuelve los insets
+  // directamente, y aplicamos paddingTop manual a un <View> normal.
+  // Hook debe llamarse al top-level (regla de hooks), por eso va antes del
+  // early-return `if (!uri)`.
+  const insets = useSafeAreaInsets();
   if (!uri) return null;
   return (
     <Modal
@@ -1580,10 +1595,9 @@ function ProofViewerSubModal({
       onRequestClose={onClose}
     >
       <View style={styles.proofViewerContainer}>
-        {/* Hotfix commit 3: edges={['top']} para que los botones del header
-            (Close / Download / Share) no queden tapados por el notch o
-            Dynamic Island en iOS. Sin esto eran intocables en iPhone 14+. */}
-        <SafeAreaView style={styles.proofViewerSafeArea} edges={['top']}>
+        <View
+          style={[styles.proofViewerSafeArea, { paddingTop: insets.top }]}
+        >
           <View style={styles.proofViewerHeader}>
             <Pressable onPress={onClose} style={styles.proofViewerHeaderBtn} hitSlop={8}>
               <ArrowLeft size={24} color="#fff" strokeWidth={2} />
@@ -1620,30 +1634,26 @@ function ProofViewerSubModal({
               </Pressable>
             </View>
           </View>
-          {/* Body con zoom interactivo. ImageViewer maneja pinch + double-tap
-              + pan internamente. enableSwipeDown=false porque ya tenemos el
-              botón Close en el header (UX más predecible). saveToLocalByLongPress
-              false porque ya tenemos botón Download dedicado. */}
-          <View style={styles.proofViewerImageWrap}>
-            <ImageViewer
-              imageUrls={[{ url: uri }]}
-              enableImageZoom
-              enableSwipeDown={false}
-              saveToLocalByLongPress={false}
-              backgroundColor="#000"
-              renderIndicator={() => null}
-              loadingRender={() => (
-                <ActivityIndicator size="large" color={colors.primaryContainer} />
-              )}
-              // Hotfix commit 3 (Fix B.1): style flex:1 explícito. La lib
-              // react-native-image-zoom-viewer@3.0.1 tiene un bug de measurement
-              // cuando se monta dentro de <Modal presentationStyle="fullScreen">
-              // — sin style propio no obtenía dimensiones y renderizaba pantalla
-              // negra. Si esto no resuelve en runtime, probar Fix B.2 (Dimensions).
-              style={{ flex: 1 }}
-            />
-          </View>
-        </SafeAreaView>
+          {/* Body: ImageViewer con flex: 1 + width explícito de SCREEN_WIDTH.
+              Hotfix 4: removido el <View proofViewerImageWrap> envolvente
+              porque react-native-image-zoom-viewer@3.0.1 tiene measurement
+              bug cuando se anida dentro de View con alignItems/justifyContent
+              center. ImageViewer pasa a ser hijo directo del View con
+              flex:1 (padre) — su style {flex:1, width: SCREEN_WIDTH} le da
+              las dimensiones que la lib internamente espera. */}
+          <ImageViewer
+            imageUrls={[{ url: uri }]}
+            enableImageZoom
+            enableSwipeDown={false}
+            saveToLocalByLongPress={false}
+            backgroundColor="#000"
+            renderIndicator={() => null}
+            loadingRender={() => (
+              <ActivityIndicator size="large" color={colors.primaryContainer} />
+            )}
+            style={{ flex: 1, width: SCREEN_WIDTH }}
+          />
+        </View>
       </View>
     </Modal>
   );
@@ -2286,11 +2296,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  proofViewerImageWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Hotfix 4: `proofViewerImageWrap` eliminado — el ImageViewer ahora es
+  // hijo directo del container con paddingTop, sin View envolvente
+  // (el wrap causaba el measurement bug que renderizaba pantalla negra).
   proofViewerImage: {
     width: '100%',
     height: '100%',
