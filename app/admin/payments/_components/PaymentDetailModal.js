@@ -56,22 +56,26 @@ import {
   Phone,
   Share2,
   XCircle,
-  Download,
+  // Hotfix Android Play Store: `Download` removido — el botón fue eliminado
+  // del visor de comprobantes junto con el permiso READ_MEDIA_IMAGES.
 } from 'lucide-react-native';
 // Sprint 3 hotfix commit 2: para descarga + share del comprobante (visor).
 // Patrón portado de ChargeDetailModal legacy (D6 stack), libs ya instaladas.
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 // Sprint 3 hotfix commit 2 (upgrade visor):
-//   - expo-media-library para download a galería del usuario (Save Image
-//     en iOS / DCIM en Android). Permiso ya declarado en app.json
-//     (NSPhotoLibraryUsageDescription + WRITE_EXTERNAL_STORAGE).
 //   - react-native-image-zoom-viewer para zoom pinch + double-tap nativo.
 //     Decisión: usamos esta lib (no zoom-toolkit) porque NO requiere
 //     reanimated (proyecto no la tiene instalada y agregarla implica
 //     crear babel.config.js + plugin nuevo). Usa RN Animated + PanResponder
 //     interno, compat con newArch.
-import * as MediaLibrary from 'expo-media-library';
+//
+// Hotfix Android Play Store: `import * as MediaLibrary from 'expo-media-library'`
+// removido. Lo usaba el botón Download del visor (saveToLibraryAsync), pero
+// MediaLibrary requiere READ_MEDIA_IMAGES en Android 13+ y ese permiso ahora
+// está blockedPermissions a nivel manifest (Google Play rechazó la declaración
+// de uso puntual). El share sheet del sistema sigue ofreciendo "Guardar en
+// Fotos" como opción nativa sin requerir el permiso.
 import ImageViewer from 'react-native-image-zoom-viewer';
 import { colors, spacing, typography, radii } from '../_styles/theme';
 import {
@@ -1190,21 +1194,17 @@ export function PaymentDetailModal({
   // Hotfix commit 3: handler `handleCancelEntireCharge` eliminado junto al
   // botón "Cancelar Cobro Completo" (UX confuso en vista por-residente).
 
-  // Sprint 3 hotfix commit 2 (upgrade visor): handlers separados de
-  // Compartir y Descargar.
-  //   - Compartir: descarga a cache + share-sheet del sistema.
-  //   - Descargar: requiere permiso de Photos (iOS) / WRITE_EXTERNAL_STORAGE
-  //     (Android, ya en app.json), descarga a cache + save a Photos library
-  //     via expo-media-library.
+  // Sprint 3 hotfix commit 2 (upgrade visor): handler de Compartir.
+  // El share descarga a cache local + abre el share-sheet del sistema, que
+  // ofrece "Guardar en Fotos" como opción nativa (sin requerir permisos
+  // explícitos de la app).
+  //
+  // Hotfix Android Play Store: removidos el state `proofDownloading`, el
+  // hook `MediaLibrary.usePermissions`, y el handler `handleDownloadProof`.
+  // El botón Download del visor se eliminó porque MediaLibrary.saveToLibraryAsync
+  // requiere READ_MEDIA_IMAGES en Android 13+, permiso ahora blockedPermissions
+  // a nivel manifest (Google Play rechazó uso puntual).
   const [proofSharing, setProofSharing] = useState(false);
-  const [proofDownloading, setProofDownloading] = useState(false);
-  // Permission hook de expo-media-library — el hook expone status +
-  // requestPermission() para flujo manual cuando el usuario tocó Descargar.
-  // `writeOnly=true` pide solo permiso de escritura (más mínimo que el
-  // permiso completo de Photos).
-  const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions({
-    writeOnly: true,
-  });
   const proofUri = payment?.proof_url || payment?.proof_of_payment || null;
 
   const handleShareProof = async () => {
@@ -1245,58 +1245,10 @@ export function PaymentDetailModal({
     }
   };
 
-  // Sprint 3 hotfix commit 2 (upgrade visor): descargar comprobante a la
-  // galería del usuario. Flujo:
-  //   1. Verificar permiso de write (Photos en iOS / MediaStore en Android).
-  //   2. Si no granted, pedirlo via requestMediaPermission().
-  //   3. Si rechazado → Alert explicativo.
-  //   4. Si OK → FileSystem.downloadAsync(remote → cache) + MediaLibrary.saveToLibraryAsync(cacheUri).
-  const handleDownloadProof = async () => {
-    if (!proofUri || proofDownloading) return;
-    try {
-      setProofDownloading(true);
-      // Step 1+2: asegurar permiso
-      let perm = mediaPermission;
-      if (!perm?.granted) {
-        const next = await requestMediaPermission();
-        perm = next;
-      }
-      if (!perm?.granted) {
-        Alert.alert(
-          t('admin.payments.detail.permissionRequiredTitle', 'Permiso requerido'),
-          t(
-            'admin.payments.detail.permissionRequiredBody',
-            'Necesitamos permiso para guardar el comprobante en tu galería de fotos. Activalo en Ajustes > ISSY > Fotos.'
-          )
-        );
-        return;
-      }
-      // Step 3: download remote → local cache (reusa pattern del share).
-      const filename = `comprobante_${Date.now()}.jpg`;
-      const localUri = FileSystem.cacheDirectory + filename;
-      const downloadResult = await FileSystem.downloadAsync(proofUri, localUri);
-      if (downloadResult.status !== 200) {
-        throw new Error('Download failed with status ' + downloadResult.status);
-      }
-      // Step 4: save a galería del usuario.
-      await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
-      Alert.alert(
-        t('common.success', 'Éxito'),
-        t(
-          'admin.payments.detail.downloadSuccess',
-          'Comprobante guardado en tu galería'
-        )
-      );
-    } catch (err) {
-      console.error('Error downloading proof:', err);
-      Alert.alert(
-        t('common.error', 'Error'),
-        t('admin.payments.detail.downloadError', 'No se pudo descargar el comprobante')
-      );
-    } finally {
-      setProofDownloading(false);
-    }
-  };
+  // Hotfix Android Play Store: handler `handleDownloadProof` eliminado junto
+  // al botón Download del visor. Usaba MediaLibrary.saveToLibraryAsync que
+  // requiere READ_MEDIA_IMAGES en Android 13+, permiso ahora blockedPermissions.
+  // El usuario puede guardar via Share → "Guardar en Fotos" del share sheet.
 
   if (!payment) {
     return null;
@@ -1541,16 +1493,15 @@ export function PaymentDetailModal({
           t={t}
         />
 
-        {/* Sprint 3 hotfix commit 2: Proof Viewer fullscreen con zoom +
-            download separado de share. */}
+        {/* Sprint 3 hotfix commit 2: Proof Viewer fullscreen con zoom.
+            Hotfix Android Play Store: props onDownload + downloading removidas
+            junto con el botón Download del header. */}
         <ProofViewerSubModal
           visible={proofViewerVisible}
           uri={proofUri}
           onClose={() => setProofViewerVisible(false)}
           onShare={handleShareProof}
-          onDownload={handleDownloadProof}
           sharing={proofSharing}
-          downloading={proofDownloading}
           t={t}
         />
       </SafeAreaView>
@@ -1564,17 +1515,19 @@ export function PaymentDetailModal({
  * Visor fullscreen del comprobante. Sprint 3 hotfix commit 2 (upgrade):
  *   - Body: <ImageViewer> de react-native-image-zoom-viewer con zoom pinch
  *     + double-tap + pan nativo (RN Animated + PanResponder interno).
- *   - Header: 3 botones — Close (izq), Download (centro-der), Compartir (der).
- *   - Loading states independientes para descarga y compartir.
+ *   - Header: 2 botones — Close (izq), Compartir (der).
+ *
+ * Hotfix Android Play Store: botón Download removido — el permiso
+ * READ_MEDIA_IMAGES (que requiere MediaLibrary.saveToLibraryAsync para
+ * Android 13+) ahora está blockedPermissions a nivel manifest. El usuario
+ * puede guardar a galería via Share → "Guardar en Fotos" del share sheet.
  */
 function ProofViewerSubModal({
   visible,
   uri,
   onClose,
   onShare,
-  onDownload,
   sharing,
-  downloading,
   t,
 }) {
   // Hotfix 4: useSafeAreaInsets en vez de SafeAreaView edges. El SafeAreaView
@@ -1606,22 +1559,14 @@ function ProofViewerSubModal({
               {t('admin.payments.detail.proof', 'Comprobante')}
             </Text>
             <View style={styles.proofViewerHeaderActions}>
-              <Pressable
-                onPress={onDownload}
-                disabled={downloading || sharing}
-                style={styles.proofViewerHeaderBtn}
-                hitSlop={8}
-                accessibilityLabel={t('admin.payments.detail.downloadProof', 'Descargar comprobante')}
-              >
-                {downloading ? (
-                  <ActivityIndicator size="small" color={colors.primaryContainer} />
-                ) : (
-                  <Download size={22} color={colors.primaryContainer} strokeWidth={2} />
-                )}
-              </Pressable>
+              {/* Hotfix Android Play Store: botón Download eliminado. Usaba
+                  MediaLibrary.saveToLibraryAsync que requiere READ_MEDIA_IMAGES
+                  en Android 13+, permiso ahora bloqueado a nivel manifest.
+                  El usuario puede guardar via Share → "Guardar en Fotos" del
+                  share sheet del sistema (iOS y Android lo ofrecen). */}
               <Pressable
                 onPress={onShare}
-                disabled={sharing || downloading}
+                disabled={sharing}
                 style={styles.proofViewerHeaderBtn}
                 hitSlop={8}
                 accessibilityLabel={t('admin.payments.detail.shareProof', 'Compartir comprobante')}
@@ -2284,8 +2229,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Sprint 3 hotfix commit 2 (upgrade visor): cluster de Download + Share
-  // a la derecha del header.
+  // Sprint 3 hotfix commit 2 (upgrade visor): cluster de Share a la derecha
+  // del header. Hotfix Android Play Store: contenía Download + Share, ahora
+  // solo Share. El View wrap se mantiene para preservar el spacing del header.
   proofViewerHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
