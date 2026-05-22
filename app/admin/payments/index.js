@@ -651,7 +651,10 @@ export default function AdminPayments() {
         visible={showStatementModal}
         onClose={() => setShowStatementModal(false)}
         locationId={selectedLocation?.id}
-        locationName={selectedLocation?.name}
+        // Bug B (COMUNIDAD N/A): fallback al nombre del objeto location.
+        // selectedLocation a veces llega sin `name` para admins single-location.
+        // Si con este fallback sigue vacío, escalamos al AdminLocationContext.
+        locationName={selectedLocation?.name || selectedLocation?.community_name || ''}
         users={charges.users}
       />
       <LocationPickerModal />

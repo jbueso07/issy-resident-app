@@ -295,15 +295,56 @@ export function StatementModal({
         { headers }
       );
       const chargesData = await chargesResponse.json();
-      
-      const paymentsResponse = await fetch(
-        `${API_URL}/api/community-payments/admin/payments?location_id=${locationId}`,
-        { headers }
-      );
-      const paymentsData = await paymentsResponse.json();
-      
+
+      // Bug A (surfacing): mismo patrón que payments. Si el fetch de
+      // /admin/charges falla o devuelve success:false, abortamos en vez de
+      // generar un reporte incompleto (sin charges → todo pending=0 y math
+      // sin sentido).
+      if (!chargesResponse.ok || !chargesData.success) {
+        console.error('Consolidado: fallo al cargar /admin/charges', {
+          ok: chargesResponse.ok,
+          status: chargesResponse.status,
+          error: chargesData?.error,
+        });
+        Alert.alert(
+          'Error',
+          'No se pudieron cargar los cobros. No se generó el reporte. Intentá de nuevo en unos segundos.'
+        );
+        return; // el finally setea setGeneratingAll(false)
+      }
+
+      // Bug A (fix definitivo frontend): /admin/payments SIN limit (o con limit
+      // grande) revienta con "TypeError: fetch failed" — el paso 5 del handler
+      // (resolver units con .in('user_id', [~480 UUIDs])) genera una URL gigante
+      // que PostgREST rechaza. Confirmado con curl: limit=100 funciona, sin limit
+      // falla. Paginamos en lotes de 100 + offset y concatenamos hasta agotar.
+      // (El fix de fondo del backend queda propuesto aparte, no aplicado.)
+      let payments = [];
+      let pmOffset = 0;
+      const PAGE = 100;
+      while (true) {
+        const r = await fetch(
+          `${API_URL}/api/community-payments/admin/payments?location_id=${locationId}&limit=${PAGE}&offset=${pmOffset}`,
+          { headers }
+        );
+        const j = await r.json();
+        if (!r.ok || !j.success) {
+          console.error('[Reporte] payments page fail', {
+            ok: r.ok,
+            status: r.status,
+            error: j?.error,
+            offset: pmOffset,
+          });
+          Alert.alert('Error', 'No se pudieron cargar los pagos. Intentá de nuevo.');
+          return; // el finally setea setGeneratingAll(false)
+        }
+        const batch = j.data || [];
+        payments = payments.concat(batch);
+        if (batch.length < PAGE) break; // última página
+        pmOffset += PAGE;
+      }
+
       const charges = chargesData.success ? chargesData.data || [] : [];
-      const payments = paymentsData.success ? paymentsData.data || [] : [];
       
       const userSummaries = users.map(user => {
         const userPayments = payments.filter(p => p.user_id === user.id);
