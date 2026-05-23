@@ -1259,9 +1259,12 @@ export function PaymentDetailModal({
   const isCancelled = status === 'cancelled';
   const isProofSubmitted = status === 'proof_submitted';
   const canRegisterCash = !isPaid && !isCancelled;
-  // Sprint 3 hotfix commit 2: los 2 cancel buttons visibles solo si el payment
-  // no está ya en estado final (paid/cancelled).
-  const canCancel = !isPaid && !isCancelled;
+  // Camino B: el botón Cancelar aparece para cualquier pago no-cancelado,
+  // incluido 'paid'. El backend valida que un 'paid' solo se pueda cancelar si
+  // es un DUPLICADO (la unidad tiene un pago hermano); si no, devuelve 422 y se
+  // muestra el error. Esto habilita al admin a limpiar los duplicados desde el
+  // app sin tocar la DB. (Antes: !isPaid && !isCancelled escondía el botón.)
+  const canCancel = !isCancelled;
 
   const placeholderAlert = (label) => {
     Alert.alert(
