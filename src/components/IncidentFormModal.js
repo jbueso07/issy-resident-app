@@ -182,10 +182,16 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos([...photos, result.assets[0].uri]);
+        const asset = result.assets[0];
+        if (!asset?.base64) {
+          console.warn('Photo missing base64, skipped');
+          return;
+        }
+        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -205,10 +211,16 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos([...photos, result.assets[0].uri]);
+        const asset = result.assets[0];
+        if (!asset?.base64) {
+          console.warn('Photo missing base64, skipped');
+          return;
+        }
+        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Gallery error:', error);
