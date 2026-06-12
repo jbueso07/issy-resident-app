@@ -20,26 +20,41 @@ const refreshToken = async () => {
   }
 
   isRefreshing = true;
-  
+
   refreshPromise = (async () => {
     try {
       const currentRefreshToken = await AsyncStorage.getItem('refreshToken');
-      
+
       if (!currentRefreshToken) {
-        throw new Error('No refresh token available');
+        // Sin refresh token: sesión muerta
+        await AsyncStorage.multiRemove(['token', 'refreshToken']);
+        return { success: false, authError: true, error: 'No refresh token available' };
       }
 
-    const response = await fetch(`${API_URL}/auth/refresh-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      });
+      let response;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          response = await fetch(`${API_URL}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: currentRefreshToken }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      } catch (netErr) {
+        // Red caída / timeout / abort: NO borrar tokens, reintentable
+        console.log('🌐 Refresh sin red (tokens intactos):', netErr.message);
+        return { success: false, networkError: true, error: 'Sin conexión' };
+      }
 
-      const data = await response.json();
+      let data = null;
+      try { data = await response.json(); } catch (e) { data = null; }
 
-      if (response.ok && (data.success || data.token || data.data?.token)) {
+      if (response.ok && data && (data.success || data.token || data.data?.token)) {
         const newToken = data.data?.token || data.token;
         const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
@@ -47,17 +62,19 @@ const refreshToken = async () => {
         if (newRefreshToken) {
           await AsyncStorage.setItem('refreshToken', newRefreshToken);
         }
-
         console.log('🔄 Token refreshed successfully');
         return { success: true, token: newToken };
-      } else {
-        throw new Error('Refresh failed');
       }
-    } catch (error) {
-      console.error('❌ Token refresh failed:', error);
-      // Clear tokens on refresh failure
-      await AsyncStorage.multiRemove(['token', 'refreshToken']);
-      return { success: false, error: error.message };
+
+      if (response.status === 401 || response.status === 403) {
+        // Refresh token inválido/expirado: ahora sí limpiar
+        await AsyncStorage.multiRemove(['token', 'refreshToken']);
+        return { success: false, authError: true, error: 'Refresh token inválido' };
+      }
+
+      // 5xx u otros: transitorio, NO borrar
+      console.log('⚠️ Refresh no-OK transitorio, tokens intactos. status:', response.status);
+      return { success: false, serverError: true, error: 'Error del servidor al refrescar' };
     } finally {
       isRefreshing = false;
       refreshPromise = null;
@@ -100,19 +117,26 @@ const authFetch = async (endpoint, options = {}, isRetry = false) => {
   // Si recibimos 401 y no es un retry, intentar refresh
   if (response.status === 401 && !isRetry) {
     console.log('🔐 Token expired, attempting refresh...');
-    
+
     const refreshResult = await refreshToken();
-    
+
     if (refreshResult.success) {
       // Reintentar la petición original con el nuevo token
       console.log('🔄 Retrying request with new token...');
       return authFetch(endpoint, options, true);
-    } else {
-      // Refresh falló - el usuario necesita volver a iniciar sesión
-      const error = new Error('SESSION_EXPIRED');
-      error.sessionExpired = true;
-      throw error;
     }
+
+    if (refreshResult.networkError || refreshResult.serverError) {
+      // Fallo transitorio: NO forzar re-login, error reintentable
+      const err = new Error('No se pudo renovar la sesión por un problema de conexión. Intenta de nuevo.');
+      err.retryable = true;
+      throw err;
+    }
+
+    // authError: sesión realmente expirada
+    const error = new Error('SESSION_EXPIRED');
+    error.sessionExpired = true;
+    throw error;
   }
 
   const data = await response.json();
