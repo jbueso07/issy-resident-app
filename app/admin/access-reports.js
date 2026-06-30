@@ -237,7 +237,7 @@ export default function AccessReportsScreen() {
     setLoadingSummary(true);
     try {
       const headers = await getAuthHeaders();
-      const url = `${API_URL}/api/admin/access-logs/export/summary?start_date=${exportStartDate}&end_date=${exportEndDate}`;
+      const url = `${API_URL}/api/admin/access-logs/export/summary?start_date=${exportStartDate}&end_date=${exportEndDate}&location_id=${selectedLocationId}`;
       const response = await fetch(url, { headers });
       const data = await response.json();
       if (data.success) setExportSummary(data.data);
@@ -250,10 +250,14 @@ export default function AccessReportsScreen() {
       Alert.alert(t('common.error'), t('admin.accessReports.export.selectDateRange'));
       return;
     }
+    if (!selectedLocationId) {
+      Alert.alert(t('common.error'), 'Selecciona una comunidad antes de exportar.');
+      return;
+    }
     setLoadingExport(true);
     try {
       const headers = await getAuthHeaders();
-      let url = `${API_URL}/api/admin/access-logs/export?format=${exportFormat}&start_date=${exportStartDate}&end_date=${exportEndDate}`;
+      let url = `${API_URL}/api/admin/access-logs/export?format=${exportFormat}&start_date=${exportStartDate}&end_date=${exportEndDate}&location_id=${selectedLocationId}`;
       if (exportFilters.includeEntries && !exportFilters.includeExits) url += '&movement_type=entry';
       else if (!exportFilters.includeEntries && exportFilters.includeExits) url += '&movement_type=exit';
       if (exportFilters.onlyWithPhotos) url += '&has_photo=true';
