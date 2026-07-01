@@ -77,7 +77,11 @@ export default function Login() {
     if (result.success) {
       router.replace('/(tabs)/home');
     } else {
-      Alert.alert(t('common.error'), result.error || t('auth.invalidCredentials'));
+      const isCredsError = result.error === 'Invalid credentials' || !result.error;
+      Alert.alert(
+        t('common.error'),
+        isCredsError ? t('auth.invalidCredentials') : result.error
+      );
     }
   };
 
