@@ -397,7 +397,7 @@ export default function Home() {
 ], [t]);
 
   const QUICK_ACTIONS = useMemo(() => [
-    { id: 'qr', label: t('home.quickActions.newQR'), route: '/(tabs)/visits' },
+    { id: 'qr', label: t('home.quickActions.newQR'), route: '/(tabs)/visits', params: { tab: 'visitors', create: '1' } },
     { id: 'reserve', label: t('home.quickActions.reservations'), route: '/reservations' },
     { id: 'announce', label: t('home.quickActions.announcements'), route: '/announcements' },
     { id: 'pay', label: t('home.quickActions.payments'), route: '/(tabs)/payments' },
@@ -426,7 +426,8 @@ export default function Home() {
   };
 
   const handleQuickAction = (action) => {
-    if (action.route) router.push(action.route);
+    if (!action.route) return;
+    router.push(action.params ? { pathname: action.route, params: action.params } : action.route);
   };
 
   const handleJoinCommunity = () => router.push('/join-community');

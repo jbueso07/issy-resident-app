@@ -2,7 +2,7 @@
 // ISSY Resident App - Visits Screen (ProHome Dark Style)
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -214,6 +214,18 @@ export default function Visits() {
   const [loadingResidentQR, setLoadingResidentQR] = useState(true);
   const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
   const [activeTab, setActiveTab] = useState("myqr");
+
+  // Mejora 1: acceso directo desde el boton "Nuevo QR" del home.
+  // Lee params de navegacion para abrir el tab Visitantes + el modal de crear.
+  const { tab: navTab, create: navCreate } = useLocalSearchParams();
+  const navRouter = useRouter();
+  useEffect(() => {
+    if (navTab) setActiveTab(String(navTab));
+    if (navCreate === '1') {
+      setShowCreateModal(true);
+      navRouter.setParams({ create: undefined }); // one-shot: evita reapertura al volver al tab
+    }
+  }, [navTab, navCreate]);
 
   // Form states
   const [qrType, setQrType] = useState('single');
