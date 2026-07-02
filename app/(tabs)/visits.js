@@ -215,6 +215,40 @@ export default function Visits() {
   const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
   const [activeTab, setActiveTab] = useState("myqr");
 
+  // Mejora 2: secciones colapsables de codigos por tipo. "single" (Una vez) abierta por defecto.
+  const [expandedSections, setExpandedSections] = useState({ single: true, frequent: false, temporary: false, event: false });
+  const toggleSection = (id) => setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  // Renderiza una seccion colapsable de codigos QR agrupados por tipo.
+  const renderQRSection = (id, title, iconName, items, comingSoon = false) => {
+    const open = !!expandedSections[id];
+    return (
+      <View key={id} style={styles.qrSection}>
+        <TouchableOpacity style={styles.qrSectionHeader} onPress={() => toggleSection(id)} activeOpacity={0.7}>
+          <Ionicons name={iconName} size={18} color={COLORS.textSecondary} style={{ marginRight: scale(8) }} />
+          <Text style={styles.qrSectionTitle} maxFontSizeMultiplier={1.2}>{title}</Text>
+          {comingSoon ? (
+            <Text style={styles.qrSectionSoon} maxFontSizeMultiplier={1.2}>Próximamente</Text>
+          ) : (
+            <Text style={styles.qrSectionCount} maxFontSizeMultiplier={1.2}>{items.length}</Text>
+          )}
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={COLORS.textSecondary} />
+        </TouchableOpacity>
+        {open && (
+          <View style={styles.qrSectionBody}>
+            {comingSoon ? (
+              <Text style={styles.qrSectionEmpty} maxFontSizeMultiplier={1.2}>Disponible próximamente</Text>
+            ) : items.length === 0 ? (
+              <Text style={styles.qrSectionEmpty} maxFontSizeMultiplier={1.2}>Sin códigos</Text>
+            ) : (
+              items.map((qr) => renderQRCard(qr))
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   // Mejora 1: acceso directo desde el boton "Nuevo QR" del home.
   // Lee params de navegacion para abrir el tab Visitantes + el modal de crear.
   const { tab: navTab, create: navCreate } = useLocalSearchParams();
@@ -1013,7 +1047,21 @@ return (
                 <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
               </View>
             ) : (
-              qrCodes.filter((qr) => isQRActive(qr)).map((qr) => renderQRCard(qr))
+              (() => {
+                const activos = qrCodes.filter((qr) => isQRActive(qr));
+                const single = activos.filter((q) => q.qr_type === 'single');
+                const frequent = activos.filter((q) => q.qr_type === 'frequent');
+                const temporary = activos.filter((q) => q.qr_type === 'temporary');
+                const event = activos.filter((q) => q.qr_type === 'event');
+                return (
+                  <>
+                    {renderQRSection('single', t('visits.qrTypes.single'), 'flash-outline', single)}
+                    {renderQRSection('frequent', t('visits.qrTypes.frequent'), 'infinite-outline', frequent)}
+                    {renderQRSection('temporary', t('visits.qrTypes.temporary'), 'calendar-outline', temporary)}
+                    {renderQRSection('event', 'Eventos', 'balloon-outline', event, true)}
+                  </>
+                );
+              })()
             )}
           </>
         )}
@@ -1979,6 +2027,44 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: scale(24),
     marginBottom: scale(12),
+  },
+  qrSection: {
+    marginBottom: scale(10),
+  },
+  qrSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgCard,
+    borderRadius: scale(14),
+    paddingVertical: scale(14),
+    paddingHorizontal: scale(14),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  qrSectionTitle: {
+    flex: 1,
+    fontSize: scale(15),
+    fontWeight: '500',
+    color: COLORS.textPrimary,
+  },
+  qrSectionCount: {
+    fontSize: scale(13),
+    color: COLORS.textSecondary,
+    marginRight: scale(8),
+  },
+  qrSectionSoon: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginRight: scale(8),
+  },
+  qrSectionBody: {
+    marginTop: scale(8),
+  },
+  qrSectionEmpty: {
+    fontSize: scale(13),
+    color: COLORS.textMuted,
+    paddingVertical: scale(16),
+    textAlign: 'center',
   },
 
   // Loading
