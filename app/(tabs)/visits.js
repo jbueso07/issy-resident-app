@@ -208,6 +208,8 @@ export default function Visits() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
   const [sharingImage, setSharingImage] = useState(false);
+  // Opción A: id del QR pendiente de compartir mientras se abre el modal y se monta cardRef.
+  const [pendingShare, setPendingShare] = useState(null);
 
   // Resident QR TOTP
   const [residentQRData, setResidentQRData] = useState(null);
@@ -724,6 +726,25 @@ const handleShareQRImage = async (qr) => {
   }
 };
 
+// Opción A — auto-compartir imagen desde una tarjeta:
+// abre el modal por detrás, espera a que cardRef se monte, comparte la misma
+// imagen que el modal, y luego cierra el modal para volver a la lista.
+useEffect(() => {
+  if (!showQRModal || !pendingShare) return;
+  if (!selectedQR || selectedQR.id !== pendingShare) return;
+  const timer = setTimeout(async () => {
+    try {
+      if (cardRef.current) {
+        await handleShareQRImage(selectedQR);
+      }
+    } finally {
+      setPendingShare(null);
+      setShowQRModal(false);
+    }
+  }, 500);
+  return () => clearTimeout(timer);
+}, [showQRModal, pendingShare, selectedQR]);
+
 // Formatters
 const formatDate = (date) => {
   if (!date) return '';
@@ -906,6 +927,19 @@ const renderQRCard = (qr) => {
           >
             <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
             <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
+          </TouchableOpacity>
+
+          {/* Share button — comparte la MISMA imagen del QR que el modal (Opción A) */}
+          <TouchableOpacity
+            style={styles.viewQRButton}
+            onPress={() => {
+              setSelectedQR(qr);
+              setShowQRModal(true);
+              setPendingShare(qr.id);
+            }}
+          >
+            <Ionicons name="share-outline" size={18} color={COLORS.cyan} />
+            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
           </TouchableOpacity>
 
           {/* Delete button */}
