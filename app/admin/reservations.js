@@ -151,7 +151,9 @@ export default function AdminReservationsScreen() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    // Anclar a mediodia local: new Date('YYYY-MM-DD') se interpreta como
+    // medianoche UTC y en Honduras (UTC-6) retrocede un dia.
+    const date = new Date(dateStr.length === 10 ? dateStr + 'T12:00:00' : dateStr);
     return date.toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
   };
 
