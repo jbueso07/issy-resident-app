@@ -72,8 +72,6 @@ export default function AdminReservationsScreen() {
   
   const [activeTab, setActiveTab] = useState('pending');
   const [reservations, setReservations] = useState([]);
-  const [areas, setAreas] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(null);
@@ -91,7 +89,7 @@ export default function AdminReservationsScreen() {
 
   const fetchData = async () => {
     try {
-      await Promise.all([loadReservations(), loadAreas(), loadUsers()]);
+      await loadReservations();
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -100,43 +98,26 @@ export default function AdminReservationsScreen() {
 
   const loadReservations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('area_reservations')
-        .select('*')
-        .eq('location_id', selectedLocationId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setReservations(data || []);
+      const token = await AsyncStorage.getItem('token');
+      const API_URL = 'https://api.joinissy.com/api';
+      // GET /reservations/admin/all embebe user y area con service role.
+      // (Antes se consultaba `users` directo a Supabase con anon key y RLS
+      // solo devolvia la propia fila → todos mostraban "Usuario".)
+      const response = await fetch(
+        `${API_URL}/reservations/admin/all?location_id=${selectedLocationId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'Error al obtener reservaciones');
+      // Shape: { data: [{ ...reservation, user: {...}|null, area: {...}|null }] }
+      setReservations(json.data || []);
     } catch (error) {
       console.error('Error loading reservations:', error);
-    }
-  };
-
-  const loadAreas = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('common_areas')
-        .select('id, name, type, capacity, rules')
-        .eq('location_id', selectedLocationId);
-
-      if (error) throw error;
-      setAreas(data || []);
-    } catch (error) {
-      console.error('Error loading areas:', error);
-    }
-  };
-
-  const loadUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, email, phone');
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error('Error loading users:', error);
     }
   };
 
@@ -145,8 +126,6 @@ export default function AdminReservationsScreen() {
     fetchData();
   }, []);
 
-  const getAreaById = (id) => areas.find(a => a.id === id);
-  const getUserById = (id) => users.find(u => u.id === id);
   const getTypeInfo = (type) => TYPE_INFO[type] || TYPE_INFO.other;
 
   const formatDate = (dateStr) => {
@@ -350,8 +329,8 @@ export default function AdminReservationsScreen() {
           </View>
         )}
         renderItem={({ item }) => {
-          const area = getAreaById(item.area_id);
-          const reqUser = getUserById(item.user_id);
+          const area = item.area;
+          const reqUser = item.user;
           const typeInfo = getTypeInfo(area?.type);
           const statusConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
 
@@ -431,8 +410,8 @@ export default function AdminReservationsScreen() {
       {/* Detail Modal */}
       <Modal visible={showDetailModal} animationType="slide" presentationStyle="pageSheet">
         {selectedReservation && (() => {
-          const detailArea = getAreaById(selectedReservation.area_id);
-          const detailUser = getUserById(selectedReservation.user_id);
+          const detailArea = selectedReservation.area;
+          const detailUser = selectedReservation.user;
           const statusConfig = STATUS_CONFIG[selectedReservation.status] || STATUS_CONFIG.pending;
 
           return (
