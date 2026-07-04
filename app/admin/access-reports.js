@@ -382,6 +382,15 @@ export default function AccessReportsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Nota de retencion: las fotos de acceso se conservan 45 dias */}
+          {exportStartDate && (new Date(exportStartDate) < new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)) && (
+            <View style={{ backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+              <Text style={{ color: '#93C5FD', fontSize: 12, lineHeight: 17 }} maxFontSizeMultiplier={1.2}>
+                ℹ️ Las fotos de acceso se conservan 45 días. Los registros más antiguos incluyen todos los datos, pero sin fotografía.
+              </Text>
+            </View>
+          )}
           {exportSummary && (
             <View style={styles.exportSummaryCard}>
               {loadingSummary ? <ActivityIndicator size="small" color={COLORS.lime} /> : (
