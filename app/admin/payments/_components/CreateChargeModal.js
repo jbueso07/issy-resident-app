@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { COLORS, scale, getPaymentTypes, getTargetOptions, getPaymentMethodOptions, getRecurringPeriodOptions } from '../_constants';
+import { COLORS, scale, getPaymentTypes, getTargetOptions, getPaymentMethodOptions, getRecurringPeriodOptions, getUnitTypeFilterOptions } from '../_constants';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -33,6 +33,7 @@ export function CreateChargeModal({
   const { t } = useTranslation();
   const PAYMENT_TYPES = getPaymentTypes(t);
   const TARGET_OPTIONS = getTargetOptions(t);
+  const UNIT_TYPE_FILTER_OPTIONS = getUnitTypeFilterOptions(t);
   const PAYMENT_METHOD_OPTIONS = getPaymentMethodOptions(t);
   const RECURRING_PERIOD_OPTIONS = getRecurringPeriodOptions(t);
 
