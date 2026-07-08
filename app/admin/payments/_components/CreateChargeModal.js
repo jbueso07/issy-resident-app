@@ -85,6 +85,36 @@ export function CreateChargeModal({
             </View>
           </View>
 
+          {/* Unit Type Filter — solo cuando target === 'all' (filtra Casa/Lote) */}
+          {formData.target === 'all' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>
+                {t('admin.payments.form.unitTypeFilter', 'Aplicar a')}
+              </Text>
+              <View style={styles.targetGrid}>
+                {UNIT_TYPE_FILTER_OPTIONS.map((option) => {
+                  const isSelected = (formData.unit_type_filter || 'all') === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[styles.targetButton, isSelected && styles.targetButtonActive]}
+                      onPress={() => onFormChange({ unit_type_filter: option.value })}
+                    >
+                      <Ionicons
+                        name={option.icon}
+                        size={24}
+                        color={isSelected ? COLORS.lime : COLORS.textSecondary}
+                      />
+                      <Text style={[styles.targetLabel, isSelected && styles.targetLabelActive]}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* User Selector */}
           {formData.target !== 'all' && (
             <View style={styles.formGroup}>

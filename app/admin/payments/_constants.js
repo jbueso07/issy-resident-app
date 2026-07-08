@@ -182,6 +182,12 @@ export const getFilterOptions = (t) => [
 ];
 
 // Default form data for creating charges
+export const getUnitTypeFilterOptions = (t) => [
+  { value: 'all', label: t('admin.payments.unitTypeFilter.all', 'Todas las unidades'), icon: 'globe-outline' },
+  { value: 'house', label: t('admin.payments.unitTypeFilter.house', 'Solo casas'), icon: 'home' },
+  { value: 'lot', label: t('admin.payments.unitTypeFilter.lot', 'Solo lotes'), icon: 'map' },
+];
+
 export const getDefaultFormData = () => ({
   target: 'single',
   user_id: '',
@@ -194,6 +200,7 @@ export const getDefaultFormData = () => ({
   allowed_payment_methods: ['card', 'proof'],
   is_recurring: false,
   recurring_period: 'monthly',
+  unit_type_filter: 'all',
 });
 
 // Default bank account form

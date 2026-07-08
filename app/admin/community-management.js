@@ -121,7 +121,7 @@ export default function CommunityManagement() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [customReason, setCustomReason] = useState('');
-  const [editForm, setEditForm] = useState({ name: '', email: '', role: '', unit_number: '' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', role: '', unit_number: '', unit_type: 'house' });
   const [actionLoading, setActionLoading] = useState(false);
   
   // Card/Tag Management State
@@ -438,6 +438,7 @@ export default function CommunityManagement() {
       email: member.user?.email || '',
       role: member.role || 'resident',
       unit_number: member.unit_number || '',
+      unit_type: member.unit_type || 'house',
     });
     setShowEditModal(true);
     setShowAssignCardForm(false);
@@ -1364,6 +1365,31 @@ export default function CommunityManagement() {
                   placeholder={t('admin.communityManagement.enterUnit')}
                   placeholderTextColor={COLORS.textMuted}
                 />
+
+                {/* Casa/Lote — tipo de unidad */}
+                <Text style={styles.inputLabel}>{t('admin.communityManagement.unitType', 'Tipo de unidad')}</Text>
+                <View style={styles.roleSelector}>
+                  {[
+                    { key: 'house', label: t('admin.communityManagement.unitTypeHouse', 'Casa'), color: '#10B981', bg: '#D1FAE5' },
+                    { key: 'lot', label: t('admin.communityManagement.unitTypeLot', 'Lote'), color: '#F59E0B', bg: '#FEF3C7' },
+                  ].map(({ key, label, color, bg }) => (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.roleSelectorItem,
+                        (editForm.unit_type || 'house') === key && { backgroundColor: bg, borderColor: color }
+                      ]}
+                      onPress={() => setEditForm(prev => ({ ...prev, unit_type: key }))}
+                    >
+                      <Text style={[
+                        styles.roleSelectorText,
+                        (editForm.unit_type || 'house') === key && { color: color, fontWeight: '600' }
+                      ]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
                 <Text style={styles.inputLabel}>{t('admin.communityManagement.role')}</Text>
                 <View style={styles.roleSelector}>

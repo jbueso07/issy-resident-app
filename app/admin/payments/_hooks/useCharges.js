@@ -144,6 +144,7 @@ export function useCharges(t, selectedLocationId) {
         location_id: selectedLocationId,
         is_recurring: formData.is_recurring || false,
         recurring_period: formData.is_recurring ? formData.recurring_period : null,
+        unit_type_filter: formData.unit_type_filter || 'all',
       };
       const response = await fetch(API_URL + '/api/community-payments/admin/charges', {
         method: 'POST',
