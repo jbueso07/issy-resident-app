@@ -16,6 +16,7 @@ import {
   Modal,
   ActivityIndicator,
   Switch,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -36,6 +37,7 @@ import {
 } from '../../src/components/Icons';
 
 import NotificationBell from '../../src/components/NotificationBell';
+import { createPanic } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -88,12 +90,12 @@ const QuickActionIcon = ({ actionId, color, size = 28 }) => {
   switch (actionId) {
     case 'qr':
       return <PlusIcon size={size} color={color} />;
-    case 'reserve':
-      return <CalendarIcon size={size} color={color} />;
-    case 'announce':
-      return <BellIcon size={size} color={color} />;
-    case 'pay':
-      return <CreditCardIcon size={size} color={color} />;
+    case 'incident':
+      return <Ionicons name="alert-circle-outline" size={size} color={color} />;
+    case 'marketplace':
+      return <Ionicons name="storefront-outline" size={size} color={color} />;
+    case 'panic':
+      return <Ionicons name="warning" size={size} color={color} />;
     default:
       return null;
   }
@@ -124,6 +126,9 @@ export default function Home() {
   const router = useRouter();
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
+  const [showPanicModal, setShowPanicModal] = useState(false);
+  const [sendingPanic, setSendingPanic] = useState(false);
+  const [panicLongPressReady, setPanicLongPressReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [switchingLocation, setSwitchingLocation] = useState(false);
 
@@ -398,9 +403,9 @@ export default function Home() {
 
   const QUICK_ACTIONS = useMemo(() => [
     { id: 'qr', label: t('home.quickActions.newQR'), route: '/(tabs)/visits', params: { tab: 'visitors', create: '1' } },
-    { id: 'reserve', label: t('home.quickActions.reservations'), route: '/reservations' },
-    { id: 'announce', label: t('home.quickActions.announcements'), route: '/announcements' },
-    { id: 'pay', label: t('home.quickActions.payments'), route: '/(tabs)/payments' },
+    { id: 'incident', label: t('home.quickActions.reportIncident', 'Reportar'), route: '/incidents', params: { create: '1' } },
+    { id: 'marketplace', label: t('home.quickActions.marketplace', 'Marketplace'), route: '/marketplace-hub' },
+    { id: 'panic', label: t('home.quickActions.panic', 'Emergencia'), isPanic: true },
   ], [t]);
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
@@ -426,8 +431,58 @@ export default function Home() {
   };
 
   const handleQuickAction = (action) => {
+    // El botón de emergencia se maneja con onLongPress, no aquí
+    if (action.isPanic) return;
     if (!action.route) return;
     router.push(action.params ? { pathname: action.route, params: action.params } : action.route);
+  };
+
+  // Handler cuando el mantener-presionado completa 2 segundos: abre el modal
+  const handlePanicLongPress = () => {
+    setPanicLongPressReady(true);
+    setShowPanicModal(true);
+  };
+
+  // Confirmación final: dispara al backend
+  const handleConfirmPanic = async () => {
+    if (sendingPanic) return;
+    setSendingPanic(true);
+    try {
+      const locationId = profile?.location_id || null;
+      const result = await createPanic({ locationId });
+      if (result.success) {
+        setShowPanicModal(false);
+        Alert.alert(
+          '🚨 Emergencia activada',
+          `Se notificó a seguridad. Referencia: ${result.data?.panic_event?.reference_number || ''}`,
+          [{ text: 'OK' }]
+        );
+      } else if (result.alreadyActive) {
+        setShowPanicModal(false);
+        Alert.alert(
+          'Emergencia ya activa',
+          'Ya tenés una emergencia activa. El personal de seguridad está avisado.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          result.error || 'No se pudo activar la emergencia. Intentá de nuevo.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error activando emergencia:', error);
+      Alert.alert('Error', 'Error inesperado. Intentá de nuevo.', [{ text: 'OK' }]);
+    } finally {
+      setSendingPanic(false);
+      setPanicLongPressReady(false);
+    }
+  };
+
+  const handleCancelPanic = () => {
+    setShowPanicModal(false);
+    setPanicLongPressReady(false);
   };
 
   const handleJoinCommunity = () => router.push('/join-community');
@@ -464,6 +519,50 @@ export default function Home() {
   // ========================================
   // RENDER: Location Modal
   // ========================================
+  // ========================================
+  // RENDER: Panic Modal (confirmación de emergencia)
+  // ========================================
+  const renderPanicModal = () => (
+    <Modal
+      visible={showPanicModal}
+      animationType="fade"
+      transparent
+      onRequestClose={handleCancelPanic}
+    >
+      <View style={styles.panicModalOverlay}>
+        <View style={styles.panicModalContent}>
+          <View style={styles.panicModalIconWrap}>
+            <Ionicons name="warning" size={44} color="#FFFFFF" />
+          </View>
+          <Text style={styles.panicModalTitle} maxFontSizeMultiplier={1.2}>
+            ¿Activar alerta de emergencia?
+          </Text>
+          <Text style={styles.panicModalSubtitle} maxFontSizeMultiplier={1.2}>
+            Se notificará al guardia, administradores y tus contactos personales.
+          </Text>
+          <TouchableOpacity
+            style={[styles.panicModalButton, styles.panicModalButtonConfirm]}
+            onPress={handleConfirmPanic}
+            disabled={sendingPanic}
+          >
+            {sendingPanic ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.panicModalButtonConfirmText}>Sí, enviar alerta</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.panicModalButton, styles.panicModalButtonCancel]}
+            onPress={handleCancelPanic}
+            disabled={sendingPanic}
+          >
+            <Text style={styles.panicModalButtonCancelText}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderLocationModal = () => (
     <Modal
       visible={showLocationModal}
@@ -687,6 +786,9 @@ export default function Home() {
               key={action.id}
               style={styles.quickActionItem}
               onPress={() => handleQuickAction(action)}
+              onLongPress={action.isPanic ? handlePanicLongPress : undefined}
+              delayLongPress={action.isPanic ? 2000 : undefined}
+              activeOpacity={action.isPanic ? 0.7 : 0.2}
             >
               {index === 0 ? (
                 <LinearGradient
@@ -697,6 +799,10 @@ export default function Home() {
                 >
                   <QuickActionIcon actionId={action.id} color={COLORS.textDark} size={28} />
                 </LinearGradient>
+              ) : action.isPanic ? (
+                <View style={styles.quickActionBoxPanic}>
+                  <QuickActionIcon actionId={action.id} color={COLORS.textPrimary} size={26} />
+                </View>
               ) : (
                 <View style={styles.quickActionBox}>
                   <QuickActionIcon actionId={action.id} color={COLORS.textMuted} size={24} />
@@ -704,7 +810,8 @@ export default function Home() {
               )}
               <Text style={[
                 styles.quickActionLabel,
-                index === 0 && styles.quickActionLabelActive
+                index === 0 && styles.quickActionLabelActive,
+                action.isPanic && styles.quickActionLabelPanic
               ]} maxFontSizeMultiplier={1.2}>{action.label}</Text>
             </TouchableOpacity>
           ))}
@@ -881,6 +988,7 @@ export default function Home() {
         <View style={{ height: scale(120) }} />
       </ScrollView>
 
+      {renderPanicModal()}
       {renderLocationModal()}
     </SafeAreaView>
   );
@@ -1013,6 +1121,84 @@ const styles = StyleSheet.create({
   },
   quickActionLabelActive: {
     color: COLORS.teal,
+  },
+  quickActionBoxPanic: {
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(16),
+    backgroundColor: '#E24B4A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(8),
+    borderWidth: 2,
+    borderColor: '#F09595',
+  },
+  quickActionLabelPanic: {
+    color: '#F09595',
+    fontWeight: '600',
+  },
+  panicModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(24),
+  },
+  panicModalContent: {
+    width: '100%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: '#E24B4A',
+    padding: scale(24),
+    alignItems: 'center',
+  },
+  panicModalIconWrap: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(16),
+    backgroundColor: '#E24B4A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(16),
+  },
+  panicModalTitle: {
+    color: '#FFFFFF',
+    fontSize: scale(18),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: scale(8),
+  },
+  panicModalSubtitle: {
+    color: '#888888',
+    fontSize: scale(13),
+    textAlign: 'center',
+    lineHeight: scale(18),
+    marginBottom: scale(20),
+  },
+  panicModalButton: {
+    width: '100%',
+    padding: scale(14),
+    borderRadius: scale(12),
+    alignItems: 'center',
+    marginBottom: scale(8),
+  },
+  panicModalButtonConfirm: {
+    backgroundColor: '#E24B4A',
+  },
+  panicModalButtonConfirmText: {
+    color: '#FFFFFF',
+    fontSize: scale(15),
+    fontWeight: '600',
+  },
+  panicModalButtonCancel: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  panicModalButtonCancelText: {
+    color: '#888888',
+    fontSize: scale(15),
   },
 
   // ============ SECTION HEADER ============

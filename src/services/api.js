@@ -967,6 +967,34 @@ export const createIncident = async (incidentData) => {
   }
 };
 
+// ==========================================
+// PANIC / EMERGENCIA
+// ==========================================
+export const createPanic = async ({ locationId } = {}) => {
+  try {
+    const headers = locationId ? { 'X-Location-Id': locationId } : {};
+    const data = await authFetch('/panic', {
+      method: 'POST',
+      headers,
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating panic event:', error);
+    // 409 = ya hay una emergencia activa. Devolvemos la info para que la UI la maneje.
+    if (error.status === 409 || error.statusCode === 409) {
+      return {
+        success: false,
+        alreadyActive: true,
+        existingEventId: error.data?.existing_event_id || null,
+        existingEvent: error.data?.existing_event || null,
+        error: error.message,
+        sessionExpired: error.sessionExpired,
+      };
+    }
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
 export const getIncidents = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
