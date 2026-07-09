@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { createIncident } from '../services/api';
+import { supabase } from '../config/supabase';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -69,6 +70,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   const [location, setLocation] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
 
   // Refs para valores actuales (fix para PanResponder closure)
@@ -240,13 +242,53 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
     try {
       setLoading(true);
 
+      // Subir fotos a Storage ANTES de crear el incidente. Si una falla, abortar
+      // y avisar; nunca enviar el incidente con URIs locales (patron espejo
+      // de payments.js:uploadProofImage — bucket 'photos', prefix 'incidents/').
+      let photoUrls = [];
+      if (photos.length > 0) {
+        setUploadingPhotos(true);
+        try {
+          photoUrls = await Promise.all(photos.map(async (imageUri) => {
+            const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+            const fileName = `incident_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `incidents/${fileName}`;
+            const response = await fetch(imageUri);
+            const blob = await response.blob();
+            const arrayBuffer = await new Response(blob).arrayBuffer();
+            const { error } = await supabase.storage
+              .from('photos')
+              .upload(filePath, arrayBuffer, {
+                contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+                upsert: true,
+              });
+            if (error) throw error;
+            const { data: urlData } = supabase.storage
+              .from('photos')
+              .getPublicUrl(filePath);
+            return urlData.publicUrl;
+          }));
+        } catch (uploadErr) {
+          console.error('Error subiendo fotos:', uploadErr);
+          setUploadingPhotos(false);
+          setLoading(false);
+          Alert.alert(
+            'Error al subir foto',
+            'No se pudo subir una de las fotos. Revisá tu conexión e intentá de nuevo, o remové la foto.'
+          );
+          resetSlider();
+          return;
+        }
+        setUploadingPhotos(false);
+      }
+
       const result = await createIncident({
         type,
         severity,
         title: currentTitle.trim(),
         description: currentDescription.trim(),
         coordinates: location,
-        photos: photos.length > 0 ? photos : undefined,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
       });
 
       if (result.success) {
@@ -444,6 +486,13 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
               Agregar Foto ({photos.length}/5)
             </Text>
           </TouchableOpacity>
+
+          {uploadingPhotos && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: scale(12), gap: scale(8) }}>
+              <ActivityIndicator size="small" color={COLORS.cyan} />
+              <Text style={{ color: COLORS.cyan, fontSize: scale(13) }}>Subiendo foto...</Text>
+            </View>
+          )}
 
           <View style={{ height: scale(100) }} />
         </ScrollView>
