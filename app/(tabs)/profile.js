@@ -170,6 +170,13 @@ export default function Profile() {
           color: COLORS.cyan,
         },
         {
+          icon: 'warning-outline',
+          title: t('profile.emergencyContacts', 'Contactos de Emergencia'),
+          subtitle: t('profile.emergencyContactsDesc', 'Personas que reciben aviso si activás el botón'),
+          route: '/emergency-contacts',
+          color: '#E24B4A',
+        },
+        {
           icon: 'link-outline',
           title: t('profile.joinCommunity'),
           subtitle: t('profile.joinCommunityDesc'),

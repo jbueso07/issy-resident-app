@@ -1018,6 +1018,58 @@ export const cancelPanic = async (eventId, { reason } = {}) => {
   }
 };
 
+// ==========================================
+// CONTACTOS DE EMERGENCIA (Fase 3.1)
+// ==========================================
+export const getMyEmergencyContacts = async () => {
+  try {
+    const data = await authFetch('/users/me/emergency-contacts', { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching emergency contacts:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const addEmergencyContact = async ({ contactUserId, relationship } = {}) => {
+  try {
+    const data = await authFetch('/users/me/emergency-contacts', {
+      method: 'POST',
+      body: JSON.stringify({
+        contact_user_id: contactUserId,
+        relationship: relationship || null,
+      }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error adding emergency contact:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const removeEmergencyContact = async (contactUserId) => {
+  try {
+    const data = await authFetch(`/users/me/emergency-contacts/${contactUserId}`, {
+      method: 'DELETE',
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error removing emergency contact:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const searchUsersForEmergencyContact = async (query) => {
+  try {
+    const q = encodeURIComponent((query || '').trim());
+    const data = await authFetch(`/users/search-for-contact?q=${q}`, { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
 export const getIncidents = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();
