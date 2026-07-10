@@ -290,6 +290,14 @@ export default function Home() {
     activeColor: COLORS.teal,
     icon: 'people-outline',
   },
+  {
+    id: 'community-map',
+    title: t('adminMenu.communityMap', 'Mapa de la Comunidad'),
+    subtitle: t('adminMenu.communityMapDesc', 'Ubicar unidades para emergencias'),
+    route: '/admin/community-map',
+    activeColor: '#E24B4A',
+    icon: 'map-outline',
+  },
   { 
     id: 'common-areas', 
     title: t('adminMenu.commonAreas'), 
