@@ -995,6 +995,29 @@ export const createPanic = async ({ locationId } = {}) => {
   }
 };
 
+export const getMyActivePanic = async () => {
+  try {
+    const data = await authFetch('/panic/my-active', { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error fetching my active panic:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+export const cancelPanic = async (eventId, { reason } = {}) => {
+  try {
+    const data = await authFetch(`/panic/${eventId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason || 'otro' }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error cancelling panic event:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
 export const getIncidents = async (params = {}) => {
   try {
     const queryParams = new URLSearchParams();

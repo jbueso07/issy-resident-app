@@ -37,7 +37,7 @@ import {
 } from '../../src/components/Icons';
 
 import NotificationBell from '../../src/components/NotificationBell';
-import { createPanic } from '../../src/services/api';
+import { createPanic, getMyActivePanic, cancelPanic } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -129,6 +129,10 @@ export default function Home() {
   const [showPanicModal, setShowPanicModal] = useState(false);
   const [sendingPanic, setSendingPanic] = useState(false);
   const [panicLongPressReady, setPanicLongPressReady] = useState(false);
+  const [activePanic, setActivePanic] = useState(null);  // { id, reference_number, minutes_ago, responders_count, last_responder, can_cancel, unit_number }
+  const [showCancelPanicModal, setShowCancelPanicModal] = useState(false);
+  const [selectedCancelReason, setSelectedCancelReason] = useState('otro');
+  const [cancellingPanic, setCancellingPanic] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [switchingLocation, setSwitchingLocation] = useState(false);
 
@@ -480,6 +484,61 @@ export default function Home() {
     }
   };
 
+  // Polling: consultar cada 15s si el usuario tiene una emergencia activa.
+  // Actualiza banner con estado más reciente (ack, minutos, etc).
+  const fetchMyActivePanic = useCallback(async () => {
+    try {
+      const result = await getMyActivePanic();
+      if (result.success && result.data) {
+        if (result.data.has_active && result.data.event) {
+          setActivePanic(result.data.event);
+        } else {
+          setActivePanic(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error polling panic:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Inicial + intervalo
+    fetchMyActivePanic();
+    const interval = setInterval(fetchMyActivePanic, 15000);
+    return () => clearInterval(interval);
+  }, [fetchMyActivePanic]);
+
+  // Handlers para el modal de cancelación del banner
+  const handleOpenCancelPanicModal = () => {
+    setSelectedCancelReason('otro');
+    setShowCancelPanicModal(true);
+  };
+
+  const handleCloseCancelPanicModal = () => {
+    if (cancellingPanic) return;
+    setShowCancelPanicModal(false);
+  };
+
+  const handleConfirmCancelPanic = async () => {
+    if (!activePanic || cancellingPanic) return;
+    setCancellingPanic(true);
+    try {
+      const result = await cancelPanic(activePanic.id, { reason: selectedCancelReason });
+      if (result.success) {
+        setActivePanic(null);
+        setShowCancelPanicModal(false);
+        Alert.alert('Emergencia cancelada', 'Se notificó al personal de seguridad.', [{ text: 'OK' }]);
+      } else {
+        Alert.alert('Error', result.error || 'No se pudo cancelar la emergencia', [{ text: 'OK' }]);
+      }
+    } catch (error) {
+      console.error('Error cancelling panic:', error);
+      Alert.alert('Error', 'Error inesperado al cancelar', [{ text: 'OK' }]);
+    } finally {
+      setCancellingPanic(false);
+    }
+  };
+
   const handleCancelPanic = () => {
     setShowPanicModal(false);
     setPanicLongPressReady(false);
@@ -557,6 +616,87 @@ export default function Home() {
             disabled={sendingPanic}
           >
             <Text style={styles.panicModalButtonCancelText}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // ========================================
+  // RENDER: Cancel Panic Modal (motivos)
+  // ========================================
+  const CANCEL_REASONS = [
+    { key: 'falsa_alarma', label: 'Falsa alarma', icon: 'checkmark-circle-outline' },
+    { key: 'ya_me_atendieron', label: 'Ya me atendieron', icon: 'shield-checkmark-outline' },
+    { key: 'prefiero_llamar_directo', label: 'Prefiero llamar directo', icon: 'call-outline' },
+    { key: 'otro', label: 'Otro motivo', icon: 'ellipsis-horizontal-outline' },
+  ];
+
+  const renderCancelPanicModal = () => (
+    <Modal
+      visible={showCancelPanicModal}
+      animationType="fade"
+      transparent
+      onRequestClose={handleCloseCancelPanicModal}
+    >
+      <View style={styles.panicModalOverlay}>
+        <View style={styles.cancelPanicModalContent}>
+          <Text style={styles.cancelPanicModalTitle} maxFontSizeMultiplier={1.2}>
+            Cancelar emergencia
+          </Text>
+          <Text style={styles.cancelPanicModalSubtitle} maxFontSizeMultiplier={1.2}>
+            ¿Por qué querés cancelar?
+          </Text>
+
+          <View style={styles.cancelReasonsList}>
+            {CANCEL_REASONS.map((r) => (
+              <TouchableOpacity
+                key={r.key}
+                style={[
+                  styles.cancelReasonRow,
+                  selectedCancelReason === r.key && styles.cancelReasonRowActive,
+                ]}
+                onPress={() => setSelectedCancelReason(r.key)}
+                disabled={cancellingPanic}
+              >
+                <Ionicons
+                  name={r.icon}
+                  size={20}
+                  color={selectedCancelReason === r.key ? '#E24B4A' : COLORS.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.cancelReasonLabel,
+                    selectedCancelReason === r.key && styles.cancelReasonLabelActive,
+                  ]}
+                  maxFontSizeMultiplier={1.2}
+                >
+                  {r.label}
+                </Text>
+                {selectedCancelReason === r.key && (
+                  <Ionicons name="checkmark" size={18} color="#E24B4A" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.panicModalButton, styles.panicModalButtonConfirm]}
+            onPress={handleConfirmCancelPanic}
+            disabled={cancellingPanic}
+          >
+            {cancellingPanic ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.panicModalButtonConfirmText}>Confirmar cancelación</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.panicModalButton, styles.panicModalButtonCancel]}
+            onPress={handleCloseCancelPanicModal}
+            disabled={cancellingPanic}
+          >
+            <Text style={styles.panicModalButtonCancelText}>Volver</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -779,6 +919,35 @@ export default function Home() {
           </LinearGradient>
         </TouchableOpacity>
 
+        {/* Banner de Emergencia Activa */}
+        {activePanic && (
+          <View style={styles.panicBannerContainer}>
+            <View style={styles.panicBanner}>
+              <View style={styles.panicBannerIconWrap}>
+                <Ionicons name="warning" size={22} color="#FFFFFF" />
+              </View>
+              <View style={styles.panicBannerBody}>
+                <Text style={styles.panicBannerTitle} maxFontSizeMultiplier={1.2}>
+                  🚨 Emergencia activa
+                </Text>
+                <Text style={styles.panicBannerSubtitle} maxFontSizeMultiplier={1.2}>
+                  {activePanic.last_responder
+                    ? `${activePanic.last_responder.name} está en camino`
+                    : `Reportada hace ${activePanic.minutes_ago} min · Ref: ${activePanic.reference_number}`}
+                </Text>
+              </View>
+              {activePanic.can_cancel && (
+                <TouchableOpacity
+                  style={styles.panicBannerCancelButton}
+                  onPress={handleOpenCancelPanicModal}
+                >
+                  <Text style={styles.panicBannerCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Quick Actions */}
         <View style={styles.quickActionsRow}>
           {QUICK_ACTIONS.map((action, index) => (
@@ -989,6 +1158,7 @@ export default function Home() {
       </ScrollView>
 
       {renderPanicModal()}
+      {renderCancelPanicModal()}
       {renderLocationModal()}
     </SafeAreaView>
   );
@@ -1199,6 +1369,105 @@ const styles = StyleSheet.create({
   panicModalButtonCancelText: {
     color: '#888888',
     fontSize: scale(15),
+  },
+  // ============ PANIC BANNER (emergencia activa) ============
+  panicBannerContainer: {
+    paddingHorizontal: scale(16),
+    marginBottom: scale(20),
+  },
+  panicBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A0A0A',
+    borderWidth: 1,
+    borderColor: '#E24B4A',
+    borderRadius: scale(14),
+    padding: scale(12),
+    gap: scale(10),
+  },
+  panicBannerIconWrap: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(10),
+    backgroundColor: '#E24B4A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panicBannerBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  panicBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: scale(14),
+    fontWeight: '600',
+  },
+  panicBannerSubtitle: {
+    color: '#F09595',
+    fontSize: scale(11),
+    marginTop: 2,
+  },
+  panicBannerCancelButton: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: scale(8),
+  },
+  panicBannerCancelText: {
+    color: '#FFFFFF',
+    fontSize: scale(11),
+    fontWeight: '600',
+  },
+  // ============ CANCEL PANIC MODAL ============
+  cancelPanicModalContent: {
+    width: '100%',
+    backgroundColor: '#1A1A1A',
+    borderRadius: scale(20),
+    borderWidth: 1,
+    borderColor: '#E24B4A',
+    padding: scale(20),
+  },
+  cancelPanicModalTitle: {
+    color: '#FFFFFF',
+    fontSize: scale(18),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: scale(4),
+  },
+  cancelPanicModalSubtitle: {
+    color: '#888888',
+    fontSize: scale(13),
+    textAlign: 'center',
+    marginBottom: scale(16),
+  },
+  cancelReasonsList: {
+    gap: scale(8),
+    marginBottom: scale(16),
+  },
+  cancelReasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    padding: scale(12),
+    borderRadius: scale(10),
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  cancelReasonRowActive: {
+    backgroundColor: 'rgba(226,75,74,0.12)',
+    borderColor: '#E24B4A',
+  },
+  cancelReasonLabel: {
+    flex: 1,
+    color: '#CCCCCC',
+    fontSize: scale(14),
+  },
+  cancelReasonLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 
   // ============ SECTION HEADER ============
