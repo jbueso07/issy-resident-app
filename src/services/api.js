@@ -20,26 +20,41 @@ const refreshToken = async () => {
   }
 
   isRefreshing = true;
-  
+
   refreshPromise = (async () => {
     try {
       const currentRefreshToken = await AsyncStorage.getItem('refreshToken');
-      
+
       if (!currentRefreshToken) {
-        throw new Error('No refresh token available');
+        // Sin refresh token: sesión muerta
+        await AsyncStorage.multiRemove(['token', 'refreshToken']);
+        return { success: false, authError: true, error: 'No refresh token available' };
       }
 
-    const response = await fetch(`${API_URL}/auth/refresh-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      });
+      let response;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        try {
+          response = await fetch(`${API_URL}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: currentRefreshToken }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      } catch (netErr) {
+        // Red caída / timeout / abort: NO borrar tokens, reintentable
+        console.log('🌐 Refresh sin red (tokens intactos):', netErr.message);
+        return { success: false, networkError: true, error: 'Sin conexión' };
+      }
 
-      const data = await response.json();
+      let data = null;
+      try { data = await response.json(); } catch (e) { data = null; }
 
-      if (response.ok && (data.success || data.token || data.data?.token)) {
+      if (response.ok && data && (data.success || data.token || data.data?.token)) {
         const newToken = data.data?.token || data.token;
         const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
@@ -47,17 +62,19 @@ const refreshToken = async () => {
         if (newRefreshToken) {
           await AsyncStorage.setItem('refreshToken', newRefreshToken);
         }
-
         console.log('🔄 Token refreshed successfully');
         return { success: true, token: newToken };
-      } else {
-        throw new Error('Refresh failed');
       }
-    } catch (error) {
-      console.error('❌ Token refresh failed:', error);
-      // Clear tokens on refresh failure
-      await AsyncStorage.multiRemove(['token', 'refreshToken']);
-      return { success: false, error: error.message };
+
+      if (response.status === 401 || response.status === 403) {
+        // Refresh token inválido/expirado: ahora sí limpiar
+        await AsyncStorage.multiRemove(['token', 'refreshToken']);
+        return { success: false, authError: true, error: 'Refresh token inválido' };
+      }
+
+      // 5xx u otros: transitorio, NO borrar
+      console.log('⚠️ Refresh no-OK transitorio, tokens intactos. status:', response.status);
+      return { success: false, serverError: true, error: 'Error del servidor al refrescar' };
     } finally {
       isRefreshing = false;
       refreshPromise = null;
@@ -100,19 +117,26 @@ const authFetch = async (endpoint, options = {}, isRetry = false) => {
   // Si recibimos 401 y no es un retry, intentar refresh
   if (response.status === 401 && !isRetry) {
     console.log('🔐 Token expired, attempting refresh...');
-    
+
     const refreshResult = await refreshToken();
-    
+
     if (refreshResult.success) {
       // Reintentar la petición original con el nuevo token
       console.log('🔄 Retrying request with new token...');
       return authFetch(endpoint, options, true);
-    } else {
-      // Refresh falló - el usuario necesita volver a iniciar sesión
-      const error = new Error('SESSION_EXPIRED');
-      error.sessionExpired = true;
-      throw error;
     }
+
+    if (refreshResult.networkError || refreshResult.serverError) {
+      // Fallo transitorio: NO forzar re-login, error reintentable
+      const err = new Error('No se pudo renovar la sesión por un problema de conexión. Intenta de nuevo.');
+      err.retryable = true;
+      throw err;
+    }
+
+    // authError: sesión realmente expirada
+    const error = new Error('SESSION_EXPIRED');
+    error.sessionExpired = true;
+    throw error;
   }
 
   const data = await response.json();
@@ -2179,35 +2203,207 @@ export const cancelCommunityCharge = async (chargeId) => {
 };
 
 /**
- * Get all payments (Admin)
+ * Sprint 3 D7: generar link de pago Clinpays (Option Lite).
+ * POST /api/community-payments/admin/payments/:paymentId/create-link
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {{ sendEmail?: boolean }} [options]
+ * @param {string|null} [locationId] - Hotfix sistémico super admin:
+ *   incluir en body para que getAdminLocationId() lo resuelva. Sin esto,
+ *   super admin (req.user.location_id = null) recibe error 404.
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
  */
-export const getAdminCommunityPayments = async (params = {}) => {
+export const createPaymentLink = async (paymentId, options = {}, locationId = null) => {
   try {
-    const queryParams = new URLSearchParams();
-    if (params.status) queryParams.append('status', params.status);
-    if (params.charge_id) queryParams.append('charge_id', params.charge_id);
-    
-    const query = queryParams.toString();
-    const endpoint = query ? `/community-payments/admin/payments?${query}` : '/community-payments/admin/payments';
-    
-    const data = await authFetch(endpoint);
+    const body = {};
+    if (options.sendEmail === false) body.sendEmail = false;
+    // Si sendEmail no se pasa o es true → backend default true (no enviar el flag)
+    if (locationId) body.location_id = locationId;
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/create-link`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }
+    );
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching admin payments:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error creating payment link:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
   }
 };
 
 /**
- * Get pending proof verifications (Admin)
+ * Sprint 3 D6: enviar recordatorio push al residente.
+ * POST /api/community-payments/admin/payments/:paymentId/send-reminder
+ *
+ * El mensaje se construye server-side desde charge + payment.
+ * Throttle backend: máx 1 recordatorio por día UTC por payment.
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {string|null} [locationId] - Hotfix sistémico super admin: incluir
+ *   en body para que getAdminLocationId() lo resuelva. Antes mandaba sin
+ *   body y super admin recibía "Payment not found in this location".
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
  */
-export const getPendingPaymentProofs = async () => {
+export const sendPaymentReminder = async (paymentId, locationId = null) => {
   try {
-    const data = await authFetch('/community-payments/admin/pending-proofs');
+    const body = locationId ? { location_id: locationId } : undefined;
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/send-reminder`,
+      body
+        ? { method: 'POST', body: JSON.stringify(body) }
+        : { method: 'POST' }
+    );
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching pending proofs:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error sending payment reminder:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
+ * Sprint 3 D5: registrar un pago en efectivo (manual, admin-side).
+ * POST /api/community-payments/admin/payments/:paymentId/register-cash
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {{ amount: number, notes?: string }} body
+ * @param {string|null} [locationId] - Hotfix sistémico super admin: incluir
+ *   en body para que getAdminLocationId() lo resuelva.
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const registerCashPayment = async (paymentId, body, locationId = null) => {
+  try {
+    const finalBody = locationId ? { ...body, location_id: locationId } : body;
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/register-cash`,
+      { method: 'POST', body: JSON.stringify(finalBody) }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error registering cash payment:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
+  }
+};
+
+/**
+ * Get all payments (Admin).
+ *
+ * Sprint 3 D3 (frontend) ⇄ D2 (backend): soporta los 13 query params del
+ * endpoint /admin/payments (status, search, date_field, from_date, to_date,
+ * min_amount, max_amount, charge_id, user_id, unit_number, payment_method,
+ * limit, offset). Compat con callers legacy (StatementModal.js, etc.) que
+ * pasan solo status/charge_id/user_id se preserva — params extra que no
+ * vienen no se appendean.
+ *
+ * Return shape:
+ *   - success: boolean
+ *   - data: array de payments (con joins charge/user/unit/verifier post-D2)
+ *   - pagination: { total, limit, offset } (nuevo, post-D2)
+ *   - error / sessionExpired: en caso de fallo
+ */
+export const getAdminCommunityPayments = async (params = {}) => {
+  try {
+    const queryParams = new URLSearchParams();
+    // Hotfix super admin: el backend usa req.user.location_id como scope
+    // por default, pero un super admin tiene location_id=null y el query
+    // cae a un fallback que devuelve 0 resultados. El frontend debe
+    // mandar location_id explícito cuando el caller lo provee (mismo
+    // patrón que useCharges.js:69 y useBankAccounts).
+    if (params.location_id) queryParams.append('location_id', params.location_id);
+    if (params.status) queryParams.append('status', params.status);
+    if (params.search) queryParams.append('search', params.search);
+    if (params.date_field) queryParams.append('date_field', params.date_field);
+    if (params.from_date) queryParams.append('from_date', params.from_date);
+    if (params.to_date) queryParams.append('to_date', params.to_date);
+    if (params.min_amount !== undefined && params.min_amount !== null && params.min_amount !== '') {
+      queryParams.append('min_amount', String(params.min_amount));
+    }
+    if (params.max_amount !== undefined && params.max_amount !== null && params.max_amount !== '') {
+      queryParams.append('max_amount', String(params.max_amount));
+    }
+    if (params.charge_id) queryParams.append('charge_id', params.charge_id);
+    if (params.user_id) queryParams.append('user_id', params.user_id);
+    if (params.unit_number) queryParams.append('unit_number', params.unit_number);
+    if (params.payment_method) queryParams.append('payment_method', params.payment_method);
+    if (params.limit !== undefined && params.limit !== null) {
+      queryParams.append('limit', String(params.limit));
+    }
+    if (params.offset !== undefined && params.offset !== null) {
+      queryParams.append('offset', String(params.offset));
+    }
+
+    const query = queryParams.toString();
+    const endpoint = query
+      ? `/community-payments/admin/payments?${query}`
+      : '/community-payments/admin/payments';
+
+    const data = await authFetch(endpoint);
+    return {
+      success: true,
+      data: data.data || [],
+      pagination: data.pagination || { total: 0, limit: null, offset: 0 },
+    };
+  } catch (error) {
+    console.error('Error fetching admin payments:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+      data: [],
+      pagination: { total: 0, limit: null, offset: 0 },
+    };
+  }
+};
+
+// Sprint 3 D13: helper getPendingPaymentProofs eliminado (era el único
+// cliente del endpoint /admin/pending-proofs, pero NO tenía callers en todo
+// el codebase — huérfano). El endpoint backend también se eliminó en D13.
+// El listado de proofs sale de getAdminCommunityPayments con
+// status='proof_submitted' desde post-D11.
+
+/**
+ * Sprint 3 hotfix commit 2: cancelar UN payment individual (1 residente).
+ * POST /api/community-payments/admin/payments/:paymentId/cancel
+ *
+ * Soft-cancel: el backend marca status='cancelled' + cancelled_at + cancelled_by
+ * + cancellation_reason, preservando el row. NO afecta a los demás payments
+ * del mismo charge padre. Para cancelar todos los residentes de un charge,
+ * usar DELETE /admin/charges/:chargeId (useCharges.cancelCharge).
+ *
+ * @param {string} paymentId - UUID del community_payment
+ * @param {string} reason - razón opcional (puede ser '')
+ * @param {string|null} [locationId] - Hotfix sistémico super admin.
+ * @returns {Promise<{ success, data?, error?, sessionExpired? }>}
+ */
+export const cancelPayment = async (paymentId, reason, locationId = null) => {
+  try {
+    const body = { reason: reason || '' };
+    if (locationId) body.location_id = locationId;
+    const data = await authFetch(
+      `/community-payments/admin/payments/${paymentId}/cancel`,
+      { method: 'POST', body: JSON.stringify(body) }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error cancelling payment:', error);
+    return {
+      success: false,
+      error: error.message,
+      sessionExpired: error.sessionExpired,
+    };
   }
 };
 

@@ -1,6 +1,31 @@
 // app/admin/payments/components/ChargeDetailModal.js
 // ISSY Admin - Charge Detail Modal Component
 //
+// ============================================================================
+// @deprecated Sprint 3 D13: este componente legacy (1880 líneas) será
+// eliminado en Sprint 4 ("Cleanup módulo pagos").
+//
+// Reemplazado por:
+//   - PaymentDetailModal.js (Sprint 3 D5) para el flow detail-por-residente
+//     (lo que abre la Lista-Cobros post-rediseño).
+//   - Las funciones de verify/reject de proofs viven en useProofs (post-D13
+//     limpio) + ProofReviewModal legacy.
+//
+// Estado al cerrar Sprint 3:
+//   - Import en `app/admin/payments/index.js:48`
+//   - Re-export en `app/admin/payments/_components/index.js:11`
+//   - Renderizado conditional en `index.js:552` con visible={showChargeDetailModal}
+//   - `setShowChargeDetailModal(true)` NUNCA se llama → el modal está
+//     técnicamente vivo en el árbol pero jamás se monta (dead UI).
+//   - Las 6 ocurrencias de `setShowChargeDetailModal(false)` son limpiezas
+//     defensivas dentro de handlers que pueden cerrar otros modales también.
+//
+// Antes de eliminarlo (Sprint 4): grep por `ChargeDetailModal` en TODO el
+// codebase, validar que verify/reject siguen funcionando desde
+// PaymentDetailModal o ProofReviewModal, eliminar import + re-export + JSX +
+// state vars (`showChargeDetailModal`, `selectedChargeDetail`).
+// ============================================================================
+//
 // Sprint 2 D6: refactor a 2 vistas internas:
 //   - view='parent': detalle del cobro masivo + stats grandes + lista paginada
 //                    de residentes (FlatList con useChargePayments).

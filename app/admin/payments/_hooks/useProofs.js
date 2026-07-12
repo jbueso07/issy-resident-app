@@ -1,43 +1,45 @@
 // app/admin/payments/_hooks/useProofs.js
-import { useState, useCallback } from 'react';
+/**
+ * useProofs hook — Sprint 3 D13 cleanup.
+ *
+ * RESPONSABILIDAD: solo mutations de proofs (verify / reject / revert).
+ * El listado de proofs vive ahora en ProofsTab.js vía usePayments (post-D11).
+ *
+ * Histórico:
+ *   - Pre-D11: el hook fetcheaba pendingProofs desde
+ *     /api/community-payments/admin/payments/pending (URL incorrecta — el
+ *     endpoint real era /admin/pending-proofs). El fetch fallaba con 404
+ *     silencioso desde algún refactor anterior — la tab de proofs estaba
+ *     vacía en producción hasta el rediseño D11.
+ *   - D11: el listado se movió a ProofsTab.js via usePayments({ status:
+ *     'proof_submitted' }). Las 3 mutations quedaron acá porque las consume
+ *     index.js y ChargeDetailModal (legacy).
+ *   - D13: cleanup — borrado fetchPendingProofs + state asociado.
+ *
+ * Tech debt remanente para Sprint 4:
+ *   - Endpoint backend /admin/pending-proofs eliminado en D13 también.
+ *   - Las mutations podrían consolidarse en un solo hook usePaymentMutations
+ *     que también incluya register-cash, send-reminder, create-link, etc.
+ */
+
+import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { getAuthHeaders } from '../_helpers';
 import { API_URL } from '../_constants';
 
 export function useProofs(locationId, onRefresh) {
-  const [pendingProofs, setPendingProofs] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchPendingProofs = useCallback(async () => {
-    if (!locationId) return;
-    
-    try {
-      setLoading(true);
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        API_URL + '/api/community-payments/admin/payments/pending?location_id=' + locationId,
-        { headers }
-      );
-      const data = await response.json();
-      
-      if (data.success) {
-        setPendingProofs(data.proofs || []);
-      }
-    } catch (error) {
-      console.error('Error fetching proofs:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [locationId]);
-
   const verifyProof = useCallback(async (payment) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body para que
+      // getAdminLocationId() del backend lo resuelva. Sin esto, super admin
+      // recibía "Payment not found in this location".
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/verify',
         {
           method: 'POST',
-          headers,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location_id: payment.location_id || null }),
         }
       );
       const data = await response.json();
@@ -60,6 +62,7 @@ export function useProofs(locationId, onRefresh) {
   const rejectProof = useCallback(async (payment, reason) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/reject',
         {
@@ -68,7 +71,10 @@ export function useProofs(locationId, onRefresh) {
             ...headers,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ reason: reason || '' }),
+          body: JSON.stringify({
+            reason: reason || '',
+            location_id: payment.location_id || null,
+          }),
         }
       );
       const data = await response.json();
@@ -91,6 +97,7 @@ export function useProofs(locationId, onRefresh) {
   const revertPayment = useCallback(async (payment, reason) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
       const response = await fetch(
         API_URL + '/api/community-payments/admin/payments/' + payment.id + '/revert',
         {
@@ -99,7 +106,10 @@ export function useProofs(locationId, onRefresh) {
             ...headers,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ reason: reason || '' }),
+          body: JSON.stringify({
+            reason: reason || '',
+            location_id: payment.location_id || null,
+          }),
         }
       );
       const data = await response.json();
@@ -120,9 +130,6 @@ export function useProofs(locationId, onRefresh) {
   }, [onRefresh]);
 
   return {
-    pendingProofs,
-    loading,
-    fetchPendingProofs,
     verifyProof,
     rejectProof,
     revertPayment,

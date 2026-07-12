@@ -116,56 +116,70 @@ const { expoPushToken } = useNotifications();
         fallbackLabel: 'Usar contraseña',
       });
 
-      if (result.success) {
-        // Get stored credentials
-        const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
-        const storedRefreshToken = await SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY);
-
-        if (storedToken) {
-          // Verify token is still valid
-          const profileResult = await loadProfile(storedToken);
-
-          if (profileResult.success) {
-            setToken(storedToken);
-            await AsyncStorage.setItem('token', storedToken);
-            if (storedRefreshToken) {
-              await AsyncStorage.setItem('refreshToken', storedRefreshToken);
-            }
-            hasBeenAuthenticated.current = true;
-            // Register push token after biometric login
-            if (expoPushToken) {
-              sendTokenToBackend(expoPushToken, storedToken);
-            } else {
-              // Race condition: hook aún no obtuvo el token. Reintentar obtenerlo directamente.
-              import('expo-notifications').then(async (Notifications) => {
-                try {
-                  const ConstantsMod = (await import('expo-constants')).default;
-                  const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
-                  if (projectId) {
-                    const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
-                    if (tokenObj?.data) {
-                      sendTokenToBackend(tokenObj.data, storedToken);
-                    }
-                  }
-                } catch (e) {
-                  console.log('⚠️ Could not get push token on login retry:', e.message);
-                }
-              });
-            }
-            return { success: true };
-          } else {
-            // Token expired, clear biometric data
-            await disableBiometric();
-            return { success: false, error: 'Sesión expirada. Por favor inicia sesión nuevamente.' };
-          }
-        }
-        return { success: false, error: 'No hay credenciales guardadas' };
-      } else {
+      if (!result.success) {
         if (result.error === 'user_cancel') {
           return { success: false, error: 'Autenticación cancelada', cancelled: true };
         }
         return { success: false, error: 'Autenticación fallida' };
       }
+
+      const storedToken = await SecureStore.getItemAsync(SECURE_TOKEN_KEY);
+      const storedRefreshToken = await SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY);
+
+      if (!storedToken) {
+        return { success: false, error: 'No hay credenciales guardadas' };
+      }
+
+      // Sembrar AsyncStorage para que el refresh opere de forma uniforme
+      await AsyncStorage.setItem('token', storedToken);
+      if (storedRefreshToken) {
+        await AsyncStorage.setItem('refreshToken', storedRefreshToken);
+      }
+
+      // loadProfile ahora intenta refresh automáticamente ante 401
+      const profileResult = await loadProfile(storedToken);
+
+      if (profileResult.success) {
+        const effectiveToken = profileResult.token || storedToken;
+        setToken(effectiveToken);
+        await AsyncStorage.setItem('token', effectiveToken);
+        hasBeenAuthenticated.current = true;
+
+        // Registrar push token tras login biométrico
+        if (expoPushToken) {
+          sendTokenToBackend(expoPushToken, effectiveToken);
+        } else {
+          import('expo-notifications').then(async (Notifications) => {
+            try {
+              const ConstantsMod = (await import('expo-constants')).default;
+              const projectId = ConstantsMod.expoConfig?.extra?.eas?.projectId;
+              if (projectId) {
+                const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+                if (tokenObj?.data) {
+                  sendTokenToBackend(tokenObj.data, effectiveToken);
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ Could not get push token on login retry:', e.message);
+            }
+          });
+        }
+        return { success: true };
+      }
+
+      // Distinguir fallo transitorio (red/servidor) de sesión muerta
+      if (profileResult.networkError || profileResult.serverError) {
+        // NO desactivar biometría: tokens intactos, reintentable
+        return {
+          success: false,
+          retryable: true,
+          error: 'No se pudo verificar la sesión por un problema de conexión. Intenta de nuevo.',
+        };
+      }
+
+      // authError definitivo: ahora sí limpiar y pedir re-login
+      await disableBiometric();
+      return { success: false, error: 'Sesión expirada. Por favor inicia sesión nuevamente.' };
     } catch (error) {
       console.error('Biometric auth error:', error);
       return { success: false, error: error.message };
@@ -411,29 +425,142 @@ const { expoPushToken } = useNotifications();
     }
   };
 
-  const loadProfile = async (authToken) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const userData = data.data?.user || data.user || data.data || data;
-        setUser(userData);
-        setProfile(userData);
-        return { success: true, data: userData };
-      } else {
-        await clearLocalSession();
-        return { success: false, error: 'Sesión expirada' };
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      return { success: false, error: error.message };
+  // Intenta renovar el access token con el refresh token guardado.
+  // Distingue red caída (no destructivo) de rechazo del servidor (401/403).
+  const refreshAccessToken = async () => {
+    let refreshTok = await AsyncStorage.getItem('refreshToken');
+    if (!refreshTok) {
+      // Fallback: si biometría está activa, el refresh puede vivir en SecureStore
+      refreshTok = await SecureStore.getItemAsync(SECURE_REFRESH_TOKEN_KEY);
     }
+    if (!refreshTok) {
+      return { success: false, authError: true, error: 'No hay refresh token' };
+    }
+
+    let response;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        response = await fetch(`${API_URL}/auth/refresh-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: refreshTok }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (err) {
+      // Red caída / timeout: NO destructivo, reintentable
+      console.log('🌐 refreshAccessToken sin red (no destructivo):', err.message);
+      return { success: false, networkError: true, error: 'Sin conexión' };
+    }
+
+    let data = null;
+    try { data = await response.json(); } catch (e) { data = null; }
+
+    if (response.ok && data && (data.success || data.token || data.data?.token)) {
+      const newToken = data.data?.token || data.token;
+      const newRefreshToken = data.data?.refreshToken || data.refreshToken;
+
+      await AsyncStorage.setItem('token', newToken);
+      if (newRefreshToken) {
+        await AsyncStorage.setItem('refreshToken', newRefreshToken);
+      }
+      setToken(newToken);
+
+      // Mantener SecureStore sincronizado si biometría está activa
+      const bioOn = (await AsyncStorage.getItem(BIOMETRIC_ENABLED_KEY)) === 'true';
+      if (bioOn) {
+        await SecureStore.setItemAsync(SECURE_TOKEN_KEY, newToken);
+        if (newRefreshToken) {
+          await SecureStore.setItemAsync(SECURE_REFRESH_TOKEN_KEY, newRefreshToken);
+        }
+      }
+      return { success: true, token: newToken };
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      return { success: false, authError: true, error: 'Refresh token inválido' };
+    }
+    return { success: false, serverError: true, error: 'Error del servidor al refrescar' };
+  };
+
+  const loadProfile = async (authToken) => {
+    const fetchMe = async (tok) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        return await fetch(`${API_URL}/auth/me`, {
+          headers: {
+            'Authorization': `Bearer ${tok}`,
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let response;
+    try {
+      response = await fetchMe(authToken);
+    } catch (error) {
+      // Red caída / timeout: NO destructivo
+      console.log('🌐 loadProfile sin red (no destructivo):', error.message);
+      return { success: false, networkError: true, error: 'Sin conexión' };
+    }
+
+    if (response.ok) {
+      const data = await response.json();
+      const userData = data.data?.user || data.user || data.data || data;
+      setUser(userData);
+      setProfile(userData);
+      return { success: true, data: userData, token: authToken };
+    }
+
+    // No OK. Si es 401, el token pudo expirar -> intentar refresh UNA vez.
+    if (response.status === 401) {
+      const refreshResult = await refreshAccessToken();
+
+      if (refreshResult.success) {
+        let retryResp;
+        try {
+          retryResp = await fetchMe(refreshResult.token);
+        } catch (error) {
+          return { success: false, networkError: true, error: 'Sin conexión' };
+        }
+        if (retryResp.ok) {
+          const data = await retryResp.json();
+          const userData = data.data?.user || data.user || data.data || data;
+          setUser(userData);
+          setProfile(userData);
+          return { success: true, data: userData, token: refreshResult.token };
+        }
+        // El token nuevo tampoco sirve -> sesión muerta
+        await clearLocalSession();
+        return { success: false, authError: true, error: 'Sesión expirada' };
+      }
+
+      if (refreshResult.networkError || refreshResult.serverError) {
+        // Transitorio: NO limpiar, reintentable
+        return {
+          success: false,
+          networkError: refreshResult.networkError,
+          serverError: refreshResult.serverError,
+          error: 'No se pudo verificar la sesión',
+        };
+      }
+
+      // authError definitivo: refresh token inválido/ausente
+      await clearLocalSession();
+      return { success: false, authError: true, error: 'Sesión expirada' };
+    }
+
+    // Otros códigos (5xx, etc.): no destructivo
+    return { success: false, serverError: true, error: 'Error del servidor' };
   };
 
   // ==========================================

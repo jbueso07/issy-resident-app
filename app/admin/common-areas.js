@@ -124,6 +124,13 @@ export default function AdminCommonAreas() {
       max_hours: '4',
       max_advance_days: '30',
       requires_approval: false,
+      // Feature límite reservas: string vacío = sin límite. La RPC
+      // create_reservation en Supabase valida estos 2 campos cuando
+      // max_reservations_per_week IS NOT NULL.
+      max_reservations_per_week: '',
+      // Default 'unit' (más común en condominios: limita por casa).
+      // Solo se persiste cuando hay un límite configurado (sino null).
+      reservation_limit_scope: 'unit',
       location_id: '',
       is_24_hours: false,
       available_from: '08:00',
@@ -470,6 +477,17 @@ export default function AdminCommonAreas() {
         max_duration_hours: parseInt(form.max_hours) || 4,
         advance_booking_days: parseInt(form.max_advance_days) || 30,
         requires_approval: form.requires_approval,
+        // Feature límite reservas: solo persiste si hay valor; null = sin límite.
+        // El scope acompaña al límite — si no hay límite, scope también queda null
+        // (cumple el CHECK CONSTRAINT del DB).
+        max_reservations_per_week:
+          form.max_reservations_per_week && form.max_reservations_per_week.trim() !== ''
+            ? parseInt(form.max_reservations_per_week)
+            : null,
+        reservation_limit_scope:
+          form.max_reservations_per_week && form.max_reservations_per_week.trim() !== ''
+            ? form.reservation_limit_scope
+            : null,
         location_id: form.location_id || selectedLocationId,
         is_24_hours: form.is_24_hours,
         available_from: form.available_from,
@@ -512,6 +530,10 @@ export default function AdminCommonAreas() {
       max_hours: area.max_duration_hours?.toString() || '4',
       max_advance_days: (area.advance_booking_days ?? area.max_advance_days ?? 30).toString(),
       requires_approval: area.requires_approval || false,
+      // Feature límite reservas: null DB → '' UI. Default scope 'unit' si no
+      // hay valor previo guardado (consistente con state inicial).
+      max_reservations_per_week: area.max_reservations_per_week?.toString() || '',
+      reservation_limit_scope: area.reservation_limit_scope || 'unit',
       location_id: area.location_id || '',
       is_24_hours: area.is_24_hours || false,
       available_from: area.available_from || '08:00',
@@ -1073,6 +1095,87 @@ export default function AdminCommonAreas() {
                   />
                 </View>
               </View>
+
+              {/* Feature límite reservas: input full-width + scope toggle
+                  condicional. La RPC create_reservation valida ambos campos
+                  cuando max_reservations_per_week IS NOT NULL. */}
+              <View style={styles.limitFieldWrap}>
+                <Text style={styles.ruleLabel}>
+                  {t('admin.commonAreas.form.maxReservationsPerWeek')}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.max_reservations_per_week}
+                  onChangeText={(text) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      max_reservations_per_week: text.replace(/[^0-9]/g, ''),
+                    }))
+                  }
+                  keyboardType="number-pad"
+                  placeholder={t('admin.commonAreas.form.maxReservationsPerWeekPlaceholder')}
+                  placeholderTextColor={COLORS.textMuted}
+                />
+                <Text style={styles.helperText}>
+                  {t('admin.commonAreas.form.maxReservationsPerWeekHint')}
+                </Text>
+              </View>
+
+              {form.max_reservations_per_week &&
+              form.max_reservations_per_week.trim() !== '' ? (
+                <View style={styles.limitFieldWrap}>
+                  <Text style={styles.ruleLabel}>
+                    {t('admin.commonAreas.form.limitScopeLabel')}
+                  </Text>
+                  <View style={styles.segmentedControl}>
+                    <TouchableOpacity
+                      style={[
+                        styles.segmentOption,
+                        form.reservation_limit_scope === 'unit' &&
+                          styles.segmentOptionActive,
+                      ]}
+                      onPress={() =>
+                        setForm((prev) => ({ ...prev, reservation_limit_scope: 'unit' }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          form.reservation_limit_scope === 'unit' &&
+                            styles.segmentTextActive,
+                        ]}
+                      >
+                        {t('admin.commonAreas.form.limitScopeUnit')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.segmentOption,
+                        form.reservation_limit_scope === 'user' &&
+                          styles.segmentOptionActive,
+                      ]}
+                      onPress={() =>
+                        setForm((prev) => ({ ...prev, reservation_limit_scope: 'user' }))
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.segmentText,
+                          form.reservation_limit_scope === 'user' &&
+                            styles.segmentTextActive,
+                        ]}
+                      >
+                        {t('admin.commonAreas.form.limitScopeUser')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.helperText}>
+                    {form.reservation_limit_scope === 'unit'
+                      ? t('admin.commonAreas.form.limitScopeUnitHint')
+                      : t('admin.commonAreas.form.limitScopeUserHint')}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -1440,6 +1543,14 @@ const styles = StyleSheet.create({
   timeInput: { backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), paddingHorizontal: scale(12), paddingVertical: scale(10), fontSize: scale(15), color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
   rulesSection: { backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(12), padding: scale(16), marginTop: scale(16), borderWidth: 1, borderColor: COLORS.border },
   rulesSectionTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textPrimary, marginBottom: scale(12) },
+  // Feature límite reservas: full-width field debajo del rulesRow grid
+  limitFieldWrap: { marginTop: scale(12) },
+  helperText: { fontSize: scale(12), color: COLORS.textMuted, marginTop: scale(4) },
+  segmentedControl: { flexDirection: 'row', backgroundColor: COLORS.backgroundTertiary, borderRadius: scale(8), padding: scale(4), marginTop: scale(8) },
+  segmentOption: { flex: 1, paddingVertical: scale(12), alignItems: 'center', borderRadius: scale(6) },
+  segmentOptionActive: { backgroundColor: COLORS.teal },
+  segmentText: { fontSize: scale(14), color: COLORS.textSecondary, fontWeight: '500' },
+  segmentTextActive: { color: COLORS.background, fontWeight: '600' },
   rulesRow: { flexDirection: 'row', gap: scale(12) },
   ruleField: { flex: 1 },
   ruleLabel: { fontSize: scale(11), color: COLORS.textSecondary, marginBottom: scale(4) },

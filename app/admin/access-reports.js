@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, RefreshControl,
   ActivityIndicator, Alert, Modal, Image, TextInput, Dimensions, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,12 +14,16 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
+
+// Fecha YYYY-MM-DD anclada a la hora de Honduras (evita que toISOString use UTC).
+const hnDate = (d = new Date()) =>
+  d.toLocaleDateString('en-CA', { timeZone: 'America/Tegucigalpa' });
 
 const COLORS = {
   background: '#0F1A1A',
@@ -50,10 +54,12 @@ export default function AccessReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
   const [accessLogs, setAccessLogs] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const PAGE_SIZE = 200;
+  const [pagination, setPagination] = useState({ offset: 0, total: 0, hasMore: true });
+  const [loadingMore, setLoadingMore] = useState(false);
   const [visitorsInside, setVisitorsInside] = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(hnDate());
   const [movementFilter, setMovementFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
@@ -62,7 +68,7 @@ export default function AccessReportsScreen() {
   const [zoomPhoto, setZoomPhoto] = useState(null);
   const [showZoomModal, setShowZoomModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFormat, setExportFormat] = useState('csv');
+  const [exportFormat, setExportFormat] = useState('xlsx');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
   const [exportFilters, setExportFilters] = useState({ includeEntries: true, includeExits: true, onlyWithPhotos: false });
@@ -116,8 +122,8 @@ export default function AccessReportsScreen() {
     if (showExportModal && !exportStartDate) {
       const today = new Date();
       const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      setExportStartDate(firstDayOfMonth.toISOString().split('T')[0]);
-      setExportEndDate(today.toISOString().split('T')[0]);
+      setExportStartDate(hnDate(firstDayOfMonth));
+      setExportEndDate(hnDate(today));
     }
   }, [showExportModal]);
 
@@ -157,17 +163,31 @@ export default function AccessReportsScreen() {
     } catch (error) { console.error('Error fetching dashboard:', error); }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (append = false) => {
     try {
+      if (append && (loadingMore || !pagination.hasMore)) return;
+      if (append) setLoadingMore(true);
+      const offset = append ? pagination.offset : 0;
       const headers = await getAuthHeaders();
-      let url = `${API_URL}/api/guard/access/history?location_id=${selectedLocationId}&date=${selectedDate}&page=${pagination.page}&limit=${pagination.limit}`;
+      let url = `${API_URL}/api/guard/access/history?location_id=${selectedLocationId}&date=${selectedDate}&offset=${offset}&limit=${PAGE_SIZE}`;
       if (movementFilter) url += `&movement_type=${movementFilter}`;
       const response = await fetch(url, { headers });
       const data = await response.json();
       const result = data.data || data;
-      setAccessLogs(result.logs || []);
-      setPagination(prev => ({ ...prev, total: result.pagination?.total || 0 }));
-    } catch (error) { console.error('Error fetching history:', error); }
+      const newLogs = result.logs || [];
+      const total = result.total || 0;
+      if (append) {
+        setAccessLogs(prev => [...prev, ...newLogs]);
+      } else {
+        setAccessLogs(newLogs);
+      }
+      const newOffset = offset + newLogs.length;
+      setPagination({ offset: newOffset, total, hasMore: newOffset < total });
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const fetchVisitorsInside = async () => {
@@ -262,6 +282,26 @@ export default function AccessReportsScreen() {
       else if (!exportFilters.includeEntries && exportFilters.includeExits) url += '&movement_type=exit';
       if (exportFilters.onlyWithPhotos) url += '&has_photo=true';
 
+      if (exportFormat === 'xlsx') {
+        const filename = `accesos_${exportStartDate}_${exportEndDate}.xlsx`;
+        const localUri = FileSystem.cacheDirectory + filename;
+        const dl = await FileSystem.downloadAsync(url, localUri, {
+          headers: { Authorization: headers.Authorization },
+        });
+        if (dl.status !== 200) throw new Error(t('admin.accessReports.export.exportError'));
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(dl.uri, {
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            dialogTitle: t('admin.accessReports.export.title'),
+            UTI: 'org.openxmlformats.spreadsheetml.sheet',
+          });
+        } else {
+          Alert.alert(t('common.success'), `${t('admin.accessReports.export.fileSaved')}: ${dl.uri}`);
+        }
+        setShowExportModal(false);
+        return;
+      }
+
       const response = await fetch(url, { headers });
       if (!response.ok) throw new Error(t('admin.accessReports.export.exportError'));
 
@@ -275,17 +315,19 @@ export default function AccessReportsScreen() {
         } else {
           Alert.alert(t('common.success'), `${t('admin.accessReports.export.fileSaved')}: ${fileUri}`);
         }
+        setShowExportModal(false);
       } else {
         Alert.alert('PDF', t('admin.accessReports.export.pdfNotAvailable'), [
           { text: t('admin.accessReports.export.exportCsv'), onPress: () => setExportFormat('csv') },
           { text: t('common.close') }
         ]);
       }
-      setShowExportModal(false);
     } catch (error) {
       console.error('Error exporting:', error);
       Alert.alert(t('common.error'), error.message || t('admin.accessReports.export.exportFailed'));
-    } finally { setLoadingExport(false); }
+    } finally {
+      setLoadingExport(false);
+    }
   };
 
   const onRefresh = async () => { setRefreshing(true); await fetchData(); setRefreshing(false); };
@@ -371,13 +413,13 @@ export default function AccessReportsScreen() {
               </View>
             </View>
             <View style={styles.quickDateOptions}>
-              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000); setExportStartDate(lastWeek.toISOString().split('T')[0]); setExportEndDate(today.toISOString().split('T')[0]); }}>
+              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000); setExportStartDate(hnDate(lastWeek)); setExportEndDate(hnDate(today)); }}>
                 <Text style={styles.quickDateBtnText}>{t('admin.accessReports.export.lastWeek')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth(), 1); setExportStartDate(firstDay.toISOString().split('T')[0]); setExportEndDate(today.toISOString().split('T')[0]); }}>
+              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth(), 1); setExportStartDate(hnDate(firstDay)); setExportEndDate(hnDate(today)); }}>
                 <Text style={styles.quickDateBtnText}>{t('admin.accessReports.export.thisMonth')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1); const lastDay = new Date(today.getFullYear(), today.getMonth(), 0); setExportStartDate(firstDay.toISOString().split('T')[0]); setExportEndDate(lastDay.toISOString().split('T')[0]); }}>
+              <TouchableOpacity style={styles.quickDateBtn} onPress={() => { const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1); const lastDay = new Date(today.getFullYear(), today.getMonth(), 0); setExportStartDate(hnDate(firstDay)); setExportEndDate(hnDate(lastDay)); }}>
                 <Text style={styles.quickDateBtnText}>{t('admin.accessReports.export.lastMonth')}</Text>
               </TouchableOpacity>
             </View>
@@ -409,9 +451,13 @@ export default function AccessReportsScreen() {
           <View style={styles.exportSection}>
             <View style={styles.exportSectionHeader}><Ionicons name="document" size={20} color={COLORS.teal} /><Text style={styles.exportSectionTitle}>{t('admin.accessReports.export.format')}</Text></View>
             <View style={styles.formatOptions}>
+              <TouchableOpacity style={[styles.formatOption, exportFormat === 'xlsx' && styles.formatOptionActive]} onPress={() => setExportFormat('xlsx')}>
+                <View style={[styles.formatRadio, exportFormat === 'xlsx' && styles.formatRadioActive]}>{exportFormat === 'xlsx' && <View style={styles.formatRadioInner} />}</View>
+                <View style={styles.formatInfo}><Text style={[styles.formatTitle, exportFormat === 'xlsx' && styles.formatTitleActive]}>Excel (.xlsx)</Text><Text style={styles.formatDescription}>Reporte con fotos y resumen</Text></View>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.formatOption, exportFormat === 'csv' && styles.formatOptionActive]} onPress={() => setExportFormat('csv')}>
                 <View style={[styles.formatRadio, exportFormat === 'csv' && styles.formatRadioActive]}>{exportFormat === 'csv' && <View style={styles.formatRadioInner} />}</View>
-                <View style={styles.formatInfo}><Text style={[styles.formatTitle, exportFormat === 'csv' && styles.formatTitleActive]}>Excel/CSV</Text><Text style={styles.formatDescription}>{t('admin.accessReports.export.csvDesc')}</Text></View>
+                <View style={styles.formatInfo}><Text style={[styles.formatTitle, exportFormat === 'csv' && styles.formatTitleActive]}>CSV</Text><Text style={styles.formatDescription}>{t('admin.accessReports.export.csvDesc')}</Text></View>
                 <View style={[styles.formatBadge, { backgroundColor: COLORS.success + '20' }]}><Text style={[styles.formatBadgeText, { color: COLORS.success }]}>{t('admin.accessReports.export.recommended')}</Text></View>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.formatOption, exportFormat === 'pdf' && styles.formatOptionActive]} onPress={() => setExportFormat('pdf')}>
@@ -578,10 +624,101 @@ export default function AccessReportsScreen() {
         ))}
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.lime} />}>
-        {loading ? (
-          <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.lime} /><Text style={styles.loadingText}>{t('common.loading')}</Text></View>
-        ) : (
+      {activeTab === 'history' ? (
+        <FlatList
+          style={styles.content}
+          data={filteredLogs}
+          keyExtractor={(item, idx) => `${item.id}-${idx}`}
+          renderItem={({ item: log }) => (
+            <TouchableOpacity style={styles.historyItem} onPress={() => fetchAccessDetail(log.id)} activeOpacity={0.7}>
+              <View style={[styles.historyIcon, { backgroundColor: log.movement_type === 'entry' ? COLORS.success + '20' : COLORS.warning + '20' }]}>
+                <Ionicons name={log.movement_type === 'entry' ? 'enter' : 'exit'} size={18} color={log.movement_type === 'entry' ? COLORS.success : COLORS.warning} />
+              </View>
+              <View style={styles.historyInfo}>
+                <View style={styles.historyNameRow}>
+                  <Text style={styles.historyName}>{log.visitor_name}</Text>
+                  {hasPhotos(log) && <View style={styles.hasPhotoIndicator}><Ionicons name="camera" size={12} color={COLORS.teal} /></View>}
+                </View>
+                <View style={styles.historyMeta}>
+                  {log.vehicle_plate && <View style={styles.historyMetaItem}><Ionicons name="car" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.vehicle_plate}{log.vehicle_color ? ` (${log.vehicle_color})` : ''}</Text></View>}
+                  {log.unit_number && <View style={styles.historyMetaItem}><Ionicons name="home" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.unit_number}</Text></View>}
+                </View>
+              </View>
+              <View style={styles.historyRight}>
+                <Text style={styles.historyTime}>{formatTime(log.timestamp)}</Text>
+                {log.guard_name && <Text style={styles.historyGuard}>{log.guard_name}</Text>}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          )}
+          ListHeaderComponent={
+            <>
+              <TouchableOpacity style={styles.exportHeaderButton} onPress={() => setShowExportModal(true)}>
+                <Ionicons name="download-outline" size={18} color={COLORS.lime} />
+                <Text style={styles.exportHeaderButtonText}>{t('admin.accessReports.export.export')}</Text>
+              </TouchableOpacity>
+              <View style={styles.filtersContainer}>
+                <TouchableOpacity style={styles.dateFilter}>
+                  <Ionicons name="calendar" size={18} color={COLORS.teal} />
+                  <Text style={styles.dateFilterText}>{selectedDate}</Text>
+                </TouchableOpacity>
+                <View style={styles.filterButtons}>
+                  <TouchableOpacity style={[styles.filterBtn, !movementFilter && styles.filterBtnActive]} onPress={() => setMovementFilter('')}>
+                    <Text style={[styles.filterBtnText, !movementFilter && styles.filterBtnTextActive]}>{t('common.all')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.filterBtn, movementFilter === 'entry' && styles.filterBtnActive]} onPress={() => setMovementFilter('entry')}>
+                    <Ionicons name="enter" size={14} color={movementFilter === 'entry' ? COLORS.background : COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.filterBtn, movementFilter === 'exit' && styles.filterBtnActive]} onPress={() => setMovementFilter('exit')}>
+                    <Ionicons name="exit" size={14} color={movementFilter === 'exit' ? COLORS.background : COLORS.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={18} color={COLORS.textMuted} />
+                <TextInput style={styles.searchInput} placeholder={t('admin.accessReports.searchPlaceholder')} placeholderTextColor={COLORS.textMuted} value={searchQuery} onChangeText={setSearchQuery} />
+                {searchQuery ? <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={18} color={COLORS.textMuted} /></TouchableOpacity> : null}
+              </View>
+              {loading && accessLogs.length === 0 && (
+                <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.lime} /><Text style={styles.loadingText}>{t('common.loading')}</Text></View>
+              )}
+            </>
+          }
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={48} color={COLORS.textMuted} />
+                <Text style={styles.emptyText}>{t('admin.accessReports.empty.noRecords')}</Text>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ padding: scale(20), alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={COLORS.lime} />
+                <Text style={{ color: COLORS.textSecondary, marginTop: scale(8), fontSize: scale(12) }}>Cargando más...</Text>
+              </View>
+            ) : pagination.total > 0 && !pagination.hasMore && filteredLogs.length > 0 ? (
+              <View style={{ padding: scale(20), alignItems: 'center' }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: scale(12) }}>
+                  {accessLogs.length} de {pagination.total} registros
+                </Text>
+              </View>
+            ) : <View style={{ height: scale(100) }} />
+          }
+          onEndReached={() => fetchHistory(true)}
+          onEndReachedThreshold={0.5}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.lime} />}
+          contentContainerStyle={styles.scrollContent}
+          initialNumToRender={20}
+          maxToRenderPerBatch={20}
+          windowSize={10}
+        />
+      ) : (
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.lime} />}>
+          {loading ? (
+            <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.lime} /><Text style={styles.loadingText}>{t('common.loading')}</Text></View>
+          ) : (
           <>
             {activeTab === 'dashboard' && (
               <View>
@@ -611,45 +748,6 @@ export default function AccessReportsScreen() {
                     <View style={styles.emptyState}><Ionicons name="mail-open-outline" size={48} color={COLORS.textMuted} /><Text style={styles.emptyText}>{t('admin.accessReports.empty.noRecentAccess')}</Text></View>
                   )}
                 </View>
-              </View>
-            )}
-
-            {activeTab === 'history' && (
-              <View>
-                <TouchableOpacity style={styles.exportHeaderButton} onPress={() => setShowExportModal(true)}><Ionicons name="download-outline" size={18} color={COLORS.lime} /><Text style={styles.exportHeaderButtonText}>{t('admin.accessReports.export.export')}</Text></TouchableOpacity>
-                <View style={styles.filtersContainer}>
-                  <TouchableOpacity style={styles.dateFilter}><Ionicons name="calendar" size={18} color={COLORS.teal} /><Text style={styles.dateFilterText}>{selectedDate}</Text></TouchableOpacity>
-                  <View style={styles.filterButtons}>
-                    <TouchableOpacity style={[styles.filterBtn, !movementFilter && styles.filterBtnActive]} onPress={() => setMovementFilter('')}><Text style={[styles.filterBtnText, !movementFilter && styles.filterBtnTextActive]}>{t('common.all')}</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterBtn, movementFilter === 'entry' && styles.filterBtnActive]} onPress={() => setMovementFilter('entry')}><Ionicons name="enter" size={14} color={movementFilter === 'entry' ? COLORS.background : COLORS.textSecondary} /></TouchableOpacity>
-                    <TouchableOpacity style={[styles.filterBtn, movementFilter === 'exit' && styles.filterBtnActive]} onPress={() => setMovementFilter('exit')}><Ionicons name="exit" size={14} color={movementFilter === 'exit' ? COLORS.background : COLORS.textSecondary} /></TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.searchContainer}>
-                  <Ionicons name="search" size={18} color={COLORS.textMuted} />
-                  <TextInput style={styles.searchInput} placeholder={t('admin.accessReports.searchPlaceholder')} placeholderTextColor={COLORS.textMuted} value={searchQuery} onChangeText={setSearchQuery} />
-                  {searchQuery ? <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={18} color={COLORS.textMuted} /></TouchableOpacity> : null}
-                </View>
-                {filteredLogs.length > 0 ? (
-                  filteredLogs.map((log, idx) => (
-                    <TouchableOpacity key={idx} style={styles.historyItem} onPress={() => fetchAccessDetail(log.id)} activeOpacity={0.7}>
-                      <View style={[styles.historyIcon, { backgroundColor: log.movement_type === 'entry' ? COLORS.success + '20' : COLORS.warning + '20' }]}>
-                        <Ionicons name={log.movement_type === 'entry' ? 'enter' : 'exit'} size={18} color={log.movement_type === 'entry' ? COLORS.success : COLORS.warning} />
-                      </View>
-                      <View style={styles.historyInfo}>
-                        <View style={styles.historyNameRow}><Text style={styles.historyName}>{log.visitor_name}</Text>{hasPhotos(log) && <View style={styles.hasPhotoIndicator}><Ionicons name="camera" size={12} color={COLORS.teal} /></View>}</View>
-                        <View style={styles.historyMeta}>
-                          {log.vehicle_plate && <View style={styles.historyMetaItem}><Ionicons name="car" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.vehicle_plate}{log.vehicle_color ? ` (${log.vehicle_color})` : ''}</Text></View>}
-                          {log.unit_number && <View style={styles.historyMetaItem}><Ionicons name="home" size={12} color={COLORS.textMuted} /><Text style={styles.historyMetaText}>{log.unit_number}</Text></View>}
-                        </View>
-                      </View>
-                      <View style={styles.historyRight}><Text style={styles.historyTime}>{formatTime(log.timestamp)}</Text>{log.guard_name && <Text style={styles.historyGuard}>{log.guard_name}</Text>}</View>
-                      <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <View style={styles.emptyState}><Ionicons name="document-text-outline" size={48} color={COLORS.textMuted} /><Text style={styles.emptyText}>{t('admin.accessReports.empty.noRecords')}</Text></View>
-                )}
               </View>
             )}
 
@@ -713,10 +811,11 @@ export default function AccessReportsScreen() {
         )}
         <View style={{ height: scale(100) }} />
       </ScrollView>
+      )}
 
       {loadingDetail && <View style={styles.loadingOverlay}><ActivityIndicator size="large" color={COLORS.lime} /><Text style={styles.loadingOverlayText}>{t('admin.accessReports.loadingDetail')}</Text></View>}
       <DetailScreen />
-      <ExportModal />
+      {ExportModal()}
     <LocationPickerModal />
     </SafeAreaView>
   );

@@ -24,6 +24,10 @@ import QRCode from 'react-native-qrcode-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
+// Hotfix QR: FileSystem (legacy API) para verificar que el archivo del captureRef
+// existe y no está vacío antes de pasarlo al share. En expo-file-system v19
+// (SDK 54), getInfoAsync vive en /legacy — la default exporta la nueva File API.
+import * as FileSystem from 'expo-file-system/legacy';
 import { captureRef } from 'react-native-view-shot';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
@@ -150,10 +154,12 @@ const DELIVERY_PROVIDERS = {
 };
 
 // Quick access durations
+// Hotfix QR: removida la opción de 30 min, agregada la de 3 hrs (más útil
+// para residentes que mandan QR a delivery con ventana amplia).
 const QUICK_DURATIONS = [
-  { value: 30, label: '30 min' },
   { value: 60, label: '1 hr' },
   { value: 120, label: '2 hrs' },
+  { value: 180, label: '3 hrs' },
 ];
 
 // Helper moved inside component
@@ -498,7 +504,23 @@ export default function Visits() {
           // Si hay teléfono válido, abrir WhatsApp con deep link
           if (phoneToSave !== 'N/A' && phoneToSave.length >= 8) {
             const communityName = locationName || 'la residencial';
-            const expiryTime = validUntil.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+            // Hotfix QR: si la expiración cae al día siguiente (ej. duration=2h
+            // a las 23:00 → expira 01:00 AM mañana), mostrar fecha + hora en
+            // el mensaje de WhatsApp para evitar confusión.
+            const isNextDay = validUntil.getDate() !== now.getDate();
+            const expiryTime = isNextDay
+              ? validUntil.toLocaleString('es-HN', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                })
+              : validUntil.toLocaleTimeString('es-HN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true,
+                });
 
             // Formatear teléfono: limpiar y agregar código de país si falta
             let phoneFormatted = phoneToSave.replace(/[\s\-\(\)]/g, '');
@@ -703,11 +725,27 @@ const handleShareQRImage = async (qr) => {
   setSharingImage(true);
 
   try {
+    // Hotfix QR: esperar 150ms para asegurar que el card terminó de renderizar
+    // completo antes de capturar. Sin esto, con expiraciones que cruzan al día
+    // siguiente (ej. duration=120 a las 23:00) el captureRef agarra un frame
+    // incompleto y el PNG resultante es corrupto → Sharing falla con
+    // "no se puede adjuntar el objeto".
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
     const uri = await captureRef(cardRef, {
       format: 'png',
-      quality: 1,
+      quality: 0.9, // 0.9 en vez de 1: archivos más livianos, más confiables
       result: 'tmpfile',
     });
+
+    // Hotfix QR: verificar que el archivo capturado existe y NO está vacío
+    // antes de pasarlo al share. Si el captureRef falló silenciosamente
+    // (URI válido pero sin contenido), detectamos el error acá y mostramos
+    // un mensaje útil en vez del genérico "no se puede adjuntar el objeto".
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists || fileInfo.size === 0) {
+      throw new Error('La captura del QR falló o quedó vacía. Intentá de nuevo.');
+    }
 
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
@@ -719,8 +757,13 @@ const handleShareQRImage = async (qr) => {
       Alert.alert('Error', t('visits.errors.shareError'));
     }
   } catch (error) {
-    console.error('Error sharing image:', error);
-    Alert.alert('Error', t('visits.errors.shareError'));
+    // Hotfix QR: log detallado para diagnóstico futuro + mensaje al usuario
+    // con el detalle del error en vez del genérico.
+    console.error('[handleShareQRImage] Error:', error.message, error);
+    Alert.alert(
+      'Error al compartir',
+      error.message || t('visits.errors.shareError')
+    );
   } finally {
     setSharingImage(false);
   }

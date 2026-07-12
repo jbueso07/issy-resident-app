@@ -1,750 +1,523 @@
-// app/admin/payments/components/ChargesTab.js
-// ISSY Admin - Charges Tab Component with Period Grouping
+// app/admin/payments/_components/ChargesTab.js
+// ISSY Admin - Lista-Cobros tab (Sprint 3 D4 refactor)
+//
+// Vista plana por pago individual (un row = un community_payment).
+// Header: KPIs visuales (Sprint 3 D4) + search bar (debounced) + filter button
+//         (deshabilitado en D4, D6 lo activa) + chips de status (D4).
+// Body: FlatList de ChargeCard.
+//
+// NO incluido todavía (entran en D5-D7):
+//   - filtros avanzados (botón tune) → D6
+//   - month grouper con bar chart → D7
+//   - scroll infinito / paginación → D7
+//   - pull-to-refresh → D7
+//
+// Mantengo la firma de props (charges/stats/filter/setFilter/PAYMENT_STATUS/
+// PAYMENT_TYPES) para compat con el consumer `app/admin/payments/index.js`.
+// `charges` se usa como cache para resolver shape completo del cobro padre
+// cuando se tap'ea un card. `stats` alimenta los KPIs. El resto se ignora.
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  FlatList,
   ScrollView,
-  TouchableOpacity,
+  TextInput,
+  Pressable,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { COLORS, scale, getFilterOptions } from '../_constants';
 import {
-  formatCurrency,
-  groupChargesByPeriod,
-  calculateCollectionPercentage,
-  formatRelativeDueDate,
-  formatRecurringPeriodLabel,
-  formatAppliesToLabel,
-  formatRelativeCancelledAt,
-} from '../_helpers';
+  Search,
+  X,
+  SlidersHorizontal,
+  Inbox,
+  SearchX,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Hourglass,
+} from 'lucide-react-native';
+import { formatCurrency } from '../_helpers';
+import { colors, spacing, typography, radii } from '../_styles/theme';
+import usePayments from '../_hooks/usePayments';
+import ChargeCard from './cards/ChargeCard';
+import KpiCard from './cards/KpiCard';
+import StatusChips from './StatusChips';
+import { AdvancedFiltersSheet, countAdvancedFilters } from './AdvancedFiltersSheet';
+import { MonthHeader } from './MonthHeader';
+import { groupByMonth } from '../_utils/groupByMonth';
 
-// TODO Sprint 2 D7: el set FILTER_OPTIONS del frontend incluye opciones
-// (paid/pending/overdue) que el backend post-D4 no soporta — `community_charges`
-// solo tiene status 'active'|'cancelled'. Filtros mismatch devuelven listas
-// vacías. Ajustar getFilterOptions a ('all', 'active', 'cancelled') o agregar
-// mapeo en el hook antes de mandar al backend.
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function ChargesTab({
-  charges,
+  // Hotfix super admin: location_id explícito desde index.js (proveniente
+  // de useAdminLocation context). Para super admin, req.user.location_id
+  // es null y el backend retorna 0 resultados sin este param explícito.
+  // Mismo patrón que useCharges(t, selectedLocationId) que ya existía.
+  selectedLocationId,
+  // `stats` alimenta los 3 KpiCard (post D4). Viene de useCharges via index.js.
   stats,
-  loading,
+  // Sprint 3 D5: `charges` ya no se usa como cache de lookup — el callback
+  // onChargePress ahora pasa el payment directo (el modal nuevo PaymentDetailModal
+  // consume shape de getAllPayments, no de getCharges). Lo dejamos en la firma
+  // para no romper la API del consumer (index.js sigue pasándolo).
+  // eslint-disable-next-line no-unused-vars
+  charges,
+  // Props legacy ignoradas internamente — el componente usa usePayments propio
+  // eslint-disable-next-line no-unused-vars
+  loading: _loadingLegacy,
+  // eslint-disable-next-line no-unused-vars
   filter,
+  // eslint-disable-next-line no-unused-vars
   setFilter,
-  onChargePress,
-  onCreatePress,
+  // eslint-disable-next-line no-unused-vars
   PAYMENT_STATUS,
+  // eslint-disable-next-line no-unused-vars
   PAYMENT_TYPES,
+  onChargePress,
+  // eslint-disable-next-line no-unused-vars
+  onCreatePress,
 }) {
   const { t } = useTranslation();
-  const FILTER_OPTIONS = getFilterOptions(t);
-  const [expandedPeriods, setExpandedPeriods] = useState({});
 
-  const getPaymentTypeIconLocal = (type) => {
-    return PAYMENT_TYPES?.find(pt => pt.value === type)?.icon || 'document-text';
-  };
+  // Hook nuevo: consume /admin/payments (endpoint D2).
+  // Sprint 3 D10: el hook ahora expone paginación interna (loadingMore /
+  // refreshing / hasMore / loadMore / refresh) además de los campos de D3.
+  // Hotfix super admin: seed location_id en initialParams. El sync dinámico
+  // (cuando el super admin cambia de comunidad) lo hace el useEffect de abajo.
+  const {
+    data,
+    loading,
+    loadingMore,
+    refreshing,
+    hasMore,
+    error,
+    pagination,
+    params,
+    setParams,
+    loadMore,
+    refresh,
+    refetch,
+  } = usePayments({ location_id: selectedLocationId });
 
-  // Group charges by period (con filtro de cancelados aplicado por el helper)
-  const groupedCharges = useMemo(() => {
-    if (!charges || charges.length === 0) return [];
-    return groupChargesByPeriod(charges, filter);
-  }, [charges, filter]);
+  // Hotfix super admin: si selectedLocationId cambia (admin cambia de
+  // comunidad desde el location picker), reflejarlo en los params del hook
+  // para que dispare un nuevo fetch contra esa comunidad. Sin esto, el
+  // hook se quedaría con el location_id inicial.
+  useEffect(() => {
+    setParams({ location_id: selectedLocationId });
+  }, [selectedLocationId, setParams]);
 
-  // Initialize all periods as expanded on first render
-  useMemo(() => {
-    if (groupedCharges.length > 0 && Object.keys(expandedPeriods).length === 0) {
-      const initial = {};
-      groupedCharges.forEach((group, idx) => {
-        // Expand first 2 periods by default
-        initial[group.key] = idx < 2;
-      });
-      setExpandedPeriods(initial);
+  // Sprint 3 D10: agrupar los items VISIBLES por mes (header + items
+  // intercalados). Se recalcula cuando llegan páginas nuevas (data cambia)
+  // o cuando cambia el dateField que define a qué mes pertenece el row.
+  // Hotfix month grouper: default = 'charge_due_date' (mes al que aplica
+  // el cobro, no cuándo se creó). El backend lo expone como alias top-level
+  // del JOIN con community_charges. Extraemos `dateField` como variable
+  // única para que el filter de visibleItems (más abajo) use el mismo
+  // campo sin riesgo de drift.
+  const dateField = params.date_field || 'charge_due_date';
+  const groupedData = useMemo(
+    () => groupByMonth(data, dateField),
+    [data, dateField]
+  );
+
+  // Hotfix month grouper: state de meses colapsados. Set de monthKeys
+  // (formato `${year}-${MM}` — mismo que groupByMonth.js). Empieza vacío
+  // (todos expandidos por default, comportamiento previo intacto).
+  const [collapsedMonths, setCollapsedMonths] = useState(new Set());
+
+  const toggleMonthCollapse = useCallback((monthKey) => {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(monthKey)) {
+        next.delete(monthKey);
+      } else {
+        next.add(monthKey);
+      }
+      return next;
+    });
+  }, []);
+
+  // Hotfix month grouper: filtra items cuyo mes está colapsado. Los headers
+  // SIEMPRE se renderizan (el chevron permite re-expandir). Recalcula
+  // monthKey usando el mismo `dateField` + fallback chain a created_at que
+  // `groupByMonth` — staying in sync.
+  const visibleItems = useMemo(() => {
+    if (collapsedMonths.size === 0) return groupedData;
+    return groupedData.filter((node) => {
+      if (node.type === 'header') return true;
+      const dateStr =
+        node.payment?.[dateField] || node.payment?.created_at;
+      if (!dateStr) return true; // payment sin fecha — defensivo, mantener visible
+      const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return true;
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      return !collapsedMonths.has(monthKey);
+    });
+  }, [groupedData, collapsedMonths, dateField]);
+
+  // Search input (controlled) + debounce a setParams
+  const [searchInput, setSearchInput] = useState('');
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      // Trim + vacío → null para que el backend no aplique el filter
+      const next = searchInput.trim();
+      setParams({ search: next.length > 0 ? next : undefined });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput, setParams]);
+
+  const handleClearSearch = () => setSearchInput('');
+
+  // Status chip (Sprint 3 D4): Todos / Activos / Cancelados.
+  // 'all' no envía el param (backend lista todo); 'active' lo agrega como
+  // tal y el endpoint lo expande a NOT IN ('paid','cancelled') post-D4.
+  const [statusChip, setStatusChip] = useState('all');
+  useEffect(() => {
+    setParams({ status: statusChip === 'all' ? undefined : statusChip });
+  }, [statusChip, setParams]);
+
+  // Sprint 3 D9: sheet de filtros avanzados (rango fechas + monto + método
+  // + unit). El sheet mantiene su propio draft local y aplica via setParams.
+  const [filtersSheetVisible, setFiltersSheetVisible] = useState(false);
+  const advancedFilterCount = countAdvancedFilters(params);
+
+  // Render del item de la FlatList.
+  // Sprint 3 D5: el callback pasa el payment directo (no el charge adapter
+  // del D3). El consumidor (index.js) abre PaymentDetailModal nuevo que
+  // consume shape de getAllPayments.
+  // Sprint 3 D10: ahora la FlatList recibe array agrupado — cada row es
+  // header (mes) o item (payment). El renderItem discrimina por `type`.
+  const renderItem = ({ item }) => {
+    if (item.type === 'header') {
+      // Hotfix month grouper: monthKey debe matchear el formato de
+      // groupByMonth.js (`${year}-${month padded}`). El header expone
+      // year + month como props top-level.
+      const monthKey = `${item.year}-${String(item.month).padStart(2, '0')}`;
+      return (
+        <MonthHeader
+          label={item.label}
+          stats={item.stats}
+          collapsed={collapsedMonths.has(monthKey)}
+          onToggle={() => toggleMonthCollapse(monthKey)}
+        />
+      );
     }
-  }, [groupedCharges]);
-
-  const togglePeriod = (key) => {
-    setExpandedPeriods(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    return (
+      <ChargeCard
+        payment={item.payment}
+        onPress={() => {
+          if (onChargePress) onChargePress(item.payment);
+        }}
+      />
+    );
   };
 
-  if (loading) {
+  // Footer: spinner mientras carga la siguiente página (scroll infinito).
+  // Solo aparece si ya hay data renderizada — la carga inicial usa el
+  // full-spinner del body. Si no hay más páginas, no renderiza nada.
+  const renderFooter = () => {
+    if (!loadingMore) return null;
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.lime} />
-        <Text style={styles.loadingText}>{t('admin.payments.loading', 'Cargando...')}</Text>
+      <View style={styles.loadingMoreWrap}>
+        <ActivityIndicator size="small" color={colors.primaryContainer} />
       </View>
     );
-  }
+  };
 
-  return (
-    <>
-      {/* Stats Cards */}
-      {stats && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
-            <Text style={[styles.statValue, { color: COLORS.success }]}>
-              {formatCurrency(stats.total_collected || 0)}
+  // Empty / error / loading states
+  const renderEmpty = () => {
+    if (loading) {
+      // ListEmptyComponent se renderiza con data vacía; el spinner principal
+      // está en el contenedor (abajo).
+      return null;
+    }
+    if (error) {
+      return (
+        <View style={styles.emptyState}>
+          <AlertCircle size={48} color={colors.error} strokeWidth={1.5} />
+          <Text style={styles.emptyTitle}>
+            {t('admin.payments.list.errorTitle', 'No se pudo cargar')}
+          </Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <Pressable style={styles.retryBtn} onPress={refetch}>
+            <Text style={styles.retryBtnText}>
+              {t('common.retry', 'Reintentar')}
             </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.collected', 'Cobrado')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={22} color={COLORS.warning} />
-            <Text style={[styles.statValue, { color: COLORS.warning }]}>
-              {formatCurrency(stats.total_pending || 0)}
-            </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.pending', 'Pendiente')}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="hourglass" size={22} color={COLORS.blue} />
-            <Text style={[styles.statValue, { color: COLORS.blue }]}>
-              {stats.pending_proofs || 0}
-            </Text>
-            <Text style={styles.statLabel}>{t('admin.payments.stats.proofs', 'Por verificar')}</Text>
-          </View>
+          </Pressable>
         </View>
-      )}
-
-      {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
-        <View style={styles.filters}>
-          {FILTER_OPTIONS.map((f) => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterButton, filter === f.key && styles.filterButtonActive]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Ionicons
-                name={f.icon}
-                size={16}
-                color={filter === f.key ? COLORS.background : COLORS.textSecondary}
-              />
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Banner sutil cuando se muestran cancelados (Sprint 2 D7) */}
-      {filter === 'cancelled' ? (
-        <View style={styles.cancelledBanner}>
-          <Ionicons name="information-circle-outline" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.cancelledBannerText}>
+      );
+    }
+    if (searchInput.trim().length > 0) {
+      return (
+        <View style={styles.emptyState}>
+          <SearchX size={48} color={colors.onSurfaceVariant} strokeWidth={1.5} />
+          <Text style={styles.emptyTitle}>
             {t(
-              'admin.payments.banner.cancelled',
-              'Mostrando cobros cancelados (historial)'
+              'admin.payments.list.noResults',
+              `Sin resultados para "${searchInput.trim()}"`
             )}
           </Text>
         </View>
-      ) : null}
+      );
+    }
+    return (
+      <View style={styles.emptyState}>
+        <Inbox size={48} color={colors.onSurfaceVariant} strokeWidth={1.5} />
+        <Text style={styles.emptyTitle}>
+          {t('admin.payments.list.empty', 'No hay cobros aún')}
+        </Text>
+      </View>
+    );
+  };
 
-      {/* Charges List - Grouped by Period */}
-      {charges.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons
-            name={filter === 'cancelled' ? 'archive-outline' : 'cash-outline'}
-            size={64}
-            color={COLORS.textMuted}
+  // Loading inicial (sin data y sin error): spinner full
+  const showFullSpinner = loading && data.length === 0 && !error;
+
+  return (
+    <View style={styles.container}>
+      {/* KPIs (Sprint 3 D4): ScrollView horizontal con 3 KpiCard.
+          Datos: `stats` prop (viene de useCharges via index.js). NO se filtra
+          por search ni chips — son totales del location. D9 evaluará si conviene
+          agregar endpoint /admin/payments/stats con filtros aplicados. */}
+      {stats && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.kpisRow}
+        >
+          <KpiCard
+            label={t('admin.payments.stats.collected', 'Cobrado')}
+            value={formatCurrency(stats.total_collected || 0)}
+            icon={CheckCircle2}
+            accent="primary"
           />
-          <Text style={styles.emptyTitle}>
-            {filter === 'cancelled'
-              ? t('admin.payments.empty.noCancelled', 'No hay cobros cancelados')
-              : t('admin.payments.empty.noCharges', 'No hay cobros')}
-          </Text>
-          {filter !== 'cancelled' ? (
-            <>
-              <Text style={styles.emptySubtitle}>
-                {t('admin.payments.empty.createFirst', 'Crea tu primer cobro')}
-              </Text>
-              <TouchableOpacity style={styles.createButton} onPress={onCreatePress}>
-                <Ionicons name="add-circle" size={20} color={COLORS.background} />
-                <Text style={styles.createButtonText}>
-                  {t('admin.payments.newCharge', 'Nuevo Cobro')}
-                </Text>
-              </TouchableOpacity>
-            </>
+          <KpiCard
+            label={t('admin.payments.stats.pending', 'Pendiente')}
+            value={formatCurrency(stats.total_pending || 0)}
+            icon={Clock}
+            accent="warning"
+          />
+          <KpiCard
+            label={t('admin.payments.stats.proofs', 'En verificación')}
+            value={String(stats.pending_proofs || 0)}
+            icon={Hourglass}
+            accent="info"
+          />
+        </ScrollView>
+      )}
+
+      {/* Header: search bar + filter button (placeholder D6) */}
+      <View style={styles.header}>
+        <View style={styles.searchWrap}>
+          <Search size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
+          <TextInput
+            value={searchInput}
+            onChangeText={setSearchInput}
+            placeholder={t(
+              'admin.payments.list.searchPlaceholder',
+              'Buscar residente o cargo...'
+            )}
+            placeholderTextColor={colors.onSurfaceVariant}
+            style={styles.searchInput}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {searchInput.length > 0 ? (
+            <Pressable onPress={handleClearSearch} hitSlop={8}>
+              <X size={18} color={colors.onSurfaceVariant} strokeWidth={2} />
+            </Pressable>
           ) : null}
         </View>
-      ) : (
-        groupedCharges.map((group) => (
-          <PeriodSection
-            key={group.key}
-            group={group}
-            expanded={expandedPeriods[group.key]}
-            onToggle={() => togglePeriod(group.key)}
-            onChargePress={onChargePress}
-            paymentStatus={PAYMENT_STATUS}
-            getPaymentTypeIconFn={getPaymentTypeIconLocal}
-            t={t}
-          />
-        ))
-      )}
-    </>
-  );
-}
-
-// Period Section Component
-function PeriodSection({ group, expanded, onToggle, onChargePress, paymentStatus, getPaymentTypeIconFn, t }) {
-  const percentage = calculateCollectionPercentage(group.collected, group.total);
-  
-  return (
-    <View style={styles.periodSection}>
-      {/* Period Header - Collapsible */}
-      <TouchableOpacity 
-        style={styles.periodHeader}
-        onPress={onToggle}
-        activeOpacity={0.7}
-      >
-        <View style={styles.periodHeaderLeft}>
-          <Ionicons 
-            name={expanded ? 'chevron-down' : 'chevron-forward'} 
-            size={20} 
-            color={COLORS.textSecondary} 
-          />
-          <Text style={styles.periodTitle}>{group.label}</Text>
-          <View style={styles.periodBadge}>
-            <Text style={styles.periodBadgeText}>{group.charges.length}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.periodHeaderRight}>
-          <Text style={styles.periodPercentage}>{percentage}%</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Period Stats Bar */}
-      <View style={styles.periodStatsBar}>
-        <View style={styles.progressBarContainer}>
-          <View 
-            style={[
-              styles.progressBar, 
-              { 
-                width: `${percentage}%`,
-                backgroundColor: percentage >= 80 ? COLORS.success : 
-                                 percentage >= 50 ? COLORS.warning : COLORS.danger
-              }
-            ]} 
-          />
-        </View>
-        <View style={styles.periodStatsRow}>
-          <View style={styles.periodStat}>
-            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-            <Text style={[styles.periodStatText, { color: COLORS.success }]}>
-              {formatCurrency(group.collected)}
-            </Text>
-          </View>
-          <View style={styles.periodStat}>
-            <Ionicons name="time" size={14} color={COLORS.warning} />
-            <Text style={[styles.periodStatText, { color: COLORS.warning }]}>
-              {formatCurrency(group.pending)}
-            </Text>
-          </View>
-          <View style={styles.periodStat}>
-            <Text style={styles.periodStatLabel}>{t('admin.payments.period.total', 'Total')}:</Text>
-            <Text style={styles.periodStatTotal}>{formatCurrency(group.total)}</Text>
-          </View>
-        </View>
+        {/* Filter button (Sprint 3 D9 lo activa con AdvancedFiltersSheet).
+            Badge con conteo de filtros avanzados activos. */}
+        <Pressable
+          style={styles.filterBtn}
+          onPress={() => setFiltersSheetVisible(true)}
+          accessibilityLabel="Abrir filtros avanzados"
+        >
+          <SlidersHorizontal size={20} color={colors.onSurfaceVariant} strokeWidth={2} />
+          {advancedFilterCount > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{advancedFilterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
-      {/* Charges in Period */}
-      {expanded && (
-        <View style={styles.periodCharges}>
-          {group.charges.map((charge) => (
-            <ChargeCard
-              key={charge.id}
-              charge={charge}
-              onPress={() => onChargePress(charge)}
-              t={t}
-              getPaymentTypeIconFn={getPaymentTypeIconFn}
-              compact={true}
-            />
-          ))}
+      {/* Status chips (Sprint 3 D4): Todos / Activos / Cancelados */}
+      <View style={styles.chipsWrap}>
+        <StatusChips value={statusChip} onChange={setStatusChip} />
+      </View>
+
+      {/* Body */}
+      {showFullSpinner ? (
+        <View style={styles.fullSpinner}>
+          <ActivityIndicator size="large" color={colors.primaryContainer} />
         </View>
+      ) : (
+        <FlatList
+          data={visibleItems}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          showsVerticalScrollIndicator={false}
+          // Sprint 3 D10: scroll infinito. onEndReachedThreshold=0.5 dispara
+          // loadMore cuando el usuario está a media pantalla del final.
+          // loadMore es no-op si !hasMore o ya hay un fetch en curso.
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          // Pull-to-refresh: vuelve a pedir desde offset=0 con los params
+          // actuales (mantiene filtros aplicados).
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primaryContainer}
+              colors={[colors.primaryContainer]}
+            />
+          }
+        />
       )}
+
+      {/* Sprint 3 D9: Sheet de filtros avanzados. Aplica via setParams,
+          mergea con los params existentes (status, search no se tocan). */}
+      <AdvancedFiltersSheet
+        visible={filtersSheetVisible}
+        currentParams={params}
+        onApply={(newParams) => {
+          setParams((p) => ({ ...p, ...newParams }));
+        }}
+        onClose={() => setFiltersSheetVisible(false)}
+      />
     </View>
   );
 }
 
-// Charge Card Sub-component
-// Sprint 2 D5: 1 card = 1 cobro padre (no por residente).
-// Lee de charge.stats agregadas server-side.
-function ChargeCard({ charge, onPress, t, getPaymentTypeIconFn, compact }) {
-  const stats = charge.stats || {
-    paid_count: 0,
-    total_payments: 0,
-    total_amount_expected: 0,
-    total_amount_collected: 0,
-  };
-  const isCancelled = charge.status === 'cancelled';
-  const hasResidents = stats.total_payments > 0;
-  const isCompleted = !isCancelled && hasResidents && stats.paid_count === stats.total_payments;
-  const isInProgress = !isCancelled && hasResidents && stats.paid_count < stats.total_payments;
-
-  // Stats badge: color y texto dependen del estado
-  let statsBadgeColor;
-  let statsBadgeIcon;
-  let statsBadgeText;
-  if (isCancelled) {
-    statsBadgeColor = COLORS.textMuted;
-    statsBadgeIcon = 'close-circle';
-    statsBadgeText = formatRelativeCancelledAt(charge.cancelled_at, t);
-  } else if (isCompleted) {
-    statsBadgeColor = COLORS.success;
-    statsBadgeIcon = 'checkmark-circle';
-    statsBadgeText = t(
-      'admin.payments.stats.allPaid',
-      `${stats.paid_count} de ${stats.total_payments} pagaron`,
-      { paid: stats.paid_count, total: stats.total_payments }
-    );
-  } else if (isInProgress) {
-    statsBadgeColor = COLORS.warning;
-    statsBadgeIcon = 'time';
-    statsBadgeText = t(
-      'admin.payments.stats.partial',
-      `${stats.paid_count} de ${stats.total_payments} pagaron`,
-      { paid: stats.paid_count, total: stats.total_payments }
-    );
-  } else {
-    // active + sin residentes (edge case post-D3 roster vacío)
-    statsBadgeColor = COLORS.textMuted;
-    statsBadgeIcon = 'people-outline';
-    statsBadgeText = t('admin.payments.stats.noResidents', 'Sin residentes');
-  }
-
-  // Due date relativo (solo cards no canceladas)
-  const dueDateInfo = !isCancelled ? formatRelativeDueDate(charge.due_date, t) : null;
-  let dueDateColor = COLORS.textSecondary;
-  if (dueDateInfo) {
-    if (dueDateInfo.severity === 'overdue') dueDateColor = COLORS.danger;
-    else if (dueDateInfo.severity === 'today') dueDateColor = COLORS.warning;
-  }
-
-  // Type badges
-  const appliesLabel = formatAppliesToLabel(charge, t);
-  const recurringLabel = charge.is_recurring
-    ? formatRecurringPeriodLabel(charge.recurring_period, t)
-    : null;
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.chargeCard,
-        compact && styles.chargeCardCompact,
-        isCancelled && styles.chargeCardCancelled,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      {/* Header: icon + title + amount */}
-      <View style={styles.cardHeader}>
-        <View
-          style={[
-            styles.cardIconContainer,
-            compact && styles.cardIconContainerCompact,
-            { backgroundColor: COLORS.teal + '20' },
-          ]}
-        >
-          <Ionicons
-            name={getPaymentTypeIconFn(charge.charge_type || charge.payment_type)}
-            size={compact ? 16 : 20}
-            color={COLORS.teal}
-          />
-        </View>
-        <View style={styles.cardHeaderLeft}>
-          <Text
-            style={[
-              styles.chargeConcept,
-              compact && styles.chargeConceptCompact,
-              isCancelled && styles.chargeTitleCancelled,
-            ]}
-          >
-            {charge.title || t('admin.payments.types.maintenance', 'Mantenimiento')}
-          </Text>
-        </View>
-        <View style={styles.cardHeaderRight}>
-          <Text style={[styles.chargeAmount, compact && styles.chargeAmountCompact]}>
-            {formatCurrency(charge.amount, charge.currency)}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} />
-        </View>
-      </View>
-
-      {/* Middle: stats badge + due date relativo */}
-      <View style={styles.cardMiddle}>
-        <View style={[styles.statsBadge, { backgroundColor: statsBadgeColor + '20' }]}>
-          <Ionicons name={statsBadgeIcon} size={12} color={statsBadgeColor} />
-          <Text style={[styles.statusText, { color: statsBadgeColor }]}>
-            {statsBadgeText}
-          </Text>
-        </View>
-        {dueDateInfo && !!dueDateInfo.label && (
-          <View style={styles.dueDateContainer}>
-            <Ionicons name="calendar-outline" size={12} color={dueDateColor} />
-            <Text style={[styles.dueDate, { color: dueDateColor }]}>
-              {dueDateInfo.label}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Footer: applies_to + recurring badges */}
-      <View style={styles.cardFooter}>
-        <View style={styles.typeBadge}>
-          <Text style={styles.typeBadgeText}>{appliesLabel}</Text>
-        </View>
-        {recurringLabel && (
-          <View style={styles.typeBadge}>
-            <Ionicons name="repeat" size={11} color={COLORS.textSecondary} />
-            <Text style={styles.typeBadgeText}>{recurringLabel}</Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
-  loadingContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  // KPIs row (Sprint 3 D4): horizontal scroll de KpiCard
+  kpisRow: {
+    paddingHorizontal: spacing.containerPadding,
+    gap: spacing.cardGap,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  // Wrapper para StatusChips (chips ya tienen su propio padding/gap interno)
+  chipsWrap: {
+    marginBottom: 8,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.containerPadding,
+    paddingVertical: 12,
+  },
+  searchWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: radii.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodyMd,
+    color: colors.onSurface,
+    padding: 0, // RN agrega padding default en Android
+  },
+  filterBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surfaceContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  // Legacy: usado por el placeholder pre-D9 — mantenido por si algún consumer
+  // externo lo referencia. Sprint D9 ya no lo aplica.
+  filterBtnDisabled: {
+    opacity: 0.5,
+  },
+  // Sprint 3 D9: badge contador en el botón "tune"
+  filterBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    ...typography.labelSm,
+    color: colors.onPrimaryContainer,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
+  },
+  listContent: {
+    paddingHorizontal: spacing.containerPadding,
+    paddingBottom: 80,
+    flexGrow: 1,
+  },
+  fullSpinner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scale(60),
   },
-  loadingText: {
-    marginTop: scale(12),
-    color: COLORS.textSecondary,
-    fontSize: scale(14),
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: scale(10),
-    marginBottom: scale(16),
-  },
-  statCard: {
-    flex: 1,
+  // Sprint 3 D10: footer del FlatList mientras carga la siguiente página
+  loadingMoreWrap: {
+    paddingVertical: 16,
     alignItems: 'center',
-    padding: scale(12),
-    borderRadius: scale(12),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    justifyContent: 'center',
   },
-  statValue: {
-    fontSize: scale(13),
-    fontWeight: '700',
-    marginTop: scale(4),
-  },
-  statLabel: {
-    fontSize: scale(10),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-  filtersScroll: {
-    marginBottom: scale(16),
-    marginHorizontal: scale(-16),
-  },
-  filters: {
-    flexDirection: 'row',
-    gap: scale(8),
-    paddingHorizontal: scale(16),
-  },
-  filterButton: {
-    flexDirection: 'row',
+  emptyState: {
     alignItems: 'center',
-    paddingHorizontal: scale(14),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: scale(6),
-  },
-  filterButtonActive: {
-    backgroundColor: COLORS.lime,
-    borderColor: COLORS.lime,
-  },
-  filterText: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: COLORS.background,
-  },
-  // Banner sutil cuando filter === 'cancelled' (Sprint 2 D7)
-  cancelledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(8),
-    marginBottom: scale(12),
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(8),
-    gap: scale(6),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cancelledBannerText: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    fontStyle: 'italic',
-    flex: 1,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: scale(60),
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
   },
   emptyTitle: {
-    fontSize: scale(18),
+    ...typography.bodyLg,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: scale(16),
-  },
-  emptySubtitle: {
-    fontSize: scale(14),
-    color: COLORS.textMuted,
-    marginTop: scale(4),
     textAlign: 'center',
   },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lime,
-    paddingHorizontal: scale(20),
-    paddingVertical: scale(12),
-    borderRadius: scale(10),
-    marginTop: scale(20),
-    gap: scale(8),
+  emptySubtitle: {
+    ...typography.bodyMd,
+    color: colors.onSurfaceVariant,
+    textAlign: 'center',
   },
-  createButtonText: {
-    fontSize: scale(14),
+  retryBtn: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  retryBtnText: {
+    ...typography.bodyMd,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: COLORS.background,
-  },
-  // Period Section Styles
-  periodSection: {
-    marginBottom: scale(16),
-  },
-  periodHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.backgroundTertiary,
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  periodHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(8),
-  },
-  periodTitle: {
-    fontSize: scale(16),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    textTransform: 'capitalize',
-  },
-  periodBadge: {
-    backgroundColor: COLORS.teal + '30',
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(2),
-    borderRadius: scale(10),
-  },
-  periodBadgeText: {
-    fontSize: scale(12),
-    fontWeight: '600',
-    color: COLORS.teal,
-  },
-  periodHeaderRight: {
-    alignItems: 'flex-end',
-  },
-  periodPercentage: {
-    fontSize: scale(18),
-    fontWeight: '700',
-    color: COLORS.lime,
-  },
-  periodStatsBar: {
-    backgroundColor: COLORS.backgroundSecondary,
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(10),
-    borderBottomLeftRadius: scale(12),
-    borderBottomRightRadius: scale(12),
-  },
-  progressBarContainer: {
-    height: scale(6),
-    backgroundColor: COLORS.backgroundTertiary,
-    borderRadius: scale(3),
-    marginBottom: scale(8),
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: scale(3),
-  },
-  periodStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  periodStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(4),
-  },
-  periodStatText: {
-    fontSize: scale(12),
-    fontWeight: '600',
-  },
-  periodStatLabel: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-  },
-  periodStatTotal: {
-    fontSize: scale(12),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  periodCharges: {
-    marginTop: scale(8),
-  },
-  // Charge Card Styles
-  chargeCard: {
-    backgroundColor: COLORS.backgroundSecondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginBottom: scale(10),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  chargeCardCompact: {
-    padding: scale(12),
-    marginBottom: scale(8),
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: scale(10),
-  },
-  cardIconContainer: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(10),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: scale(12),
-  },
-  cardIconContainerCompact: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(8),
-    marginRight: scale(10),
-  },
-  cardHeaderLeft: {
-    flex: 1,
-  },
-  cardHeaderRight: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: scale(4),
-  },
-  chargeConcept: {
-    fontSize: scale(15),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  chargeConceptCompact: {
-    fontSize: scale(14),
-  },
-  chargeUser: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-  chargeAmount: {
-    fontSize: scale(16),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  chargeAmountCompact: {
-    fontSize: scale(15),
-  },
-  cardMiddle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(8),
-    gap: scale(8),
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(6),
-    flexWrap: 'wrap',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(6),
-    gap: scale(4),
-  },
-  statsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(6),
-    gap: scale(4),
-    flexShrink: 1,
-  },
-  statusText: {
-    fontSize: scale(11),
-    fontWeight: '500',
-  },
-  dueDateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(4),
-    flexShrink: 0,
-  },
-  dueDate: {
-    fontSize: scale(11),
-    color: COLORS.textSecondary,
-  },
-  chargeCardCancelled: {
-    opacity: 0.6,
-  },
-  chargeTitleCancelled: {
-    textDecorationLine: 'line-through',
-    color: COLORS.textMuted,
-  },
-  typeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(3),
-    borderRadius: scale(6),
-    backgroundColor: COLORS.backgroundTertiary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: scale(4),
-  },
-  typeBadgeText: {
-    fontSize: scale(10),
-    color: COLORS.textSecondary,
-    fontWeight: '500',
   },
 });
 

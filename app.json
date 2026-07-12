@@ -2,7 +2,7 @@
   "expo": {
     "name": "Issy",
     "slug": "issy-resident-app",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -25,6 +25,7 @@
         "NSFaceIDUsageDescription": "ISSY usa Face ID para que puedas acceder a tu cuenta sin escribir tu contraseña cada vez, manteniendo tu información segura.",
         "NSCameraUsageDescription": "ISSY usa la cámara para escanear códigos QR de visitantes, registrar fotos en reportes de incidentes, y capturar comprobantes de pago.",
         "NSPhotoLibraryUsageDescription": "ISSY accede a tus fotos para que puedas subir tu foto de perfil, adjuntar comprobantes de pago, y agregar evidencia fotográfica en reportes de incidentes.",
+        "NSPhotoLibraryAddUsageDescription": "ISSY necesita guardar los comprobantes de pago que descargás en la galería de tu dispositivo.",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -51,6 +52,10 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
       ],
       "intentFilters": [
         {

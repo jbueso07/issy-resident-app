@@ -189,12 +189,18 @@ export function useCharges(t, selectedLocationId) {
   const cancelCharge = useCallback(async (charge, reason = null) => {
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body. El charge
+      // trae location_id en su shape; si no, fallback a selectedLocationId del
+      // hook context (mismo que usa createCharge en línea 144).
       const response = await fetch(
         API_URL + '/api/community-payments/admin/charges/' + charge.id,
         {
           method: 'DELETE',
           headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason }),
+          body: JSON.stringify({
+            reason,
+            location_id: charge.location_id || selectedLocationId || null,
+          }),
         }
       );
 

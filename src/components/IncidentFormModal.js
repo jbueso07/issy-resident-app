@@ -184,10 +184,16 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos([...photos, result.assets[0].uri]);
+        const asset = result.assets[0];
+        if (!asset?.base64) {
+          console.warn('Photo missing base64, skipped');
+          return;
+        }
+        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -207,10 +213,16 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
+        base64: true,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos([...photos, result.assets[0].uri]);
+        const asset = result.assets[0];
+        if (!asset?.base64) {
+          console.warn('Photo missing base64, skipped');
+          return;
+        }
+        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Gallery error:', error);
@@ -242,45 +254,9 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
     try {
       setLoading(true);
 
-      // Subir fotos a Storage ANTES de crear el incidente. Si una falla, abortar
-      // y avisar; nunca enviar el incidente con URIs locales (patron espejo
-      // de payments.js:uploadProofImage — bucket 'photos', prefix 'incidents/').
-      let photoUrls = [];
-      if (photos.length > 0) {
-        setUploadingPhotos(true);
-        try {
-          photoUrls = await Promise.all(photos.map(async (imageUri) => {
-            const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-            const fileName = `incident_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const filePath = `incidents/${fileName}`;
-            const response = await fetch(imageUri);
-            const blob = await response.blob();
-            const arrayBuffer = await new Response(blob).arrayBuffer();
-            const { error } = await supabase.storage
-              .from('photos')
-              .upload(filePath, arrayBuffer, {
-                contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-                upsert: true,
-              });
-            if (error) throw error;
-            const { data: urlData } = supabase.storage
-              .from('photos')
-              .getPublicUrl(filePath);
-            return urlData.publicUrl;
-          }));
-        } catch (uploadErr) {
-          console.error('Error subiendo fotos:', uploadErr);
-          setUploadingPhotos(false);
-          setLoading(false);
-          Alert.alert(
-            'Error al subir foto',
-            'No se pudo subir una de las fotos. Revisá tu conexión e intentá de nuevo, o remové la foto.'
-          );
-          resetSlider();
-          return;
-        }
-        setUploadingPhotos(false);
-      }
+      // Las fotos ya se capturan como data-URI base64 (ver pickImage/takePhoto).
+      // Se envian asi al backend: incidentController -> uploadPhotoToStorage()
+      // las sube a Supabase Storage y persiste solo las URLs publicas.
 
       const result = await createIncident({
         type,
@@ -288,7 +264,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         title: currentTitle.trim(),
         description: currentDescription.trim(),
         coordinates: location,
-        photos: photoUrls.length > 0 ? photoUrls : undefined,
+        photos: photos.length > 0 ? photos : undefined,
       });
 
       if (result.success) {

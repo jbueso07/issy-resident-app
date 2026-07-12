@@ -9,13 +9,24 @@ import { getAuthHeaders } from '../_helpers';
 const DEFAULT_SETTINGS = {
   card_payments_enabled: true,
   proof_payments_enabled: true,
+  // @deprecated Sprint 3 D13: campos legacy single-account.
+  // El UI ya no los muestra (reemplazados por useBankAccounts multi-account post-D12).
+  // El backend sigue devolviéndolos y el hook los hidrata, pero NO se persisten
+  // desde el frontend (saveSettings hace PUT con el objeto entero pero el UI
+  // nunca los modifica, así que viajan vacíos o con el valor remoto unchanged).
+  // Limpieza completa en Sprint 4: remover del DEFAULT_SETTINGS + del fetchSettings
+  // hydration + del schema del backend si nadie más los usa.
   bank_name: '',
   bank_account_number: '',
   bank_account_name: '',
   bank_instructions: '',
 };
 
-export function useSettings(t) {
+// Hotfix sistémico super admin: el hook ahora acepta locationId para
+// incluirlo en el body del PUT /admin/settings. Super admin tiene
+// req.user.location_id = null; sin el body explícito, el backend
+// resolvía a null y el update fallaba silenciosamente.
+export function useSettings(t, locationId = null) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -55,10 +66,14 @@ export function useSettings(t) {
     setSavingSettings(true);
     try {
       const headers = await getAuthHeaders();
+      // Hotfix sistémico super admin: incluir location_id en body.
+      const payload = locationId
+        ? { ...settings, location_id: locationId }
+        : settings;
       const response = await fetch(`${API_URL}/api/community-payments/admin/settings`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -79,7 +94,7 @@ export function useSettings(t) {
     } finally {
       setSavingSettings(false);
     }
-  }, [settings, t]);
+  }, [settings, t, locationId]);
 
   /**
    * Update a single setting

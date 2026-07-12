@@ -1019,7 +1019,15 @@
         "closeTime": "Cierre",
         "minHours": "Mínimo (hrs)",
         "maxHours": "Máximo (hrs)",
-        "advanceDays": "Anticipación (días)"
+        "advanceDays": "Anticipación (días)",
+        "maxReservationsPerWeek": "Máximo de reservas por semana",
+        "maxReservationsPerWeekPlaceholder": "Ej: 2",
+        "maxReservationsPerWeekHint": "Dejá vacío para no aplicar límite",
+        "limitScopeLabel": "El límite aplica por:",
+        "limitScopeUnit": "Casa (Unidad)",
+        "limitScopeUser": "Residente",
+        "limitScopeUnitHint": "Todos los residentes de la casa suman juntos",
+        "limitScopeUserHint": "Cada residente cuenta por separado"
       },
       "scheduleSection": {
         "title": "Horario de Disponibilidad"

@@ -7,11 +7,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +44,7 @@ import { BankAccountModal } from './_components/BankAccountModal';
 import { UserPickerModal } from './_components/UserPickerModal';
 import { ProofReviewModal } from './_components/ProofReviewModal';
 import { ChargeDetailModal } from './_components/ChargeDetailModal';
+import { PaymentDetailModal } from './_components/PaymentDetailModal';
 import { StatementModal } from './_components/StatementModal';
 export default function AdminPayments() {
   const { t } = useTranslation();
@@ -75,13 +74,37 @@ export default function AdminPayments() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [showChargeDetailModal, setShowChargeDetailModal] = useState(false);
   const [selectedChargeDetail, setSelectedChargeDetail] = useState(null);
+  // Sprint 3 D5: modal nuevo por-residente (PaymentDetailModal).
+  // El ChargeDetailModal legacy queda en el JSX por compat (cobros masivos
+  // legacy) pero la Lista-Cobros del rediseño ya no lo abre.
+  const [showPaymentDetailModal, setShowPaymentDetailModal] = useState(false);
+  const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
+
+  // Sprint 3 D11: el listado de proofs se movió a usePayments dentro de
+  // ProofsTab. useProofs queda VIVO solo para mutations (verifyProof,
+  // rejectProof, revertPayment) que se siguen disparando desde index.js /
+  // ChargesTab. El proof seleccionado para <ProofReviewModal> ahora vive
+  // en state local — antes era `proofs.selectedProof` (referencia rota
+  // pre-D11: el hook nunca exportó ese getter).
+  const [selectedProof, setSelectedProof] = useState(null);
+
+  // Sprint 3 D13: state local para las 3 props que <ProofReviewModal> requiere
+  // pero useProofs nunca exportó. El modal usa rejectReason como value del
+  // TextInput de razón de rechazo, processingProof para deshabilitar botones
+  // y mostrar spinner mientras la mutation está en flight. Antes pasábamos
+  // `proofs.X` (undefined) — input uncontrolled, sin spinner, doble-tap
+  // posible. Ahora controlados localmente.
+  const [rejectReason, setRejectReason] = useState('');
+  const [processingProof, setProcessingProof] = useState(false);
 
   // ============================================
   // HOOKS
   // ============================================
   const charges = useCharges(t, selectedLocationId);
   const proofs = useProofs(selectedLocationId, () => charges.refresh());
-  const settings = useSettings(t);
+  // Hotfix sistémico super admin: pasar selectedLocationId al hook para que
+  // saveSettings lo incluya en el body del PUT /admin/settings.
+  const settings = useSettings(t, selectedLocationId);
   const bankAccounts = useBankAccounts(selectedLocationId);
 
   // ============================================
@@ -106,12 +129,12 @@ export default function AdminPayments() {
   useEffect(() => {
     if (activeTab === 'charges') {
       charges.fetchCharges();
-    } else if (activeTab === 'proofs') {
-      proofs.fetchPendingProofs();
     } else if (activeTab === 'settings') {
       settings.fetchSettings();
       bankAccounts.fetchBankAccounts();
     }
+    // Sprint 3 D11: 'proofs' tab ya no necesita fetch desde index.js —
+    // ProofsTab usa usePayments internamente y se auto-carga al montar.
   }, [activeTab, charges.filter, selectedLocationId]);
 
   // Clear users when location changes
@@ -122,16 +145,13 @@ export default function AdminPayments() {
   // ============================================
   // HANDLERS
   // ============================================
-  const onRefresh = useCallback(() => {
-    if (activeTab === 'charges') {
-      charges.refresh();
-    } else if (activeTab === 'proofs') {
-      proofs.refresh();
-    } else if (activeTab === 'settings') {
-      settings.fetchSettings();
-      bankAccounts.fetchBankAccounts();
-    }
-  }, [activeTab]);
+  // Sprint 3 Hotfix: `onRefresh` global eliminado. El outer <ScrollView>
+  // con RefreshControl ya no existe (causaba nested-virtualized-list warning).
+  // Cada tab maneja su propio pull-to-refresh ahora:
+  //   - ChargesTab → FlatList interno con RefreshControl (D10)
+  //   - ProofsTab → FlatList interno con RefreshControl (D11)
+  //   - SettingsTab → sin pull-to-refresh; auto-fetchea en tab change via
+  //     el useEffect de arriba. Trade-off aceptado en hotfix.
 
   const handleOpenStatementModal = async () => {
     await charges.fetchUsers();
@@ -168,9 +188,12 @@ export default function AdminPayments() {
     }
   };
 
-  const handleOpenChargeDetail = (charge) => {
-    setSelectedChargeDetail(charge);
-    setShowChargeDetailModal(true);
+  // Sprint 3 D5: el callback recibe un `payment` (no charge). Abre el modal
+  // nuevo PaymentDetailModal. El ChargeDetailModal legacy queda inalcanzable
+  // desde Lista-Cobros (se mantiene en el JSX por compat — D13 lo limpia).
+  const handleOpenChargeDetail = (payment) => {
+    setSelectedPaymentDetail(payment);
+    setShowPaymentDetailModal(true);
   };
 
   const handleCancelCharge = async (reason = null) => {
@@ -184,40 +207,120 @@ export default function AdminPayments() {
     }
   };
 
+  // Sprint 3 D11: state local en vez de proofs.selectProof / proofs.clearSelectedProof
+  // (que nunca existieron en useProofs — referencias rotas pre-D11).
+  // Sprint 3 D13: reset de rejectReason al abrir/cerrar para que el modal
+  // arranque limpio en cada review.
   const handleOpenProofReview = (proof) => {
-    proofs.selectProof(proof);
+    setSelectedProof(proof);
+    setRejectReason('');
     setShowProofModal(true);
   };
 
   const handleCloseProofReview = () => {
-    proofs.clearSelectedProof();
+    setSelectedProof(null);
+    setRejectReason('');
     setShowProofModal(false);
   };
 
+  // Sprint 3 D13: wrappers que togglean processingProof local para que el
+  // modal pueda deshabilitar botones + mostrar spinner durante la mutation.
+  // Pasamos rejectReason explícitamente a rejectProof (la mutation acepta
+  // el reason como 2do arg desde antes — solo no se estaba conectando).
   const handleVerifyProof = async () => {
-    const success = await proofs.verifyProof(proofs.selectedProof);
-    if (success) {
-            setSelectedChargeDetail(null);
-      setShowProofModal(false);
+    setProcessingProof(true);
+    try {
+      const success = await proofs.verifyProof(selectedProof);
+      if (success) {
+        setSelectedChargeDetail(null);
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+      }
+    } finally {
+      setProcessingProof(false);
     }
   };
 
   const handleRejectProof = async () => {
-    const success = await proofs.rejectProof(proofs.selectedProof);
-    if (success) {
-            setSelectedChargeDetail(null);
-      setShowProofModal(false);
+    setProcessingProof(true);
+    try {
+      const success = await proofs.rejectProof(selectedProof, rejectReason);
+      if (success) {
+        setSelectedChargeDetail(null);
+        setShowProofModal(false);
+        setSelectedProof(null);
+        setRejectReason('');
+      }
+    } finally {
+      setProcessingProof(false);
     }
   };
 
+  // Sprint 3 D12 (Fix 2): openAddBankAccount no existe en useBankAccounts.
+  // Antes crasheaba al tap. El hook expone resetBankAccountForm para limpiar
+  // el form antes de abrir el modal en modo "agregar".
   const handleOpenAddBankAccount = () => {
-    bankAccounts.openAddBankAccount();
+    if (typeof bankAccounts.resetBankAccountForm === 'function') {
+      bankAccounts.resetBankAccountForm();
+    }
     setShowBankAccountModal(true);
   };
 
+  // Sprint 3 D12 (Fix 3): rename openEditBankAccount → editBankAccount.
+  // Antes era undefined function — crash al tap "Editar".
   const handleOpenEditBankAccount = (account) => {
-    bankAccounts.openEditBankAccount(account);
+    bankAccounts.editBankAccount(account);
     setShowBankAccountModal(true);
+  };
+
+  // Sprint 3 D12 (Fix 4): handler nuevo con Alert.alert confirm. Antes la
+  // prop apuntaba directo a bankAccounts.handleDeleteBankAccount (no existía
+  // — crash al tap Eliminar). Safety net obligatoria para acción destructiva.
+  const handleDeleteBankAccount = (account) => {
+    Alert.alert(
+      t('admin.payments.settings.deleteTitle', 'Eliminar cuenta bancaria'),
+      t(
+        'admin.payments.settings.deleteConfirm',
+        `¿Eliminar la cuenta "${account.bank_name}"? Los residentes ya no podrán enviar comprobantes a esta cuenta.`
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('common.delete', 'Eliminar'),
+          style: 'destructive',
+          onPress: async () => {
+            if (typeof bankAccounts.deleteBankAccount === 'function') {
+              await bankAccounts.deleteBankAccount(account.id);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Sprint 3 D12 (Fix 5): handler nuevo con confirm. Antes apuntaba a
+  // bankAccounts.handleSetDefaultBankAccount (no existía — crash).
+  const handleSetDefaultBankAccount = (account) => {
+    if (account.is_default) return; // ya es default, no-op
+    Alert.alert(
+      t('admin.payments.settings.setDefaultTitle', 'Cuenta predeterminada'),
+      t(
+        'admin.payments.settings.setDefaultConfirm',
+        `Marcar "${account.bank_name}" como cuenta predeterminada para nuevos comprobantes?`
+      ),
+      [
+        { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+        {
+          text: t('admin.payments.settings.setDefault', 'Marcar'),
+          onPress: async () => {
+            if (typeof bankAccounts.setDefaultBankAccount === 'function') {
+              await bankAccounts.setDefaultBankAccount(account.id);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSaveBankAccount = async () => {
@@ -264,11 +367,11 @@ export default function AdminPayments() {
         <Text style={[styles.mainTabText, activeTab === 'proofs' && styles.mainTabTextActive]}>
           {t('admin.payments.tabs.proofs', 'Comprobantes')}
         </Text>
-        {proofs.pendingProofs.length > 0 && (
-          <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>{proofs.pendingProofs.length}</Text>
-          </View>
-        )}
+        {/* Sprint 3 D11: badge eliminado — el count de proofs pendientes ahora
+            vive dentro de ProofsTab (usePayments) y no es accesible desde acá
+            sin lifting up o un endpoint dedicado de count. Si se necesita el
+            badge de vuelta, se puede agregar con un endpoint /admin/payments/
+            count?status=proof_submitted en un sprint futuro. */}
       </TouchableOpacity>
       
       <TouchableOpacity
@@ -340,24 +443,23 @@ export default function AdminPayments() {
       {/* Main Tabs */}
       {renderTabs()}
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl 
-            refreshing={charges.refreshing || proofs.refreshing} 
-            onRefresh={onRefresh} 
-            tintColor={COLORS.lime}
-          />
-        }
-      >
-        {activeTab === 'charges' && (
-          <TouchableOpacity style={styles.statementButton} onPress={handleOpenStatementModal}>
-            <Ionicons name="document-text" size={20} color={COLORS.teal} />
-          </TouchableOpacity>
-        )}
+      {/* Sprint 3 Hotfix: el outer <ScrollView> que envolvía los 3 tabs fue
+          reemplazado por <View flex:1>. Razón: los FlatList internos de
+          ChargesTab + ProofsTab (post-D10/D11) emitían el warning
+          "VirtualizedLists should never be nested inside plain ScrollViews
+          with the same orientation" — la virtualización se rompía y todas
+          las cards se renderizaban a la vez. Cada tab ahora maneja su propio
+          scroll + RefreshControl internamente. SettingsTab (con ScrollView
+          interno propio) también gana: deja de estar doble-nested.
+          Side effect aceptado: el pull-to-refresh global del SettingsTab
+          desaparece — el tab ya auto-fetchea en mount via useEffect. */}
+      <View style={{ flex: 1 }}>
         {activeTab === 'charges' && (
           <ChargesTab
+            // Hotfix super admin: el tab usa usePayments internamente y
+            // necesita el location_id explícito para que el backend devuelva
+            // resultados cuando req.user.location_id es null (super admin).
+            selectedLocationId={selectedLocationId}
             charges={charges.charges}
             stats={charges.stats}
             loading={charges.loading}
@@ -379,31 +481,37 @@ export default function AdminPayments() {
         )}
         
         {activeTab === 'proofs' && (
+          // Sprint 3 D11: ProofsTab maneja su propio fetch/loading/refresh
+          // via usePayments. index.js solo wirea el callback de tap.
+          // Hotfix super admin: location_id explícito (mismo motivo que
+          // ChargesTab — backend retorna 0 si super admin sin scope).
           <ProofsTab
-            pendingProofs={proofs.pendingProofs}
-            loadingProofs={proofs.loadingProofs}
             onProofPress={handleOpenProofReview}
+            selectedLocationId={selectedLocationId}
           />
         )}
         
         {activeTab === 'settings' && (
+          // Sprint 3 D12: fixes de 6 referencias rotas al hook useBankAccounts.
+          //   Fix 1: loadingBankAccounts → bankAccounts.loading (rename)
+          //   Fix 4: onDeleteBankAccount → handleDeleteBankAccount con confirm
+          //   Fix 5: onSetDefaultBankAccount → handleSetDefaultBankAccount con confirm
+          // Los fixes 2, 3, 6, 7 se aplican en otros lugares (handlers + modal).
           <SettingsTab
             settings={settings.settings}
             loadingSettings={settings.loadingSettings}
             savingSettings={settings.savingSettings}
             bankAccounts={bankAccounts.bankAccounts}
-            loadingBankAccounts={bankAccounts.loadingBankAccounts}
+            loadingBankAccounts={bankAccounts.loading}
             onSettingChange={settings.updateSetting}
             onSaveSettings={settings.saveSettings}
             onAddBankAccount={handleOpenAddBankAccount}
             onEditBankAccount={handleOpenEditBankAccount}
-            onDeleteBankAccount={bankAccounts.handleDeleteBankAccount}
-            onSetDefaultBankAccount={bankAccounts.handleSetDefaultBankAccount}
+            onDeleteBankAccount={handleDeleteBankAccount}
+            onSetDefaultBankAccount={handleSetDefaultBankAccount}
           />
         )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      </View>
 
       {/* Modals */}
       <CreateChargeModal
@@ -435,20 +543,34 @@ export default function AdminPayments() {
         onClose={handleCloseBankAccountModal}
         editingBankAccount={bankAccounts.editingBankAccount}
         bankAccountForm={bankAccounts.bankAccountForm}
-        onFieldChange={bankAccounts.updateBankAccountField}
+        // Sprint 3 D12 (Fix 6): el modal invoca onFieldChange(key, value)
+        // pero useBankAccounts.updateBankAccountForm espera un partial object.
+        // Adapter inline para preservar la API del modal sin tocar el hook.
+        // Antes: bankAccounts.updateBankAccountField (no existía — modal inútil).
+        onFieldChange={(key, value) =>
+          bankAccounts.updateBankAccountForm({ [key]: value })
+        }
         onSave={handleSaveBankAccount}
-        saving={bankAccounts.savingBankAccount}
+        // Sprint 3 D12 (Fix 7): rename savingBankAccount → saving.
+        saving={bankAccounts.saving}
       />
 
+      {/* Sprint 3 D11: `proof` viene del state local `selectedProof` (antes
+          era `proofs.selectedProof`, referencia rota).
+          Sprint 3 D13: rejectReason / onRejectReasonChange / processing
+          ahora vienen de state local en este componente (antes eran
+          `proofs.rejectReason` / `proofs.setRejectReason` / `proofs.processingProof`
+          — useProofs nunca exportó esos campos. El modal SÍ requiere las 3
+          props para funcionar: TextInput controlado + botones disabled + spinner). */}
       <ProofReviewModal
         visible={showProofModal}
         onClose={handleCloseProofReview}
-        proof={proofs.selectedProof}
-        rejectReason={proofs.rejectReason}
-        onRejectReasonChange={proofs.setRejectReason}
+        proof={selectedProof}
+        rejectReason={rejectReason}
+        onRejectReasonChange={setRejectReason}
         onVerify={handleVerifyProof}
         onReject={handleRejectProof}
-        processing={proofs.processingProof}
+        processing={processingProof}
       />
 
       <ChargeDetailModal
@@ -495,11 +617,44 @@ export default function AdminPayments() {
         PAYMENT_TYPES={PAYMENT_TYPES}
       />
 
+      {/* Sprint 3 D5: nuevo modal por-residente (Detalle-Cobro mockup #3).
+          Coexiste con ChargeDetailModal legacy de arriba (que ya no se abre
+          desde Lista-Cobros pero queda hasta D13 polish). */}
+      <PaymentDetailModal
+        visible={showPaymentDetailModal}
+        payment={selectedPaymentDetail}
+        onClose={() => {
+          setShowPaymentDetailModal(false);
+          setSelectedPaymentDetail(null);
+        }}
+        onRegisterCashSuccess={() => {
+          // Refrescar lista de cobros y stats KPIs tras cobro en efectivo
+          if (charges?.fetchCharges) {
+            charges.fetchCharges();
+          }
+        }}
+        // Sprint 3 hotfix commit 2: callback genérico después de
+        // cancel-payment o cancel-charge exitoso. Refresca lista (mismo
+        // patrón que onRegisterCashSuccess).
+        onCancelSuccess={() => {
+          if (charges?.fetchCharges) {
+            charges.fetchCharges();
+          }
+        }}
+        // Hotfix commit 3: prop `onCancelCharge` removida — el botón
+        // "Cancelar Cobro Completo" se eliminó del PaymentDetailModal
+        // (UX confuso en vista por-residente). La acción a nivel charge
+        // sigue disponible vía useCharges.cancelCharge desde el listado.
+      />
+
       <StatementModal
         visible={showStatementModal}
         onClose={() => setShowStatementModal(false)}
         locationId={selectedLocation?.id}
-        locationName={selectedLocation?.name}
+        // Bug B (COMUNIDAD N/A): fallback al nombre del objeto location.
+        // selectedLocation a veces llega sin `name` para admins single-location.
+        // Si con este fallback sigue vacío, escalamos al AdminLocationContext.
+        locationName={selectedLocation?.name || selectedLocation?.community_name || ''}
         users={charges.users}
       />
       <LocationPickerModal />
@@ -630,10 +785,6 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
     fontWeight: '700',
   },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: scale(16),
-  },
+  // Sprint 3 Hotfix: estilos `content` y `scrollContent` eliminados — eran
+  // del outer ScrollView que se reemplazó por <View flex:1>.
 });
