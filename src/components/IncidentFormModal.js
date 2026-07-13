@@ -68,7 +68,13 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState(null);
+  const photosRef = useRef([]);
   const [photos, setPhotos] = useState([]);
+  const setPhotosSync = (next) => {
+    const value = typeof next === 'function' ? next(photosRef.current) : next;
+    photosRef.current = value;
+    setPhotos(value);
+  };
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -114,7 +120,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
     setTitle('');
     setDescription('');
     setLocation(null);
-    setPhotos([]);
+    setPhotosSync([]);
     setSliderComplete(false);
     slideAnim.setValue(0);
     titleRef.current = '';
@@ -193,7 +199,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
           console.warn('Photo missing base64, skipped');
           return;
         }
-        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
+        setPhotosSync([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Camera error:', error);
@@ -222,7 +228,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
           console.warn('Photo missing base64, skipped');
           return;
         }
-        setPhotos([...photos, `data:image/jpeg;base64,${asset.base64}`]);
+        setPhotosSync([...photos, `data:image/jpeg;base64,${asset.base64}`]);
       }
     } catch (error) {
       console.error('Gallery error:', error);
@@ -230,14 +236,15 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   };
 
   const removePhoto = (index) => {
-    const newPhotos = [...photos];
+    const newPhotos = [...photosRef.current];
     newPhotos.splice(index, 1);
-    setPhotos(newPhotos);
+    setPhotosSync(newPhotos);
   };
 
   const handleSubmit = async () => {
     const currentTitle = titleRef.current;
     const currentDescription = descriptionRef.current;
+    const currentPhotos = photosRef.current;
 
     if (!currentTitle.trim()) {
       Alert.alert('Error', 'Por favor ingresa un título');
@@ -258,13 +265,14 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
       // Se envian asi al backend: incidentController -> uploadPhotoToStorage()
       // las sube a Supabase Storage y persiste solo las URLs publicas.
 
+
       const result = await createIncident({
         type,
         severity,
         title: currentTitle.trim(),
         description: currentDescription.trim(),
         coordinates: location,
-        photos: photos.length > 0 ? photos : undefined,
+        photos: currentPhotos.length > 0 ? currentPhotos : undefined,
       });
 
       if (result.success) {
