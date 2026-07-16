@@ -52,7 +52,7 @@ const COLORS = {
 
 export default function CommunityMapScreen() {
   const router = useRouter();
-  const { user, profile } = useAuth();
+  const { user, profile, isSuperAdmin } = useAuth();
 
   const [locations, setLocations] = useState([]);
   const [selectedLocationId, setSelectedLocationId] = useState(null);
@@ -70,25 +70,70 @@ export default function CommunityMapScreen() {
 
   // Cargar comunidades donde soy admin
   useEffect(() => {
-    const adminLocations = (profile?.user_locations || [])
-      .filter((ul) => ul.is_active && ['admin', 'superadmin'].includes(ul.role))
-      .map((ul) => ({
-        location_id: ul.location_id,
-        location_name: ul.location_name || ul.location?.name || 'Sin nombre',
-        role: ul.role,
-      }));
+    let cancelled = false;
 
-    // Deduplicar por location_id
-    const uniqueLocations = Array.from(
-      new Map(adminLocations.map((l) => [l.location_id, l])).values()
-    );
+    const loadLocations = async () => {
+      // Fix superadmin: acceso global — user_locations no alcanza (un
+      // superadmin puede no tener filas con rol admin ahí). Misma detección
+      // y mismo endpoint que app/admin/incidents.js (fetchLocations):
+      // GET /locations devuelve { success, data: [{ id, name, ... }] }.
+      const userRole = profile?.role || user?.role || 'user';
+      const isSuperAdminUser = userRole === 'superadmin' || isSuperAdmin?.();
 
-    setLocations(uniqueLocations);
-    if (uniqueLocations.length > 0 && !selectedLocationId) {
-      setSelectedLocationId(uniqueLocations[0].location_id);
-    } else if (uniqueLocations.length === 0) {
-      setLoading(false);
-    }
+      if (isSuperAdminUser) {
+        try {
+          const data = await authFetch('/locations', { method: 'GET' });
+          const list = Array.isArray(data) ? data : data?.data || [];
+          // Mapear al shape que ya consume el resto de la pantalla
+          // ({ location_id, location_name, role }) — nada más cambia.
+          const mapped = (Array.isArray(list) ? list : []).map((l) => ({
+            location_id: l.id,
+            location_name: l.name || 'Sin nombre',
+            role: 'superadmin',
+          }));
+          if (cancelled) return;
+          setLocations(mapped);
+          if (mapped.length > 0 && !selectedLocationId) {
+            setSelectedLocationId(mapped[0].location_id);
+          } else if (mapped.length === 0) {
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('Error loading locations:', error);
+          if (!cancelled) {
+            setLocations([]);
+            setLoading(false);
+          }
+        }
+        return;
+      }
+
+      // Admin normal: derivación original desde user_locations (sin cambios).
+      const adminLocations = (profile?.user_locations || [])
+        .filter((ul) => ul.is_active && ['admin', 'superadmin'].includes(ul.role))
+        .map((ul) => ({
+          location_id: ul.location_id,
+          location_name: ul.location_name || ul.location?.name || 'Sin nombre',
+          role: ul.role,
+        }));
+
+      // Deduplicar por location_id
+      const uniqueLocations = Array.from(
+        new Map(adminLocations.map((l) => [l.location_id, l])).values()
+      );
+
+      setLocations(uniqueLocations);
+      if (uniqueLocations.length > 0 && !selectedLocationId) {
+        setSelectedLocationId(uniqueLocations[0].location_id);
+      } else if (uniqueLocations.length === 0) {
+        setLoading(false);
+      }
+    };
+
+    loadLocations();
+    return () => {
+      cancelled = true;
+    };
   }, [profile]);
 
   const selectedLocation = useMemo(
