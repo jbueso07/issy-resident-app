@@ -33,7 +33,12 @@ export const formatCurrency = (amount, currency = 'HNL') => {
  */
 export const formatDate = (dateString) => {
   if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('es-HN', {
+  // Fix TZ: DATE-only ('YYYY-MM-DD') se ancla a mediodía UTC para que el
+  // render en hora local (UTC-6) no retroceda un día ('2026-08-01' → 31 jul).
+  const safe = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? dateString + 'T12:00:00Z'
+    : dateString;
+  return new Date(safe).toLocaleDateString('es-HN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

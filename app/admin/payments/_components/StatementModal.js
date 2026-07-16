@@ -164,7 +164,9 @@ export function StatementModal({
     
     const monthlyTotals = {};
     userPayments.forEach(item => {
-      const date = new Date(item.due_date || item.created_at);
+      const raw = item.due_date || item.created_at;
+      // Fix TZ: mismo anclaje a mediodía UTC que formatDate (_helpers.js).
+      const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw + 'T12:00:00Z' : raw);
       const monthKey = date.toLocaleDateString("es-HN", { year: "numeric", month: "short" });
       if (!monthlyTotals[monthKey]) monthlyTotals[monthKey] = { paid: 0, pending: 0 };
       const amount = parseFloat(item.amount) || 0;

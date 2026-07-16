@@ -16,6 +16,30 @@ const MONTHS_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+// Fix TZ (corrimiento de mes): charge_due_date llega como DATE-only
+// ('YYYY-MM-DD'). `new Date('2026-08-01')` lo ancla a medianoche UTC y
+// getFullYear()/getMonth() (hora local, UTC-6) lo retroceden a julio 31.
+// Para date-only derivamos año/mes directo del string; timestamps ISO
+// completos (created_at, paid_at) conservan el comportamiento local actual.
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export const monthPartsOf = (dateStr) => {
+  if (!dateStr) return null;
+  if (typeof dateStr === 'string' && DATE_ONLY_RE.test(dateStr)) {
+    return { year: Number(dateStr.slice(0, 4)), month: Number(dateStr.slice(5, 7)) - 1 };
+  }
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return { year: d.getFullYear(), month: d.getMonth() };
+};
+
+// Key canónico de mes — único punto de verdad para groupByMonth y para el
+// filtro de meses colapsados de ChargesTab (mismo formato `${year}-${MM}`).
+export const monthKeyOf = (dateStr) => {
+  const parts = monthPartsOf(dateStr);
+  return parts ? `${parts.year}-${String(parts.month).padStart(2, '0')}` : null;
+};
+
 /**
  * Agrupa payments por mes (year+month) según el dateField indicado.
  *
@@ -51,11 +75,9 @@ export function groupByMonth(payments = [], dateField = 'charge_due_date') {
     // fallback a created_at para no perder el item.
     const dateStr = p[dateField] || p.created_at;
     if (!dateStr) continue;
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) continue;
-
-    const year = d.getFullYear();
-    const month = d.getMonth(); // 0-indexed
+    const parts = monthPartsOf(dateStr);
+    if (!parts) continue;
+    const { year, month } = parts; // month 0-indexed
     const groupKey = `${year}-${String(month).padStart(2, '0')}`;
 
     if (!groups.has(groupKey)) {

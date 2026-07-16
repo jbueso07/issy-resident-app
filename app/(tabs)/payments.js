@@ -178,11 +178,15 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-HN', { 
-      day: 'numeric', 
+    // Fix TZ: due_date es DATE-only; anclar a mediodía UTC evita mostrar
+    // el día anterior en UTC-6 ('2026-08-01' → '31 jul 2026').
+    const date = new Date(
+      /^\d{4}-\d{2}-\d{2}$/.test(dateString) ? dateString + 'T12:00:00Z' : dateString
+    );
+    return date.toLocaleDateString('es-HN', {
+      day: 'numeric',
       month: 'short',
-      year: 'numeric' 
+      year: 'numeric'
     });
   };
 

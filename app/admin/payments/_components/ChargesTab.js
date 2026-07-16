@@ -49,7 +49,7 @@ import KpiCard from './cards/KpiCard';
 import StatusChips from './StatusChips';
 import { AdvancedFiltersSheet, countAdvancedFilters } from './AdvancedFiltersSheet';
 import { MonthHeader } from './MonthHeader';
-import { groupByMonth } from '../_utils/groupByMonth';
+import { groupByMonth, monthKeyOf } from '../_utils/groupByMonth';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -154,9 +154,10 @@ export function ChargesTab({
       const dateStr =
         node.payment?.[dateField] || node.payment?.created_at;
       if (!dateStr) return true; // payment sin fecha — defensivo, mantener visible
-      const d = new Date(dateStr);
-      if (Number.isNaN(d.getTime())) return true;
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      // Fix TZ: usar el mismo derivador de mes que groupByMonth (date-only
+      // sin corrimiento UTC→local) para que el colapso no se desalinee.
+      const monthKey = monthKeyOf(dateStr);
+      if (!monthKey) return true;
       return !collapsedMonths.has(monthKey);
     });
   }, [groupedData, collapsedMonths, dateField]);
