@@ -173,7 +173,7 @@ const formatTimeForBackend = (date) => {
 export default function Visits() {
   const { profile } = useAuth();
   const { t, language } = useTranslation();
-  const { selectedLocationId, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
+  const { selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
   const qrRef = useRef(null);
 
   // Dynamic QR types with translations
@@ -909,9 +909,11 @@ const getActiveDays = (qr) => {
 };
 
 const hostName = profile?.name || 'Residente ISSY';
-const communityName = profile?.current_location?.name || profile?.location?.name || 'Mi Comunidad';
-// house_number viene de current_location (que es un user_location con el campo)
-const houseNumber = profile?.current_location?.house_number || profile?.house_number || '';
+// Misma fuente que el INSERT (selectedLocationId de UserLocationContext):
+// la tarjeta debe pintar la comunidad de la membresía seleccionada, no profile.current_location.
+const communityName = selectedLocation?.location?.name || selectedLocation?.name || profile?.current_location?.name || profile?.location?.name || 'Mi Comunidad';
+// house_number viene de la membresía seleccionada (user_location); fallback al profile si no lo trae
+const houseNumber = selectedLocation?.house_number || profile?.current_location?.house_number || profile?.house_number || '';
 
 // Render QR Card - Todo el card es touchable
 const renderQRCard = (qr) => {

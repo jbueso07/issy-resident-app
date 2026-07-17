@@ -36,19 +36,29 @@ export const UserLocationProvider = ({ children }) => {
       const data = await response.json();
       
       if (data.success && data.data) {
-        setUserLocations(data.data);
-        
+        // Excluir comunidades desactivadas (locations.is_active === false).
+        // Comparación explícita contra false: si el backend no incluye el campo
+        // en /users/my-locations, no se filtra nada (el filtro definitivo va en backend).
+        const activeLocations = data.data.filter(l => (l.location || l).is_active !== false);
+        setUserLocations(activeLocations);
+
         // Try to restore saved location
         const savedId = await AsyncStorage.getItem(STORAGE_KEY);
-        const validSavedLocation = data.data.find(l => l.location_id === savedId || l.id === savedId);
-        
+        const validSavedLocation = activeLocations.find(l => l.location_id === savedId || l.id === savedId);
+
+        if (savedId && !validSavedLocation) {
+          // ID huérfano (comunidad desactivada o membresía eliminada):
+          // limpiarlo para que no quede pegado en futuros arranques.
+          await AsyncStorage.removeItem(STORAGE_KEY);
+        }
+
         if (validSavedLocation) {
           const locId = validSavedLocation.location_id || validSavedLocation.id;
           setSelectedLocationId(locId);
           setSelectedLocation(validSavedLocation);
-        } else if (data.data.length > 0) {
+        } else if (activeLocations.length > 0) {
           // Default to primary location or first one
-          const primaryLoc = data.data.find(l => l.is_primary) || data.data[0];
+          const primaryLoc = activeLocations.find(l => l.is_primary) || activeLocations[0];
           const locId = primaryLoc.location_id || primaryLoc.id;
           setSelectedLocationId(locId);
           setSelectedLocation(primaryLoc);

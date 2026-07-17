@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
+import { useUserLocation } from '../../src/context/UserLocationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
@@ -123,6 +124,7 @@ const switchLocationAPI = async (token, locationId) => {
 
 export default function Home() {
   const { user, profile, token, hasLocation, refreshProfile } = useAuth();
+  const { selectLocation } = useUserLocation();
   const router = useRouter();
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
@@ -561,6 +563,9 @@ export default function Home() {
     try {
       const result = await switchLocationAPI(token, location.location_id);
       if (result.success) {
+        // Sincronizar UserLocationContext (fuente del location_id en los QRs):
+        // sin esto, el INSERT de QRs sigue usando la comunidad anterior.
+        await selectLocation(location.location_id);
         await refreshProfile();
         setShowLocationModal(false);
       }
