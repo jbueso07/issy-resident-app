@@ -173,7 +173,7 @@ const formatTimeForBackend = (date) => {
 export default function Visits() {
   const { profile } = useAuth();
   const { t, language } = useTranslation();
-  const { selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
+  const { userLocations, selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
   const qrRef = useRef(null);
 
   // Dynamic QR types with translations
@@ -909,11 +909,41 @@ const getActiveDays = (qr) => {
 };
 
 const hostName = profile?.name || 'Residente ISSY';
-// Misma fuente que el INSERT (selectedLocationId de UserLocationContext):
-// la tarjeta debe pintar la comunidad de la membresía seleccionada, no profile.current_location.
-const communityName = selectedLocation?.location?.name || selectedLocation?.name || profile?.current_location?.name || profile?.location?.name || 'Mi Comunidad';
-// house_number viene de la membresía seleccionada (user_location); fallback al profile si no lo trae
-const houseNumber = selectedLocation?.house_number || profile?.current_location?.house_number || profile?.house_number || '';
+
+// Mapa location_id -> membresía, armado con las membresías ya cargadas por
+// UserLocationContext. Evita pedir nada extra al backend.
+// Sin useMemo a propósito: son 1-3 entradas y este bloque vive después de
+// varios early-returns del cuerpo del componente; un hook aquí sería frágil.
+const membershipByLocationId = {};
+(userLocations || []).forEach(ul => {
+  const id = ul.location_id || ul.location?.id || ul.id;
+  if (id) membershipByLocationId[id] = ul;
+});
+
+// Comunidad y casa de UN QR concreto, resueltas desde su propio location_id.
+// Antes se usaba la comunidad *seleccionada* para rotular cualquier QR de la
+// lista: un QR grabado en otra comunidad se mostraba con el nombre de la
+// comunidad activa (el guardia lo rechazaba con "no válido para esta ubicación").
+const getQRCommunityInfo = (qr) => {
+  const membership = qr?.location_id ? membershipByLocationId[qr.location_id] : null;
+
+  if (membership) {
+    return {
+      name: membership.location?.name || membership.name || 'Mi Comunidad',
+      houseNumber: membership.house_number || '',
+    };
+  }
+
+  // Sin QR seleccionado, o QR de una comunidad que ya no está entre las
+  // membresías activas (baja de la comunidad o del residente): etiqueta neutra
+  // antes que un nombre incorrecto. Nunca se rotula con la comunidad
+  // seleccionada: esa suposición es justamente el bug que se corrige acá.
+  return { name: 'Comunidad no disponible', houseNumber: '' };
+};
+
+const selectedQRCommunity = getQRCommunityInfo(selectedQR);
+const communityName = selectedQRCommunity.name;
+const houseNumber = selectedQRCommunity.houseNumber;
 
 // Render QR Card - Todo el card es touchable
 const renderQRCard = (qr) => {
