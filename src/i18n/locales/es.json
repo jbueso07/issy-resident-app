@@ -242,7 +242,40 @@
       "temporary": "Temporal",
       "permanent": "Permanente",
       "single": "Una vez",
-      "frequent": "Frecuente"
+      "frequent": "Frecuente",
+      "events": "Eventos"
+    },
+    "events": {
+      "title": "Crear evento",
+      "createButton": "Crear evento",
+      "step1Title": "Datos del evento",
+      "step2Title": "Invitados",
+      "eventName": "Nombre del evento",
+      "eventNamePlaceholder": "Ej: Cumpleaños de Ana",
+      "date": "Fecha",
+      "startTime": "Hora de inicio",
+      "endTime": "Hora límite de ingreso",
+      "crossesMidnight": "El ingreso cierra al día siguiente",
+      "endsNextDay": "día siguiente",
+      "guests": "invitados",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "addGuest": "Agregar invitado",
+      "next": "Siguiente",
+      "create": "Crear evento",
+      "successTitle": "¡Evento creado!",
+      "successSubtitle": "Compartí este QR con tus invitados",
+      "share": "Compartir QR",
+      "done": "Listo",
+      "errors": {
+        "nameRequired": "Poné un nombre para el evento",
+        "dateInPast": "La fecha debe ser hoy o futura",
+        "guestsRequired": "Agregá al menos 1 invitado",
+        "guestIncomplete": "Cada invitado necesita nombre y apellido",
+        "noLocation": "No se pudo determinar tu comunidad",
+        "createFailed": "No se pudo crear el evento",
+        "shareFailed": "No se pudo compartir el QR"
+      }
     },
     "weekdays": {
       "monday": "Lunes",

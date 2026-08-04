@@ -214,6 +214,22 @@ export const generateQRCode = async (qrData) => {
   }
 };
 
+// Eventos con lista de invitados — POST /api/events
+// { name, event_date, start_time, end_time, location_id, guests: [{first_name, last_name}] }
+// → { event, qr_code, qr_code_id }
+export const createEvent = async (eventData) => {
+  try {
+    const data = await authFetch('/events', {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    console.error('Error creating event:', error);
+    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
 export const generateVisitorQR = async (visitorData) => {
   try {
     const data = await authFetch('/qr/generate', {

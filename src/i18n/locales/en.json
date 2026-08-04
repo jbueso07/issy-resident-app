@@ -227,7 +227,40 @@
       "temporary": "Temporary",
       "permanent": "Permanent",
       "single": "One time",
-      "frequent": "Frequent"
+      "frequent": "Frequent",
+      "events": "Events"
+    },
+    "events": {
+      "title": "Create event",
+      "createButton": "Create event",
+      "step1Title": "Event details",
+      "step2Title": "Guests",
+      "eventName": "Event name",
+      "eventNamePlaceholder": "E.g.: Ana's birthday",
+      "date": "Date",
+      "startTime": "Start time",
+      "endTime": "Entry cutoff time",
+      "crossesMidnight": "Entry closes the next day",
+      "endsNextDay": "next day",
+      "guests": "guests",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "addGuest": "Add guest",
+      "next": "Next",
+      "create": "Create event",
+      "successTitle": "Event created!",
+      "successSubtitle": "Share this QR with your guests",
+      "share": "Share QR",
+      "done": "Done",
+      "errors": {
+        "nameRequired": "Enter a name for the event",
+        "dateInPast": "The date must be today or later",
+        "guestsRequired": "Add at least 1 guest",
+        "guestIncomplete": "Each guest needs a first and last name",
+        "noLocation": "Could not determine your community",
+        "createFailed": "Could not create the event",
+        "shareFailed": "Could not share the QR"
+      }
     },
     "weekdays": {
       "monday": "Monday",

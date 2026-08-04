@@ -228,7 +228,7 @@ export default function Visits() {
   const toggleSection = (id) => setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
 
   // Renderiza una seccion colapsable de codigos QR agrupados por tipo.
-  const renderQRSection = (id, title, iconName, items, comingSoon = false) => {
+  const renderQRSection = (id, title, iconName, items, comingSoon = false, onCreate = null) => {
     const open = !!expandedSections[id];
     return (
       <View key={id} style={styles.qrSection}>
@@ -250,6 +250,14 @@ export default function Visits() {
               <Text style={styles.qrSectionEmpty} maxFontSizeMultiplier={1.2}>Sin códigos</Text>
             ) : (
               items.map((qr) => renderQRCard(qr))
+            )}
+            {!comingSoon && onCreate && (
+              <TouchableOpacity style={styles.qrSectionCreateBtn} onPress={onCreate} activeOpacity={0.7}>
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.lime} style={{ marginRight: scale(6) }} />
+                <Text style={styles.qrSectionCreateText} maxFontSizeMultiplier={1.2}>
+                  {t('visits.events.createButton', 'Crear evento')}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -908,6 +916,27 @@ const getActiveDays = (qr) => {
   }
 };
 
+// Ventana real de INGRESO de un evento. valid_from/valid_until ya vienen
+// calculados por el backend desde event_date + start_time/end_time en la zona
+// horaria de la comunidad, asi que no hace falta joinear con events.
+// No se usan is_24_7 ni access_days: createEvent los deja en false/null, y los
+// fallbacks genericos de getTimeText/getActiveDays mentian "Acceso 24/7" y
+// "todos los dias" en la tarjeta que termina viendo el invitado.
+const getEventEntryWindow = (qr) => {
+  if (!qr?.valid_from || !qr?.valid_until) return '';
+  const from = new Date(qr.valid_from);
+  const until = new Date(qr.valid_until);
+  const hhmm = (d) => d.toLocaleTimeString('es-HN', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
+  // Mismo criterio que el mensaje de WhatsApp de delivery: si el limite de
+  // ingreso cae al dia siguiente (evento 21:00 -> 02:00), mostrar la fecha.
+  const isNextDay = until.getDate() !== from.getDate();
+  return isNextDay
+    ? `${hhmm(from)} – ${formatDateShort(until)} ${hhmm(until)}`
+    : `${hhmm(from)} – ${hhmm(until)}`;
+};
+
 const hostName = profile?.name || 'Residente ISSY';
 
 // Mapa location_id -> membresía, armado con las membresías ya cargadas por
@@ -955,6 +984,15 @@ const renderQRCard = (qr) => {
       key={qr.id}
       style={styles.qrCard}
       onPress={() => {
+        if (qr.qr_type === 'event') {
+          // TODO(Tanda 2): enrutar a `/event-detail?id=${qr.id}` — detalle con
+          // lista de invitados y contadores (GET /api/events/:id, shape §4.1).
+          // Por ahora el evento abre el VIEW QR MODAL genérico igual que una
+          // visita (el QR compartible funciona; falta el tracking de invitados).
+          setSelectedQR(qr);
+          setShowQRModal(true);
+          return;
+        }
         setSelectedQR(qr);
         setShowQRModal(true);
       }}
@@ -987,7 +1025,14 @@ const renderQRCard = (qr) => {
 
         {/* Visitor info */}
         <Text style={styles.visitorName} maxFontSizeMultiplier={1.2}>{qr.visitor_name}</Text>
-        <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>{qr.visitor_phone}</Text>
+        {/* Eventos: visitor_phone es el literal 'N/A' que escribe createEvent
+            (qr_codes no admite null y un evento no tiene telefono de visitante).
+            El conteo de invitados no viaja en GET /qr, asi que va fecha + horario. */}
+        <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>
+          {qr.qr_type === 'event'
+            ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
+            : qr.visitor_phone}
+        </Text>
         <Text style={styles.validDate} maxFontSizeMultiplier={1.2}>{getCardValidityText(qr)}</Text>
 
         {/* Action row */}
@@ -1167,7 +1212,7 @@ return (
                     {renderQRSection('single', t('visits.qrTypes.single'), 'flash-outline', single)}
                     {renderQRSection('frequent', t('visits.qrTypes.frequent'), 'infinite-outline', frequent)}
                     {renderQRSection('temporary', t('visits.qrTypes.temporary'), 'calendar-outline', temporary)}
-                    {renderQRSection('event', 'Eventos', 'balloon-outline', event, true)}
+                    {renderQRSection('event', t('visits.qrTypes.events', 'Eventos'), 'balloon-outline', event, false, () => navRouter.push('/create-event'))}
                   </>
                 );
               })()
@@ -1835,6 +1880,34 @@ return (
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
                     </View>
                   </View>
+                ) : selectedQR.qr_type === 'event' ? (
+                  // Evento: horario real de ingreso y SIN fila de dias permitidos
+                  // (no aplica a un evento de un dia). Rotulo "Ingreso" y no
+                  // "Horario": valid_until es la hora limite de ENTRADA, no el fin
+                  // del evento (migrations/003: end_time = hora limite de ingreso).
+                  <View style={styles.infoCardsRow}>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="time-outline" size={16} color="#1A3D4D" />
+                      </View>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.events.entryLabel', 'Ingreso')}</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getEventEntryWindow(selectedQR)}</Text>
+                    </View>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                      </View>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                    </View>
+                    <View style={styles.infoCard}>
+                      <View style={styles.infoCardIcon}>
+                        <Ionicons name="calendar-outline" size={16} color="#1A3D4D" />
+                      </View>
+                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
+                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
+                    </View>
+                  </View>
                 ) : (
                   // QR Temporal/Frecuente: Días + 3 cards
                   <>
@@ -2174,6 +2247,22 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     paddingVertical: scale(16),
     textAlign: 'center',
+  },
+  qrSectionCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.lime + '60',
+    paddingVertical: scale(12),
+    marginTop: scale(8),
+  },
+  qrSectionCreateText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.lime,
   },
 
   // Loading
