@@ -22,6 +22,18 @@ import { getAdminCommunityPayments } from '../../../../src/services/api';
 
 const DEFAULT_PAGE_SIZE = 20;
 
+// Compara dos objetos de params shallow, tratando claves ausentes como
+// undefined. Sirve para no recrear la referencia de `params` cuando un caller
+// llama setParams con valores idénticos (ej. los 3 efectos de montaje de
+// ChargesTab: location + search + status con valores no-op).
+const paramsShallowEqual = (a, b) => {
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  for (const k of keys) {
+    if (a?.[k] !== b?.[k]) return false;
+  }
+  return true;
+};
+
 /**
  * @typedef {Object} PaymentRow
  * @property {string} id
@@ -109,9 +121,12 @@ export default function usePayments(initialParams = {}) {
   // setParams acepta objeto-merge o updater function (igual que useState).
   // Cuando cambia, el useEffect de abajo dispara fetch inicial automáticamente.
   const setParams = useCallback((next) => {
-    setParamsState((prev) =>
-      typeof next === 'function' ? next(prev) : { ...prev, ...next }
-    );
+    setParamsState((prev) => {
+      const merged = typeof next === 'function' ? next(prev) : { ...prev, ...next };
+      // Si el merge no cambió ningún valor, devolver la MISMA referencia para
+      // que el useEffect [params] de abajo NO re-dispare un fetch redundante.
+      return paramsShallowEqual(prev, merged) ? prev : merged;
+    });
   }, []);
 
   /**
