@@ -1800,6 +1800,7 @@
       }
     },
     "incidents": {
+      "photos": "Fotos ({{count}})",
       "title": "Incidentes",
       "loading": "Cargando incidentes...",
       "description": "Descripción",
@@ -2190,6 +2191,7 @@
       "other": "Otro"
     },
     "sections": {
+      "photos": "Fotos ({{count}})",
       "description": "Descripción",
       "details": "Detalles",
       "progress": "Progreso",

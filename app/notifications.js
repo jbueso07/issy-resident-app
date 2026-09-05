@@ -192,6 +192,15 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Algunos proveedores entregan `data` como string JSON en vez de objeto.
+  const safeParse = (raw) => {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
   const handleNotificationPress = (notification) => {
     // Marcar como leída
     if (!notification.read) {
@@ -219,9 +228,16 @@ export default function NotificationsScreen() {
         router.push('/reservations');
         break;
       case 'incident':
-      case 'incident_update':
-        router.push('/admin/incidents');
+      case 'incident_update': {
+        const payload = typeof data === 'string' ? safeParse(data) : data;
+        const incidentId = payload?.incident_id;
+        if (incidentId) {
+          router.push(`/admin/incidents?openId=${incidentId}`);
+        } else {
+          router.push('/admin/incidents');
+        }
         break;
+      }
       case 'payment_due':
       case 'payment':
         router.push('/(tabs)/payments');

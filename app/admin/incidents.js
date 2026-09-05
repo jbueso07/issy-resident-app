@@ -2,7 +2,7 @@
 // ISSY Admin - Gestión de Incidentes (ProHome Dark Theme)
 // UPDATED: Added LocationPickerModal for superadmin location switching
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment } from '../../src/services/api';
+import PhotoGallery, { PhotoViewer } from '../../src/components/PhotoGallery';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -77,6 +78,7 @@ const getTypeLabels = (t) => ({
 export default function AdminIncidents() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { openId } = useLocalSearchParams();
   const { user, profile, isSuperAdmin } = useAuth();
   
   // i18n configs
@@ -94,6 +96,13 @@ export default function AdminIncidents() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Visor de fotos a nivel de pantalla (evita <Modal> anidado en iOS)
+  const [galleryUris, setGalleryUris] = useState([]);
+  const [galleryIndex, setGalleryIndex] = useState(null);
+
+  // Ultimo openId ya atendido; si cambia, se vuelve a abrir el detalle.
+  const lastOpenIdRef = useRef(null);
 
   // Location picker state (for superadmin)
   const [locations, setLocations] = useState([]);
@@ -119,6 +128,16 @@ export default function AdminIncidents() {
       fetchIncidents();
     }
   }, [selectedLocationId]);
+
+  // Deep-link desde push: /admin/incidents?openId=<incident_id>
+  // Abre el detalle cuando la lista ya cargo; se re-dispara solo si openId cambia.
+  useEffect(() => {
+    if (!openId || loading) return;
+    if (String(lastOpenIdRef.current) === String(openId)) return;
+    lastOpenIdRef.current = openId;
+    const fromList = incidents.find((i) => String(i.id) === String(openId));
+    openIncidentDetail(fromList || { id: openId });
+  }, [openId, loading, incidents]);
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -175,21 +194,47 @@ export default function AdminIncidents() {
   };
 
   const openIncidentDetail = async (incident) => {
+    const incidentId = incident?.id;
+    if (!incidentId) return;
+
+    // `incident` puede ser un item completo de la lista o solo { id } (deep-link).
+    const hasListData = Boolean(incident.title || incident.status);
+
+    const abort = (messageKey) => {
+      setDetailModalVisible(false);
+      setSelectedIncident(null);
+      Alert.alert(t('common.error'), t(messageKey));
+    };
+
     setDetailModalVisible(true);
     setLoadingDetail(true);
     try {
-      const result = await getIncidentById(incident.id);
+      const result = await getIncidentById(incidentId);
       if (result.success) {
         setSelectedIncident(result.data.incident || result.data);
-      } else {
+      } else if (hasListData) {
         setSelectedIncident(incident);
+      } else {
+        // Sin datos del backend ni de la lista: no abrir un modal vacio.
+        abort('incidentDetail.errors.loadFailed');
       }
     } catch (error) {
-      setSelectedIncident(incident);
+      if (hasListData) {
+        setSelectedIncident(incident);
+      } else {
+        abort('incidentDetail.errors.loadError');
+      }
     } finally {
       setLoadingDetail(false);
     }
   };
+
+  const openGallery = (uris, index) => {
+    setGalleryUris(uris);
+    setGalleryIndex(index);
+  };
+
+  const closeGallery = () => setGalleryIndex(null);
 
   const handleStatusChange = async (newStatus) => {
     if (!selectedIncident || submitting) return;
@@ -402,6 +447,20 @@ export default function AdminIncidents() {
 
                 <Text style={styles.sectionLabel}>{t('admin.incidents.description')}</Text>
                 <Text style={styles.detailDescription}>{selectedIncident.description}</Text>
+
+                {selectedIncident.photos?.length > 0 && (
+                  <>
+                    <Text style={styles.sectionLabel}>
+                      {t('admin.incidents.photos', { count: selectedIncident.photos.length })}
+                    </Text>
+                    <PhotoGallery
+                      photos={selectedIncident.photos}
+                      borderColor={COLORS.border}
+                      placeholderColor={COLORS.backgroundTertiary}
+                      onOpen={openGallery}
+                    />
+                  </>
+                )}
 
                 <Text style={styles.sectionLabel}>{t('admin.incidents.reportedBy')}</Text>
                 <View style={styles.reporterInfo}>
@@ -627,6 +686,9 @@ export default function AdminIncidents() {
 
       {/* Location Picker Modal */}
       {renderLocationPickerModal()}
+
+      {/* Visor de fotos (hermano de los modales, no anidado) */}
+      <PhotoViewer uris={galleryUris} index={galleryIndex} onClose={closeGallery} />
     </SafeAreaView>
   );
 }

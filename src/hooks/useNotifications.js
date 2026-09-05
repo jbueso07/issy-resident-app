@@ -195,6 +195,15 @@ function handleNotificationResponse(response) {
     });
   } else if (data?.type === 'announcement') {
     router.push('/announcements');
+  } else if (data?.type === 'incident' || data?.type === 'incident_update') {
+    // Backend confirmado: incidentController.js L125/L321/L433 y
+    // pushNotificationService.js L395/L411 siempre envian data.incident_id.
+    const incidentId = data?.incident_id;
+    if (incidentId) {
+      router.push(`/admin/incidents?openId=${incidentId}`);
+    } else {
+      router.push('/admin/incidents');
+    }
   } else if (data?.type === 'visitor_arrived') {
     router.push('/notifications');
   }

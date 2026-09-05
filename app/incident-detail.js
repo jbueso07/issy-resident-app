@@ -19,6 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getIncidentById } from '../src/services/api';
+import PhotoGallery from '../src/components/PhotoGallery';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -215,6 +216,19 @@ export default function IncidentDetailScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Photos */}
+          {incident.photos?.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('incidentDetail.sections.photos', { count: incident.photos.length })}
+              </Text>
+              <PhotoGallery
+                photos={incident.photos}
+                placeholderColor={COLORS.grayLight}
+              />
+            </View>
+          )}
 
           {/* Details */}
           <View style={styles.section}>

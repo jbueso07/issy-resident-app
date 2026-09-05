@@ -1493,6 +1493,9 @@
         "createInvitationFailed": "Could not create invitation",
         "cancelFailed": "Could not cancel"
       }
+    },
+    "incidents": {
+      "photos": "Photos ({{count}})"
     }
   },
   "accountSuspended": {
@@ -1831,6 +1834,7 @@
       "other": "Other"
     },
     "sections": {
+      "photos": "Photos ({{count}})",
       "description": "Description",
       "details": "Details",
       "progress": "Progress",
