@@ -26,12 +26,19 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import MapView, { Marker, Circle, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import Constants from 'expo-constants';
+import MapView, { Marker, Circle, Polyline } from 'react-native-maps';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const API_URL = 'https://api.joinissy.com/api';
+
+// En Android react-native-maps SIEMPRE usa Google Maps (PROVIDER_DEFAULT == Google).
+// Sin android.config.googleMaps.apiKey en el build nativo, el mapa renderiza gris.
+const ANDROID_MAPS_KEY =
+  Constants.expoConfig?.android?.config?.googleMaps?.apiKey || null;
+const MAPS_AVAILABLE = Platform.OS !== 'android' || Boolean(ANDROID_MAPS_KEY);
 
 const COLORS = {
   background: '#0F1A1A',
@@ -607,7 +614,22 @@ export default function AdminPatrols() {
     }
 
     if (!checkpointForm.latitude || !checkpointForm.longitude) {
-      Alert.alert('Error', 'Las coordenadas GPS son requeridas. Toca el mapa o usa tu ubicación actual.');
+      Alert.alert(
+        'Error',
+        MAPS_AVAILABLE
+          ? 'Las coordenadas GPS son requeridas. Toca el mapa, usa tu ubicación actual o escríbelas abajo.'
+          : 'Las coordenadas GPS son requeridas. Usa "Usar mi ubicación actual" o escribe la latitud y longitud.'
+      );
+      return;
+    }
+
+    const lat = parseFloat(checkpointForm.latitude);
+    const lng = parseFloat(checkpointForm.longitude);
+    if (
+      !Number.isFinite(lat) || !Number.isFinite(lng) ||
+      lat < -90 || lat > 90 || lng < -180 || lng > 180
+    ) {
+      Alert.alert('Error', 'Coordenadas inválidas. La latitud va de -90 a 90 y la longitud de -180 a 180.');
       return;
     }
 
@@ -623,8 +645,8 @@ export default function AdminPatrols() {
         name: checkpointForm.name.trim(),
         description: checkpointForm.description.trim() || null,
         instructions: checkpointForm.instructions.trim() || null,
-        latitude: parseFloat(checkpointForm.latitude),
-        longitude: parseFloat(checkpointForm.longitude),
+        latitude: lat,
+        longitude: lng,
         geofence_radius_meters: parseInt(checkpointForm.geofence_radius) || 30,
         require_photo: checkpointForm.require_photo,
         require_notes: checkpointForm.require_notes,
@@ -836,7 +858,7 @@ export default function AdminPatrols() {
       cp => cp.latitude && cp.longitude && !isNaN(parseFloat(cp.latitude))
     );
 
-    if (validCheckpoints.length === 0) return null;
+    if (validCheckpoints.length === 0 || !MAPS_AVAILABLE) return null;
 
     return (
       <View style={styles.routeMapContainer}>
@@ -847,7 +869,6 @@ export default function AdminPatrols() {
         </View>
         <MapView
           style={styles.routeMap}
-          provider={PROVIDER_GOOGLE}
           region={mapRegion}
           showsUserLocation
           showsMyLocationButton={false}
@@ -1543,7 +1564,23 @@ export default function AdminPatrols() {
                 )}
               </TouchableOpacity>
 
-              {/* Map with existing checkpoints + new one */}
+              {/* Coordenadas manuales: primera opción, no la última */}
+              <View style={styles.coordsRow}>
+                <View style={styles.coordInput}>
+                  <Text style={styles.coordLabel}>Latitud *</Text>
+                  <TextInput style={styles.input} value={checkpointForm.latitude} onChangeText={(text) => setCheckpointForm({ ...checkpointForm, latitude: text })} placeholder="15.505000" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" />
+                </View>
+                <View style={styles.coordInput}>
+                  <Text style={styles.coordLabel}>Longitud *</Text>
+                  <TextInput style={styles.input} value={checkpointForm.longitude} onChangeText={(text) => setCheckpointForm({ ...checkpointForm, longitude: text })} placeholder="-88.025000" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" />
+                </View>
+              </View>
+              <Text style={styles.inputHint}>
+                Puedes pegarlas desde Google Maps (formato decimal) o tocarlas en el mapa.
+              </Text>
+
+              {/* Mapa: solo si el build tiene proveedor disponible */}
+              {MAPS_AVAILABLE ? (
               <View style={styles.mapContainer}>
                 <View style={styles.mapHeaderBar}>
                   <Ionicons name="map-outline" size={14} color={COLORS.textSecondary} />
@@ -1551,7 +1588,6 @@ export default function AdminPatrols() {
                 </View>
                 <MapView
                   style={styles.map}
-                  provider={PROVIDER_GOOGLE}
                   initialRegion={{
                     latitude: checkpointForm.latitude ? parseFloat(checkpointForm.latitude) : 15.5,
                     longitude: checkpointForm.longitude ? parseFloat(checkpointForm.longitude) : -88.0,
@@ -1647,17 +1683,17 @@ export default function AdminPatrols() {
                   )}
                 </MapView>
               </View>
-
-              <View style={styles.coordsRow}>
-                <View style={styles.coordInput}>
-                  <Text style={styles.coordLabel}>Latitud</Text>
-                  <TextInput style={styles.input} value={checkpointForm.latitude} onChangeText={(text) => setCheckpointForm({ ...checkpointForm, latitude: text })} placeholder="0.000000" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" />
+              ) : (
+                <View style={styles.mapUnavailable}>
+                  <Ionicons name="map-outline" size={28} color={COLORS.textMuted} />
+                  <Text style={styles.mapUnavailableTitle}>Mapa no disponible en Android</Text>
+                  <Text style={styles.mapUnavailableText}>
+                    Esta versión de la app no incluye la clave de Google Maps.
+                    Usa "Usar mi ubicación actual" o escribe las coordenadas arriba:
+                    el punto de control se guarda igual.
+                  </Text>
                 </View>
-                <View style={styles.coordInput}>
-                  <Text style={styles.coordLabel}>Longitud</Text>
-                  <TextInput style={styles.input} value={checkpointForm.longitude} onChangeText={(text) => setCheckpointForm({ ...checkpointForm, longitude: text })} placeholder="0.000000" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" />
-                </View>
-              </View>
+              )}
 
               <Text style={styles.inputLabel}>Radio de Geofence (metros)</Text>
               <TextInput style={styles.input} value={checkpointForm.geofence_radius} onChangeText={(text) => setCheckpointForm({ ...checkpointForm, geofence_radius: text })} placeholder="30" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" />
@@ -1905,6 +1941,9 @@ const styles = StyleSheet.create({
   mapHeaderBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(6), paddingVertical: scale(8), backgroundColor: COLORS.backgroundTertiary },
   mapHint: { fontSize: scale(12), color: COLORS.textSecondary },
   map: { width: '100%', height: scale(250) },
+  mapUnavailable: { alignItems: 'center', gap: scale(8), padding: scale(20), marginBottom: scale(16), borderRadius: scale(12), borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.border, backgroundColor: COLORS.backgroundSecondary },
+  mapUnavailableTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textSecondary },
+  mapUnavailableText: { fontSize: scale(12), color: COLORS.textMuted, textAlign: 'center', lineHeight: scale(18) },
   coordsRow: { flexDirection: 'row', gap: scale(12) },
   coordInput: { flex: 1 },
   coordLabel: { fontSize: scale(12), fontWeight: '600', color: COLORS.textSecondary, marginBottom: scale(6) },
