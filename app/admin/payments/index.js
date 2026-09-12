@@ -650,7 +650,10 @@ export default function AdminPayments() {
       <StatementModal
         visible={showStatementModal}
         onClose={() => setShowStatementModal(false)}
-        locationId={selectedLocation?.id}
+        // Fix: para admins single-location `selectedLocation` llega incompleto
+        // desde AdminLocationContext (Bug B) y `.id` es undefined, lo que abortaba
+        // en silencio "Reporte por Estado" y "Exportar Excel". Usamos el id plano.
+        locationId={selectedLocationId || selectedLocation?.id || profile?.location_id || user?.location_id}
         // Bug B (COMUNIDAD N/A): fallback al nombre del objeto location.
         // selectedLocation a veces llega sin `name` para admins single-location.
         // Si con este fallback sigue vacío, escalamos al AdminLocationContext.

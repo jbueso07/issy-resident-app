@@ -511,7 +511,11 @@ export function StatementModal({
   // Trae el reporte consolidado (sin charge_id → todos los cobros 'active').
   // Devuelve el objeto data, o null si falla. Cachea en reportData.
   const fetchConsolidatedReport = useCallback(async () => {
-    if (!locationId) return null;
+    if (!locationId) {
+      console.error('[Reporte por estado] locationId vacío');
+      Alert.alert('Error', 'No se pudo determinar la comunidad. Cerrá y volvé a abrir Cobros.');
+      return null;
+    }
     try {
       setReportLoading(true);
       const headers = await getAuthHeaders();
@@ -664,7 +668,11 @@ export function StatementModal({
   // Descarga el .xlsx (Fase 3) con auth headers y lo comparte. downloadAsync
   // (legacy) acepta { headers } para mandar el Bearer token.
   const handleExportExcel = async () => {
-    if (!locationId) return;
+    if (!locationId) {
+      console.error('[Reporte por estado] locationId vacío');
+      Alert.alert('Error', 'No se pudo determinar la comunidad. Cerrá y volvé a abrir Cobros.');
+      return;
+    }
     try {
       setExportingExcel(true);
       const headers = await getAuthHeaders();
