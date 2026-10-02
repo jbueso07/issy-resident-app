@@ -406,7 +406,7 @@ export default function AdminMarketplace() {
 
     return (
       <View style={styles.tabContent}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
           {filters.map(f => (
             <TouchableOpacity
               key={f}
@@ -508,7 +508,7 @@ export default function AdminMarketplace() {
 
     return (
       <View style={styles.tabContent}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
           {filters.map(f => (
             <TouchableOpacity
               key={f}
@@ -645,7 +645,7 @@ export default function AdminMarketplace() {
 
     return (
       <View style={styles.tabContent}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterBarContent}>
           {filters.map(f => (
             <TouchableOpacity
               key={f}
@@ -1177,10 +1177,10 @@ const styles = StyleSheet.create({
   refreshBtn: { padding: 8 },
 
   // Tab bar
-  tabBar: { maxHeight: 50, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  tabBar: { flexGrow: 0, flexShrink: 0, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   tabBarContent: { paddingHorizontal: 12, alignItems: 'center', gap: 8, paddingVertical: 8 },
   tab: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
     backgroundColor: COLORS.bgCard,
   },
@@ -1220,8 +1220,12 @@ const styles = StyleSheet.create({
   quickActionLabel: { fontSize: 11, color: COLORS.textSecondary, textAlign: 'center' },
 
   // Filter bar
-  filterBar: { maxHeight: 44, marginBottom: 12 },
+  // flexGrow/flexShrink 0: el ScrollView horizontal no se aplasta cuando la
+  // FlatList de abajo ocupa el espacio (antes maxHeight 44 + encogimiento).
+  filterBar: { flexGrow: 0, flexShrink: 0, marginBottom: 12 },
+  filterBarContent: { alignItems: 'center' },
   filterChip: {
+    minHeight: 44, justifyContent: 'center',
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
     backgroundColor: COLORS.bgCard, marginRight: 8,
   },

@@ -787,18 +787,25 @@ const styles = StyleSheet.create({
   },
 
   // Filters
+  // Un ScrollView horizontal dentro de una columna se encoge (flexShrink por
+  // defecto) cuando la FlatList de abajo pide espacio: con muchos incidentes los
+  // chips quedaban como barras sin texto. No crece ni se encoge: mide su contenido.
   filterScroll: {
-    maxHeight: scale(50),
+    flexGrow: 0,
+    flexShrink: 0,
   },
   filterContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: scale(16),
+    paddingTop: scale(4),
     paddingBottom: scale(12),
     gap: scale(8),
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
     paddingHorizontal: scale(12),
     paddingVertical: scale(8),
     borderRadius: scale(20),

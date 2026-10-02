@@ -290,6 +290,7 @@ export function ChargesTab({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.kpisScroll}
           contentContainerStyle={styles.kpisRow}
         >
           <KpiCard
@@ -409,6 +410,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   // KPIs row (Sprint 3 D4): horizontal scroll de KpiCard
+  // Fila de KPIs: no se encoge cuando la FlatList de abajo ocupa el espacio
+  kpisScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   kpisRow: {
     paddingHorizontal: spacing.containerPadding,
     gap: spacing.cardGap,
