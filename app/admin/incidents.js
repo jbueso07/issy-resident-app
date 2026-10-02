@@ -18,7 +18,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -80,6 +80,9 @@ export default function AdminIncidents() {
   const router = useRouter();
   const { openId } = useLocalSearchParams();
   const { user, profile, isSuperAdmin } = useAuth();
+  // Insets de la pantalla: dentro de un <Modal> iOS el SafeAreaView no recibe
+  // el inset superior y el header quedaba debajo de la hora.
+  const insets = useSafeAreaInsets();
   
   // i18n configs
   const STATUS_CONFIG = getStatusConfig(t);
@@ -97,7 +100,7 @@ export default function AdminIncidents() {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Visor de fotos a nivel de pantalla (evita <Modal> anidado en iOS)
+  // Visor de fotos: se pinta como capa dentro del modal de detalle (inline)
   const [galleryUris, setGalleryUris] = useState([]);
   const [galleryIndex, setGalleryIndex] = useState(null);
 
@@ -235,6 +238,16 @@ export default function AdminIncidents() {
   };
 
   const closeGallery = () => setGalleryIndex(null);
+
+  // Cierra el detalle; si el visor de fotos esta abierto, cierra primero el visor
+  // (boton atras de Android -> onRequestClose).
+  const closeDetailModal = () => {
+    if (galleryIndex !== null) {
+      closeGallery();
+      return;
+    }
+    setDetailModalVisible(false);
+  };
 
   const handleStatusChange = async (newStatus) => {
     if (!selectedIncident || submitting) return;
@@ -407,18 +420,33 @@ export default function AdminIncidents() {
       <Modal
         visible={detailModalVisible}
         animationType="slide"
-        onRequestClose={() => setDetailModalVisible(false)}
+        onRequestClose={closeDetailModal}
+        // Android (Expo SDK 54, edge-to-edge): el modal dibuja bajo las barras
+        // del sistema y el padding de insets lo separa igual que en iOS.
+        statusBarTranslucent
+        navigationBarTranslucent
       >
-        <SafeAreaView style={styles.modalContainer} edges={['top']}>
+        <View
+          style={[
+            styles.modalContainer,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setDetailModalVisible(false)}
+            <TouchableOpacity
+              onPress={() => {
+                closeGallery();
+                setDetailModalVisible(false);
+              }}
               style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
             >
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Detalle del Incidente</Text>
-            <View style={{ width: scale(40) }} />
+            <View style={{ width: 44 }} />
           </View>
 
           {loadingDetail ? (
@@ -512,7 +540,10 @@ export default function AdminIncidents() {
               />
             </KeyboardAvoidingView>
           ) : null}
-        </SafeAreaView>
+
+          {/* Visor de fotos como capa dentro de este modal (iOS no abre un Modal hermano) */}
+          <PhotoViewer inline uris={galleryUris} index={galleryIndex} onClose={closeGallery} />
+        </View>
       </Modal>
     );
   };
@@ -657,8 +688,6 @@ export default function AdminIncidents() {
       {/* Location Picker Modal */}
       {renderLocationPickerModal()}
 
-      {/* Visor de fotos (hermano de los modales, no anidado) */}
-      <PhotoViewer uris={galleryUris} index={galleryIndex} onClose={closeGallery} />
     </SafeAreaView>
   );
 }
@@ -908,8 +937,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   closeButton: {
-    width: scale(40),
-    height: scale(40),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

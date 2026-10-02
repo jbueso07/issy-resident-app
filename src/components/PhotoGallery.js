@@ -5,10 +5,16 @@
 // Uso A (pantalla normal): <PhotoGallery photos={x.photos} />
 //   -> la galeria maneja su propio visor internamente.
 //
-// Uso B (dentro de un <Modal>, evita modal anidado en iOS):
+// Uso B (dentro de un <Modal>): iOS no presenta un <Modal> hermano mientras
+// otro esta abierto, asi que el visor se pinta como capa (inline) DENTRO
+// del mismo modal:
 //   <PhotoGallery photos={x.photos} onOpen={openGallery} />
-//   y en el nivel raiz de la pantalla:
-//   <PhotoViewer uris={galleryUris} index={galleryIndex} onClose={closeGallery} />
+//   y como ultimo hijo del contenido del modal:
+//   <PhotoViewer inline uris={galleryUris} index={galleryIndex} onClose={closeGallery} />
+//   (el boton atras de Android lo maneja el onRequestClose del modal padre).
+//
+// Zoom: pellizco en iOS via ScrollView maximumZoomScale (RN core).
+// Android no soporta zoom en ScrollView; ahi solo se desliza entre fotos.
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -23,6 +29,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -34,8 +41,9 @@ const toUri = (p) =>
 
 export const toPhotoUris = (photos) => (photos || []).map(toUri).filter(Boolean);
 
-export function PhotoViewer({ uris = [], index, onClose }) {
+export function PhotoViewer({ uris = [], index, onClose, inline = false }) {
   const scrollRef = useRef(null);
+  const insets = useSafeAreaInsets();
   const isOpen = index !== null && index !== undefined && uris.length > 0;
   const [current, setCurrent] = useState(0);
 
@@ -51,15 +59,8 @@ export function PhotoViewer({ uris = [], index, onClose }) {
     scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, y: 0, animated: false });
   };
 
-  return (
-    <Modal
-      visible
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
-      <View style={styles.viewerBackdrop}>
+  const content = (
+      <View style={inline ? styles.viewerInline : styles.viewerBackdrop}>
         <StatusBar barStyle="light-content" />
 
         <ScrollView
@@ -73,28 +74,53 @@ export function PhotoViewer({ uris = [], index, onClose }) {
           }
         >
           {uris.map((uri, i) => (
-            <View key={`full-${i}`} style={styles.viewerPage}>
+            <ScrollView
+              key={`full-${i}`}
+              style={styles.viewerPage}
+              contentContainerStyle={styles.viewerPageContent}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              centerContent
+              bouncesZoom
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+            >
               <Image source={{ uri }} style={styles.viewerImage} resizeMode="contain" />
-            </View>
+            </ScrollView>
           ))}
         </ScrollView>
 
         <TouchableOpacity
-          style={styles.viewerClose}
+          style={[styles.viewerClose, { top: insets.top + 8 }]}
           onPress={onClose}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar"
         >
           <Ionicons name="close" size={26} color="#FFFFFF" />
         </TouchableOpacity>
 
         {uris.length > 1 && (
-          <View style={styles.viewerCounter}>
+          <View style={[styles.viewerCounter, { bottom: insets.bottom + 16 }]}>
             <Text style={styles.viewerCounterText}>
               {current + 1} / {uris.length}
             </Text>
           </View>
         )}
       </View>
+  );
+
+  if (inline) return content;
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      {content}
     </Modal>
   );
 }
@@ -169,9 +195,20 @@ const styles = StyleSheet.create({
   },
   viewerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
+    backgroundColor: '#000000',
+  },
+  // Capa a pantalla completa dentro de otro Modal (sin Modal anidado)
+  viewerInline: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    zIndex: 1000,
+    elevation: 1000,
   },
   viewerPage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  viewerPageContent: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     justifyContent: 'center',
@@ -179,22 +216,20 @@ const styles = StyleSheet.create({
   },
   viewerImage: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8,
+    height: SCREEN_HEIGHT,
   },
   viewerClose: {
     position: 'absolute',
-    top: scale(48),
-    right: scale(20),
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
+    right: scale(16),
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   viewerCounter: {
     position: 'absolute',
-    bottom: scale(48),
     alignSelf: 'center',
     paddingHorizontal: scale(14),
     paddingVertical: scale(6),

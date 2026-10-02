@@ -159,7 +159,13 @@ export default function IncidentDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+          >
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
@@ -177,7 +183,13 @@ export default function IncidentDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+          >
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
@@ -200,7 +212,13 @@ export default function IncidentDetailScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
@@ -385,8 +403,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   backButton: {
-    width: scale(40),
-    height: scale(40),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -396,11 +414,11 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   headerRight: {
-    width: scale(40),
+    width: 44,
   },
   refreshButton: {
-    width: scale(40),
-    height: scale(40),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

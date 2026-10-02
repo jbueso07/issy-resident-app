@@ -20,6 +20,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { createIncident } from '../services/api';
@@ -63,6 +64,8 @@ const SLIDER_BUTTON_SIZE = scale(34);
 const SLIDER_TRAVEL = SLIDER_WIDTH - SLIDER_BUTTON_SIZE - scale(12);
 
 export default function IncidentFormModal({ visible, onClose, onSuccess }) {
+  // Antes: paddingTop fijo scale(60) en iOS. Ahora el inset real del equipo.
+  const insets = useSafeAreaInsets();
   const [type, setType] = useState('security');
   const [severity, setSeverity] = useState('medium');
   const [title, setTitle] = useState('');
@@ -325,8 +328,20 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+        <View
+          style={[
+            styles.header,
+            // iOS: inset real (antes scale(60) fijo). Android: igual que antes.
+            { paddingTop: Platform.OS === 'ios' ? insets.top + scale(8) : scale(20) },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={handleClose}
+            style={styles.closeButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+          >
             <Ionicons name="close" size={24} color={COLORS.black} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Incidentes</Text>
@@ -517,13 +532,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: scale(16),
-    paddingTop: Platform.OS === 'ios' ? scale(60) : scale(20),
     paddingBottom: scale(12),
     backgroundColor: COLORS.background,
   },
   closeButton: {
-    width: scale(40),
-    height: scale(40),
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -533,7 +547,7 @@ const styles = StyleSheet.create({
     color: COLORS.black,
   },
   headerRight: {
-    width: scale(40),
+    width: 44,
   },
   scrollView: {
     flex: 1,
