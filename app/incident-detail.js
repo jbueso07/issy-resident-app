@@ -18,37 +18,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getIncidentById } from '../src/services/api';
+import { getIncidentById, addIncidentComment } from '../src/services/api';
 import PhotoGallery from '../src/components/PhotoGallery';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../src/context/AuthContext';
+import {
+  IncidentChat,
+  IncidentComposer,
+  INCIDENT_CLOSED_STATUSES,
+} from '../src/components/IncidentChat';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+// Tema oscuro de la app (app.json → userInterfaceStyle: "dark"),
+// misma paleta que app/incidents.js y app/admin/incidents.js.
 const COLORS = {
   lime: '#D4FE48',
   cyan: '#009FF5',
   cyanLight: '#11D6E6',
-  black: '#000000',
   white: '#FFFFFF',
-  background: '#FAFAFA',
-  gray: '#707883',
-  grayLight: '#F2F2F2',
+  background: '#0F1A1A',
+  card: '#1A2C2C',
+  cardAlt: '#243636',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8E9A9A',
   red: '#FA5967',
   green: '#10B981',
+  yellow: '#F59E0B',
 };
 
 const getStatusConfig = (t) => ({
-  reported: { label: t('incidentDetail.status.reported'), color: COLORS.cyan, bg: '#DBEAFE', icon: 'alert-circle' },
-  in_progress: { label: t('incidentDetail.status.inProgress'), color: '#F59E0B', bg: '#FEF3C7', icon: 'time' },
-  resolved: { label: t('incidentDetail.status.resolved'), color: COLORS.green, bg: '#D1FAE5', icon: 'checkmark-circle' },
-  closed: { label: t('incidentDetail.status.closed'), color: COLORS.gray, bg: '#F3F4F6', icon: 'lock-closed' },
+  reported: { label: t('incidentDetail.status.reported'), color: COLORS.cyan, bg: COLORS.cyan + '26', icon: 'alert-circle' },
+  in_progress: { label: t('incidentDetail.status.inProgress'), color: COLORS.yellow, bg: COLORS.yellow + '26', icon: 'time' },
+  resolved: { label: t('incidentDetail.status.resolved'), color: COLORS.green, bg: COLORS.green + '26', icon: 'checkmark-circle' },
+  closed: { label: t('incidentDetail.status.closed'), color: COLORS.textSecondary, bg: COLORS.cardAlt, icon: 'lock-closed' },
 });
 
 const getSeverityConfig = (t) => ({
   low: { label: t('incidentDetail.severity.low'), color: COLORS.cyanLight },
   medium: { label: t('incidentDetail.severity.medium'), color: COLORS.cyan },
-  high: { label: t('incidentDetail.severity.high'), color: '#F59E0B' },
+  high: { label: t('incidentDetail.severity.high'), color: COLORS.yellow },
   critical: { label: t('incidentDetail.severity.critical'), color: COLORS.red },
 });
 
@@ -72,8 +82,15 @@ export default function IncidentDetailScreen() {
   const SEVERITY_CONFIG = getSeverityConfig(t);
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  // profile = usuario de ISSY (public.users) devuelto por el backend
+  // (/auth/login, /auth/me, google-sync, apple-sync, register): su id es
+  // el mismo que comment.user.id. Nunca es el id de Supabase Auth.
+  const { profile } = useAuth();
+  const currentUserId = profile?.id;
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [commentText, setCommentText] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -100,6 +117,31 @@ export default function IncidentDetailScreen() {
     }
   };
 
+  const handleSendComment = async () => {
+    const text = commentText.trim();
+    if (!text || sending || !incident) return;
+    setSending(true);
+    try {
+      const result = await addIncidentComment(id, text);
+      if (result.success) {
+        // POST /incidents/:id/comments responde { comment: {...} }
+        const newComment = result.data?.comment ?? result.data;
+        setIncident((prev) => ({
+          ...prev,
+          comments: [...(prev?.comments || []), newComment],
+        }));
+        setCommentText('');
+      } else {
+        Alert.alert(t('common.error'), result.error || t('incidentDetail.errors.commentFailed'));
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      Alert.alert(t('common.error'), t('incidentDetail.errors.commentError'));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -118,7 +160,7 @@ export default function IncidentDetailScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
           <View style={styles.headerRight} />
@@ -136,13 +178,13 @@ export default function IncidentDetailScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={COLORS.gray} />
+          <Ionicons name="alert-circle-outline" size={64} color={COLORS.textSecondary} />
           <Text style={styles.errorText}>{t('incidentDetail.notFound')}</Text>
         </View>
       </SafeAreaView>
@@ -159,7 +201,7 @@ export default function IncidentDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.black} />
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('incidentDetail.title')}</Text>
         <TouchableOpacity onPress={loadIncident} style={styles.refreshButton}>
@@ -207,16 +249,6 @@ export default function IncidentDetailScreen() {
             </View>
           </View>
 
-          {/* Description */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('incidentDetail.sections.description')}</Text>
-            <View style={styles.sectionCard}>
-              <Text style={styles.descriptionText}>
-                {incident.description || t('incidentDetail.noDescription')}
-              </Text>
-            </View>
-          </View>
-
           {/* Photos */}
           {incident.photos?.length > 0 && (
             <View style={styles.section}>
@@ -225,7 +257,7 @@ export default function IncidentDetailScreen() {
               </Text>
               <PhotoGallery
                 photos={incident.photos}
-                placeholderColor={COLORS.grayLight}
+                placeholderColor={COLORS.cardAlt}
               />
             </View>
           )}
@@ -235,7 +267,7 @@ export default function IncidentDetailScreen() {
             <Text style={styles.sectionTitle}>{t('incidentDetail.sections.details')}</Text>
             <View style={styles.sectionCard}>
               <View style={styles.detailRow}>
-                <Ionicons name="calendar-outline" size={18} color={COLORS.gray} />
+                <Ionicons name="calendar-outline" size={18} color={COLORS.textSecondary} />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>{t('incidentDetail.details.reportDate')}</Text>
                   <Text style={styles.detailValue}>{formatDate(incident.created_at)}</Text>
@@ -244,7 +276,7 @@ export default function IncidentDetailScreen() {
 
               {incident.location_description && (
                 <View style={styles.detailRow}>
-                  <Ionicons name="location-outline" size={18} color={COLORS.gray} />
+                  <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>{t('incidentDetail.details.location')}</Text>
                     <Text style={styles.detailValue}>{incident.location_description}</Text>
@@ -264,7 +296,7 @@ export default function IncidentDetailScreen() {
 
               {incident.resolution_notes && (
                 <View style={styles.detailRow}>
-                  <Ionicons name="document-text-outline" size={18} color={COLORS.gray} />
+                  <Ionicons name="document-text-outline" size={18} color={COLORS.textSecondary} />
                   <View style={styles.detailContent}>
                     <Text style={styles.detailLabel}>{t('incidentDetail.details.resolutionNotes')}</Text>
                     <Text style={styles.detailValue}>{incident.resolution_notes}</Text>
@@ -316,8 +348,24 @@ export default function IncidentDetailScreen() {
             </View>
           </View>
 
-          <View style={{ height: scale(40) }} />
+          {/* Conversation */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {t('incidentDetail.sections.comments')} ({incident.comments?.length || 0})
+            </Text>
+            <IncidentChat incident={incident} currentUserId={currentUserId} />
+          </View>
+
+          <View style={{ height: scale(24) }} />
         </ScrollView>
+
+        <IncidentComposer
+          value={commentText}
+          onChangeText={setCommentText}
+          onSend={handleSendComment}
+          sending={sending}
+          closed={INCIDENT_CLOSED_STATUSES.includes(incident.status)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -345,7 +393,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: scale(18),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
   headerRight: {
     width: scale(40),
@@ -364,12 +412,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: scale(12),
     fontSize: scale(14),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
   errorText: {
     marginTop: scale(16),
     fontSize: scale(16),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -382,7 +430,7 @@ const styles = StyleSheet.create({
   // Status Card
   statusCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderRadius: scale(16),
     overflow: 'hidden',
     marginBottom: scale(16),
@@ -431,12 +479,12 @@ const styles = StyleSheet.create({
   incidentTitle: {
     fontSize: scale(18),
     fontWeight: '700',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     marginBottom: scale(4),
   },
   incidentType: {
     fontSize: scale(13),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
   },
 
   // Sections
@@ -446,17 +494,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: scale(14),
     fontWeight: '600',
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     marginBottom: scale(8),
   },
   sectionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderRadius: scale(12),
     padding: scale(16),
   },
   descriptionText: {
     fontSize: scale(14),
-    color: COLORS.black,
+    color: COLORS.textPrimary,
     lineHeight: scale(22),
   },
 
@@ -472,12 +520,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: scale(12),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     marginBottom: scale(2),
   },
   detailValue: {
     fontSize: scale(14),
-    color: COLORS.black,
+    color: COLORS.textPrimary,
   },
 
   // Timeline
@@ -495,7 +543,7 @@ const styles = StyleSheet.create({
     width: scale(24),
     height: scale(24),
     borderRadius: scale(12),
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.cardAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(8),
@@ -510,12 +558,12 @@ const styles = StyleSheet.create({
     left: '50%',
     width: '100%',
     height: 2,
-    backgroundColor: COLORS.grayLight,
+    backgroundColor: COLORS.cardAlt,
     zIndex: -1,
   },
   timelineLabel: {
     fontSize: scale(10),
-    color: COLORS.gray,
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
 

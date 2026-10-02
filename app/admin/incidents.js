@@ -12,7 +12,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
-  TextInput,
   Alert,
   Dimensions,
   Platform,
@@ -27,6 +26,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment } from '../../src/services/api';
 import PhotoGallery, { PhotoViewer } from '../../src/components/PhotoGallery';
+import { IncidentChat, IncidentComposer } from '../../src/components/IncidentChat';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -263,7 +263,8 @@ export default function AdminIncidents() {
     try {
       const result = await addIncidentComment(selectedIncident.id, commentText.trim());
       if (result.success) {
-        const newComment = result.data;
+        // POST /incidents/:id/comments responde { comment: {...} }
+        const newComment = result.data?.comment ?? result.data;
         setSelectedIncident({
           ...selectedIncident,
           comments: [...(selectedIncident.comments || []), newComment]
@@ -445,9 +446,6 @@ export default function AdminIncidents() {
                   </View>
                 </View>
 
-                <Text style={styles.sectionLabel}>{t('admin.incidents.description')}</Text>
-                <Text style={styles.detailDescription}>{selectedIncident.description}</Text>
-
                 {selectedIncident.photos?.length > 0 && (
                   <>
                     <Text style={styles.sectionLabel}>
@@ -468,7 +466,7 @@ export default function AdminIncidents() {
                     <Ionicons name="person" size={20} color={COLORS.textSecondary} />
                   </View>
                   <View>
-                    <Text style={styles.reporterName}>{selectedIncident.reporter_name || 'Usuario'}</Text>
+                    <Text style={styles.reporterName}>{selectedIncident.reporter?.name || selectedIncident.reporter_name || 'Usuario'}</Text>
                     <Text style={styles.reporterDate}>{formatDate(selectedIncident.created_at)}</Text>
                   </View>
                 </View>
@@ -497,49 +495,21 @@ export default function AdminIncidents() {
                 </View>
 
                 <Text style={styles.sectionLabel}>{t('admin.incidents.comments')} ({selectedIncident.comments?.length || 0})</Text>
-                {selectedIncident.comments?.length > 0 ? (
-                  selectedIncident.comments.map((comment, index) => (
-                    <View key={comment.id || index} style={styles.commentCard}>
-                      <View style={styles.commentHeader}>
-                        <View style={styles.commentAvatar}>
-                          <Text style={styles.commentAvatarText}>
-                            {(comment.user_name || 'A').charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
-                        <View style={styles.commentMeta}>
-                          <Text style={styles.commentAuthor}>{comment.user_name || 'Admin'}</Text>
-                          <Text style={styles.commentDate}>{formatDate(comment.created_at)}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.commentText}>{comment.content || comment.text}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.noComments}>{t('admin.incidents.noComments')}</Text>
-                )}
+                {/* Conversación: descripción original + comentarios (burbujas) */}
+                <IncidentChat
+                  incident={selectedIncident}
+                  currentUserId={profile?.id}
+                />
               </ScrollView>
 
-              <View style={styles.addCommentContainer}>
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder={t('admin.incidents.addCommentPlaceholder')}
-                  placeholderTextColor={COLORS.textMuted}
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[styles.sendButton, !commentText.trim() && styles.sendButtonDisabled]}
-                  onPress={handleAddComment}
-                  disabled={!commentText.trim() || submitting}
-                >
-                  {submitting ? (
-                    <ActivityIndicator size="small" color={COLORS.background} />
-                  ) : (
-                    <Ionicons name="send" size={20} color={commentText.trim() ? COLORS.background : COLORS.textMuted} />
-                  )}
-                </TouchableOpacity>
-              </View>
+              {/* Admin puede responder aunque el incidente esté cerrado */}
+              <IncidentComposer
+                value={commentText}
+                onChangeText={setCommentText}
+                onSend={handleAddComment}
+                sending={submitting}
+                closed={false}
+              />
             </KeyboardAvoidingView>
           ) : null}
         </SafeAreaView>

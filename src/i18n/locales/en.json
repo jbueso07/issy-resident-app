@@ -1808,6 +1808,16 @@
     "noComments": "No comments yet",
     "user": "User",
     "addCommentPlaceholder": "Add comment...",
+    "chat": {
+      "roles": {
+        "resident": "Resident",
+        "admin": "Management",
+        "guard": "Guard"
+      },
+      "originalReport": "Original report",
+      "closed": "This incident is closed",
+      "send": "Send"
+    },
     "status": {
       "reported": "Reported",
       "inProgress": "In Progress",

@@ -204,6 +204,12 @@ function handleNotificationResponse(response) {
     } else {
       router.push('/admin/incidents');
     }
+  } else if (data?.type === 'incident_comment') {
+    // Comentario en un incidente: lo reciben el reportero y los admins.
+    // incident-detail permite acceso a ambos (backend getIncidentById).
+    if (data?.incident_id) {
+      router.push(`/incident-detail?id=${data.incident_id}`);
+    }
   } else if (data?.type === 'visitor_arrived') {
     router.push('/notifications');
   }

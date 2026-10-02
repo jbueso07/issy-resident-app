@@ -2165,6 +2165,16 @@
     "noComments": "No hay comentarios aún",
     "user": "Usuario",
     "addCommentPlaceholder": "Agregar comentario...",
+    "chat": {
+      "roles": {
+        "resident": "Residente",
+        "admin": "Administración",
+        "guard": "Guardia"
+      },
+      "originalReport": "Reporte inicial",
+      "closed": "Este incidente está cerrado",
+      "send": "Enviar"
+    },
     "status": {
       "reported": "Reportado",
       "inProgress": "En Proceso",
