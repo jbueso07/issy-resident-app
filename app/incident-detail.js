@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getIncidentById, addIncidentComment } from '../src/services/api';
 import PhotoGallery from '../src/components/PhotoGallery';
+import IncidentLocation from '../src/components/IncidentLocation';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../src/context/AuthContext';
 import {
@@ -292,16 +293,6 @@ export default function IncidentDetailScreen() {
                 </View>
               </View>
 
-              {incident.location_description && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="location-outline" size={18} color={COLORS.textSecondary} />
-                  <View style={styles.detailContent}>
-                    <Text style={styles.detailLabel}>{t('incidentDetail.details.location')}</Text>
-                    <Text style={styles.detailValue}>{incident.location_description}</Text>
-                  </View>
-                </View>
-              )}
-
               {incident.resolved_at && (
                 <View style={styles.detailRow}>
                   <Ionicons name="checkmark-done-outline" size={18} color={COLORS.green} />
@@ -322,6 +313,15 @@ export default function IncidentDetailScreen() {
                 </View>
               )}
             </View>
+          </View>
+
+          {/* Location (lo que envió el residente: referencia y/o GPS) */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('incidentDetail.location.title')}</Text>
+            <IncidentLocation
+              coordinates={incident.coordinates}
+              description={incident.location_description}
+            />
           </View>
 
           {/* Timeline / Status Progress */}

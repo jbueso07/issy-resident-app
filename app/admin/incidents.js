@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment } from '../../src/services/api';
 import PhotoGallery, { PhotoViewer } from '../../src/components/PhotoGallery';
 import { IncidentChat, IncidentComposer } from '../../src/components/IncidentChat';
+import IncidentLocation from '../../src/components/IncidentLocation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -487,6 +488,13 @@ export default function AdminIncidents() {
                     />
                   </>
                 )}
+
+                {/* Ubicación: referencia + "Ver en Mapas", o aviso si falta */}
+                <Text style={styles.sectionLabel}>{t('incidentDetail.location.title')}</Text>
+                <IncidentLocation
+                  coordinates={selectedIncident.coordinates}
+                  description={selectedIncident.location_description}
+                />
 
                 <Text style={styles.sectionLabel}>{t('admin.incidents.reportedBy')}</Text>
                 <View style={styles.reporterInfo}>

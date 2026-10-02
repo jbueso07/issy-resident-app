@@ -1808,6 +1808,13 @@
     "noComments": "No comments yet",
     "user": "User",
     "addCommentPlaceholder": "Add comment...",
+    "location": {
+      "title": "Location",
+      "viewInMaps": "View in Maps",
+      "mapLabel": "Incident",
+      "noGps": "No GPS location",
+      "missing": "The reporter did not provide a location"
+    },
     "chat": {
       "roles": {
         "resident": "Resident",

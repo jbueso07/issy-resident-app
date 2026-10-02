@@ -2165,6 +2165,13 @@
     "noComments": "No hay comentarios aún",
     "user": "Usuario",
     "addCommentPlaceholder": "Agregar comentario...",
+    "location": {
+      "title": "Ubicación",
+      "viewInMaps": "Ver en Mapas",
+      "mapLabel": "Incidente",
+      "noGps": "Sin ubicación GPS",
+      "missing": "Quien reportó no indicó la ubicación"
+    },
     "chat": {
       "roles": {
         "resident": "Residente",

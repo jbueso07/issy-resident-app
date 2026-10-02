@@ -39,6 +39,8 @@ const COLORS = {
   gray: '#707883',
   grayLight: '#F2F2F2',
   red: '#FA5967',
+  green: '#10B981',
+  amberText: '#92400E',
   inputBorder: '#707883',
   photoBg: '#EFF6FF',
 };
@@ -71,6 +73,9 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState(null);
+  // Ubicación opcional: referencia escrita (≤200) + GPS del teléfono
+  const [locationDescription, setLocationDescription] = useState('');
+  const [locationError, setLocationError] = useState(null);
   const photosRef = useRef([]);
   const [photos, setPhotos] = useState([]);
   const setPhotosSync = (next) => {
@@ -90,6 +95,11 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [sliderComplete, setSliderComplete] = useState(false);
 
+  // El PanResponder se crea una sola vez: si llamara a handleSubmit directo,
+  // usaría los valores del PRIMER render (type, severity, location quedaban
+  // siempre en su valor inicial). Se llama siempre a la versión más reciente.
+  const submitRef = useRef(null);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -105,7 +115,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
             useNativeDriver: false,
           }).start(() => {
             setSliderComplete(true);
-            handleSubmit();
+            submitRef.current?.();
           });
         } else {
           Animated.spring(slideAnim, {
@@ -123,6 +133,8 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
     setTitle('');
     setDescription('');
     setLocation(null);
+    setLocationDescription('');
+    setLocationError(null);
     setPhotosSync([]);
     setSliderComplete(false);
     slideAnim.setValue(0);
@@ -138,10 +150,14 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
   const handleGetLocation = async () => {
     try {
       setGettingLocation(true);
-      
+      setLocationError(null);
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso Requerido', 'Necesitamos acceso a tu ubicación.');
+        // No bloquea el envío: la ubicación es opcional
+        setLocationError(
+          'No diste permiso de ubicación. Puedes enviar el reporte igual o escribir una referencia del lugar.'
+        );
         return;
       }
 
@@ -153,11 +169,11 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       });
-
-      Alert.alert('Ubicación Obtenida', 'Tu ubicación ha sido registrada.');
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert('Error', 'No se pudo obtener la ubicación.');
+      setLocationError(
+        'No se pudo obtener tu ubicación. Puedes enviar el reporte igual o escribir una referencia del lugar.'
+      );
     } finally {
       setGettingLocation(false);
     }
@@ -275,6 +291,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
         title: currentTitle.trim(),
         description: currentDescription.trim(),
         coordinates: location,
+        location_description: locationDescription.trim() || undefined,
         photos: currentPhotos.length > 0 ? currentPhotos : undefined,
       });
 
@@ -298,6 +315,8 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
       setLoading(false);
     }
   };
+
+  submitRef.current = handleSubmit;
 
   const resetSlider = () => {
     setSliderComplete(false);
@@ -424,30 +443,56 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
             textAlignVertical="top"
           />
 
-          {/* Location */}
-          <Text style={styles.label}>Ubicación (Opcional)</Text>
-          <TouchableOpacity 
-            style={styles.locationButton} 
-            onPress={handleGetLocation}
-            disabled={gettingLocation}
-          >
-            {gettingLocation ? (
-              <ActivityIndicator size="small" color={COLORS.cyan} />
-            ) : (
+          {/* Location (opcional: referencia escrita + GPS) */}
+          <Text style={styles.label}>Lugar o referencia (opcional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej.: Bloque S, lote 8, frente a la piscina"
+            placeholderTextColor={COLORS.gray}
+            value={locationDescription}
+            onChangeText={setLocationDescription}
+            maxLength={200}
+          />
+
+          {location ? (
+            <View style={[styles.locationButton, styles.locationAdded]}>
               <View style={styles.locationIcon}>
-                <Ionicons 
-                  name="location" 
-                  size={14} 
-                  color={location ? COLORS.lime : COLORS.black} 
-                />
+                <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
               </View>
-            )}
-            <Text style={[styles.locationText, location && styles.locationTextActive]}>
-              {location 
-                ? 'Ubicación registrada' 
-                : 'Obtener mi ubicación actual'}
-            </Text>
-          </TouchableOpacity>
+              <Text style={[styles.locationText, styles.locationTextActive, { flex: 1 }]}>
+                Ubicación agregada ✓
+              </Text>
+              <TouchableOpacity
+                onPress={() => setLocation(null)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Quitar ubicación"
+              >
+                <Text style={styles.locationRemove}>Quitar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.locationButton, { marginTop: scale(10) }]}
+              onPress={handleGetLocation}
+              disabled={gettingLocation}
+            >
+              {gettingLocation ? (
+                <ActivityIndicator size="small" color={COLORS.cyan} />
+              ) : (
+                <View style={styles.locationIcon}>
+                  <Ionicons name="location" size={14} color={COLORS.black} />
+                </View>
+              )}
+              <Text style={styles.locationText}>Usar mi ubicación actual</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.locationHint}>
+            Se guarda dónde está tu teléfono en este momento
+          </Text>
+          {locationError && !location && (
+            <Text style={styles.locationErrorText}>{locationError}</Text>
+          )}
 
           {/* Photos */}
           <Text style={styles.label}>Fotos (opcional)</Text>
@@ -645,6 +690,26 @@ const styles = StyleSheet.create({
   locationTextActive: {
     color: COLORS.black,
     fontWeight: '500',
+  },
+  locationAdded: {
+    marginTop: scale(10),
+    borderColor: COLORS.green,
+  },
+  locationRemove: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.red,
+  },
+  locationHint: {
+    fontSize: scale(12),
+    color: COLORS.gray,
+    marginTop: scale(6),
+  },
+  locationErrorText: {
+    fontSize: scale(12),
+    color: COLORS.amberText,
+    marginTop: scale(6),
+    lineHeight: scale(17),
   },
   photosRow: {
     flexDirection: 'row',
