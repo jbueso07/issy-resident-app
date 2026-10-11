@@ -1,5 +1,7 @@
 {
   "common": {
+    "noName": "Sans nom",
+    "ok": "OK",
     "cancel": "Annuler",
     "confirm": "Confirmer",
     "delete": "Supprimer",
@@ -169,6 +171,17 @@
     }
   },
   "home": {
+    "homePin": {
+      "title": "Marque ta maison pour que la sécurité arrive plus vite",
+      "subtitle": "Cela prend une minute et ne sert qu’en cas d’urgence.",
+      "cta": "Marquer maintenant"
+    },
+    "panicModal": {
+      "markFirstTitle": "Marque d’abord ta maison",
+      "markFirstText": "Si ta maison est marquée, la sécurité saura exactement où aller. Tu peux le faire maintenant ou envoyer l’alerte quand même.",
+      "markNow": "Marquer maintenant",
+      "continueWithout": "Continuer sans position"
+    },
     "greeting": "Bonjour, {{name}}",
     "goodMorning": "Bonjour",
     "goodAfternoon": "Bon après-midi",
@@ -298,6 +311,10 @@
     }
   },
   "profile": {
+    "myHomeLocation": "Ma position",
+    "myHomeLocationDesc": "Marque ta maison pour les urgences",
+    "emergencyContacts": "Contacts d’urgence",
+    "emergencyContactsDesc": "Personnes prévenues si tu actives le bouton",
     "title": "Profil",
     "user": "Utilisateur",
     "editProfile": "Modifier le profil",
@@ -497,10 +514,10 @@
       }
     },
     "panicButton": {
-      "title": "Bouton de Panique",
-      "subtitle": "Protection personnelle 24h/24",
-      "message": "Le Bouton de Panique envoie des alertes immédiates à la sécurité et aux contacts d'urgence. Bientôt disponible.",
-      "viewPlans": "Voir les forfaits"
+      "title": "Bouton de panique",
+      "subtitle": "Maintiens appuyé 2 secondes sur l’accueil",
+      "message": "Le bouton de panique se trouve sur l’écran d’accueil, dans les actions rapides. Maintiens le bouton Urgence appuyé pendant 2 secondes et confirme : le personnel de sécurité et tes contacts d’urgence seront prévenus.",
+      "goHome": "Aller à l’accueil"
     },
     "premium": "Premium",
     "copyright": "© 2024 ISSY. Tous droits réservés."
@@ -1918,5 +1935,91 @@
     "pmsDesc": "Gérer vos propriétés",
     "marketplace": "Marketplace",
     "marketplaceDesc": "Acheter et vendre dans votre communauté"
+  },
+  "adminMenu": {
+    "communityMap": "Carte de la communauté",
+    "communityMapDesc": "Localiser les unités pour les urgences"
+  },
+  "myHomeLocation": {
+    "accuracy": "Précision : {{meters}} m",
+    "title": "Ma position",
+    "subtitle": "Marque ta maison pour que la sécurité arrive plus vite en cas d’urgence.",
+    "selectUnit": "Quelle maison vas-tu marquer ?",
+    "unitChip": "{{community}} · {{unit}}",
+    "action": "Je suis chez moi",
+    "update": "Mettre à jour la position",
+    "save": "Enregistrer la position",
+    "retry": "Réessayer",
+    "privacy": "Ta position est utilisée par le personnel de sécurité de ta communauté en cas d’urgence. Elle n’est partagée pour les livraisons que si tu le choisis dans une commande.",
+    "loading": "Chargement de tes unités…",
+    "loadError": "Impossible de charger tes unités.",
+    "noUnits": "Tu n’as pas encore d’unité active dans une communauté.",
+    "notMember": "Nous n’avons pas trouvé d’unité active à ton nom dans cette communauté. Demande à l’administrateur de vérifier ton adhésion.",
+    "noPermissionTitle": "Autorisation de localisation manquante",
+    "noPermission": "Nous avons besoin de ton autorisation de localisation pour marquer ta maison. Active-la dans les réglages du téléphone.",
+    "openSettings": "Ouvrir les réglages",
+    "searchingNoFix": "Recherche du signal GPS…",
+    "searching": "Amélioration de la précision… {{meters}} m",
+    "accuracyOk": "Précision de {{meters}} m. Tu peux enregistrer.",
+    "lowAccuracyTitle": "Précision insuffisante",
+    "lowAccuracy": "La meilleure précision a été de {{meters}} m et il nous faut 50 m ou moins. Rapproche-toi d’une fenêtre ou sors dehors, puis réessaie.",
+    "gpsError": "Impossible d’obtenir ta position. Vérifie que le GPS est activé et réessaie.",
+    "notMarked": "Tu n’as pas encore marqué cette maison.",
+    "saved": "Maison marquée",
+    "savedAt": "Enregistrée le {{date}}",
+    "markedByYou": "Marquée par toi",
+    "markedByAdmin": "Marquée par l’administrateur",
+    "markedByOther": "Marquée par un autre membre du foyer",
+    "ownedByOther": "Cette maison a déjà été marquée par un autre membre du foyer ou par l’administrateur. Demande à l’administrateur de la corriger.",
+    "savedSuccess": "Ta maison est marquée. La sécurité pourra arriver plus vite.",
+    "saveError": "Impossible d’enregistrer ta position.",
+    "invalidCoords": "Les coordonnées ne sont pas valides. Réessaie.",
+    "mapHint": "Vérifie que le repère est bien sur ta maison avant d’enregistrer.",
+    "noMapHint": "Nous enregistrerons les coordonnées de ton GPS avec la précision indiquée.",
+    "coords": "Lat {{lat}} · Lng {{lng}}"
+  },
+  "communityMap": {
+    "title": "Carte de la communauté",
+    "noCommunity": "Aucune communauté sélectionnée",
+    "notAdmin": "Tu n’es encore admin d’aucune communauté.",
+    "loadError": "Impossible de charger les unités.",
+    "locating": "Localisation : {{unit}}",
+    "tapMapHint": "Touche la carte ou saisis les coordonnées",
+    "enterCoords": "Saisir les coordonnées",
+    "selectUnitTitle": "Sélectionne une unité",
+    "selectUnitMsg": "Choisis d’abord une unité dans la liste pour pouvoir la localiser.",
+    "movePinTitle": "Déplacer le repère",
+    "movePinMsg": "Mettre à jour la position de {{unit}} ?",
+    "yesSave": "Oui, enregistrer",
+    "saveError": "Impossible d’enregistrer la position.",
+    "pinModalTitle": "Localiser {{unit}}",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "coordsHint": "Latitude de -90 à 90 · Longitude de -180 à 180",
+    "invalidCoords": "Coordonnées invalides. La latitude va de -90 à 90 et la longitude de -180 à 180.",
+    "coordsRequired": "Saisis la latitude et la longitude ou utilise ta position actuelle.",
+    "useMyLocation": "Utiliser ma position actuelle",
+    "gettingLocation": "Obtention de la position…",
+    "accuracy": "Précision : {{meters}} m",
+    "permissionDenied": "Nous avons besoin de l’autorisation de localisation pour utiliser ta position actuelle.",
+    "locationError": "Impossible d’obtenir ta position.",
+    "notePlaceholder": "Note (facultatif) : porte principale, portail arrière…",
+    "noNotes": "Aucune note",
+    "savePin": "Enregistrer le repère",
+    "deletePin": "Supprimer le repère",
+    "deleteMsg": "Retirer la position de {{unit}} ? Le résident pourra la marquer de nouveau.",
+    "deleted": "Repère supprimé.",
+    "deleteError": "Impossible de supprimer le repère.",
+    "edit": "Modifier",
+    "selectCommunity": "Sélectionner une communauté",
+    "total": "Total",
+    "withPin": "Avec repère",
+    "withoutPin": "Sans repère",
+    "unmapped": "Non localisées ({{count}})",
+    "mapped": "Déjà localisées ({{count}})",
+    "markedByResident": "Marqué par le résident",
+    "markedByAdmin": "Marqué par l’admin",
+    "markedAt": "le {{date}}",
+    "noMapAndroid": "La carte n’est pas disponible dans cette version Android. Tu peux localiser chaque unité avec ta position actuelle ou en saisissant les coordonnées."
   }
 }

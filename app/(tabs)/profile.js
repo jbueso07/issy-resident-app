@@ -171,10 +171,17 @@ export default function Profile() {
         },
         {
           icon: 'warning-outline',
-          title: t('profile.emergencyContacts', 'Contactos de Emergencia'),
-          subtitle: t('profile.emergencyContactsDesc', 'Personas que reciben aviso si activás el botón'),
+          title: t('profile.emergencyContacts'),
+          subtitle: t('profile.emergencyContactsDesc'),
           route: '/emergency-contacts',
           color: '#E24B4A',
+        },
+        {
+          icon: 'location-outline',
+          title: t('profile.myHomeLocation'),
+          subtitle: t('profile.myHomeLocationDesc'),
+          route: '/my-home-location',
+          color: COLORS.orange,
         },
         {
           icon: 'link-outline',

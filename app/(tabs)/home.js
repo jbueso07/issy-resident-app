@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
 import { useUserLocation } from '../../src/context/UserLocationContext';
@@ -132,6 +132,8 @@ export default function Home() {
   const [sendingPanic, setSendingPanic] = useState(false);
   const [panicLongPressReady, setPanicLongPressReady] = useState(false);
   const [activePanic, setActivePanic] = useState(null);  // { id, reference_number, minutes_ago, responders_count, last_responder, can_cancel, unit_number }
+  // has_home_pin de /panic/my-active: undefined = aún no cargó (no mostrar aviso)
+  const [hasHomePin, setHasHomePin] = useState(undefined);
   const [showCancelPanicModal, setShowCancelPanicModal] = useState(false);
   const [selectedCancelReason, setSelectedCancelReason] = useState('otro');
   const [cancellingPanic, setCancellingPanic] = useState(false);
@@ -165,20 +167,6 @@ export default function Home() {
     announcements: true,
     reservations: false,
     payments: false,
-  });
-  
-  const [activeAdminServices, setActiveAdminServices] = useState({
-    'create-announcement': true,
-    'community-management': true,
-    'common-areas': true,
-    'reservations-admin': true,
-    'incidents': true,
-    'payment-manager': false,
-    'expenses': false,
-    'users': false,
-    'admin-settings': false,
-    'access-reports': false,
-    'reports': false,
   });
 
   // ============ SERVICIOS CON TRADUCCIONES ============
@@ -475,19 +463,19 @@ export default function Home() {
         setShowPanicModal(false);
         Alert.alert(
           'Emergencia ya activa',
-          'Ya tenés una emergencia activa. El personal de seguridad está avisado.',
+          'Ya tienes una emergencia activa. El personal de seguridad está avisado.',
           [{ text: 'OK' }]
         );
       } else {
         Alert.alert(
           'Error',
-          result.error || 'No se pudo activar la emergencia. Intentá de nuevo.',
+          result.error || 'No se pudo activar la emergencia. Intenta de nuevo.',
           [{ text: 'OK' }]
         );
       }
     } catch (error) {
       console.error('Error activando emergencia:', error);
-      Alert.alert('Error', 'Error inesperado. Intentá de nuevo.', [{ text: 'OK' }]);
+      Alert.alert('Error', 'Error inesperado. Intenta de nuevo.', [{ text: 'OK' }]);
     } finally {
       setSendingPanic(false);
       setPanicLongPressReady(false);
@@ -496,20 +484,25 @@ export default function Home() {
 
   // Polling: consultar cada 15s si el usuario tiene una emergencia activa.
   // Actualiza banner con estado más reciente (ack, minutos, etc).
+  const currentLocationId = profile?.location_id || null;
   const fetchMyActivePanic = useCallback(async () => {
     try {
-      const result = await getMyActivePanic();
+      // X-Location-Id igual que createPanic: has_home_pin se calcula para esa membresía
+      const result = await getMyActivePanic({ locationId: currentLocationId });
       if (result.success && result.data) {
         if (result.data.has_active && result.data.event) {
           setActivePanic(result.data.event);
         } else {
           setActivePanic(null);
         }
+        if (typeof result.data.has_home_pin === 'boolean') {
+          setHasHomePin(result.data.has_home_pin);
+        }
       }
     } catch (error) {
       console.error('Error polling panic:', error);
     }
-  }, []);
+  }, [currentLocationId]);
 
   useEffect(() => {
     // Inicial + intervalo
@@ -517,6 +510,22 @@ export default function Home() {
     const interval = setInterval(fetchMyActivePanic, 15000);
     return () => clearInterval(interval);
   }, [fetchMyActivePanic]);
+
+  // Al volver de /my-home-location refrescamos sin esperar el próximo poll
+  useFocusEffect(
+    useCallback(() => {
+      fetchMyActivePanic();
+    }, [fetchMyActivePanic])
+  );
+
+  const goToMyHomeLocation = () => router.push('/my-home-location');
+
+  // Desde el modal de pánico: cierra el modal y lleva a marcar la casa (no dispara)
+  const handleMarkHomeFromPanic = () => {
+    setShowPanicModal(false);
+    setPanicLongPressReady(false);
+    goToMyHomeLocation();
+  };
 
   // Handlers para el modal de cancelación del banner
   const handleOpenCancelPanicModal = () => {
@@ -579,10 +588,6 @@ export default function Home() {
     setActiveServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
   };
 
-  const toggleAdminService = (serviceId) => {
-    setActiveAdminServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
-  };
-
   const getUserName = () => profile?.name || user?.email?.split('@')[0] || t('profile.user');
   const getUserInitials = () => (profile?.name || user?.email || 'U').charAt(0).toUpperCase();
   const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || t('home.myCommunity');
@@ -612,17 +617,50 @@ export default function Home() {
           <Text style={styles.panicModalSubtitle} maxFontSizeMultiplier={1.2}>
             Se notificará al guardia, administradores y tus contactos personales.
           </Text>
-          <TouchableOpacity
-            style={[styles.panicModalButton, styles.panicModalButtonConfirm]}
-            onPress={handleConfirmPanic}
-            disabled={sendingPanic}
-          >
-            {sendingPanic ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.panicModalButtonConfirmText}>Sí, enviar alerta</Text>
-            )}
-          </TouchableOpacity>
+          {hasHomePin === false ? (
+            // Sin casa marcada: ofrecer marcarla, pero NUNCA bloquear el disparo
+            <View style={styles.panicModalHomePinBlock}>
+              <View style={styles.panicModalHomePinHeader}>
+                <Ionicons name="home-outline" size={18} color="#F59E0B" />
+                <Text style={styles.panicModalHomePinTitle} maxFontSizeMultiplier={1.2}>
+                  {t('home.panicModal.markFirstTitle')}
+                </Text>
+              </View>
+              <Text style={styles.panicModalHomePinText} maxFontSizeMultiplier={1.2}>
+                {t('home.panicModal.markFirstText')}
+              </Text>
+              <TouchableOpacity
+                style={[styles.panicModalButton, styles.panicModalButtonMarkHome]}
+                onPress={handleMarkHomeFromPanic}
+                disabled={sendingPanic}
+              >
+                <Text style={styles.panicModalButtonMarkHomeText}>{t('home.panicModal.markNow')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.panicModalButton, styles.panicModalButtonConfirm]}
+                onPress={handleConfirmPanic}
+                disabled={sendingPanic}
+              >
+                {sendingPanic ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.panicModalButtonConfirmText}>{t('home.panicModal.continueWithout')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.panicModalButton, styles.panicModalButtonConfirm]}
+              onPress={handleConfirmPanic}
+              disabled={sendingPanic}
+            >
+              {sendingPanic ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.panicModalButtonConfirmText}>Sí, enviar alerta</Text>
+              )}
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.panicModalButton, styles.panicModalButtonCancel]}
             onPress={handleCancelPanic}
@@ -658,7 +696,7 @@ export default function Home() {
             Cancelar emergencia
           </Text>
           <Text style={styles.cancelPanicModalSubtitle} maxFontSizeMultiplier={1.2}>
-            ¿Por qué querés cancelar?
+            ¿Por qué quieres cancelar?
           </Text>
 
           <View style={styles.cancelReasonsList}>
@@ -961,6 +999,29 @@ export default function Home() {
           </View>
         )}
 
+        {/* Aviso persistente: marcar la casa (solo cuando el backend dice has_home_pin === false) */}
+        {hasHomePin === false && (
+          <View style={styles.homePinCardContainer}>
+            <TouchableOpacity style={styles.homePinCard} onPress={goToMyHomeLocation} activeOpacity={0.85}>
+              <View style={styles.homePinIconWrap}>
+                <Ionicons name="home-outline" size={20} color="#F59E0B" />
+              </View>
+              <View style={styles.homePinBody}>
+                <Text style={styles.homePinTitle} maxFontSizeMultiplier={1.2}>
+                  {t('home.homePin.title')}
+                </Text>
+                <Text style={styles.homePinSubtitle} maxFontSizeMultiplier={1.2}>
+                  {t('home.homePin.subtitle')}
+                </Text>
+              </View>
+              <View style={styles.homePinCta}>
+                <Text style={styles.homePinCtaText} maxFontSizeMultiplier={1.2}>{t('home.homePin.cta')}</Text>
+                <Ionicons name="chevron-forward" size={14} color="#F59E0B" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Quick Actions */}
         <View style={styles.quickActionsRow}>
           {QUICK_ACTIONS.map((action, index) => (
@@ -1111,58 +1172,27 @@ export default function Home() {
             >
               {ADMIN_SERVICES.filter(service =>
                 !service.superAdminOnly || userRole === 'superadmin'
-              ).map((service) => {
-                const isActive = activeAdminServices[service.id];
-                return (
-                  <TouchableOpacity
-                    key={service.id}
-                    style={[
-                      styles.adminCardCarousel,
-                      isActive ? { backgroundColor: service.activeColor } : styles.adminCardOff
-                    ]}
-                    onPress={() => router.push(service.route)}
-                    activeOpacity={0.8}
-                  >
-                    {/* Toggle Header */}
-                    <View style={styles.adminCardHeader}>
-                      <View style={{ flex: 1 }} />
-                      <Switch
-                        value={isActive}
-                        onValueChange={() => toggleAdminService(service.id)}
-                        trackColor={{ false: COLORS.bgCardAlt, true: 'rgba(255,255,255,0.3)' }}
-                        thumbColor={COLORS.textPrimary}
-                        style={styles.toggleSmall}
-                      />
-                    </View>
+              ).map((service) => (
+                <TouchableOpacity
+                  key={service.id}
+                  style={[styles.adminCardCarousel, { backgroundColor: service.activeColor }]}
+                  onPress={() => router.push(service.route)}
+                  activeOpacity={0.8}
+                >
+                  {/* Icon */}
+                  <View style={[styles.adminIconBox, styles.adminIconBoxActive]}>
+                    <Ionicons name={service.icon} size={28} color={service.activeColor} />
+                  </View>
 
-                    {/* Icon */}
-                    <View style={[
-                      styles.adminIconBox,
-                      isActive ? styles.adminIconBoxActive : styles.adminIconBoxOff
-                    ]}>
-                      <Ionicons 
-                        name={service.icon} 
-                        size={28} 
-                        color={isActive ? service.activeColor : COLORS.textMuted} 
-                      />
-                    </View>
-
-                    {/* Content */}
-                    <Text style={[
-                      styles.adminCardTitle,
-                      !isActive && styles.adminCardTitleOff
-                    ]} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-                      {service.title}
-                    </Text>
-                    <Text style={[
-                      styles.adminCardSubtitle,
-                      !isActive && styles.adminCardSubtitleOff
-                    ]} maxFontSizeMultiplier={1.1} numberOfLines={1}>
-                      {service.subtitle}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                  {/* Content */}
+                  <Text style={styles.adminCardTitle} maxFontSizeMultiplier={1.2} numberOfLines={2}>
+                    {service.title}
+                  </Text>
+                  <Text style={styles.adminCardSubtitle} maxFontSizeMultiplier={1.1} numberOfLines={1}>
+                    {service.subtitle}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </>
         )}
@@ -1383,6 +1413,87 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontSize: scale(15),
   },
+  panicModalHomePinBlock: {
+    width: '100%',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: scale(14),
+    padding: scale(12),
+    marginBottom: scale(8),
+  },
+  panicModalHomePinHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    marginBottom: scale(4),
+  },
+  panicModalHomePinTitle: {
+    color: '#FFFFFF',
+    fontSize: scale(14),
+    fontWeight: '600',
+  },
+  panicModalHomePinText: {
+    color: '#B8B8B8',
+    fontSize: scale(12),
+    lineHeight: scale(17),
+    marginBottom: scale(12),
+  },
+  panicModalButtonMarkHome: {
+    backgroundColor: '#F59E0B',
+  },
+  panicModalButtonMarkHomeText: {
+    color: '#0F1A1E',
+    fontSize: scale(15),
+    fontWeight: '600',
+  },
+  // ============ AVISO: MARCAR MI CASA ============
+  homePinCardContainer: {
+    paddingHorizontal: scale(16),
+    marginBottom: scale(16),
+  },
+  homePinCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgCard,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: scale(14),
+    padding: scale(12),
+    gap: scale(10),
+  },
+  homePinIconWrap: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homePinBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  homePinTitle: {
+    color: COLORS.textPrimary,
+    fontSize: scale(13),
+    fontWeight: '600',
+  },
+  homePinSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: scale(11),
+    marginTop: 2,
+  },
+  homePinCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  homePinCtaText: {
+    color: '#F59E0B',
+    fontSize: scale(12),
+    fontWeight: '600',
+  },
   // ============ PANIC BANNER (emergencia activa) ============
   panicBannerContainer: {
     paddingHorizontal: scale(16),
@@ -1535,9 +1646,6 @@ const styles = StyleSheet.create({
   toggle: {
     transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }],
   },
-  toggleSmall: {
-    transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }],
-  },
   serviceIconBox: {
     width: scale(44),
     height: scale(44),
@@ -1661,17 +1769,6 @@ const styles = StyleSheet.create({
     marginRight: scale(12),
     minHeight: scale(180),
   },
-  adminCardOff: {
-    backgroundColor: COLORS.bgCard,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  adminCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(12),
-  },
   adminIconBox: {
     width: scale(50),
     height: scale(50),
@@ -1683,24 +1780,15 @@ const styles = StyleSheet.create({
   adminIconBoxActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  adminIconBoxOff: {
-    backgroundColor: COLORS.bgCardAlt,
-  },
   adminCardTitle: {
     fontSize: scale(14),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(4),
   },
-  adminCardTitleOff: {
-    color: COLORS.textSecondary,
-  },
   adminCardSubtitle: {
     fontSize: scale(11),
     color: 'rgba(255,255,255,0.8)',
-  },
-  adminCardSubtitleOff: {
-    color: COLORS.textMuted,
   },
 
   // ============ JOIN CARD ============

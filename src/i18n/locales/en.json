@@ -1,5 +1,7 @@
 {
   "common": {
+    "noName": "No name",
+    "ok": "OK",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "delete": "Delete",
@@ -180,6 +182,17 @@
     }
   },
   "home": {
+    "homePin": {
+      "title": "Mark your home so security can reach you faster",
+      "subtitle": "It takes a minute and is only used in emergencies.",
+      "cta": "Mark now"
+    },
+    "panicModal": {
+      "markFirstTitle": "Mark your home first",
+      "markFirstText": "If your home is marked, security will know exactly where to go. You can do it now or send the alert anyway.",
+      "markNow": "Mark now",
+      "continueWithout": "Continue without location"
+    },
     "greeting": "Hello, {{name}}",
     "goodMorning": "Good morning",
     "goodAfternoon": "Good afternoon",
@@ -414,6 +427,10 @@
     }
   },
   "profile": {
+    "myHomeLocation": "My location",
+    "myHomeLocationDesc": "Mark your home for emergencies",
+    "emergencyContacts": "Emergency contacts",
+    "emergencyContactsDesc": "People who get notified when you trigger the button",
     "title": "Profile",
     "user": "User",
     "editProfile": "Edit profile",
@@ -644,10 +661,10 @@
       }
     },
     "panicButton": {
-      "title": "Panic Button",
-      "subtitle": "24/7 personal protection",
-      "message": "The Panic Button sends immediate alerts to security and emergency contacts. Coming soon.",
-      "viewPlans": "View plans"
+      "title": "Panic button",
+      "subtitle": "Press and hold for 2 seconds on Home",
+      "message": "The panic button is on the Home screen, under quick actions. Press and hold the Emergency button for 2 seconds and confirm: security staff and your emergency contacts will be notified.",
+      "goHome": "Go to Home"
     },
     "premium": "Premium",
     "copyright": "© 2024 ISSY. All rights reserved."
@@ -2089,6 +2106,8 @@
     }
   },
   "adminMenu": {
+    "communityMap": "Community map",
+    "communityMapDesc": "Pin units for emergencies",
     "announcements": "Announcements",
     "announcementsDesc": "Create and manage announcements",
     "community": "Community",
@@ -2139,5 +2158,87 @@
     "pmsDesc": "Manage your properties",
     "marketplace": "Marketplace",
     "marketplaceDesc": "Buy and sell in your community"
+  },
+  "myHomeLocation": {
+    "accuracy": "Accuracy: {{meters}} m",
+    "title": "My location",
+    "subtitle": "Mark your home so security can reach you faster in an emergency.",
+    "selectUnit": "Which home are you marking?",
+    "unitChip": "{{community}} · {{unit}}",
+    "action": "I'm at home",
+    "update": "Update location",
+    "save": "Save location",
+    "retry": "Try again",
+    "privacy": "Your location is used by your community’s security staff in emergencies. It is only shared for deliveries if you choose to in an order.",
+    "loading": "Loading your units…",
+    "loadError": "We couldn’t load your units.",
+    "noUnits": "You don’t have an active unit in any community yet.",
+    "notMember": "We couldn’t find an active unit under your name in this community. Ask your administrator to check your membership.",
+    "noPermissionTitle": "Location permission needed",
+    "noPermission": "We need your location permission to mark your home. Turn it on in your phone settings.",
+    "openSettings": "Open settings",
+    "searchingNoFix": "Looking for GPS signal…",
+    "searching": "Improving accuracy… {{meters}} m",
+    "accuracyOk": "Accuracy {{meters}} m. You can save now.",
+    "lowAccuracyTitle": "Accuracy not good enough",
+    "lowAccuracy": "The best accuracy was {{meters}} m and we need 50 m or better. Move closer to a window or step outside and try again.",
+    "gpsError": "We couldn’t get your location. Make sure GPS is on and try again.",
+    "notMarked": "You haven’t marked this home yet.",
+    "saved": "Home marked",
+    "savedAt": "Saved on {{date}}",
+    "markedByYou": "Marked by you",
+    "markedByAdmin": "Marked by the administrator",
+    "markedByOther": "Marked by another household member",
+    "ownedByOther": "This home was already marked by another household member or by the administrator. Ask the administrator to correct it.",
+    "savedSuccess": "Your home is marked. Security will be able to reach you faster.",
+    "saveError": "We couldn’t save your location.",
+    "invalidCoords": "The coordinates are not valid. Try again.",
+    "mapHint": "Make sure the pin is on your home before saving.",
+    "noMapHint": "We’ll save your GPS coordinates with the accuracy shown.",
+    "coords": "Lat {{lat}} · Lng {{lng}}"
+  },
+  "communityMap": {
+    "title": "Community map",
+    "noCommunity": "No community selected",
+    "notAdmin": "You’re not an admin of any community yet.",
+    "loadError": "We couldn’t load the units.",
+    "locating": "Pinning: {{unit}}",
+    "tapMapHint": "Tap the map or enter the coordinates",
+    "enterCoords": "Enter coordinates",
+    "selectUnitTitle": "Select a unit",
+    "selectUnitMsg": "First pick a unit from the list so you can pin it.",
+    "movePinTitle": "Move pin",
+    "movePinMsg": "Update the location of {{unit}}?",
+    "yesSave": "Yes, save",
+    "saveError": "We couldn’t save the location.",
+    "pinModalTitle": "Pin {{unit}}",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "coordsHint": "Latitude from -90 to 90 · Longitude from -180 to 180",
+    "invalidCoords": "Invalid coordinates. Latitude goes from -90 to 90 and longitude from -180 to 180.",
+    "coordsRequired": "Enter the latitude and longitude or use your current location.",
+    "useMyLocation": "Use my current location",
+    "gettingLocation": "Getting location…",
+    "accuracy": "Accuracy: {{meters}} m",
+    "permissionDenied": "We need location permission to use your current position.",
+    "locationError": "We couldn’t get your location.",
+    "notePlaceholder": "Note (optional): front door, back gate…",
+    "noNotes": "No notes",
+    "savePin": "Save pin",
+    "deletePin": "Delete pin",
+    "deleteMsg": "Remove the location of {{unit}}? The resident will be able to mark it again.",
+    "deleted": "Pin deleted.",
+    "deleteError": "We couldn’t delete the pin.",
+    "edit": "Edit",
+    "selectCommunity": "Select community",
+    "total": "Total",
+    "withPin": "Pinned",
+    "withoutPin": "Unpinned",
+    "unmapped": "Not pinned ({{count}})",
+    "mapped": "Already pinned ({{count}})",
+    "markedByResident": "Marked by the resident",
+    "markedByAdmin": "Marked by the admin",
+    "markedAt": "on {{date}}",
+    "noMapAndroid": "The map isn’t available in this Android version. You can pin each unit with your current position or by entering the coordinates."
   }
 }

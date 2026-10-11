@@ -1,5 +1,7 @@
 {
   "common": {
+    "noName": "Sem nome",
+    "ok": "OK",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
     "delete": "Excluir",
@@ -169,6 +171,17 @@
     }
   },
   "home": {
+    "homePin": {
+      "title": "Marque sua casa para que a segurança chegue mais rápido",
+      "subtitle": "Leva um minuto e só é usada em emergências.",
+      "cta": "Marcar agora"
+    },
+    "panicModal": {
+      "markFirstTitle": "Marque sua casa primeiro",
+      "markFirstText": "Se você marcar sua casa, a segurança saberá exatamente aonde ir. Você pode fazer isso agora ou enviar o alerta mesmo assim.",
+      "markNow": "Marcar agora",
+      "continueWithout": "Continuar sem localização"
+    },
     "greeting": "Olá, {{name}}",
     "goodMorning": "Bom dia",
     "goodAfternoon": "Boa tarde",
@@ -298,6 +311,10 @@
     }
   },
   "profile": {
+    "myHomeLocation": "Minha localização",
+    "myHomeLocationDesc": "Marque sua casa para emergências",
+    "emergencyContacts": "Contatos de emergência",
+    "emergencyContactsDesc": "Pessoas que recebem aviso se você ativar o botão",
     "title": "Perfil",
     "user": "Usuário",
     "editProfile": "Editar perfil",
@@ -525,10 +542,10 @@
       }
     },
     "panicButton": {
-      "title": "Botão de Pânico",
-      "subtitle": "Proteção pessoal 24/7",
-      "message": "O Botão de Pânico envia alertas imediatos para segurança e contatos de emergência. Em breve.",
-      "viewPlans": "Ver planos"
+      "title": "Botão de pânico",
+      "subtitle": "Mantenha pressionado 2 segundos no início",
+      "message": "O botão de pânico está na tela inicial, nas ações rápidas. Mantenha pressionado o botão Emergência por 2 segundos e confirme: a equipe de segurança e seus contatos de emergência serão avisados.",
+      "goHome": "Ir para o início"
     },
     "premium": "Premium",
     "copyright": "© 2024 ISSY. Todos os direitos reservados."
@@ -1917,5 +1934,91 @@
     "pmsDesc": "Gerenciar suas propriedades",
     "marketplace": "Marketplace",
     "marketplaceDesc": "Comprar e vender na sua comunidade"
+  },
+  "adminMenu": {
+    "communityMap": "Mapa da comunidade",
+    "communityMapDesc": "Localizar unidades para emergências"
+  },
+  "myHomeLocation": {
+    "accuracy": "Precisão: {{meters}} m",
+    "title": "Minha localização",
+    "subtitle": "Marque sua casa para que a segurança chegue mais rápido em uma emergência.",
+    "selectUnit": "Qual casa você vai marcar?",
+    "unitChip": "{{community}} · {{unit}}",
+    "action": "Estou em casa",
+    "update": "Atualizar localização",
+    "save": "Salvar localização",
+    "retry": "Tentar de novo",
+    "privacy": "Sua localização é usada pela equipe de segurança da sua comunidade em emergências. Só é compartilhada para entregas se você escolher isso em um pedido.",
+    "loading": "Carregando suas unidades…",
+    "loadError": "Não foi possível carregar suas unidades.",
+    "noUnits": "Você ainda não tem uma unidade ativa em nenhuma comunidade.",
+    "notMember": "Não encontramos uma unidade ativa no seu nome nesta comunidade. Peça ao administrador para verificar sua associação.",
+    "noPermissionTitle": "Sem permissão de localização",
+    "noPermission": "Precisamos da sua permissão de localização para marcar sua casa. Ative nos ajustes do telefone.",
+    "openSettings": "Abrir ajustes",
+    "searchingNoFix": "Procurando sinal de GPS…",
+    "searching": "Melhorando a precisão… {{meters}} m",
+    "accuracyOk": "Precisão de {{meters}} m. Você já pode salvar.",
+    "lowAccuracyTitle": "Precisão insuficiente",
+    "lowAccuracy": "A melhor precisão foi de {{meters}} m e precisamos de 50 m ou menos. Aproxime-se de uma janela ou saia para o quintal e tente de novo.",
+    "gpsError": "Não conseguimos obter sua localização. Verifique se o GPS está ligado e tente de novo.",
+    "notMarked": "Você ainda não marcou esta casa.",
+    "saved": "Casa marcada",
+    "savedAt": "Salva em {{date}}",
+    "markedByYou": "Marcada por você",
+    "markedByAdmin": "Marcada pelo administrador",
+    "markedByOther": "Marcada por outro membro da casa",
+    "ownedByOther": "Esta casa já foi marcada por outro membro da casa ou pelo administrador. Peça ao administrador para corrigir.",
+    "savedSuccess": "Sua casa foi marcada. A segurança poderá chegar mais rápido.",
+    "saveError": "Não foi possível salvar sua localização.",
+    "invalidCoords": "As coordenadas não são válidas. Tente de novo.",
+    "mapHint": "Confirme que o pino está sobre a sua casa antes de salvar.",
+    "noMapHint": "Vamos salvar as coordenadas do seu GPS com a precisão indicada.",
+    "coords": "Lat {{lat}} · Lng {{lng}}"
+  },
+  "communityMap": {
+    "title": "Mapa da comunidade",
+    "noCommunity": "Nenhuma comunidade selecionada",
+    "notAdmin": "Você ainda não é admin de nenhuma comunidade.",
+    "loadError": "Não foi possível carregar as unidades.",
+    "locating": "Localizando: {{unit}}",
+    "tapMapHint": "Toque no mapa ou digite as coordenadas",
+    "enterCoords": "Digitar coordenadas",
+    "selectUnitTitle": "Selecione uma unidade",
+    "selectUnitMsg": "Primeiro escolha uma unidade da lista para poder localizá-la.",
+    "movePinTitle": "Mover pino",
+    "movePinMsg": "Atualizar a localização de {{unit}}?",
+    "yesSave": "Sim, salvar",
+    "saveError": "Não foi possível salvar a localização.",
+    "pinModalTitle": "Localizar {{unit}}",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "coordsHint": "Latitude de -90 a 90 · Longitude de -180 a 180",
+    "invalidCoords": "Coordenadas inválidas. A latitude vai de -90 a 90 e a longitude de -180 a 180.",
+    "coordsRequired": "Digite a latitude e a longitude ou use sua localização atual.",
+    "useMyLocation": "Usar minha localização atual",
+    "gettingLocation": "Obtendo localização…",
+    "accuracy": "Precisão: {{meters}} m",
+    "permissionDenied": "Precisamos da permissão de localização para usar sua posição atual.",
+    "locationError": "Não foi possível obter sua localização.",
+    "notePlaceholder": "Nota (opcional): porta principal, portão dos fundos…",
+    "noNotes": "Sem notas",
+    "savePin": "Salvar pino",
+    "deletePin": "Excluir pino",
+    "deleteMsg": "Remover a localização de {{unit}}? O morador poderá marcá-la de novo.",
+    "deleted": "Pino excluído.",
+    "deleteError": "Não foi possível excluir o pino.",
+    "edit": "Editar",
+    "selectCommunity": "Selecionar comunidade",
+    "total": "Total",
+    "withPin": "Com pino",
+    "withoutPin": "Sem pino",
+    "unmapped": "Sem localizar ({{count}})",
+    "mapped": "Já localizadas ({{count}})",
+    "markedByResident": "Marcado pelo morador",
+    "markedByAdmin": "Marcado pelo admin",
+    "markedAt": "em {{date}}",
+    "noMapAndroid": "O mapa não está disponível nesta versão para Android. Você pode localizar cada unidade com sua posição atual ou digitando as coordenadas."
   }
 }

@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
 export default function Support() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [expandedFAQ, setExpandedFAQ] = useState(null);
 
   // FAQ items traducidos
@@ -76,12 +78,14 @@ export default function Support() {
     option.action();
   };
 
+  // El botón de pánico vive en el inicio (mantener presionado 2 s en "Emergencia").
   const handlePanicButtonPress = () => {
     Alert.alert(
       t('support.panicButton.title'),
       t('support.panicButton.message'),
       [
-        { text: t('common.ok'), style: 'default' }
+        { text: t('common.close'), style: 'cancel' },
+        { text: t('support.panicButton.goHome'), onPress: () => router.push('/(tabs)/home') },
       ]
     );
   };

@@ -88,7 +88,7 @@ const refreshToken = async () => {
 // AUTH FETCH CON AUTO-REFRESH
 // ==========================================
 
-const authFetch = async (endpoint, options = {}, isRetry = false) => {
+export const authFetch = async (endpoint, options = {}, isRetry = false) => {
   const token = await AsyncStorage.getItem('token');
   
   const config = {
@@ -142,7 +142,13 @@ const authFetch = async (endpoint, options = {}, isRetry = false) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error || data.message || 'Error en la solicitud');
+    const err = new Error(data.error || data.message || 'Error en la solicitud');
+    // Aditivo: status/código/payload del backend para que los callers decidan
+    // (createPanic ya esperaba error.status/error.data; unit-locations usa code).
+    err.status = response.status;
+    err.code = data.code || null;
+    err.data = data.data || data;
+    throw err;
   }
 
   return data;
@@ -1035,9 +1041,12 @@ export const createPanic = async ({ locationId } = {}) => {
   }
 };
 
-export const getMyActivePanic = async () => {
+export const getMyActivePanic = async ({ locationId } = {}) => {
   try {
-    const data = await authFetch('/panic/my-active', { method: 'GET' });
+    // X-Location-Id igual que createPanic: el backend calcula has_home_pin
+    // para esa membresía (si no se manda, usa la primera).
+    const headers = locationId ? { 'X-Location-Id': locationId } : {};
+    const data = await authFetch('/panic/my-active', { method: 'GET', headers });
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching my active panic:', error);
@@ -1055,6 +1064,56 @@ export const cancelPanic = async (eventId, { reason } = {}) => {
   } catch (error) {
     console.error('Error cancelling panic event:', error);
     return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+  }
+};
+
+// ==========================================
+// UBICACIÓN DE MI CASA (unit-locations)
+// ==========================================
+// Contrato: GET/PUT /unit-locations/mine, DELETE /unit-locations/:location_id/:unit_number.
+// Errores con code: INVALID_COORDS (400), NOT_MEMBER (404), LOW_ACCURACY (422),
+// PIN_OWNED_BY_OTHER (403). Devolvemos code/status para que la UI decida.
+const unitLocationError = (error, logLabel) => {
+  console.error(logLabel, error);
+  return {
+    success: false,
+    error: error.message,
+    code: error.code || null,
+    status: error.status || null,
+    sessionExpired: error.sessionExpired,
+  };
+};
+
+export const getMyUnitLocations = async () => {
+  try {
+    const data = await authFetch('/unit-locations/mine', { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return unitLocationError(error, 'Error fetching my unit locations:');
+  }
+};
+
+export const setMyUnitLocation = async (payload) => {
+  try {
+    const data = await authFetch('/unit-locations/mine', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return unitLocationError(error, 'Error setting my unit location:');
+  }
+};
+
+export const deleteUnitLocation = async (locationId, unitNumber) => {
+  try {
+    const data = await authFetch(
+      `/unit-locations/${encodeURIComponent(locationId)}/${encodeURIComponent(unitNumber)}`,
+      { method: 'DELETE' }
+    );
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return unitLocationError(error, 'Error deleting unit location:');
   }
 };
 
