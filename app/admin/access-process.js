@@ -1,7 +1,7 @@
 // app/admin/access-process.js
 // ISSY Resident App - Admin: Procesos de Acceso (ProHome Dark Theme) + i18n
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -55,9 +55,15 @@ export default function AccessProcessScreen() {
   const [preferences, setPreferences] = useState({
     require_exit_registration: false,
     require_companion: false,
-    use_qr_for_residents: false,
+    // Valor efectivo por defecto = activado: el backend solo bloquea el QR de
+    // residente cuando la columna es exactamente false (qrController).
+    use_qr_for_residents: true,
     can_request_resident_approval: true,
   });
+  // Valor efectivo cargado del servidor. Solo se envia use_qr_for_residents
+  // si el admin lo cambio: evita que un null en BD se guarde como false y
+  // apague el QR de residente en la garita.
+  const initialQrResidentsRef = useRef(true);
 
   // Access processes with translations
   const ACCESS_PROCESSES = [
@@ -201,11 +207,12 @@ export default function AccessProcessScreen() {
         const settings = data.data || data;
         
         if (settings) {
+          initialQrResidentsRef.current = settings.use_qr_for_residents !== false;
           setSelectedProcess(settings.access_process || 'no_data');
           setPreferences({
             require_exit_registration: settings.require_exit_registration || false,
             require_companion: settings.require_companion || false,
-            use_qr_for_residents: settings.use_qr_for_residents || false,
+            use_qr_for_residents: settings.use_qr_for_residents !== false,
             can_request_resident_approval: settings.can_request_resident_approval ?? true,
           });
         }
@@ -217,6 +224,15 @@ export default function AccessProcessScreen() {
     }
   };
 
+  const buildSaveBody = () => {
+    const { use_qr_for_residents: qrResidents, ...otherPreferences } = preferences;
+    const body = { access_process: selectedProcess, ...otherPreferences };
+    if (qrResidents !== initialQrResidentsRef.current) {
+      body.use_qr_for_residents = qrResidents;
+    }
+    return body;
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -225,10 +241,7 @@ export default function AccessProcessScreen() {
       const response = await fetch(`${API_URL}/api/admin/settings/guard-app/${locationId}`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({
-          access_process: selectedProcess,
-          ...preferences,
-        }),
+        body: JSON.stringify(buildSaveBody()),
       });
 
       if (response.ok) {

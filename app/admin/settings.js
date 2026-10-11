@@ -140,7 +140,7 @@ export default function AdminSettings() {
       }
 
       // Load location settings
-      const locationRes = await fetch(`${API_URL}/api/admin/location-settings/${locationId}`, { headers });
+      const locationRes = await fetch(`${API_URL}/api/admin/settings/location/${locationId}`, { headers });
       if (locationRes.ok) {
         const locationData = await locationRes.json();
         setLocationSettings(locationData.data || locationData);
@@ -245,7 +245,7 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/api/admin/location-settings/${locationId}`, {
+      const res = await fetch(`${API_URL}/api/admin/settings/location/${locationId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(locationSettings),
@@ -332,7 +332,7 @@ export default function AdminSettings() {
           onPress: async () => {
             try {
               const headers = await getAuthHeaders();
-              const res = await fetch(`${API_URL}/api/admin/users/auto-suspend`, {
+              const res = await fetch(`${API_URL}/api/admin/payments/auto-suspend`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ location_id: locationId }),
