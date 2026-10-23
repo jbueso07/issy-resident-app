@@ -51,7 +51,7 @@ import {
   FlatList,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -417,6 +417,8 @@ export function ChargeDetailModal({
         presentationStyle="fullScreen"
         onRequestClose={closeImageFullscreen}
       >
+        {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+        <SafeAreaProvider>
         <View style={styles.fullscreenContainer}>
           <SafeAreaView style={styles.fullscreenSafeArea}>
             <View style={styles.fullscreenHeader}>
@@ -447,6 +449,7 @@ export function ChargeDetailModal({
             </View>
           </SafeAreaView>
         </View>
+        </SafeAreaProvider>
       </Modal>
     );
   }

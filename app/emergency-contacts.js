@@ -20,7 +20,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -309,6 +309,8 @@ export default function EmergencyContactsScreen() {
 
       {/* Modal buscador */}
       <Modal visible={showAddModal} animationType="slide" transparent={false} onRequestClose={handleCloseAddModal}>
+        {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+        <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top']}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -404,6 +406,7 @@ export default function EmergencyContactsScreen() {
             )}
           </KeyboardAvoidingView>
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );

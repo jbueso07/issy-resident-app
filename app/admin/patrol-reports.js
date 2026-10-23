@@ -16,7 +16,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -640,6 +640,8 @@ export default function PatrolReportsScreen() {
         presentationStyle="fullScreen"
         onRequestClose={() => setShowDetailModal(false)}
       >
+        {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+        <SafeAreaProvider>
         <SafeAreaView style={styles.detailContainer} edges={['top']}>
           {/* Header */}
           <View style={styles.detailHeader}>
@@ -885,6 +887,7 @@ export default function PatrolReportsScreen() {
             <View style={{ height: scale(50) }} />
           </ScrollView>
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     );
   };

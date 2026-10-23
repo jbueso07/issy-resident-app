@@ -19,7 +19,7 @@ import {
   TouchableWithoutFeedback,
   Share,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
@@ -608,6 +608,8 @@ export default function AdminDevices() {
 
   const renderFormModal = () => (
     <Modal visible={showModal} animationType="slide">
+      {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.modalContainer}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -764,6 +766,7 @@ export default function AdminDevices() {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 

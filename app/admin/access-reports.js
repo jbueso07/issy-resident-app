@@ -6,7 +6,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, RefreshControl,
   ActivityIndicator, Alert, Modal, Image, TextInput, Dimensions, StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -507,6 +507,8 @@ export default function AccessReportsScreen() {
 
     return (
       <Modal visible={showDetailScreen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setShowDetailScreen(false)}>
+        {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+        <SafeAreaProvider>
         <SafeAreaView style={styles.detailContainer} edges={['top']}>
           <StatusBar barStyle="light-content" />
           <View style={styles.detailHeader}>
@@ -586,6 +588,7 @@ export default function AccessReportsScreen() {
           </ScrollView>
         <PhotoZoomModal />
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     );
   };

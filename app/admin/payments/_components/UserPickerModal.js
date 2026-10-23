@@ -12,7 +12,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, scale } from '../_constants';
@@ -53,6 +53,8 @@ export function UserPickerModal({
       presentationStyle="overFullScreen"
       transparent={false}
     >
+      {/* Dentro de un Modal, SafeAreaView necesita su propio provider para recibir el inset superior */}
+      <SafeAreaProvider>
       <SafeAreaView style={styles.modalContainer} edges={['top']}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={handleClose}>
@@ -174,6 +176,7 @@ export function UserPickerModal({
           </View>
         )}
       </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
