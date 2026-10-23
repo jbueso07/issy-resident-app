@@ -2693,5 +2693,16 @@
     "markedByAdmin": "Marcado por el admin",
     "markedAt": "el {{date}}",
     "noMapAndroid": "El mapa no está disponible en esta versión para Android. Puedes ubicar cada unidad con tu posición actual o escribiendo las coordenadas."
+  },
+  "home2": {
+    "myResidence": "Mi residencial",
+    "ofN": "{{i}} de {{n}}",
+    "roles": {
+      "resident": "Residente",
+      "owner": "Propietario",
+      "tenant": "Inquilino",
+      "admin": "Administrador",
+      "guard": "Guardia"
+    }
   }
 }

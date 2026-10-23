@@ -2020,5 +2020,16 @@
     "markedByAdmin": "Marcado pelo admin",
     "markedAt": "em {{date}}",
     "noMapAndroid": "O mapa não está disponível nesta versão para Android. Você pode localizar cada unidade com sua posição atual ou digitando as coordenadas."
+  },
+  "home2": {
+    "myResidence": "Minha residência",
+    "ofN": "{{i}} de {{n}}",
+    "roles": {
+      "resident": "Morador",
+      "owner": "Proprietário",
+      "tenant": "Inquilino",
+      "admin": "Administrador",
+      "guard": "Guarda"
+    }
   }
 }

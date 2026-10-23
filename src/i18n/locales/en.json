@@ -2240,5 +2240,16 @@
     "markedByAdmin": "Marked by the admin",
     "markedAt": "on {{date}}",
     "noMapAndroid": "The map isn’t available in this Android version. You can pin each unit with your current position or by entering the coordinates."
+  },
+  "home2": {
+    "myResidence": "My residence",
+    "ofN": "{{i}} of {{n}}",
+    "roles": {
+      "resident": "Resident",
+      "owner": "Owner",
+      "tenant": "Tenant",
+      "admin": "Administrator",
+      "guard": "Guard"
+    }
   }
 }

@@ -29,6 +29,9 @@ export const colors = {
   textSecondary: 'rgba(255, 255, 255, 0.58)',
   textMuted: 'rgba(255, 255, 255, 0.4)',
   textDark: '#0F1A1E',
+  // Texto y fondos sobre el degradado de marca
+  textDarkSecondary: 'rgba(15, 26, 30, 0.68)',
+  darkOverlay: 'rgba(15, 26, 30, 0.14)',
 
   border: 'rgba(255, 255, 255, 0.1)',
 };
