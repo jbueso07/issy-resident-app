@@ -23,6 +23,8 @@ export const colors = {
   orange: '#FF8A50',
   purple: '#A78BFA',
   amber: '#FBBF24',
+  indigo: '#818CF8',
+  blue: '#60A5FA',
   danger: '#E24B4A',
   dangerSoft: '#F09595',
 

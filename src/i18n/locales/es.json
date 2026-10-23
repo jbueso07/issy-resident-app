@@ -2726,6 +2726,46 @@
     "enableNotifs": "Activa las notificaciones para saber cuándo llega tu visita",
     "enableNotifsCta": "Activar notificaciones",
     "openSettingsCta": "Abrir ajustes",
-    "loadError": "No pudimos cargar tu actividad"
+    "loadError": "No pudimos cargar tu actividad",
+    "functions": {
+      "myQR": "Mi QR",
+      "visitors": "Visitantes",
+      "myAccesses": "Mis accesos",
+      "events": "Eventos",
+      "requests": "Solicitudes",
+      "credentials": "Credenciales",
+      "emergencyContacts": "Contactos de emergencia",
+      "myLocation": "Mi ubicación",
+      "announcements": "Anuncios",
+      "reports": "Reportes",
+      "reservations": "Reservaciones",
+      "notifications": "Notificaciones",
+      "payments": "Pagos",
+      "paymentMethods": "Métodos de pago",
+      "myUnit": "Mi unidad",
+      "restaurants": "Restaurantes"
+    },
+    "groups": {
+      "access": "Acceso y seguridad",
+      "community": "Comunidad",
+      "paymentsHome": "Pagos y hogar",
+      "services": "Servicios"
+    },
+    "adminGroups": {
+      "security": "Seguridad",
+      "community": "Comunidad",
+      "finance": "Finanzas",
+      "settings": "Configuración",
+      "superadmin": "Superadministrador"
+    },
+    "searchFunction": "Buscar función",
+    "noFunctionResults": "No encontramos esa función",
+    "iconSizeSmall": "Iconos pequeños",
+    "iconSizeMedium": "Iconos medianos",
+    "iconSizeLarge": "Iconos grandes",
+    "profileHint": "Perfil, soporte e idioma están en la pestaña Perfil",
+    "adminManaging": "Administrando {{name}}",
+    "roleSuperAdmin": "Super Admin",
+    "roleAdmin": "Administrador"
   }
 }
