@@ -2250,6 +2250,29 @@
       "tenant": "Tenant",
       "admin": "Administrator",
       "guard": "Guard"
-    }
+    },
+    "activityGroups": {
+      "visit": "Visit",
+      "report": "Report",
+      "announcement": "Announcement",
+      "reservation": "Booking",
+      "payment": "Payment",
+      "emergency": "Emergency",
+      "account": "Account"
+    },
+    "hide": "Hide",
+    "swipeToHide": "Swipe left to hide",
+    "hiddenForYou": "Hidden just for you",
+    "hiddenForYouSub": "Still in Notifications",
+    "undo": "Undo",
+    "showHidden": "Show hidden ({{n}})",
+    "closeHidden": "Close hidden",
+    "unhide": "Show",
+    "emptyTitle": "No activity yet",
+    "emptySub": "Your visits, payments and notices will show up here.",
+    "enableNotifs": "Turn on notifications to know when your visitor arrives",
+    "enableNotifsCta": "Turn on notifications",
+    "openSettingsCta": "Open settings",
+    "loadError": "We couldn't load your activity"
   }
 }

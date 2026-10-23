@@ -2031,6 +2031,29 @@
       "tenant": "Locataire",
       "admin": "Administrateur",
       "guard": "Gardien"
-    }
+    },
+    "activityGroups": {
+      "visit": "Visite",
+      "report": "Signalement",
+      "announcement": "Annonce",
+      "reservation": "Réservation",
+      "payment": "Paiement",
+      "emergency": "Urgence",
+      "account": "Compte"
+    },
+    "hide": "Masquer",
+    "swipeToHide": "Balaie vers la gauche pour masquer",
+    "hiddenForYou": "Masqué pour toi seulement",
+    "hiddenForYouSub": "Toujours dans Notifications",
+    "undo": "Annuler",
+    "showHidden": "Voir les masquées ({{n}})",
+    "closeHidden": "Fermer les masquées",
+    "unhide": "Afficher",
+    "emptyTitle": "Pas encore d’activité",
+    "emptySub": "Tes visites, paiements et avis apparaîtront ici.",
+    "enableNotifs": "Active les notifications pour savoir quand ton visiteur arrive",
+    "enableNotifsCta": "Activer les notifications",
+    "openSettingsCta": "Ouvrir les réglages",
+    "loadError": "Impossible de charger ton activité"
   }
 }

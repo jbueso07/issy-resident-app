@@ -2030,6 +2030,29 @@
       "tenant": "Inquilino",
       "admin": "Administrador",
       "guard": "Guarda"
-    }
+    },
+    "activityGroups": {
+      "visit": "Visita",
+      "report": "Ocorrência",
+      "announcement": "Aviso",
+      "reservation": "Reserva",
+      "payment": "Pagamento",
+      "emergency": "Emergência",
+      "account": "Conta"
+    },
+    "hide": "Ocultar",
+    "swipeToHide": "Deslize para a esquerda para ocultar",
+    "hiddenForYou": "Oculto só para você",
+    "hiddenForYouSub": "Continua em Notificações",
+    "undo": "Desfazer",
+    "showHidden": "Ver ocultas ({{n}})",
+    "closeHidden": "Fechar ocultas",
+    "unhide": "Mostrar",
+    "emptyTitle": "Ainda não há atividade",
+    "emptySub": "Suas visitas, pagamentos e avisos aparecerão aqui.",
+    "enableNotifs": "Ative as notificações para saber quando sua visita chegar",
+    "enableNotifsCta": "Ativar notificações",
+    "openSettingsCta": "Abrir ajustes",
+    "loadError": "Não foi possível carregar sua atividade"
   }
 }
