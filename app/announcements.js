@@ -47,7 +47,8 @@ const COLORS = {
   blue: '#3B82F6',
 };
 
-export default function AnnouncementsScreen() {
+// fromTab: abierta desde la pestaña Anuncios de la barra (sin flecha atrás)
+export default function AnnouncementsScreen({ fromTab = false }) {
   const router = useRouter();
   const { t, language } = useTranslation();
   const { selectedLocationId, loading: locationLoading } = useUserLocation();
@@ -281,13 +282,15 @@ export default function AnnouncementsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
+        {!fromTab && (
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+        )}
+        <View style={[styles.headerTitleContainer, fromTab && { marginLeft: 0 }]}>
           <View style={styles.headerTitleRow}>
             <Text style={styles.headerTitle}>{t('announcements.title')}</Text>
             {unreadCount > 0 && (
@@ -306,7 +309,8 @@ export default function AnnouncementsScreen() {
         data={announcements}
         renderItem={renderAnnouncement}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
+        // Desde la barra: mismo espacio final que el home para que el último anuncio no quede tapado
+        contentContainerStyle={[styles.listContent, fromTab && { paddingBottom: scale(120) }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

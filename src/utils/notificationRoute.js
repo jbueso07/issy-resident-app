@@ -67,7 +67,9 @@ const TYPE_TO_GROUP = Object.entries(GROUP_TYPES).reduce((acc, [group, types]) =
 // Pagos del marketplace: se agrupan como pago pero no abren la pantalla de cuotas
 const NO_ROUTE_TYPES = ['marketplace_sale', 'marketplace_refund'];
 
-const VISITS_ROUTE = { pathname: '/(tabs)/visits', params: { tab: 'invitations' } };
+const VISITS_ROUTE = { pathname: '/(tabs)/visits', params: { tab: 'visitors' } };
+// QR que otro residente me compartió
+const SHARED_QR_ROUTE = { pathname: '/(tabs)/visits', params: { tab: 'invitations' } };
 
 // Algunos registros guardan `data` como texto JSON en vez de objeto
 export const parseNotificationData = (data) => {
@@ -106,6 +108,8 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
       },
     };
   }
+
+  if (type === 'qr_shared') return SHARED_QR_ROUTE;
 
   if (type === 'registration_pending') {
     return isAdmin ? { pathname: '/admin/community-management', params: {} } : null;

@@ -2313,6 +2313,26 @@
     "profileHint": "Profile, support and language are in the Profile tab",
     "adminManaging": "Managing {{name}}",
     "roleSuperAdmin": "Super Admin",
-    "roleAdmin": "Administrator"
+    "roleAdmin": "Administrator",
+    "tabs": {
+      "announcements": "Announcements",
+      "myQR": "My QR"
+    },
+    "newQR": {
+      "title": "New QR",
+      "forLocation": "For {{name}}",
+      "types": {
+        "single": "One time",
+        "frequent": "Frequent",
+        "temporary": "Temporary",
+        "event": "Event"
+      },
+      "typesDesc": {
+        "single": "For a single-day visit",
+        "frequent": "For someone who comes often, on set days",
+        "temporary": "Valid between two dates",
+        "event": "One QR for several guests"
+      }
+    }
   }
 }

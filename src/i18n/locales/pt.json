@@ -2125,6 +2125,26 @@
     "profileHint": "Perfil, suporte e idioma estão na aba Perfil",
     "adminManaging": "Administrando {{name}}",
     "roleSuperAdmin": "Super Admin",
-    "roleAdmin": "Administrador"
+    "roleAdmin": "Administrador",
+    "tabs": {
+      "announcements": "Avisos",
+      "myQR": "Meus QR"
+    },
+    "newQR": {
+      "title": "Novo QR",
+      "forLocation": "Para {{name}}",
+      "types": {
+        "single": "Uma vez",
+        "frequent": "Frequente",
+        "temporary": "Temporário",
+        "event": "Evento"
+      },
+      "typesDesc": {
+        "single": "Para uma visita de um só dia",
+        "frequent": "Para quem vem com frequência, em dias fixos",
+        "temporary": "Válido entre duas datas",
+        "event": "Um QR para vários convidados"
+      }
+    }
   }
 }

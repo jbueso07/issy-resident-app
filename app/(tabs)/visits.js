@@ -267,15 +267,20 @@ export default function Visits() {
 
   // Mejora 1: acceso directo desde el boton "Nuevo QR" del home.
   // Lee params de navegacion para abrir el tab Visitantes + el modal de crear.
-  const { tab: navTab, create: navCreate } = useLocalSearchParams();
+  const { tab: navTab, create: navCreate, type: navType } = useLocalSearchParams();
   const navRouter = useRouter();
   useEffect(() => {
     if (navTab) setActiveTab(String(navTab));
+    // Tipo preseleccionado desde la hoja "Nuevo QR" (single | temporary | frequent)
+    if (['single', 'temporary', 'frequent'].includes(navType)) setQrType(navType);
     if (navCreate === '1') {
       setShowCreateModal(true);
-      navRouter.setParams({ create: undefined }); // one-shot: evita reapertura al volver al tab
     }
-  }, [navTab, navCreate]);
+    // one-shot: limpiar para que tocar dos veces el mismo acceso siempre funcione
+    if (navTab || navCreate || navType) {
+      navRouter.setParams({ tab: undefined, create: undefined, type: undefined });
+    }
+  }, [navTab, navCreate, navType]);
 
   // Form states
   const [qrType, setQrType] = useState('single');
