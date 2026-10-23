@@ -2146,6 +2146,14 @@
         "temporary": "Valable entre deux dates",
         "event": "Un QR pour plusieurs invités"
       }
-    }
+    },
+    "segments": {
+      "recent": "Activité récente",
+      "recentShort": "Récent",
+      "functions": "Toutes les fonctions",
+      "functionsShort": "Fonctions",
+      "admin": "Administration"
+    },
+    "switchFailed": "Impossible de changer de résidence. Réessaie."
   }
 }

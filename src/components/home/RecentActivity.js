@@ -321,10 +321,12 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey }
     if (hiddenItems.length === 0) setShowHidden(false);
   }, [hiddenItems.length]);
 
-  // El home decide con qué sección arrancar
+  // El home decide con qué sección arrancar (failed: la carga falló y no hay nada que mostrar)
   useEffect(() => {
-    if (!loading && hiddenLoaded) onLoadedRef.current?.(visibleItems.length);
-  }, [loading, hiddenLoaded, visibleItems.length]);
+    if (!loading && hiddenLoaded) {
+      onLoadedRef.current?.(visibleItems.length, { failed: loadError && items.length === 0 });
+    }
+  }, [loading, hiddenLoaded, visibleItems.length, loadError, items.length]);
 
   // ---------- Marcar leídas al verlas 2,5 s ----------
   const markRead = useCallback((item) => {

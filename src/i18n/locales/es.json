@@ -2786,6 +2786,14 @@
         "temporary": "Válido entre dos fechas",
         "event": "Un QR para varios invitados"
       }
-    }
+    },
+    "segments": {
+      "recent": "Actividades recientes",
+      "recentShort": "Recientes",
+      "functions": "Todas las funciones",
+      "functionsShort": "Funciones",
+      "admin": "Administración"
+    },
+    "switchFailed": "No se pudo cambiar de residencial. Intenta de nuevo."
   }
 }

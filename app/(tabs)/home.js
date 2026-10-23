@@ -1,8 +1,9 @@
 // app/(tabs)/home.js
-// ISSY Resident App - Home Dashboard ProHome Style + i18n
-// Admin carrusel horizontal, Más Servicios horizontal, Font accessibility
+// ISSY Resident App - Home v2: encabezado, residencial deslizable, acciones rápidas
+// y secciones (Actividades recientes · Todas las funciones · Administración).
+// La lógica de pánico, cambio de residencial y estados sin comunidad se conserva.
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,34 +12,26 @@ import {
   TouchableOpacity,
   RefreshControl,
   Dimensions,
-  Image,
   Platform,
   Modal,
   ActivityIndicator,
-  Switch,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../src/context/AuthContext';
 import { useUserLocation } from '../../src/context/UserLocationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
-// Importar iconos SVG
-import {
-  StarIcon,
-  BellIcon,
-  CalendarIcon,
-  CreditCardIcon,
-  BuildingIcon,
-  BriefcaseIcon,
-  PlusIcon,
-} from '../../src/components/Icons';
-
-import NotificationBell from '../../src/components/NotificationBell';
 import { createPanic, getMyActivePanic, cancelPanic } from '../../src/services/api';
+import HomeHeader from '../../src/components/home/HomeHeader';
+import LocationCarousel from '../../src/components/home/LocationCarousel';
+import QuickActions from '../../src/components/home/QuickActions';
+import HomeSegments from '../../src/components/home/HomeSegments';
+import RecentActivity from '../../src/components/home/RecentActivity';
+import AllFunctions, { useHomeIconSize } from '../../src/components/home/AllFunctions';
+import AdminPanel from '../../src/components/home/AdminPanel';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -68,38 +61,6 @@ const COLORS = {
   border: 'rgba(255, 255, 255, 0.1)',
   gradientStart: '#00BFA6',
   gradientEnd: '#AAFF00',
-};
-
-// ============ SERVICE ICON COMPONENT ============
-const ServiceIcon = ({ serviceId, color, size = 24 }) => {
-  switch (serviceId) {
-    case 'visitors':
-      return <StarIcon size={size} color={color} />;
-    case 'announcements':
-      return <BellIcon size={size} color={color} />;
-    case 'reservations':
-      return <CalendarIcon size={size} color={color} />;
-    case 'payments':
-      return <CreditCardIcon size={size} color={color} />;
-    default:
-      return null;
-  }
-};
-
-// ============ QUICK ACTION ICON ============
-const QuickActionIcon = ({ actionId, color, size = 28 }) => {
-  switch (actionId) {
-    case 'qr':
-      return <PlusIcon size={size} color={color} />;
-    case 'incident':
-      return <Ionicons name="alert-circle-outline" size={size} color={color} />;
-    case 'marketplace':
-      return <Ionicons name="storefront-outline" size={size} color={color} />;
-    case 'panic':
-      return <Ionicons name="warning" size={size} color={color} />;
-    default:
-      return null;
-  }
 };
 
 // ============ API ============
@@ -161,258 +122,16 @@ export default function Home() {
     loadFeatureFlags();
   }, []);
 
-  // Estados para toggles
-  const [activeServices, setActiveServices] = useState({
-    visitors: true,
-    announcements: true,
-    reservations: false,
-    payments: false,
-  });
-
-  // ============ SERVICIOS CON TRADUCCIONES ============
-  const COMMUNITY_SERVICES = useMemo(() => [
-    { 
-      id: 'visitors', 
-      title: t('services.access'), 
-      subtitle: t('services.accessDesc'),
-      route: '/(tabs)/visits',
-      activeColor: COLORS.teal,
-      available: true,
-    },
-    { 
-      id: 'announcements', 
-      title: t('services.announcements'), 
-      subtitle: t('services.announcementsDesc'),
-      route: '/announcements',
-      activeColor: COLORS.cyan,
-      available: true,
-    },
-    { 
-      id: 'reservations', 
-      title: t('services.reservations'), 
-      subtitle: t('services.reservationsDesc'),
-      route: '/reservations',
-      activeColor: COLORS.orange,
-      available: true,
-    },
-    { 
-      id: 'payments', 
-      title: t('services.payments'), 
-      subtitle: t('services.paymentsDesc'),
-      route: '/(tabs)/payments',
-      activeColor: COLORS.purple,
-      available: true,
-    },
-  ], [t]);
-
-  const B2C_SERVICES = useMemo(() => [
-    {
-      id: 'pms',
-      title: t('services.pms'),
-      subtitle: t('services.pmsDesc'),
-      route: '/pms',
-      icon: 'business-outline',
-      color: COLORS.teal,
-      available: false,
-    },
-    { 
-      id: 'finances',
-      title: t('services.finances'),
-      subtitle: t('services.financesDesc'),
-      route: '/finances',
-      icon: 'wallet-outline',
-      color: COLORS.lime,
-      available: true,
-    },
-    { 
-      id: 'marketplace',
-      title: t('services.marketplace'),
-      subtitle: t('services.marketplaceDesc'),
-      route: '/marketplace',
-      icon: 'storefront-outline',
-      color: COLORS.orange,
-      available: true,
-    },
-    {
-      id: 'services',
-      title: t('services.servicesTitle'),
-      subtitle: t('services.servicesDesc'),
-      route: '/services',
-      icon: 'construct-outline',
-      color: COLORS.purple,
-      available: false,
-    },
-    {
-      id: 'airin',
-      title: 'Restaurantes',
-      subtitle: 'Pide y reserva',
-      route: '/airin',
-      icon: 'restaurant-outline',
-      color: '#FF6B35',
-      available: true,
-      featureFlag: 'airin_restaurants',
-    },
-  ], [t]);
-
-  const ADMIN_SERVICES = useMemo(() => [
-  {
-    id: 'locations',
-    title: t('adminMenu.locations', 'Ubicaciones'),
-    subtitle: t('adminMenu.locationsDesc', 'Gestionar comunidades'),
-    route: '/admin/locations',
-    activeColor: COLORS.lime,
-    icon: 'location-outline',
-    superAdminOnly: true,
-  },
-  {
-    id: 'create-announcement',
-    title: t('adminMenu.announcements'),
-    subtitle: t('adminMenu.announcementsDesc'),
-    route: '/admin/announcements',
-    activeColor: COLORS.cyan,
-    icon: 'megaphone-outline',
-  },
-  { 
-    id: 'community-management', 
-    title: t('adminMenu.community'), 
-    subtitle: t('adminMenu.communityDesc'),
-    route: '/admin/community-management',
-    activeColor: COLORS.teal,
-    icon: 'people-outline',
-  },
-  {
-    id: 'community-map',
-    title: t('adminMenu.communityMap', 'Mapa de la Comunidad'),
-    subtitle: t('adminMenu.communityMapDesc', 'Ubicar unidades para emergencias'),
-    route: '/admin/community-map',
-    activeColor: '#E24B4A',
-    icon: 'map-outline',
-  },
-  { 
-    id: 'common-areas', 
-    title: t('adminMenu.commonAreas'), 
-    subtitle: t('adminMenu.commonAreasDesc'),
-    route: '/admin/common-areas',
-    activeColor: COLORS.teal,
-    icon: 'fitness-outline',
-  },
-  { 
-    id: 'reservations-admin', 
-    title: t('adminMenu.reservationsAdmin'), 
-    subtitle: t('adminMenu.reservationsAdminDesc'),
-    route: '/admin/reservations',
-    activeColor: COLORS.orange,
-    icon: 'calendar-outline',
-  },
-  { 
-    id: 'incidents', 
-    title: t('adminMenu.incidents'), 
-    subtitle: t('adminMenu.incidentsDesc'),
-    route: '/admin/incidents',
-    activeColor: COLORS.coral,
-    icon: 'warning-outline',
-  },
-  { 
-    id: 'payment-manager', 
-    title: t('adminMenu.paymentManager'), 
-    subtitle: t('adminMenu.paymentManagerDesc'),
-    route: '/admin/payments',
-    activeColor: COLORS.purple,
-    icon: 'card-outline',
-  },
-  { 
-    id: 'expenses', 
-    title: t('adminMenu.expenses'), 
-    subtitle: t('adminMenu.expensesDesc'),
-    route: '/admin/expenses',
-    activeColor: COLORS.coral,
-    icon: 'trending-down-outline',
-  },
-  { 
-    id: 'users', 
-    title: t('adminMenu.users'), 
-    subtitle: t('adminMenu.usersDesc'),
-    route: '/admin/users',
-    activeColor: COLORS.indigo,
-    icon: 'person-outline',
-  },
-  { 
-    id: 'admin-settings', 
-    title: t('adminMenu.settings'), 
-    subtitle: t('adminMenu.settingsDesc'),
-    route: '/admin/settings',
-    activeColor: COLORS.indigo,
-    icon: 'settings-outline',
-  },
-  { 
-    id: 'guard-shifts', 
-    title: t('adminMenu.guardShifts'), 
-    subtitle: t('adminMenu.guardShiftsDesc'),
-    route: '/admin/guard-shifts',
-    activeColor: COLORS.blue,
-    icon: 'time-outline',
-  },
-  { 
-    id: 'gates', 
-    title: t('adminMenu.gates'), 
-    subtitle: t('adminMenu.gatesDesc'),
-    route: '/admin/gates',
-    activeColor: COLORS.teal,
-    icon: 'business-outline',
-  },
-  { 
-    id: 'access-reports', 
-    title: t('adminMenu.accessReports'), 
-    subtitle: t('adminMenu.accessReportsDesc'),
-    route: '/admin/access-reports',
-    activeColor: COLORS.blue,
-    icon: 'shield-checkmark-outline',
-  },
-  {
-    id: 'reports',
-    title: t('adminMenu.reports'),
-    subtitle: t('adminMenu.reportsDesc'),
-    route: '/admin/reports',
-    activeColor: COLORS.lime,
-    icon: 'analytics-outline',
-  },
-  {
-    id: 'patrols',
-    title: t('adminMenu.patrols', 'Rondines'),
-    subtitle: t('adminMenu.patrolsDesc', 'Gestionar rutas y checkpoints'),
-    route: '/admin/patrols',
-    activeColor: COLORS.orange,
-    icon: 'footsteps-outline',
-  },
-  {
-    id: 'patrol-reports',
-    title: t('adminMenu.patrolReports', 'Reportes de Rondines'),
-    subtitle: t('adminMenu.patrolReportsDesc', 'Historial y estadísticas'),
-    route: '/admin/patrol-reports',
-    activeColor: COLORS.cyan,
-    icon: 'stats-chart-outline',
-  },
-  {
-    id: 'marketplace-admin',
-    title: 'Marketplace',
-    subtitle: 'Proveedores, servicios y configuración',
-    route: '/admin/marketplace',
-    activeColor: COLORS.teal,
-    icon: 'storefront-outline',
-    superAdminOnly: true,
-  },
-], [t]);
-
-  const QUICK_ACTIONS = useMemo(() => [
-    { id: 'qr', label: t('home.quickActions.newQR'), route: '/(tabs)/visits', params: { tab: 'visitors', create: '1' } },
-    { id: 'incident', label: t('home.quickActions.reportIncident', 'Reportar'), route: '/incidents', params: { create: '1' } },
-    { id: 'marketplace', label: t('home.quickActions.marketplace', 'Marketplace'), route: '/marketplace-hub' },
-    { id: 'panic', label: t('home.quickActions.panic', 'Emergencia'), isPanic: true },
-  ], [t]);
+  // Home v2: refresco de actividades, sección activa y tamaño de iconos
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeSegment, setActiveSegment] = useState('recent');
+  // La sección inicial se decide una sola vez por apertura del home
+  const initialSegmentDecidedRef = useRef(false);
+  const [segmentDecided, setSegmentDecided] = useState(false);
+  const [iconSize, setIconSize] = useHomeIconSize();
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
   const userLocations = profile?.user_locations || [];
-  const hasMultipleLocations = userLocations.length > 1;
 
   // Check if user has pending approval (registered with code but not yet approved)
   const isPendingApproval = profile?.pending_locations?.some(ul => ul.status === 'pending')
@@ -423,21 +142,10 @@ export default function Home() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setRefreshKey((key) => key + 1);
     if (refreshProfile) await refreshProfile();
     setRefreshing(false);
   }, [refreshProfile]);
-
-  const handleServicePress = (service) => {
-    if (!service.available || !service.route) return;
-    router.push(service.route);
-  };
-
-  const handleQuickAction = (action) => {
-    // El botón de emergencia se maneja con onLongPress, no aquí
-    if (action.isPanic) return;
-    if (!action.route) return;
-    router.push(action.params ? { pathname: action.route, params: action.params } : action.route);
-  };
 
   // Handler cuando el mantener-presionado completa 2 segundos: abre el modal
   const handlePanicLongPress = () => {
@@ -577,21 +285,52 @@ export default function Home() {
         await selectLocation(location.location_id);
         await refreshProfile();
         setShowLocationModal(false);
+      } else {
+        Alert.alert(t('home2.switchFailed', 'No se pudo cambiar de residencial. Intenta de nuevo.'));
       }
     } catch (error) {
       console.error('Error:', error);
+      Alert.alert(t('home2.switchFailed', 'No se pudo cambiar de residencial. Intenta de nuevo.'));
     }
     setSwitchingLocation(false);
   };
 
-  const toggleService = (serviceId) => {
-    setActiveServices(prev => ({ ...prev, [serviceId]: !prev[serviceId] }));
+  const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || t('home.myCommunity');
+
+  // ============ SECCIONES ============
+  const isSuperAdmin = userRole === 'superadmin';
+  const segments = [
+    { key: 'recent', label: t('home2.segments.recent', 'Actividades recientes'), shortLabel: t('home2.segments.recentShort', 'Recientes') },
+    { key: 'functions', label: t('home2.segments.functions', 'Todas las funciones'), shortLabel: t('home2.segments.functionsShort', 'Funciones') },
+    ...(isAdmin ? [{ key: 'admin', label: t('home2.segments.admin', 'Administración') }] : []),
+  ];
+
+  // Solo la primera carga decide: si Recientes llega vacía, arrancar en Todas las funciones.
+  // Si la carga falla, se queda en Recientes para que se vea Reintentar.
+  // Si después el usuario vuelve a Recientes y está vacía, se queda ahí con su mensaje.
+  const handleRecentLoaded = useCallback((count, { failed = false } = {}) => {
+    if (initialSegmentDecidedRef.current) return;
+    initialSegmentDecidedRef.current = true;
+    if (count === 0 && !failed) setActiveSegment('functions');
+    setSegmentDecided(true);
+  }, []);
+
+  // Si el usuario elige una sección antes de que Recientes termine de cargar, esa elección decide
+  const handleSegmentChange = (key) => {
+    initialSegmentDecidedRef.current = true;
+    setSegmentDecided(true);
+    setActiveSegment(key);
   };
 
-  const getUserName = () => profile?.name || user?.email?.split('@')[0] || t('profile.user');
-  const getUserInitials = () => (profile?.name || user?.email || 'U').charAt(0).toUpperCase();
-  const getCurrentLocationName = () => currentLocation?.name || profile?.location?.name || t('home.myCommunity');
-  const getResidentCount = () => currentLocation?.member_count || profile?.location?.member_count || 0;
+  const renderSegment = (key) => {
+    if (key === 'functions') {
+      return <AllFunctions featureFlags={featureFlags} size={iconSize} onSizeChange={setIconSize} />;
+    }
+    if (key === 'admin') {
+      return <AdminPanel isSuperAdmin={isSuperAdmin} locationName={getCurrentLocationName()} size={iconSize} />;
+    }
+    return <RecentActivity isAdmin={isAdmin} refreshKey={refreshKey} onLoaded={handleRecentLoaded} />;
+  };
 
   // ========================================
   // RENDER: Location Modal
@@ -828,26 +567,7 @@ export default function Home() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
           }
         >
-          {/* Header con Avatar y Campana */}
-          <View style={styles.homeHeader}>
-            <View style={styles.homeHeaderLeft}>
-              {(user?.avatar_url || user?.profile_photo_url) ? (
-                <Image 
-                  source={{ uri: user?.avatar_url || user?.profile_photo_url }} 
-                  style={styles.avatarImage} 
-                />
-              ) : (
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
-                </View>
-              )}
-              <View>
-                <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
-                <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
-              </View>
-            </View>
-            <NotificationBell />
-          </View>
+          <HomeHeader />
 
           {isPendingApproval && (
             <View style={{ backgroundColor: '#1a1a1a', margin: 16, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 3, borderLeftColor: '#c6f135' }}>
@@ -869,40 +589,6 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-
-
-          {/* B2C Services - Horizontal Scroll */}
-          <Text style={[styles.sectionTitle, { paddingHorizontal: scale(16) }]} maxFontSizeMultiplier={1.2}>
-            {t('home.moreServices')}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.horizontalScroll}
-          >
-            {B2C_SERVICES.filter(s => {
-              if (s.available === false) return false;
-              if (s.featureFlag && !featureFlags[s.featureFlag]) return false;
-              return true;
-            }).map((service) => (
-              <TouchableOpacity
-                key={service.id}
-                style={styles.b2cCardHorizontal}
-                onPress={() => handleServicePress(service)}
-              >
-                <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
-                  <Ionicons name={service.icon} size={24} color={service.color} />
-                </View>
-                <Text style={styles.b2cTitleH} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-                  {service.title}
-                </Text>
-                <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
-                  {service.subtitle}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
           <View style={{ height: scale(120) }} />
         </ScrollView>
       </SafeAreaView>
@@ -921,54 +607,17 @@ export default function Home() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
         }
       >
-        {/* Header con Avatar y Campana */}
-        <View style={styles.homeHeader}>
-          <View style={styles.homeHeaderLeft}>
-            {(user?.avatar_url || user?.profile_photo_url) ? (
-              <Image
-                source={{ uri: user?.avatar_url || user?.profile_photo_url }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarInitial}>{getUserInitials()}</Text>
-              </View>
-            )}
-            <View>
-              <Text style={styles.greetingText}>{t('home.greeting', { name: getUserName().split(' ')[0] })}</Text>
-              <Text style={styles.greetingSubtext}>{t('home.welcomeBack')}</Text>
-            </View>
-          </View>
-          <NotificationBell />
-        </View>
+        <HomeHeader />
 
-        {/* Location Card - Gradient */}
-        <TouchableOpacity
-          style={styles.locationCard}
-          onPress={() => hasMultipleLocations && setShowLocationModal(true)}
-          activeOpacity={hasMultipleLocations ? 0.8 : 1}
-        >
-          <LinearGradient
-            colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.locationGradient}
-          >
-            <View style={styles.locationContent}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.locationName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-                  {getCurrentLocationName()}
-                </Text>
-                <Text style={styles.locationCount} maxFontSizeMultiplier={1.1}>
-                  {getResidentCount()} {t('home.residents')}
-                </Text>
-              </View>
-              <View style={styles.locationPinContainer}>
-                <Ionicons name="location" size={24} color={COLORS.coral} />
-              </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Residencial deslizable: ancho completo (sin margen lateral) */}
+        <LocationCarousel
+          locations={userLocations}
+          currentLocationId={currentLocationId}
+          user={profile || user}
+          onSwitchLocation={handleSwitchLocation}
+          switching={switchingLocation}
+          onOpenLocationList={() => setShowLocationModal(true)}
+        />
 
         {/* Banner de Emergencia Activa */}
         {activePanic && (
@@ -1022,180 +671,17 @@ export default function Home() {
           </View>
         )}
 
-        {/* Quick Actions */}
-        <View style={styles.quickActionsRow}>
-          {QUICK_ACTIONS.map((action, index) => (
-            <TouchableOpacity
-              key={action.id}
-              style={styles.quickActionItem}
-              onPress={() => handleQuickAction(action)}
-              onLongPress={action.isPanic ? handlePanicLongPress : undefined}
-              delayLongPress={action.isPanic ? 2000 : undefined}
-              activeOpacity={action.isPanic ? 0.7 : 0.2}
-            >
-              {index === 0 ? (
-                <LinearGradient
-                  colors={[COLORS.gradientStart, COLORS.lime]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.quickActionBoxActive}
-                >
-                  <QuickActionIcon actionId={action.id} color={COLORS.textDark} size={28} />
-                </LinearGradient>
-              ) : action.isPanic ? (
-                <View style={styles.quickActionBoxPanic}>
-                  <QuickActionIcon actionId={action.id} color={COLORS.textPrimary} size={26} />
-                </View>
-              ) : (
-                <View style={styles.quickActionBox}>
-                  <QuickActionIcon actionId={action.id} color={COLORS.textMuted} size={24} />
-                </View>
-              )}
-              <Text style={[
-                styles.quickActionLabel,
-                index === 0 && styles.quickActionLabelActive,
-                action.isPanic && styles.quickActionLabelPanic
-              ]} maxFontSizeMultiplier={1.2}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Acciones rápidas: Emergencia usa el mismo handlePanicLongPress (2 s) */}
+        <QuickActions onPanicLongPress={handlePanicLongPress} />
 
-        {/* Services Section Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>
-            {t('home.services')} <Text style={styles.sectionCount}>({COMMUNITY_SERVICES.length})</Text>
-          </Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionLink} maxFontSizeMultiplier={1.2}>{t('home.viewAll')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Community Services Grid */}
-        <View style={styles.servicesGrid}>
-          {COMMUNITY_SERVICES.map((service) => {
-            const isActive = activeServices[service.id];
-            return (
-              <TouchableOpacity
-                key={service.id}
-                style={[
-                  styles.serviceCard,
-                  isActive ? { backgroundColor: service.activeColor } : styles.serviceCardOff
-                ]}
-                onPress={() => handleServicePress(service)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.serviceHeader}>
-                  <View style={{ flex: 1 }} />
-                  <Switch
-                    value={isActive}
-                    onValueChange={() => toggleService(service.id)}
-                    trackColor={{ false: COLORS.bgCardAlt, true: 'rgba(255,255,255,0.3)' }}
-                    thumbColor={COLORS.textPrimary}
-                    style={styles.toggle}
-                  />
-                </View>
-
-                <View style={[
-                  styles.serviceIconBox,
-                  isActive ? styles.serviceIconBoxActive : styles.serviceIconBoxOff
-                ]}>
-                  <ServiceIcon
-                    serviceId={service.id}
-                    color={isActive ? service.activeColor : COLORS.textMuted}
-                    size={24}
-                  />
-                </View>
-
-                <Text style={[
-                  styles.serviceTitle,
-                  !isActive && styles.serviceTitleOff
-                ]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{service.title}</Text>
-                <Text style={[
-                  styles.serviceSubtitle,
-                  !isActive && styles.serviceSubtitleOff
-                ]} maxFontSizeMultiplier={1.1} numberOfLines={1}>{service.subtitle}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Más Servicios - Horizontal Scroll */}
-        <Text style={[styles.sectionTitle, { marginTop: scale(24) }]} maxFontSizeMultiplier={1.2}>
-          {t('home.moreServices')}
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScroll}
+        <HomeSegments
+          segments={segments}
+          value={activeSegment}
+          onChange={handleSegmentChange}
+          loading={!segmentDecided}
         >
-          {B2C_SERVICES.filter(s => {
-              if (s.available === false) return false;
-              if (s.featureFlag && !featureFlags[s.featureFlag]) return false;
-              return true;
-            }).map((service) => (
-            <TouchableOpacity
-              key={service.id}
-              style={styles.b2cCardHorizontal}
-              onPress={() => handleServicePress(service)}
-            >
-              <View style={[styles.b2cIconBoxH, { backgroundColor: service.color + '20' }]}>
-                <Ionicons name={service.icon} size={24} color={service.color} />
-              </View>
-              <Text style={styles.b2cTitleH} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-                {service.title}
-              </Text>
-              <Text style={styles.b2cSubtitleH} maxFontSizeMultiplier={1.1} numberOfLines={1}>
-                {service.subtitle}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ADMIN SECTION - Horizontal Carousel */}
-        {isAdmin && (
-          <>
-            <View style={styles.adminSectionHeader}>
-              <Text style={styles.adminSectionTitle} maxFontSizeMultiplier={1.2}>{t('home.admin')}</Text>
-              <View style={styles.adminBadge}>
-                <Text style={styles.adminBadgeText} maxFontSizeMultiplier={1}>
-                  {userRole === 'superadmin' ? 'Super Admin' : 'Admin'}
-                </Text>
-              </View>
-            </View>
-            
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.adminCarousel}
-              decelerationRate="fast"
-              snapToInterval={scale(160) + scale(12)}
-            >
-              {ADMIN_SERVICES.filter(service =>
-                !service.superAdminOnly || userRole === 'superadmin'
-              ).map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={[styles.adminCardCarousel, { backgroundColor: service.activeColor }]}
-                  onPress={() => router.push(service.route)}
-                  activeOpacity={0.8}
-                >
-                  {/* Icon */}
-                  <View style={[styles.adminIconBox, styles.adminIconBoxActive]}>
-                    <Ionicons name={service.icon} size={28} color={service.activeColor} />
-                  </View>
-
-                  {/* Content */}
-                  <Text style={styles.adminCardTitle} maxFontSizeMultiplier={1.2} numberOfLines={2}>
-                    {service.title}
-                  </Text>
-                  <Text style={styles.adminCardSubtitle} maxFontSizeMultiplier={1.1} numberOfLines={1}>
-                    {service.subtitle}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </>
-        )}
+          {renderSegment}
+        </HomeSegments>
 
         <View style={{ height: scale(120) }} />
       </ScrollView>
@@ -1217,139 +703,6 @@ const styles = StyleSheet.create({
     paddingTop: scale(10),
   },
 
-  // ============ HOME HEADER ============
-  homeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    marginBottom: scale(16),
-  },
-  homeHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(12),
-  },
-  avatarCircle: {
-    width: scale(48),
-    height: scale(48),
-    borderRadius: scale(24),
-    backgroundColor: COLORS.teal,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    fontSize: scale(20),
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  // ESTILO AGREGADO PARA MOSTRAR LA FOTO DE PERFIL
-  avatarImage: {
-    width: scale(48),
-    height: scale(48),
-    borderRadius: scale(24),
-    borderWidth: 2,
-    borderColor: COLORS.teal,
-  },
-  greetingText: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  greetingSubtext: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    marginTop: scale(2),
-  },
-
-  // ============ LOCATION CARD ============
-  locationCard: {
-    borderRadius: scale(20),
-    overflow: 'hidden',
-    marginHorizontal: scale(16),
-    marginBottom: scale(20),
-  },
-  locationGradient: {
-    padding: scale(20),
-    borderRadius: scale(20),
-  },
-  locationContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  locationName: {
-    fontSize: scale(22),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
-  },
-  locationCount: {
-    fontSize: scale(13),
-    color: 'rgba(255,255,255,0.8)',
-  },
-  locationPinContainer: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(12),
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // ============ QUICK ACTIONS ============
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: scale(24),
-    paddingHorizontal: scale(16),
-  },
-  quickActionItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickActionBoxActive: {
-    width: scale(60),
-    height: scale(60),
-    borderRadius: scale(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(8),
-  },
-  quickActionBox: {
-    width: scale(60),
-    height: scale(60),
-    borderRadius: scale(16),
-    backgroundColor: COLORS.bgCard,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(8),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  quickActionLabel: {
-    fontSize: scale(12),
-    color: COLORS.textMuted,
-    fontWeight: '500',
-  },
-  quickActionLabelActive: {
-    color: COLORS.teal,
-  },
-  quickActionBoxPanic: {
-    width: scale(60),
-    height: scale(60),
-    borderRadius: scale(16),
-    backgroundColor: '#E24B4A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(8),
-    borderWidth: 2,
-    borderColor: '#F09595',
-  },
-  quickActionLabelPanic: {
-    color: '#F09595',
-    fontWeight: '600',
-  },
   panicModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -1594,203 +947,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ============ SECTION HEADER ============
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(14),
-    paddingHorizontal: scale(16),
-  },
-  sectionTitle: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    paddingHorizontal: scale(16),
-  },
-  sectionCount: {
-    fontWeight: '400',
-    color: COLORS.textMuted,
-  },
-  sectionLink: {
-    fontSize: scale(14),
-    color: COLORS.cyan,
-    fontWeight: '500',
-  },
-
-  // ============ SERVICES GRID ============
-  servicesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-  },
-  serviceCard: {
-    width: (SCREEN_WIDTH - scale(44)) / 2,
-    borderRadius: scale(20),
-    padding: scale(14),
-    marginBottom: scale(12),
-    minHeight: scale(155),
-  },
-  serviceCardOff: {
-    backgroundColor: COLORS.bgCard,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  serviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(10),
-  },
-  toggle: {
-    transform: [{ scaleX: 0.75 }, { scaleY: 0.75 }],
-  },
-  serviceIconBox: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(12),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(10),
-  },
-  serviceIconBoxActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  serviceIconBoxOff: {
-    backgroundColor: COLORS.bgCardAlt,
-  },
-  serviceTitle: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(2),
-  },
-  serviceTitleOff: {
-    color: COLORS.textSecondary,
-  },
-  serviceSubtitle: {
-    fontSize: scale(11),
-    color: 'rgba(255,255,255,0.8)',
-  },
-  serviceSubtitleOff: {
-    color: COLORS.textMuted,
-  },
-
-  // ============ B2C HORIZONTAL ============
-  horizontalScroll: {
-    paddingLeft: scale(16),
-    paddingRight: scale(8),
-    paddingTop: scale(12),
-    paddingBottom: scale(4),
-  },
-  b2cCardHorizontal: {
-    width: scale(140),
-    backgroundColor: COLORS.bgCard,
-    borderRadius: scale(16),
-    padding: scale(14),
-    marginRight: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    minHeight: scale(140),
-  },
-  cardDisabled: {
-    opacity: 0.6,
-  },
-  b2cIconBoxH: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(12),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(12),
-  },
-  b2cTitleH: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
-  },
-  b2cSubtitleH: {
-    fontSize: scale(11),
-    color: COLORS.textMuted,
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: scale(10),
-    right: scale(10),
-    backgroundColor: COLORS.orange,
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(3),
-    borderRadius: scale(8),
-  },
-  comingSoonText: {
-    fontSize: scale(9),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-
-  // ============ ADMIN SECTION ============
-  adminSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: scale(24),
-    marginBottom: scale(14),
-    paddingHorizontal: scale(16),
-  },
-  adminSectionTitle: {
-    fontSize: scale(18),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  adminBadge: {
-    marginLeft: scale(10),
-    backgroundColor: COLORS.coral,
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
-    borderRadius: scale(8),
-  },
-  adminBadgeText: {
-    color: COLORS.textPrimary,
-    fontSize: scale(10),
-    fontWeight: '700',
-  },
-
-  // ============ ADMIN CAROUSEL ============
-  adminCarousel: {
-    paddingLeft: scale(16),
-    paddingRight: scale(8),
-    paddingBottom: scale(4),
-  },
-  adminCardCarousel: {
-    width: scale(160),
-    borderRadius: scale(20),
-    padding: scale(14),
-    marginRight: scale(12),
-    minHeight: scale(180),
-  },
-  adminIconBox: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(14),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(12),
-  },
-  adminIconBoxActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  adminCardTitle: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
-  },
-  adminCardSubtitle: {
-    fontSize: scale(11),
-    color: 'rgba(255,255,255,0.8)',
-  },
-
   // ============ JOIN CARD ============
   joinCard: {
     backgroundColor: COLORS.bgCard,
@@ -1836,55 +992,6 @@ const styles = StyleSheet.create({
   },
   joinButtonText: {
     color: COLORS.textPrimary,
-    fontSize: scale(14),
-    fontWeight: '600',
-  },
-
-  // ============ CREATE LOCATION CARD ============
-  createLocationCard: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: scale(20),
-    padding: scale(24),
-    alignItems: 'center',
-    marginBottom: scale(24),
-    marginHorizontal: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.lime + '30',
-  },
-  createLocationIconContainer: {
-    width: scale(70),
-    height: scale(70),
-    borderRadius: scale(35),
-    backgroundColor: COLORS.lime + '15',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: scale(16),
-  },
-  createLocationTitle: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-    marginBottom: scale(8),
-  },
-  createLocationSubtitle: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: scale(20),
-    lineHeight: scale(18),
-  },
-  createLocationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.lime,
-    paddingHorizontal: scale(28),
-    paddingVertical: scale(12),
-    borderRadius: scale(12),
-    gap: scale(6),
-  },
-  createLocationButtonText: {
-    color: COLORS.textDark,
     fontSize: scale(14),
     fontWeight: '600',
   },

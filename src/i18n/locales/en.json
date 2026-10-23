@@ -2333,6 +2333,14 @@
         "temporary": "Valid between two dates",
         "event": "One QR for several guests"
       }
-    }
+    },
+    "segments": {
+      "recent": "Recent activity",
+      "recentShort": "Recent",
+      "functions": "All functions",
+      "functionsShort": "Functions",
+      "admin": "Administration"
+    },
+    "switchFailed": "Couldn't switch residence. Please try again."
   }
 }

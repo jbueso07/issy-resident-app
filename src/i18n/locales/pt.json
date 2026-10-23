@@ -2145,6 +2145,14 @@
         "temporary": "Válido entre duas datas",
         "event": "Um QR para vários convidados"
       }
-    }
+    },
+    "segments": {
+      "recent": "Atividades recentes",
+      "recentShort": "Recentes",
+      "functions": "Todas as funções",
+      "functionsShort": "Funções",
+      "admin": "Administração"
+    },
+    "switchFailed": "Não foi possível trocar de residencial. Tente novamente."
   }
 }

@@ -1,16 +1,17 @@
 // src/components/home/HomeSegments.js
 // ISSY - Selector de secciones del Home v2 (2 o 3): píldora cian animada y entrada suave del contenido.
 // children: el contenido de la sección activa, o una función (activeKey) => contenido.
+// loading: el contenido se monta pero no se ve (con un indicador en su lugar); al pasar a false entra suave.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, ActivityIndicator } from 'react-native';
 import PressableScale from './PressableScale';
 import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
 
 const TRACK_PADDING = scale(4);
 const CONTENT_SHIFT = scale(16);
 
-export default function HomeSegments({ segments, value, onChange, children }) {
+export default function HomeSegments({ segments, value, onChange, loading = false, children }) {
   const [trackWidth, setTrackWidth] = useState(0);
   const count = segments.length;
   const activeIndex = Math.max(0, segments.findIndex((s) => s.key === value));
@@ -20,6 +21,7 @@ export default function HomeSegments({ segments, value, onChange, children }) {
   const pillX = useRef(new Animated.Value(0)).current;
   const content = useRef(new Animated.Value(1)).current;
   const prevIndexRef = useRef(activeIndex);
+  const wasLoadingRef = useRef(loading);
   // Se calcula en el render, antes de que el efecto actualice prevIndexRef
   const direction = activeIndex >= prevIndexRef.current ? 1 : -1;
 
@@ -28,6 +30,16 @@ export default function HomeSegments({ segments, value, onChange, children }) {
     pillX.setValue(activeIndex * segmentWidth);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segmentWidth]);
+
+  const playEntry = () => {
+    content.setValue(0);
+    Animated.timing(content, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
 
   // useLayoutEffect: el contenido nuevo arranca invisible desde el primer cuadro
   useLayoutEffect(() => {
@@ -41,15 +53,16 @@ export default function HomeSegments({ segments, value, onChange, children }) {
       useNativeDriver: true,
     }).start();
 
-    content.setValue(0);
-    Animated.timing(content, {
-      toValue: 1,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    playEntry();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex]);
+
+  // Al terminar de cargar, el contenido aparece con la misma entrada suave
+  useLayoutEffect(() => {
+    if (wasLoadingRef.current && !loading) playEntry();
+    wasLoadingRef.current = loading;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const contentStyle = {
     opacity: content,
@@ -102,7 +115,20 @@ export default function HomeSegments({ segments, value, onChange, children }) {
       </View>
 
       <Animated.View key={value} style={[styles.content, contentStyle]}>
-        {typeof children === 'function' ? children(value) : children}
+        {/* Mientras carga: montado (para que cargue) pero invisible y fuera del lector de pantalla */}
+        <View
+          style={loading && styles.hidden}
+          pointerEvents={loading ? 'none' : 'auto'}
+          accessibilityElementsHidden={loading}
+          importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'}
+        >
+          {typeof children === 'function' ? children(value) : children}
+        </View>
+        {loading && (
+          <View style={styles.loading} pointerEvents="none">
+            <ActivityIndicator size="small" color={colors.cyan} />
+          </View>
+        )}
       </Animated.View>
     </View>
   );
@@ -143,5 +169,15 @@ const styles = StyleSheet.create({
   },
   content: {
     marginTop: scale(spacing.lg),
+  },
+  hidden: {
+    opacity: 0,
+  },
+  loading: {
+    position: 'absolute',
+    top: scale(spacing.xl),
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
 });
