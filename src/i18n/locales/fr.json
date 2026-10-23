@@ -258,7 +258,8 @@
     "errors": {
       "nameRequired": "Le nom est requis",
       "invalidDate": "Date invalide",
-      "createFailed": "Erreur lors de la création"
+      "createFailed": "Erreur lors de la création",
+      "visitorIdRequired": "Cette communauté exige la pièce d’identité du visiteur"
     },
     "empty": {
       "title": "Aucune visite",

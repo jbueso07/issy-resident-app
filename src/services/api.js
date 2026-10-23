@@ -310,9 +310,10 @@ export const getQRSharingMode = async (locationId) => {
   try {
     const url = locationId ? `/qr/sharing-mode?location_id=${locationId}` : '/qr/sharing-mode';
     const data = await authFetch(url);
-    return { success: true, mode: data.data?.mode || 'any' };
+    // require_visitor_id: solo cuenta si el backend lo manda en true (falso si no viene)
+    return { success: true, mode: data.data?.mode || 'any', requireVisitorId: data.data?.require_visitor_id === true };
   } catch (error) {
-    return { success: false, mode: 'any' };
+    return { success: false, mode: 'any', requireVisitorId: false };
   }
 };
 

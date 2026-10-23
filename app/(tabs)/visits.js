@@ -294,6 +294,8 @@ export default function Visits() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [sendInApp, setSendInApp] = useState(false);
   const [sharingMode, setSharingMode] = useState('any'); // 'any' | 'app_only' | 'app_preferred'
+  // Identidad del visitante obligatoria solo si la comunidad tiene require_visitor_id
+  const [requireVisitorId, setRequireVisitorId] = useState(false);
 
   // Quick Delivery states
   const [showQuickModal, setShowQuickModal] = useState(false);
@@ -376,6 +378,7 @@ export default function Visits() {
     if (selectedLocationId) {
       getQRSharingMode(selectedLocationId).then(result => {
         if (result.success) setSharingMode(result.mode);
+        setRequireVisitorId(result.requireVisitorId === true);
       });
     }
   }, [selectedLocationId]);
@@ -621,8 +624,8 @@ export default function Visits() {
       Alert.alert('Error', t('visits.errors.visitorNameRequired'));
       return;
     }
-    if (!visitorPhone.trim() && !sendInApp) {
-      Alert.alert('Error', t('visits.errors.phoneRequired'));
+    if (requireVisitorId && !visitorId.trim()) {
+      Alert.alert('Error', t('visits.errors.visitorIdRequired'));
       return;
     }
     if (sharingMode === 'app_only' && !foundUser) {
@@ -1033,11 +1036,14 @@ const renderQRCard = (qr) => {
         {/* Eventos: visitor_phone es el literal 'N/A' que escribe createEvent
             (qr_codes no admite null y un evento no tiene telefono de visitante).
             El conteo de invitados no viaja en GET /qr, asi que va fecha + horario. */}
-        <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>
-          {qr.qr_type === 'event'
-            ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
-            : qr.visitor_phone}
-        </Text>
+        {/* Sin teléfono el backend guarda 'N/A': no se muestra */}
+        {(qr.qr_type === 'event' || (qr.visitor_phone && qr.visitor_phone !== 'N/A')) && (
+          <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>
+            {qr.qr_type === 'event'
+              ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
+              : qr.visitor_phone}
+          </Text>
+        )}
         <Text style={styles.validDate} maxFontSizeMultiplier={1.2}>{getCardValidityText(qr)}</Text>
 
         {/* Action row */}
@@ -1296,7 +1302,7 @@ return (
               maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')} *</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')}</Text>
             <TextInput
               style={styles.input}
               placeholder={t('visits.visitorPhonePlaceholder')}
@@ -1367,7 +1373,9 @@ return (
               </View>
             )}
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorId')}</Text>
+            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+              {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder={t('visits.visitorIdPlaceholder')}

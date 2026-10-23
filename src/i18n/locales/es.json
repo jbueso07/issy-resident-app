@@ -335,7 +335,8 @@
       "generateError": "Error al generar QR",
       "shareError": "Error al compartir",
       "deleteError": "Error al eliminar",
-      "captureError": "Error al capturar"
+      "captureError": "Error al capturar",
+      "visitorIdRequired": "La identificación del visitante es obligatoria en esta comunidad"
     },
     "empty": {
       "title": "Sin visitas",

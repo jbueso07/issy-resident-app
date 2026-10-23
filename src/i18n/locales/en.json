@@ -321,7 +321,8 @@
       "generateError": "Error generating QR",
       "shareError": "Error sharing",
       "deleteError": "Error deleting",
-      "captureError": "Error capturing"
+      "captureError": "Error capturing",
+      "visitorIdRequired": "This community requires the visitor's ID"
     },
     "empty": {
       "title": "No visits",

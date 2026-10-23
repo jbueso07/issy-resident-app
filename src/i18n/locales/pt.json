@@ -258,7 +258,8 @@
     "errors": {
       "nameRequired": "Nome é obrigatório",
       "invalidDate": "Data inválida",
-      "createFailed": "Erro ao criar visita"
+      "createFailed": "Erro ao criar visita",
+      "visitorIdRequired": "Esta comunidade exige o documento do visitante"
     },
     "empty": {
       "title": "Sem visitas",
