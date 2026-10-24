@@ -2155,6 +2155,41 @@
       "functionsShort": "Fonctions",
       "admin": "Administration"
     },
-    "switchFailed": "Impossible de changer de résidence. Réessaie."
+    "switchFailed": "Impossible de changer de résidence. Réessaie.",
+    "receivedQR": {
+      "types": {"single": "Une fois", "frequent": "Fréquent", "temporary": "Temporaire", "event": "Événement"},
+      "status": {"active": "Actif", "scheduled": "Programmé", "expired": "Expiré", "used": "Utilisé"},
+      "title": "Accès visiteur",
+      "registeredAs": "Enregistré comme",
+      "viewPass": "Voir le pass",
+      "currentSection": "Accès actifs ({{n}})",
+      "previousSection": "Précédents ({{n}})",
+      "house": "Maison {{n}}",
+      "invitedBy": "invité par {{name}}",
+      "manualCode": "Code manuel",
+      "copy": "Copier",
+      "copied": "Copié",
+      "expiresIn": "expire dans {{time}}",
+      "validUntil": "valable jusqu’au {{date}}",
+      "activatesOn": "S’active le {{date}}",
+      "expiredPass": "Pass expiré",
+      "showAtGate": "Montre-le au poste de garde.",
+      "boxDate": "Date",
+      "boxHours": "Horaire",
+      "boxInvites": "T’invite",
+      "boxDestination": "Destination",
+      "accessDays": "Jours d’accès",
+      "allDay": "Toute la journée",
+      "everyDay": "Tous les jours",
+      "dayRange": "{{from}} à {{to}}",
+      "permanent": "Permanent",
+      "until": "Jusqu’au {{date}}",
+      "hoursMinutes": "{{h}} h {{m}} min",
+      "minutes": "{{m}} min",
+      "saveImage": "Enregistrer l’image",
+      "saveError": "Impossible d’enregistrer l’image",
+      "directions": "Itinéraire",
+      "residenceFallback": "Résidence"
+    }
   }
 }

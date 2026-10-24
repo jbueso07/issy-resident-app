@@ -161,8 +161,8 @@ const ShareableQRCard = forwardRef(({
     return formatDateShort(qr.valid_until);
   };
   
-  // Código manual (primeros 8-10 caracteres)
-  const manualCode = (qr.qr_code || qr.id || '').substring(0, 10).toUpperCase();
+  // Código manual completo: la garita valida qr_code exacto (.eq), un código recortado no existe
+  const manualCode = (qr.qr_code || qr.id || '').toUpperCase();
   
   return (
     <View ref={ref} style={styles.container} collapsable={false}>

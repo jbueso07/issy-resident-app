@@ -48,7 +48,7 @@ export const parseCoordinates = (value) => {
   return { latitude, longitude };
 };
 
-const openInMaps = async ({ latitude, longitude }, label) => {
+export const openInMaps = async ({ latitude, longitude }, label) => {
   const lat = latitude;
   const lng = longitude;
   const q = encodeURIComponent(label);

@@ -1,66 +1,51 @@
 // src/components/MyAccessesTab.js
-// ISSY - Real "Mis Accesos" tab showing QR codes received in-app
+// ISSY - "Mis accesos": QR que otros residentes me enviaron dentro de la app.
+// Cada tarjeta abre el pase (ReceivedQRPass). Datos derivados en src/utils/receivedQR.js.
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Modal,
-  Alert,
-  Image,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import QRCode from 'react-native-qrcode-svg';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../hooks/useTranslation';
+import { useAuth } from '../context/AuthContext';
 import { getReceivedQRCodes } from '../services/api';
+import PressableScale from './home/PressableScale';
+import ReceivedQRPass from './ReceivedQRPass';
+import { colors, radius, spacing, MAX_FONT_SCALE } from '../theme/tokens';
+import { getPassStatus, getScheduleParts, getDestination } from '../utils/receivedQR';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
+// Colores del estado vacío (sin cambios)
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
   bgCard: '#1C2E35',
   bgCardAlt: '#243B44',
   lime: '#AAFF00',
   cyan: '#00E5FF',
   teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
   textPrimary: '#FFFFFF',
   textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
   border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
 };
 
-const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
+const TYPE_COLORS = { single: colors.coral, frequent: colors.lime, temporary: colors.purple, event: colors.amber };
+const STATUS_STYLES = {
+  active: { bg: colors.lime, text: colors.textDark },
+  scheduled: { bg: colors.amber, text: colors.textDark },
+  used: { bg: colors.well, text: colors.textSecondary },
+  expired: { bg: colors.well, text: colors.textMuted },
+};
 
-const MyAccessesTab = () => {
-  const { t } = useTranslation();
+const MyAccessesTab = ({ refreshKey }) => {
+  const { t, language } = useTranslation();
+  const { profile } = useAuth();
+  const userLocations = profile?.user_locations || [];
   const [receivedQRs, setReceivedQRs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const cardRef = useRef(null);
 
-  useEffect(() => {
-    loadReceivedQRs();
-  }, []);
-
-  const loadReceivedQRs = async () => {
+  const loadReceivedQRs = useCallback(async () => {
     try {
       const result = await getReceivedQRCodes();
       if (result.success) {
@@ -70,138 +55,108 @@ const MyAccessesTab = () => {
       console.error('Error loading received QRs:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  };
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    loadReceivedQRs();
   }, []);
 
-  const isQRActive = (qr) => {
-    if (qr.status !== 'active') return false;
-    if (qr.valid_until && new Date(qr.valid_until) < new Date()) return false;
-    return true;
+  // Al abrir la pestaña y cada vez que la pantalla vuelve a tener el foco
+  useFocusEffect(
+    useCallback(() => {
+      loadReceivedQRs();
+    }, [loadReceivedQRs])
+  );
+
+  // Pull-to-refresh de Visitas: recargar cuando cambie refreshKey (al montar ya carga el foco)
+  const refreshKeyRef = useRef(refreshKey);
+  useEffect(() => {
+    if (refreshKeyRef.current === refreshKey) return;
+    refreshKeyRef.current = refreshKey;
+    loadReceivedQRs();
+  }, [refreshKey, loadReceivedQRs]);
+
+  // Al cerrar el pase: el estado pudo cambiar (usado en la garita, vencido)
+  const handleClosePass = () => {
+    setSelectedQR(null);
+    loadReceivedQRs();
   };
 
-  const getTypeConfig = (type) => {
-    switch (type) {
-      case 'single': return { label: 'Uso Único', color: COLORS.coral, bg: COLORS.coral + '20' };
-      case 'temporary': return { label: 'Temporal', color: COLORS.purple, bg: COLORS.purple + '20' };
-      case 'frequent': return { label: 'Permanente', color: COLORS.lime, bg: COLORS.lime + '20' };
-      default: return { label: type, color: COLORS.cyan, bg: COLORS.cyan + '20' };
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('es-HN', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const getValidityText = (qr) => {
-    if (qr.qr_type === 'frequent') return 'Acceso permanente';
-    if (qr.valid_until) {
-      const until = new Date(qr.valid_until);
-      const now = new Date();
-      if (until < now) return 'Expirado';
-      const diff = until - now;
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      if (hours > 24) return `Válido hasta ${formatDate(qr.valid_until)}`;
-      if (hours > 0) return `Expira en ${hours}h ${mins}m`;
-      return `Expira en ${mins} min`;
-    }
-    return '';
-  };
-
-  // Active QRs first, then expired
-  const activeQRs = receivedQRs.filter(isQRActive);
-  const expiredQRs = receivedQRs.filter(qr => !isQRActive(qr));
+  // Activos y programados primero; usados y vencidos después
+  const isPast = (qr) => ['used', 'expired'].includes(getPassStatus(qr));
+  const currentQRs = receivedQRs.filter((qr) => !isPast(qr));
+  const expiredQRs = receivedQRs.filter(isPast);
 
   const renderQRCard = (qr) => {
-    const typeConfig = getTypeConfig(qr.qr_type);
-    const active = isQRActive(qr);
-    const creator = qr.creator;
+    const status = getPassStatus(qr);
+    const statusStyle = STATUS_STYLES[status];
+    const typeColor = TYPE_COLORS[qr.qr_type] || colors.cyan;
+    const destination = getDestination(qr, userLocations, t);
+    const schedule = getScheduleParts(qr, t, language);
+    const invitedBy = qr.creator?.name
+      ? t('home2.receivedQR.invitedBy', { name: qr.creator.name, defaultValue: 'invita {{name}}' })
+      : '';
+    const house = destination.house
+      ? t('home2.receivedQR.house', { n: destination.house, defaultValue: 'Casa {{n}}' })
+      : '';
+    // "Casa 12 · invita Ana"; sin casa, "Invita Ana"
+    const hostLine = house
+      ? [house, invitedBy].filter(Boolean).join(' · ')
+      : invitedBy.charAt(0).toUpperCase() + invitedBy.slice(1);
 
     return (
-      <TouchableOpacity
+      <PressableScale
         key={qr.id}
-        style={[styles.qrCard, !active && styles.qrCardExpired]}
-        onPress={() => {
-          setSelectedQR(qr);
-          setShowQRModal(true);
-        }}
-        activeOpacity={0.7}
+        style={[styles.card, (status === 'expired' || status === 'used') && styles.cardExpired]}
+        onPress={() => setSelectedQR(qr)}
+        scaleTo={0.98}
+        accessibilityLabel={`${destination.name}. ${hostLine}. ${schedule.line}`}
       >
-        <View style={styles.qrCardContent}>
-          {/* Header */}
-          <View style={styles.qrCardTopRow}>
-            <View style={[styles.typeBadge, { backgroundColor: typeConfig.bg }]}>
-              <Text style={[styles.typeBadgeText, { color: typeConfig.color }]}>{typeConfig.label}</Text>
-            </View>
-            {active ? (
-              <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.statusBadge}>
-                <Text style={[styles.statusBadgeText, { color: COLORS.textDark }]}>ACTIVO</Text>
-              </LinearGradient>
-            ) : (
-              <View style={[styles.statusBadge, { backgroundColor: COLORS.bgCardAlt }]}>
-                <Text style={styles.statusBadgeText}>EXPIRADO</Text>
-              </View>
-            )}
+        <View style={styles.chips}>
+          <View style={[styles.chip, { backgroundColor: `${typeColor}26` }]}>
+            <Text style={[styles.chipText, { color: typeColor }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {t(`home2.receivedQR.types.${qr.qr_type}`, qr.qr_type)}
+            </Text>
           </View>
-
-          {/* From */}
-          {creator && (
-            <View style={styles.fromRow}>
-              <View style={styles.fromAvatar}>
-                {creator.profile_image ? (
-                  <Image source={{ uri: creator.profile_image }} style={styles.fromAvatarImg} />
-                ) : (
-                  <Text style={styles.fromAvatarText}>{creator.name?.charAt(0)?.toUpperCase() || '?'}</Text>
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.fromName}>{creator.name}</Text>
-                <Text style={styles.fromUnit}>
-                  {creator.house_number ? `Casa ${creator.house_number}` : 'Te envió acceso'}
-                </Text>
-              </View>
-              <Ionicons name="arrow-forward-circle" size={24} color={active ? COLORS.teal : COLORS.textMuted} />
-            </View>
-          )}
-
-          {/* Visitor info */}
-          <Text style={styles.visitorLabel}>Registrado como:</Text>
-          <Text style={styles.visitorName}>{qr.visitor_name}</Text>
-
-          {/* Validity */}
-          <Text style={styles.validityText}>{getValidityText(qr)}</Text>
-
-          {/* Quick action */}
-          {active && (
-            <View style={styles.tapHint}>
-              <Ionicons name="qr-code-outline" size={14} color={COLORS.cyan} />
-              <Text style={styles.tapHintText}>Toca para ver tu QR</Text>
-            </View>
-          )}
+          <View style={[styles.chip, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.chipText, { color: statusStyle.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {t(`home2.receivedQR.status.${status}`)}
+            </Text>
+          </View>
         </View>
-      </TouchableOpacity>
+
+        <Text style={styles.residence} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+          {destination.name}
+        </Text>
+        {!!hostLine && (
+          <Text style={styles.host} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+            {hostLine}
+          </Text>
+        )}
+
+        {!!schedule.line && (
+          <View style={styles.whenRow}>
+            <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
+            <Text style={styles.when} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+              {schedule.line}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.registered} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+            {t('home2.receivedQR.registeredAs', 'Registrado como')}{' '}
+            <Text style={styles.registeredName}>{qr.visitor_name}</Text>
+          </Text>
+          <Text style={styles.viewPass} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {t('home2.receivedQR.viewPass', 'Ver pase')} ›
+          </Text>
+        </View>
+      </PressableScale>
     );
   };
 
-  // ============================================
-  // EMPTY STATE
-  // ============================================
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.cyan} />
+        <ActivityIndicator size="large" color={colors.cyan} />
       </View>
     );
   }
@@ -240,87 +195,30 @@ const MyAccessesTab = () => {
   // ============================================
   return (
     <View>
-      {activeQRs.length > 0 && (
+      {currentQRs.length > 0 && (
         <>
-          <Text style={styles.sectionTitle}>
-            <Ionicons name="shield-checkmark" size={16} color={COLORS.teal} /> Accesos Activos ({activeQRs.length})
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {t('home2.receivedQR.currentSection', { n: currentQRs.length, defaultValue: 'Accesos activos ({{n}})' })}
           </Text>
-          {activeQRs.map(renderQRCard)}
+          {currentQRs.map(renderQRCard)}
         </>
       )}
 
       {expiredQRs.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, { color: COLORS.textMuted, marginTop: scale(20) }]}>
-            Anteriores ({expiredQRs.length})
+          <Text style={[styles.sectionTitle, styles.sectionTitleMuted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {t('home2.receivedQR.previousSection', { n: expiredQRs.length, defaultValue: 'Anteriores ({{n}})' })}
           </Text>
           {expiredQRs.slice(0, 5).map(renderQRCard)}
         </>
       )}
 
-      {/* QR View Modal */}
-      <Modal
-        visible={showQRModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowQRModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowQRModal(false)}>
-                <Text style={styles.modalCancel}>Cerrar</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Tu Código QR</Text>
-              <View style={{ width: scale(60) }} />
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalScrollContent}>
-              {selectedQR && (
-                <>
-                  <View ref={cardRef} style={styles.shareableCard} collapsable={false}>
-                    <LinearGradient
-                      colors={['#0D2B2F', '#1A3A3E', '#0D2B2F']}
-                      style={styles.shareableGradient}
-                    >
-                      {/* Header */}
-                      <Text style={styles.shareableTitle}>Código de Acceso</Text>
-                      {selectedQR.creator && (
-                        <Text style={styles.shareableFrom}>
-                          Enviado por {selectedQR.creator.name}
-                          {selectedQR.creator.house_number ? ` • Casa ${selectedQR.creator.house_number}` : ''}
-                        </Text>
-                      )}
-
-                      {/* QR Code */}
-                      <View style={styles.shareableQRBox}>
-                        <QRCode
-                          value={selectedQR.qr_code}
-                          size={scale(200)}
-                          backgroundColor="#FFFFFF"
-                          color="#000000"
-                        />
-                      </View>
-
-                      {/* Info */}
-                      <Text style={styles.shareableVisitor}>{selectedQR.visitor_name}</Text>
-                      <Text style={styles.shareableValidity}>{getValidityText(selectedQR)}</Text>
-
-                      {/* Footer */}
-                      <View style={styles.shareableFooter}>
-                        <Text style={styles.poweredByText}>powered by</Text>
-                        <Image source={IssyLogoNegro} style={styles.issyLogoImage} resizeMode="contain" />
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Share button removed - received QR codes should not be re-shared */}
-                </>
-              )}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+      <ReceivedQRPass
+        qr={selectedQR}
+        visible={!!selectedQR}
+        onClose={handleClosePass}
+        userLocations={userLocations}
+      />
     </View>
   );
 };
@@ -384,203 +282,87 @@ const styles = StyleSheet.create({
     marginLeft: scale(12),
   },
 
-  // Section
+  // Lista
   sectionTitle: {
     fontSize: scale(15),
     fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: scale(12),
+    color: colors.text,
+    marginBottom: scale(spacing.md),
   },
-
-  // QR Card
-  qrCard: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: scale(16),
-    marginBottom: scale(12),
+  sectionTitleMuted: {
+    color: colors.textMuted,
+    marginTop: scale(spacing.lg),
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: scale(radius.md),
     borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
+    borderColor: colors.border,
+    padding: scale(spacing.lg),
+    marginBottom: scale(spacing.md),
+    gap: scale(6),
   },
-  qrCardExpired: {
-    opacity: 0.6,
+  cardExpired: {
+    opacity: 0.55,
   },
-  qrCardContent: {
-    padding: scale(16),
-  },
-  qrCardTopRow: {
+  chips: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(12),
+    gap: scale(spacing.sm),
+    marginBottom: scale(4),
   },
-  typeBadge: {
+  chip: {
     paddingHorizontal: scale(10),
     paddingVertical: scale(4),
-    borderRadius: scale(8),
+    borderRadius: radius.pill,
   },
-  typeBadgeText: {
+  chipText: {
     fontSize: scale(11),
     fontWeight: '700',
   },
-  statusBadge: {
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
-    borderRadius: scale(8),
-  },
-  statusBadgeText: {
-    fontSize: scale(11),
+  residence: {
+    fontSize: scale(19),
     fontWeight: '700',
-    color: COLORS.textMuted,
+    color: colors.text,
   },
-
-  // From row
-  fromRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(10),
-    marginBottom: scale(12),
-    paddingBottom: scale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+  host: {
+    fontSize: scale(13),
+    color: colors.textSecondary,
   },
-  fromAvatar: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-    backgroundColor: COLORS.teal + '30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  fromAvatarImg: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-  },
-  fromAvatarText: {
-    fontSize: scale(14),
-    fontWeight: '700',
-    color: COLORS.teal,
-  },
-  fromName: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  fromUnit: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-  },
-
-  visitorLabel: {
-    fontSize: scale(11),
-    color: COLORS.textMuted,
-    marginBottom: scale(2),
-  },
-  visitorName: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(6),
-  },
-  validityText: {
-    fontSize: scale(12),
-    color: COLORS.textSecondary,
-    marginBottom: scale(8),
-  },
-  tapHint: {
+  whenRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(6),
     marginTop: scale(4),
   },
-  tapHintText: {
-    fontSize: scale(12),
-    color: COLORS.cyan,
-    fontWeight: '500',
-  },
-
-  // Modal
-  modalContainer: {
+  when: {
     flex: 1,
-    backgroundColor: COLORS.bgPrimary,
+    fontSize: scale(13),
+    color: colors.text,
   },
-  modalHeader: {
+  footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(16),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    gap: scale(spacing.sm),
+    marginTop: scale(spacing.sm),
+    paddingTop: scale(spacing.sm),
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  modalCancel: {
-    fontSize: scale(16),
-    color: COLORS.cyan,
-    fontWeight: '500',
+  registered: {
+    flex: 1,
+    fontSize: scale(12),
+    color: colors.textMuted,
   },
-  modalTitle: {
-    fontSize: scale(18),
+  registeredName: {
+    color: colors.textSecondary,
     fontWeight: '600',
-    color: COLORS.textPrimary,
   },
-  modalScrollContent: {
-    alignItems: 'center',
-    padding: scale(20),
-  },
-
-  // Shareable card
-  shareableCard: {
-    width: scale(320),
-    borderRadius: scale(20),
-    overflow: 'hidden',
-  },
-  shareableGradient: {
-    padding: scale(24),
-    alignItems: 'center',
-  },
-  shareableTitle: {
-    fontSize: scale(18),
+  viewPass: {
+    fontSize: scale(13),
     fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
+    color: colors.cyan,
   },
-  shareableFrom: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-    marginBottom: scale(20),
-  },
-  shareableQRBox: {
-    backgroundColor: '#FFFFFF',
-    padding: scale(16),
-    borderRadius: scale(16),
-    marginBottom: scale(16),
-  },
-  shareableVisitor: {
-    fontSize: scale(16),
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: scale(4),
-  },
-  shareableValidity: {
-    fontSize: scale(13),
-    color: COLORS.teal,
-    marginBottom: scale(16),
-  },
-  shareableFooter: {
-    alignItems: 'center',
-  },
-  poweredByText: {
-    fontSize: scale(10),
-    color: '#9CBBBB',
-    fontWeight: '500',
-    marginBottom: scale(4),
-  },
-  issyLogoImage: {
-    width: scale(80),
-    height: scale(30),
-  },
-
 });
 
 export default MyAccessesTab;

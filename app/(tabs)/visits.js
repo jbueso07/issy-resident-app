@@ -208,6 +208,8 @@ export default function Visits() {
   const [qrCodes, setQrCodes] = useState([]);
   const [loadingQRs, setLoadingQRs] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Pull-to-refresh también recarga "Mis accesos" (QR recibidos)
+  const [accessesRefreshKey, setAccessesRefreshKey] = useState(0);
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -442,6 +444,7 @@ export default function Visits() {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadQRCodes();
+    setAccessesRefreshKey((key) => key + 1);
   }, []);
 
   const resetForm = () => {
@@ -1233,7 +1236,7 @@ return (
 
         {/* Tab: Mis Accesos */}
         {activeTab === 'invitations' && (
-          <MyAccessesTab />
+          <MyAccessesTab refreshKey={accessesRefreshKey} />
         )}
 
         <View style={{ height: scale(100) }} />
@@ -1861,7 +1864,8 @@ return (
                   <View style={styles.manualCodeSection}>
                     <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
                     <Text style={styles.manualCode} maxFontSizeMultiplier={1.2}>
-                      {(selectedQR.qr_code || selectedQR.id).substring(0, 10).toUpperCase()}
+                      {/* Completo: la garita valida qr_code exacto (.eq), un código recortado no existe */}
+                      {(selectedQR.qr_code || selectedQR.id).toUpperCase()}
                     </Text>
                   </View>
                   <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>

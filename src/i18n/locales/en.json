@@ -2342,6 +2342,41 @@
       "functionsShort": "Functions",
       "admin": "Administration"
     },
-    "switchFailed": "Couldn't switch residence. Please try again."
+    "switchFailed": "Couldn't switch residence. Please try again.",
+    "receivedQR": {
+      "types": {"single": "One time", "frequent": "Frequent", "temporary": "Temporary", "event": "Event"},
+      "status": {"active": "Active", "scheduled": "Scheduled", "expired": "Expired", "used": "Used"},
+      "title": "Visitor access",
+      "registeredAs": "Registered as",
+      "viewPass": "View pass",
+      "currentSection": "Active passes ({{n}})",
+      "previousSection": "Previous ({{n}})",
+      "house": "House {{n}}",
+      "invitedBy": "invited by {{name}}",
+      "manualCode": "Manual code",
+      "copy": "Copy",
+      "copied": "Copied",
+      "expiresIn": "expires in {{time}}",
+      "validUntil": "valid until {{date}}",
+      "activatesOn": "Activates on {{date}}",
+      "expiredPass": "Pass expired",
+      "showAtGate": "Show it at the gate.",
+      "boxDate": "Date",
+      "boxHours": "Hours",
+      "boxInvites": "Invited by",
+      "boxDestination": "Destination",
+      "accessDays": "Access days",
+      "allDay": "All day",
+      "everyDay": "Every day",
+      "dayRange": "{{from}} to {{to}}",
+      "permanent": "Permanent",
+      "until": "Until {{date}}",
+      "hoursMinutes": "{{h}} h {{m}} min",
+      "minutes": "{{m}} min",
+      "saveImage": "Save image",
+      "saveError": "Couldn't save the image",
+      "directions": "Directions",
+      "residenceFallback": "Residence"
+    }
   }
 }

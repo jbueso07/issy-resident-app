@@ -2154,6 +2154,41 @@
       "functionsShort": "Funções",
       "admin": "Administração"
     },
-    "switchFailed": "Não foi possível trocar de residencial. Tente novamente."
+    "switchFailed": "Não foi possível trocar de residencial. Tente novamente.",
+    "receivedQR": {
+      "types": {"single": "Uma vez", "frequent": "Frequente", "temporary": "Temporário", "event": "Evento"},
+      "status": {"active": "Ativo", "scheduled": "Agendado", "expired": "Vencido", "used": "Usado"},
+      "title": "Acesso de visita",
+      "registeredAs": "Registrado como",
+      "viewPass": "Ver passe",
+      "currentSection": "Acessos ativos ({{n}})",
+      "previousSection": "Anteriores ({{n}})",
+      "house": "Casa {{n}}",
+      "invitedBy": "convite de {{name}}",
+      "manualCode": "Código manual",
+      "copy": "Copiar",
+      "copied": "Copiado",
+      "expiresIn": "expira em {{time}}",
+      "validUntil": "vence em {{date}}",
+      "activatesOn": "Ativa em {{date}}",
+      "expiredPass": "Passe vencido",
+      "showAtGate": "Mostre na portaria.",
+      "boxDate": "Data",
+      "boxHours": "Horário",
+      "boxInvites": "Quem convida",
+      "boxDestination": "Destino",
+      "accessDays": "Dias de acesso",
+      "allDay": "O dia todo",
+      "everyDay": "Todos os dias",
+      "dayRange": "{{from}} a {{to}}",
+      "permanent": "Permanente",
+      "until": "Até {{date}}",
+      "hoursMinutes": "{{h}} h {{m}} min",
+      "minutes": "{{m}} min",
+      "saveImage": "Salvar imagem",
+      "saveError": "Não foi possível salvar a imagem",
+      "directions": "Como chegar",
+      "residenceFallback": "Residencial"
+    }
   }
 }
