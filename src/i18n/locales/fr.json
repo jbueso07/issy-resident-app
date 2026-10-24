@@ -2190,6 +2190,12 @@
       "saveError": "Impossible d’enregistrer l’image",
       "directions": "Itinéraire",
       "residenceFallback": "Résidence"
+    },
+    "locationSearch": "Rechercher une résidence",
+    "noLocationResults": "Nous ne trouvons pas cette résidence",
+    "noHome": {
+      "title": "Tu n’as pas de logement enregistré à {{name}}",
+      "subtitle": "Demande à l’administrateur d’enregistrer ton logement"
     }
   }
 }

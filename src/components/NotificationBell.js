@@ -12,12 +12,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { authFetch } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
-const API_URL = 'https://api.joinissy.com/api';
 
 const COLORS = {
   bgCard: '#1C2E35',
@@ -35,14 +35,8 @@ export default function NotificationBell({ size = 24, color = COLORS.textPrimary
     if (!token) return;
     
     try {
-      const response = await fetch(`${API_URL}/notifications/unread-count`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
+      // authFetch: token vigente de AsyncStorage y renovación en 401 (el de AuthContext puede estar vencido)
+      const result = await authFetch('/notifications/unread-count');
       
       if (result.success) {
         setUnreadCount(result.data?.unread_count || 0);

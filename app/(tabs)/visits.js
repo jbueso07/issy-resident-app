@@ -38,6 +38,7 @@ import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookup
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
+import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
 
 // Logo ISSY
 const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
@@ -223,6 +224,8 @@ export default function Visits() {
   const [residentQRData, setResidentQRData] = useState(null);
   const [loadingResidentQR, setLoadingResidentQR] = useState(true);
   const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
+  // Sin casa en la residencial seleccionada: aviso en vez de QR
+  const [residentQRNoHome, setResidentQRNoHome] = useState(false);
   const [activeTab, setActiveTab] = useState("myqr");
 
   // Mejora 2: secciones colapsables de codigos por tipo. "single" (Una vez) abierta por defecto.
@@ -343,14 +346,29 @@ export default function Visits() {
   const loadResidentQRSecret = async () => {
     if (!selectedLocationId) return;
     setResidentQRDisabled(false); // Reset disabled state
+    setResidentQRNoHome(false);
+    // Sin casa "con certeza" (cuando /auth/me ya manda unit_number): no se pide el secreto
+    const membership = profile?.user_locations?.find((l) => l.location_id === selectedLocationId);
+    if (hasKnownNoHome(membership)) {
+      setResidentQRData(null);
+      setResidentQRNoHome(true);
+      setLoadingResidentQR(false);
+      return;
+    }
+    setLoadingResidentQR(true);
     try {
       const result = await getResidentQRSecret(selectedLocationId);
       if (result.success) {
         setResidentQRData(result.data);
-      } else if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
-        // ✅ Feature is disabled by admin
-        setResidentQRDisabled(true);
+      } else {
+        // Cualquier fallo limpia el QR anterior: nunca se muestra el de otra residencial
         setResidentQRData(null);
+        if (result.noHome) {
+          setResidentQRNoHome(true);
+        } else if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
+          // ✅ Feature is disabled by admin
+          setResidentQRDisabled(true);
+        }
       }
     } catch (error) {
       console.error("Error loading resident QR:", error);
@@ -1128,6 +1146,22 @@ return (
             fullName={residentQRData.fullName}
             onError={(error) => Alert.alert("Error", error)}
           />
+        )}
+
+        {/* Sin casa registrada en esta residencial: aviso, ningún QR */}
+        {activeTab === 'myqr' && residentQRNoHome && !loadingResidentQR && (
+          <View style={styles.disabledQRContainer}>
+            <Ionicons name="home-outline" size={scale(48)} color={COLORS.textMuted} />
+            <Text style={[styles.disabledQRTitle, { textAlign: 'center' }]} maxFontSizeMultiplier={1.2}>
+              {t('home2.noHome.title', {
+                name: locationName || profile?.user_locations?.find((l) => l.location_id === selectedLocationId)?.name || '',
+                defaultValue: 'No tienes una casa registrada en {{name}}',
+              })}
+            </Text>
+            <Text style={styles.disabledQRText} maxFontSizeMultiplier={1.2}>
+              {t('home2.noHome.subtitle', 'Pídele al administrador que registre tu casa')}
+            </Text>
+          </View>
         )}
 
         {/* Message when Resident QR is disabled by admin */}

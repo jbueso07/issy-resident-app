@@ -22,6 +22,11 @@ const GAP = scale(spacing.md);
 const CARD_WIDTH = SCREEN_WIDTH - GUTTER * 2;
 const INTERVAL = CARD_WIDTH + GAP;
 
+// Con más residenciales que esto, los puntos se ocultan y queda solo el chip "X de Y"
+const MAX_DOTS = 7;
+// Toques que llegan justo después de deslizar no abren la lista
+const PRESS_AFTER_SCROLL_MS = 300;
+
 // Etiquetas de user_locations.role; host o cualquier otro valor se omite
 const ROLE_LABELS = {
   resident: ['home2.roles.resident', 'Residente'],
@@ -30,6 +35,15 @@ const ROLE_LABELS = {
   admin: ['home2.roles.admin', 'Administrador'],
   guard: ['home2.roles.guard', 'Guardia'],
 };
+
+export const getRoleLabel = (role, t) => {
+  const entry = ROLE_LABELS[role];
+  return entry ? t(entry[0], entry[1]) : null;
+};
+
+// Sin casa "con certeza": solo cuando /auth/me ya manda unit_number y ni ese ni house_number tienen valor
+export const hasKnownNoHome = (loc) =>
+  !!loc && 'unit_number' in loc && !loc.house_number && !loc.unit_number;
 
 const getInitials = (user) => {
   const source = (user?.name || user?.email?.split('@')[0] || '').trim();
@@ -85,7 +99,22 @@ export default function LocationCarousel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [switching, currentIndex, total]);
 
+  // Deslizar no debe abrir la lista: se ignoran toques durante y justo después de un arrastre
+  const draggingRef = useRef(false);
+  const lastScrollAtRef = useRef(0);
+  const markScroll = (dragging) => {
+    draggingRef.current = dragging;
+    lastScrollAtRef.current = Date.now();
+  };
+
+  const handleCardPress = () => {
+    if (switching || draggingRef.current) return;
+    if (Date.now() - lastScrollAtRef.current < PRESS_AFTER_SCROLL_MS) return;
+    onOpenLocationList?.();
+  };
+
   const handleMomentumScrollEnd = (e) => {
+    markScroll(false);
     const raw = Math.round(e.nativeEvent.contentOffset.x / INTERVAL);
     const index = Math.min(Math.max(raw, 0), total - 1);
     setVisible(index);
@@ -102,16 +131,24 @@ export default function LocationCarousel({
   const userName = user?.name || user?.email?.split('@')[0] || t('profile.user');
 
   const renderCard = ({ item, index }) => {
-    const roleEntry = ROLE_LABELS[item.role];
-    const roleLabel = roleEntry ? t(roleEntry[0], roleEntry[1]) : null;
+    const roleLabel = getRoleLabel(item.role, t);
     const isVisible = index === visibleIndex;
 
     return (
+      // Toda la tarjeta abre la lista; los botones de adentro (QR, cámara, chip) conservan su acción.
+      // accessible={false}: si no, el lector de pantalla esconde esos botones; el chip hace lo mismo.
+      <PressableScale
+        containerStyle={index < total - 1 && styles.cardGap}
+        onPress={handleCardPress}
+        disabled={!hasMany || switching}
+        scaleTo={0.98}
+        accessible={false}
+      >
       <LinearGradient
         colors={gradients.brand}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.card, index < total - 1 && styles.cardGap]}
+        style={styles.card}
       >
         <View style={styles.topRow}>
           <View style={styles.photoWrap}>
@@ -178,13 +215,16 @@ export default function LocationCarousel({
             )}
           </View>
 
-          <PressableScale
-            style={styles.qrButton}
-            onPress={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
-            accessibilityLabel={t('visits.tabs.myQR')}
-          >
-            <Ionicons name="qr-code-outline" size={scale(24)} color={colors.lime} />
-          </PressableScale>
+          {/* Sin casa en esta residencial no hay QR de residente */}
+          {!hasKnownNoHome(item) && (
+            <PressableScale
+              style={styles.qrButton}
+              onPress={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
+              accessibilityLabel={t('visits.tabs.myQR')}
+            >
+              <Ionicons name="qr-code-outline" size={scale(24)} color={colors.lime} />
+            </PressableScale>
+          )}
         </View>
 
         {switching && isVisible && (
@@ -198,6 +238,7 @@ export default function LocationCarousel({
           </View>
         )}
       </LinearGradient>
+      </PressableScale>
     );
   };
 
@@ -221,13 +262,15 @@ export default function LocationCarousel({
         contentContainerStyle={styles.listContent}
         getItemLayout={(_, index) => ({ length: INTERVAL, offset: INTERVAL * index, index })}
         initialScrollIndex={currentIndex}
+        onScrollBeginDrag={() => markScroll(true)}
+        onScrollEndDrag={() => markScroll(false)}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         onScrollToIndexFailed={({ index }) =>
           listRef.current?.scrollToOffset({ offset: INTERVAL * index, animated: false })
         }
       />
 
-      {hasMany && (
+      {hasMany && total <= MAX_DOTS && (
         <View style={styles.dots}>
           {cards.map((loc, index) => (
             <PressableScale

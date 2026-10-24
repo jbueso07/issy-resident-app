@@ -2189,6 +2189,12 @@
       "saveError": "Não foi possível salvar a imagem",
       "directions": "Como chegar",
       "residenceFallback": "Residencial"
+    },
+    "locationSearch": "Buscar residencial",
+    "noLocationResults": "Não encontramos esse residencial",
+    "noHome": {
+      "title": "Você não tem uma casa registrada em {{name}}",
+      "subtitle": "Peça ao administrador para registrar sua casa"
     }
   }
 }

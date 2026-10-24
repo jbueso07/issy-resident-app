@@ -2006,8 +2006,20 @@ export const getResidentQRSecret = async (locationId) => {
     const data = await authFetch(url);
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching resident QR secret:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    // 403 "No tienes un hogar registrado en esta comunidad": estado normal, no un error
+    const noHome = error.status === 403 && /hogar/i.test(error.message || '');
+    if (noHome) {
+      console.log('Resident QR: sin casa registrada en esta residencial');
+    } else {
+      console.error('Error fetching resident QR secret:', error);
+    }
+    return {
+      success: false,
+      error: error.message,
+      noHome,
+      reason: error.data?.reason,
+      sessionExpired: error.sessionExpired,
+    };
   }
 };
 

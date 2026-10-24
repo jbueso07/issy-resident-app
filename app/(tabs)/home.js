@@ -16,6 +16,8 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -24,9 +26,9 @@ import { useUserLocation } from '../../src/context/UserLocationContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
 
-import { createPanic, getMyActivePanic, cancelPanic } from '../../src/services/api';
+import { createPanic, getMyActivePanic, cancelPanic, authFetch } from '../../src/services/api';
 import HomeHeader from '../../src/components/home/HomeHeader';
-import LocationCarousel from '../../src/components/home/LocationCarousel';
+import LocationCarousel, { getRoleLabel } from '../../src/components/home/LocationCarousel';
 import QuickActions from '../../src/components/home/QuickActions';
 import HomeSegments from '../../src/components/home/HomeSegments';
 import RecentActivity from '../../src/components/home/RecentActivity';
@@ -66,17 +68,24 @@ const COLORS = {
 // ============ API ============
 const API_URL = 'https://api.joinissy.com/api';
 
-const switchLocationAPI = async (token, locationId) => {
+// Con más residenciales que esto, el modal de cambio lleva buscador
+const LOCATION_SEARCH_MIN = 6;
+const normalizeSearch = (text) =>
+  String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+// authFetch: lee el token vigente de AsyncStorage y lo renueva si responde 401.
+// Antes usaba el token de AuthContext, que queda vencido cuando authFetch lo renueva por su lado.
+// Devuelve la misma forma de siempre: { success, data } o { success: false, error }.
+const switchLocationAPI = async (locationId) => {
   try {
-    const response = await fetch(`${API_URL}/auth/switch-location`, {
+    return await authFetch('/auth/switch-location', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify({ location_id: locationId }),
     });
-    return await response.json();
   } catch (error) {
     console.error('Error switching location:', error);
     return { success: false, error: error.message };
@@ -84,7 +93,7 @@ const switchLocationAPI = async (token, locationId) => {
 };
 
 export default function Home() {
-  const { user, profile, token, hasLocation, refreshProfile } = useAuth();
+  const { user, profile, hasLocation, refreshProfile } = useAuth();
   const { selectLocation } = useUserLocation();
   const router = useRouter();
   const { t } = useTranslation();
@@ -99,6 +108,7 @@ export default function Home() {
   const [selectedCancelReason, setSelectedCancelReason] = useState('otro');
   const [cancellingPanic, setCancellingPanic] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationSearch, setLocationSearch] = useState('');
   const [switchingLocation, setSwitchingLocation] = useState(false);
 
   // Feature flags (loaded from backend, fail-safe = hidden)
@@ -278,7 +288,7 @@ export default function Home() {
     if (!location?.location_id || switchingLocation) return;
     setSwitchingLocation(true);
     try {
-      const result = await switchLocationAPI(token, location.location_id);
+      const result = await switchLocationAPI(location.location_id);
       if (result.success) {
         // Sincronizar UserLocationContext (fuente del location_id en los QRs):
         // sin esto, el INSERT de QRs sigue usando la comunidad anterior.
@@ -493,56 +503,101 @@ export default function Home() {
     </Modal>
   );
 
+  // Lista de residenciales: nombre, rol y casa; buscador (sin acentos) con más de 6.
+  // La actual se marca con el mismo location_id que usa la tarjeta (profile.location_id).
+  const closeLocationModal = () => setShowLocationModal(false);
+
+  useEffect(() => {
+    if (!showLocationModal) setLocationSearch('');
+  }, [showLocationModal]);
+
+  const showLocationSearch = userLocations.length > LOCATION_SEARCH_MIN;
+  const locationQuery = normalizeSearch(locationSearch);
+  const visibleLocations = locationQuery
+    ? userLocations.filter((loc) => normalizeSearch(loc.name).includes(locationQuery))
+    : userLocations;
+
   const renderLocationModal = () => (
     <Modal
       visible={showLocationModal}
       animationType="slide"
       transparent
-      onRequestClose={() => setShowLocationModal(false)}
+      onRequestClose={closeLocationModal}
     >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>{t('home.changeLocation')}</Text>
-            <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+            <TouchableOpacity onPress={closeLocationModal}>
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
-          
-          <ScrollView style={styles.locationList}>
-            {userLocations.map((loc, index) => (
-              <TouchableOpacity
-                key={loc.location_id || index}
-                style={[
-                  styles.locationItem,
-                  loc.location_id === currentLocation?.location_id && styles.locationItemActive
-                ]}
-                onPress={() => handleSwitchLocation(loc)}
-                disabled={switchingLocation}
-              >
-                <View style={styles.locationItemLeft}>
-                  <View style={[
-                    styles.locationDot,
-                    loc.location_id === currentLocation?.location_id && styles.locationDotActive
-                  ]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.locationItemName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-                      {loc.name}
-                    </Text>
-                    {loc.address && (
-                      <Text style={styles.locationItemAddress} maxFontSizeMultiplier={1.1} numberOfLines={1}>
-                        {loc.address}
+
+          {showLocationSearch && (
+            <View style={styles.locationSearch}>
+              <Ionicons name="search" size={18} color={COLORS.textMuted} />
+              <TextInput
+                style={styles.locationSearchInput}
+                value={locationSearch}
+                onChangeText={setLocationSearch}
+                placeholder={t('home2.locationSearch', 'Buscar residencial')}
+                placeholderTextColor={COLORS.textMuted}
+                autoCorrect={false}
+                autoCapitalize="none"
+                returnKeyType="search"
+                maxFontSizeMultiplier={1.2}
+                accessibilityLabel={t('home2.locationSearch', 'Buscar residencial')}
+              />
+              {locationSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setLocationSearch('')} hitSlop={10} accessibilityLabel={t('common.close')}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <ScrollView style={styles.locationList} keyboardShouldPersistTaps="handled">
+            {visibleLocations.length === 0 && (
+              <Text style={styles.locationEmpty} maxFontSizeMultiplier={1.2}>
+                {t('home2.noLocationResults', 'No encontramos esa residencial')}
+              </Text>
+            )}
+            {visibleLocations.map((loc, index) => {
+              const isCurrent = loc.location_id === currentLocationId;
+              const detail = [
+                getRoleLabel(loc.role, t),
+                loc.house_number ? `${t('myUnit.details.unit')} ${loc.house_number}` : null,
+              ].filter(Boolean).join(' · ');
+              return (
+                <TouchableOpacity
+                  key={loc.location_id || index}
+                  style={[styles.locationItem, isCurrent && styles.locationItemActive]}
+                  onPress={() => handleSwitchLocation(loc)}
+                  disabled={switchingLocation || isCurrent}
+                  accessibilityState={{ selected: isCurrent }}
+                >
+                  <View style={styles.locationItemLeft}>
+                    <View style={[styles.locationDot, isCurrent && styles.locationDotActive]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.locationItemName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
+                        {loc.name}
                       </Text>
-                    )}
+                      {!!detail && (
+                        <Text style={styles.locationItemAddress} maxFontSizeMultiplier={1.1} numberOfLines={1}>
+                          {detail}
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-                {loc.location_id === currentLocation?.location_id && (
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  {isCurrent && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.lime} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
-          
+
           {switchingLocation && (
             <View style={styles.switchingOverlay}>
               <ActivityIndicator size="large" color={COLORS.cyan} />
@@ -551,6 +606,7 @@ export default function Home() {
           )}
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
@@ -1066,6 +1122,29 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: COLORS.textSecondary,
     marginTop: scale(2),
+  },
+  locationSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginHorizontal: scale(20),
+    marginTop: scale(12),
+    paddingHorizontal: scale(12),
+    minHeight: scale(44),
+    borderRadius: scale(12),
+    backgroundColor: COLORS.bgCardAlt,
+  },
+  locationSearchInput: {
+    flex: 1,
+    fontSize: scale(14),
+    color: COLORS.textPrimary,
+    paddingVertical: scale(8),
+  },
+  locationEmpty: {
+    fontSize: scale(14),
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingVertical: scale(24),
   },
   switchingOverlay: {
     ...StyleSheet.absoluteFillObject,

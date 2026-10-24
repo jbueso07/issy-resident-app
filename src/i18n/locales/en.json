@@ -2377,6 +2377,12 @@
       "saveError": "Couldn't save the image",
       "directions": "Directions",
       "residenceFallback": "Residence"
+    },
+    "locationSearch": "Search residence",
+    "noLocationResults": "We couldn't find that residence",
+    "noHome": {
+      "title": "You don't have a registered home in {{name}}",
+      "subtitle": "Ask the administrator to register your home"
     }
   }
 }
