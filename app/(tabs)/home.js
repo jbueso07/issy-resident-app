@@ -339,7 +339,14 @@ export default function Home() {
     if (key === 'admin') {
       return <AdminPanel isSuperAdmin={isSuperAdmin} locationName={getCurrentLocationName()} size={iconSize} />;
     }
-    return <RecentActivity isAdmin={isAdmin} refreshKey={refreshKey} onLoaded={handleRecentLoaded} />;
+    return (
+      <RecentActivity
+        isAdmin={isAdmin}
+        refreshKey={refreshKey}
+        onLoaded={handleRecentLoaded}
+        locationId={currentLocationId}
+      />
+    );
   };
 
   // ========================================

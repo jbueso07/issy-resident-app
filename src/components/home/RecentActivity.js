@@ -3,7 +3,9 @@
 // - Quita duplicados (el backend guarda algunos tipos dos veces).
 // - Ocultar es solo en este teléfono (AsyncStorage `hidden_activity_<userId>`).
 // - Una notificación sin leer se marca leída tras 2,5 s visible en pantalla (una sola vez).
-// GET /notifications no filtra por residencial: se muestran todas (filtro por residencial = Etapa 2).
+// - Por residencial: pide ?location_id y el backend agrega location_id a cada fila (no filtra).
+//   Se muestran las de la residencial seleccionada y las que no tienen residencial (null).
+//   Con un backend que no manda el campo, todas cuentan como "sin residencial" (como antes).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -33,7 +35,11 @@ import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/toke
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const PAGE_LIMIT = 30;
+// 50 para compensar las filas de otras residenciales que se descartan
+const PAGE_LIMIT = 50;
+// Tipos que se muestran siempre, sin importar su residencial: un QR compartido puede venir
+// de una residencial donde el usuario no es miembro, y aun así es suyo.
+const ALWAYS_VISIBLE_TYPES = ['qr_shared'];
 const READ_AFTER_MS = 2500;
 const VISIBILITY_TICK_MS = 500;
 const UNDO_MS = 5000;
@@ -180,7 +186,7 @@ function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint,
 }
 
 // ============ COMPONENTE PRINCIPAL ============
-export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey }) {
+export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, locationId }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, language } = useTranslation();
@@ -207,18 +213,45 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey }
   onLoadedRef.current = onLoaded;
 
   // ---------- Carga ----------
+  // Solo la respuesta más reciente cuenta (al cambiar rápido de residencial)
+  const requestIdRef = useRef(0);
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
-      const res = await authFetch(`/notifications?page=1&limit=${PAGE_LIMIT}`);
-      setItems(dedupe(Array.isArray(res?.data) ? res.data : []));
+      const scope = locationId ? `&location_id=${encodeURIComponent(locationId)}` : '';
+      const res = await authFetch(`/notifications?page=1&limit=${PAGE_LIMIT}${scope}`);
+      if (requestId !== requestIdRef.current) return;
+      const list = Array.isArray(res?.data) ? res.data : [];
+      // Residencial seleccionada + sin residencial + ALWAYS_VISIBLE_TYPES.
+      // Sin el campo (backend viejo) == null: se ven todas.
+      const scoped = locationId
+        ? list.filter(
+            (n) =>
+              ALWAYS_VISIBLE_TYPES.includes(n.type) ||
+              n.location_id == null ||
+              n.location_id === locationId
+          )
+        : list;
+      setItems(dedupe(scoped));
       setLoadError(false);
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Error loading recent activity:', error);
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [locationId]);
+
+  // Al cambiar de residencial: se vacía la lista para no mostrar (ni marcar leído) lo de la anterior.
+  // La recarga la hace useFocusEffect, que vuelve a correr porque `load` cambia con locationId.
+  const locationIdRef = useRef(locationId);
+  useEffect(() => {
+    if (locationIdRef.current === locationId) return;
+    locationIdRef.current = locationId;
+    setItems([]);
+    setLoading(true);
+  }, [locationId]);
 
   const checkPermission = useCallback(async () => {
     try {
