@@ -43,11 +43,16 @@ export const AdminLocationProvider = ({ children }) => {
       if (data.success && data.data) {
         setLocations(data.data);
         
-        // Try to restore saved location
+        // Primero la residencial del home (las pantallas de Administración abren ahí y se
+        // sincronizan al cambiarla); si no está en la lista, la guardada; si no, la primera.
+        const homeLocation = userLocationId ? data.data.find(l => l.id === userLocationId) : null;
         const savedId = await AsyncStorage.getItem(STORAGE_KEY);
         const validSavedLocation = data.data.find(l => l.id === savedId);
         
-        if (validSavedLocation) {
+        if (homeLocation) {
+          setSelectedLocationId(homeLocation.id);
+          setSelectedLocation(homeLocation);
+        } else if (validSavedLocation) {
           setSelectedLocationId(savedId);
           setSelectedLocation(validSavedLocation);
         } else if (data.data.length > 0) {
@@ -61,7 +66,7 @@ export const AdminLocationProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [token, isSuperAdmin]);
+  }, [token, isSuperAdmin, userLocationId]);
 
   // Initialize
   useEffect(() => {

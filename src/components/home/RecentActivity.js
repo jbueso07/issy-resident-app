@@ -222,16 +222,18 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
       const res = await authFetch(`/notifications?page=1&limit=${PAGE_LIMIT}${scope}`);
       if (requestId !== requestIdRef.current) return;
       const list = Array.isArray(res?.data) ? res.data : [];
+      // target_missing: el registro al que apunta ya no existe (p. ej. incidente borrado); no se muestra.
       // Residencial seleccionada + sin residencial + ALWAYS_VISIBLE_TYPES.
       // Sin el campo (backend viejo) == null: se ven todas.
+      const existing = list.filter((n) => n.target_missing !== true);
       const scoped = locationId
-        ? list.filter(
+        ? existing.filter(
             (n) =>
               ALWAYS_VISIBLE_TYPES.includes(n.type) ||
               n.location_id == null ||
               n.location_id === locationId
           )
-        : list;
+        : existing;
       setItems(dedupe(scoped));
       setLoadError(false);
     } catch (error) {

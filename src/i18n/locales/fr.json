@@ -1669,7 +1669,8 @@
       "loadFailed": "Impossible de charger l'incident",
       "loadError": "Une erreur s'est produite lors du chargement",
       "commentFailed": "Impossible d'ajouter le commentaire",
-      "commentError": "Une erreur s'est produite lors de l'ajout du commentaire"
+      "commentError": "Une erreur s'est produite lors de l'ajout du commentaire",
+      "unavailable": "Cet incident n’est plus disponible"
     }
   },
   "splash": {

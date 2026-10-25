@@ -143,7 +143,8 @@ export default function AdminGates() {
         const list = data.data || data;
         setLocations(list);
         if (list.length > 0 && !selectedLocationId) {
-          setSelectedLocationId(list[0].id);
+          // Abre en la residencial del home si está en la lista; si no, la primera
+          setSelectedLocationId((list.find((l) => l.id === userLocationId) || list[0]).id);
         }
       }
     } catch (error) {

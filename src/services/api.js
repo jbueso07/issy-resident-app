@@ -1196,8 +1196,14 @@ export const getIncidentById = async (id) => {
     const data = await authFetch(`/incidents/${id}`);
     return { success: true, data: data.data || data };
   } catch (error) {
-    console.error('Error fetching incident:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    // 404 (borrado) y 403 (sin acceso) son estados esperados, no errores
+    if (error.status === 404 || error.status === 403) {
+      console.log(`Incident ${id} no disponible (${error.status})`);
+    } else {
+      console.error('Error fetching incident:', error);
+    }
+    // status: 404 (no existe) / 403 (sin acceso) para mostrar un aviso amable
+    return { success: false, error: error.message, status: error.status, sessionExpired: error.sessionExpired };
   }
 };
 

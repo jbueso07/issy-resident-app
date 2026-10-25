@@ -112,7 +112,9 @@ export default function CommunityMapScreen() {
           if (cancelled) return;
           setLocations(mapped);
           if (mapped.length > 0 && !selectedLocationId) {
-            setSelectedLocationId(mapped[0].location_id);
+            // Abre en la residencial del home si está en la lista; si no, la primera
+            const home = mapped.find((l) => l.location_id === profile?.location_id);
+            setSelectedLocationId((home || mapped[0]).location_id);
           } else if (mapped.length === 0) {
             setLoading(false);
           }
@@ -128,10 +130,11 @@ export default function CommunityMapScreen() {
 
       // Admin normal: derivación original desde user_locations (sin cambios).
       const adminLocations = (profile?.user_locations || [])
-        .filter((ul) => ul.is_active && ['admin', 'superadmin'].includes(ul.role))
+        // /auth/me ya filtra membresías activas y no manda is_active: solo se excluye un false explícito
+        .filter((ul) => ul.is_active !== false && ['admin', 'superadmin'].includes(ul.role))
         .map((ul) => ({
           location_id: ul.location_id,
-          location_name: ul.location_name || ul.location?.name || t('common.noName'),
+          location_name: ul.location_name || ul.name || ul.location?.name || t('common.noName'),
           role: ul.role,
         }));
 
@@ -142,7 +145,9 @@ export default function CommunityMapScreen() {
 
       setLocations(uniqueLocations);
       if (uniqueLocations.length > 0 && !selectedLocationId) {
-        setSelectedLocationId(uniqueLocations[0].location_id);
+        // Abre en la residencial del home si está en la lista; si no, la primera
+        const home = uniqueLocations.find((l) => l.location_id === profile?.location_id);
+        setSelectedLocationId((home || uniqueLocations[0]).location_id);
       } else if (uniqueLocations.length === 0) {
         setLoading(false);
       }

@@ -160,7 +160,8 @@ export default function AdminIncidents() {
         const list = data.data || data;
         setLocations(list);
         if (list.length > 0 && !selectedLocationId) {
-          setSelectedLocationId(list[0].id);
+          // Abre en la residencial del home si está en la lista; si no, la primera
+          setSelectedLocationId((list.find((l) => l.id === userLocationId) || list[0]).id);
         }
       }
     } catch (error) {
@@ -210,12 +211,27 @@ export default function AdminIncidents() {
       Alert.alert(t('common.error'), t(messageKey));
     };
 
+    // No existe o no hay acceso (404/403): aviso amable, no "Error"
+    const unavailable = () => {
+      setDetailModalVisible(false);
+      setSelectedIncident(null);
+      Alert.alert(t('incidentDetail.errors.unavailable', 'Este incidente ya no está disponible'));
+    };
+
     setDetailModalVisible(true);
     setLoadingDetail(true);
     try {
+      // Se busca por id, no por la residencial del selector; el backend valida el acceso
       const result = await getIncidentById(incidentId);
       if (result.success) {
-        setSelectedIncident(result.data.incident || result.data);
+        const loaded = result.data.incident || result.data;
+        setSelectedIncident(loaded);
+        // Si es de otra residencial, el selector (superadmin) cambia a esa
+        if (isSuperAdminUser && loaded?.location_id && loaded.location_id !== selectedLocationId) {
+          setSelectedLocationId(loaded.location_id);
+        }
+      } else if (result.status === 404 || result.status === 403) {
+        unavailable();
       } else if (hasListData) {
         setSelectedIncident(incident);
       } else {

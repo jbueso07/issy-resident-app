@@ -2241,7 +2241,8 @@
       "loadFailed": "No se pudo cargar el incidente",
       "loadError": "Ocurrió un error al cargar el incidente",
       "commentFailed": "No se pudo agregar el comentario",
-      "commentError": "Ocurrió un error al agregar el comentario"
+      "commentError": "Ocurrió un error al agregar el comentario",
+      "unavailable": "Este incidente ya no está disponible"
     }
   },
   "splash": {

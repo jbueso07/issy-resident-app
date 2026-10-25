@@ -1885,7 +1885,8 @@
       "loadFailed": "Could not load incident",
       "loadError": "An error occurred while loading the incident",
       "commentFailed": "Could not add comment",
-      "commentError": "An error occurred while adding the comment"
+      "commentError": "An error occurred while adding the comment",
+      "unavailable": "This incident is no longer available"
     }
   },
   "splash": {

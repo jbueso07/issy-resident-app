@@ -1697,7 +1697,8 @@
       "loadFailed": "Não foi possível carregar o incidente",
       "loadError": "Ocorreu um erro ao carregar o incidente",
       "commentFailed": "Não foi possível adicionar o comentário",
-      "commentError": "Ocorreu um erro ao adicionar o comentário"
+      "commentError": "Ocorreu um erro ao adicionar o comentário",
+      "unavailable": "Este incidente não está mais disponível"
     }
   },
   "splash": {
