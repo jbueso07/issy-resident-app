@@ -325,6 +325,12 @@
       "time": "Hora",
       "notes": "Notas adicionales"
     },
+    "addMoreData": "+ Agregar más datos (opcional)",
+    "moreDataCount": "Más datos ({{n}})",
+    "moreDataHint": {
+      "full": "Teléfono para enviarlo por ISSY · Identificación",
+      "phoneOnly": "Teléfono para enviarlo por ISSY"
+    },
     "errors": {
       "nameRequired": "El nombre es requerido",
       "invalidDate": "Fecha inválida",

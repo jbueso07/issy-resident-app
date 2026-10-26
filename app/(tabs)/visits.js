@@ -18,6 +18,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
@@ -39,6 +40,7 @@ import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
 import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
+import PressableScale from '../../src/components/home/PressableScale';
 
 // Logo ISSY
 const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
@@ -226,6 +228,8 @@ export default function Visits() {
   const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
   // Sin casa en la residencial seleccionada: aviso en vez de QR
   const [residentQRNoHome, setResidentQRNoHome] = useState(false);
+  // Formulario de QR: teléfono e identificación en una sección plegable (opcionales)
+  const [showMoreData, setShowMoreData] = useState(false);
   const [activeTab, setActiveTab] = useState("myqr");
 
   // Mejora 2: secciones colapsables de codigos por tipo. "single" (Una vez) abierta por defecto.
@@ -287,6 +291,21 @@ export default function Visits() {
     }
   }, [navTab, navCreate, navType]);
 
+  // Al abrir el formulario, la sección "más datos" aparece desplegada si ya trae teléfono o
+  // identificación (lo escrito no se borra al cerrar) o si la comunidad exige enviar dentro de
+  // ISSY (app_only), donde el teléfono hace falta para encontrar al destinatario.
+  useEffect(() => {
+    if (!showCreateModal) return;
+    const hasExtraData = !!visitorPhone.trim() || (!requireVisitorId && !!visitorId.trim());
+    setShowMoreData(hasExtraData || sharingMode === 'app_only');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreateModal]);
+
+  const toggleMoreData = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowMoreData((open) => !open);
+  };
+
   // Form states
   const [qrType, setQrType] = useState('single');
   const [visitorName, setVisitorName] = useState('');
@@ -301,6 +320,8 @@ export default function Visits() {
   const [sharingMode, setSharingMode] = useState('any'); // 'any' | 'app_only' | 'app_preferred'
   // Identidad del visitante obligatoria solo si la comunidad tiene require_visitor_id
   const [requireVisitorId, setRequireVisitorId] = useState(false);
+  // Cuántos datos opcionales hay escritos dentro de la sección (para "Más datos (N)")
+  const extraDataCount = (visitorPhone.trim() ? 1 : 0) + (!requireVisitorId && visitorId.trim() ? 1 : 0);
 
   // Quick Delivery states
   const [showQuickModal, setShowQuickModal] = useState(false);
@@ -1339,88 +1360,138 @@ return (
               maxFontSizeMultiplier={1.2}
             />
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t('visits.visitorPhonePlaceholder')}
-              placeholderTextColor={COLORS.textMuted}
-              value={visitorPhone}
-              onChangeText={setVisitorPhone}
-              keyboardType="phone-pad"
-              maxFontSizeMultiplier={1.2}
-            />
-
-            {/* User Lookup Result */}
-            {lookupLoading && (
-              <View style={styles.lookupRow}>
-                <ActivityIndicator size="small" color={COLORS.cyan} />
-                <Text style={styles.lookupSearching}>Buscando usuario ISSY...</Text>
-              </View>
+            {/* Identificación obligatoria en esta comunidad: siempre visible, fuera de la sección */}
+            {requireVisitorId && (
+              <>
+              <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+                {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t('visits.visitorIdPlaceholder')}
+                placeholderTextColor={COLORS.textMuted}
+                value={visitorId}
+                onChangeText={setVisitorId}
+                maxFontSizeMultiplier={1.2}
+              />
+              </>
             )}
 
-            {foundUser && !lookupLoading && (
-              <View style={styles.foundUserCard}>
-                <View style={styles.foundUserInfo}>
-                  <View style={styles.foundUserAvatar}>
-                    {foundUser.profile_image ? (
-                      <Image source={{ uri: foundUser.profile_image }} style={styles.foundUserAvatarImg} />
-                    ) : (
-                      <Text style={styles.foundUserAvatarText}>
-                        {foundUser.name?.charAt(0)?.toUpperCase() || '?'}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.foundUserName}>{foundUser.name}</Text>
-                    <Text style={styles.foundUserUnit}>
-                      {foundUser.house_number ? `Casa ${foundUser.house_number}` : 'Usuario ISSY'}
-                    </Text>
-                  </View>
-                  <View style={styles.foundUserBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={COLORS.teal} />
-                    <Text style={styles.foundUserBadgeText}>ISSY</Text>
-                  </View>
-                </View>
-
-                {/* In-App Toggle */}
-                <TouchableOpacity
-                  style={[styles.inAppToggle, sendInApp && styles.inAppToggleActive]}
-                  onPress={() => setSendInApp(!sendInApp)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name={sendInApp ? 'paper-plane' : 'paper-plane-outline'} 
-                    size={18} 
-                    color={sendInApp ? COLORS.textDark : COLORS.teal} 
-                  />
-                  <Text style={[styles.inAppToggleText, sendInApp && styles.inAppToggleTextActive]}>
-                    {sendInApp ? 'Se enviará dentro de ISSY' : 'Enviar dentro de ISSY'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* App-only mode warning */}
-            {sharingMode === 'app_only' && !foundUser && visitorPhone.length >= 8 && !lookupLoading && (
-              <View style={styles.appOnlyWarning}>
-                <Ionicons name="alert-circle" size={18} color={COLORS.orange} />
-                <Text style={styles.appOnlyWarningText}>
-                  Esta comunidad requiere que los códigos QR se envíen dentro de ISSY. El destinatario debe tener la app instalada.
+            {/* Teléfono e identificación (opcionales) en una sección plegable; cerrarla no borra lo escrito */}
+            <PressableScale
+              style={styles.moreDataButton}
+              onPress={toggleMoreData}
+              scaleTo={0.98}
+              accessibilityState={{ expanded: showMoreData }}
+            >
+              <View style={styles.moreDataTextWrap}>
+                <Text style={styles.moreDataText} maxFontSizeMultiplier={1.2}>
+                  {extraDataCount > 0
+                    ? t('visits.moreDataCount', { n: extraDataCount, defaultValue: 'Más datos ({{n}})' })
+                    : t('visits.addMoreData', '+ Agregar más datos (opcional)')}
                 </Text>
+                {/* Qué hay adentro, solo con la sección cerrada */}
+                {!showMoreData && (
+                  <Text style={styles.moreDataHint} maxFontSizeMultiplier={1.2}>
+                    {requireVisitorId
+                      ? t('visits.moreDataHint.phoneOnly', 'Teléfono para enviarlo por ISSY')
+                      : t('visits.moreDataHint.full', 'Teléfono para enviarlo por ISSY · Identificación')}
+                  </Text>
+                )}
               </View>
-            )}
+              <Ionicons name={showMoreData ? 'chevron-up' : 'chevron-down'} size={18} color={COLORS.textSecondary} />
+            </PressableScale>
 
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
-              {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t('visits.visitorIdPlaceholder')}
-              placeholderTextColor={COLORS.textMuted}
-              value={visitorId}
-              onChangeText={setVisitorId}
-              maxFontSizeMultiplier={1.2}
-            />
+            {showMoreData && (
+              <>
+              <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t('visits.visitorPhonePlaceholder')}
+                placeholderTextColor={COLORS.textMuted}
+                value={visitorPhone}
+                onChangeText={setVisitorPhone}
+                keyboardType="phone-pad"
+                maxFontSizeMultiplier={1.2}
+              />
+
+              {/* User Lookup Result */}
+              {lookupLoading && (
+                <View style={styles.lookupRow}>
+                  <ActivityIndicator size="small" color={COLORS.cyan} />
+                  <Text style={styles.lookupSearching}>Buscando usuario ISSY...</Text>
+                </View>
+              )}
+
+              {foundUser && !lookupLoading && (
+                <View style={styles.foundUserCard}>
+                  <View style={styles.foundUserInfo}>
+                    <View style={styles.foundUserAvatar}>
+                      {foundUser.profile_image ? (
+                        <Image source={{ uri: foundUser.profile_image }} style={styles.foundUserAvatarImg} />
+                      ) : (
+                        <Text style={styles.foundUserAvatarText}>
+                          {foundUser.name?.charAt(0)?.toUpperCase() || '?'}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.foundUserName}>{foundUser.name}</Text>
+                      <Text style={styles.foundUserUnit}>
+                        {foundUser.house_number ? `Casa ${foundUser.house_number}` : 'Usuario ISSY'}
+                      </Text>
+                    </View>
+                    <View style={styles.foundUserBadge}>
+                      <Ionicons name="checkmark-circle" size={16} color={COLORS.teal} />
+                      <Text style={styles.foundUserBadgeText}>ISSY</Text>
+                    </View>
+                  </View>
+
+                  {/* In-App Toggle */}
+                  <TouchableOpacity
+                    style={[styles.inAppToggle, sendInApp && styles.inAppToggleActive]}
+                    onPress={() => setSendInApp(!sendInApp)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={sendInApp ? 'paper-plane' : 'paper-plane-outline'} 
+                      size={18} 
+                      color={sendInApp ? COLORS.textDark : COLORS.teal} 
+                    />
+                    <Text style={[styles.inAppToggleText, sendInApp && styles.inAppToggleTextActive]}>
+                      {sendInApp ? 'Se enviará dentro de ISSY' : 'Enviar dentro de ISSY'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* App-only mode warning */}
+              {sharingMode === 'app_only' && !foundUser && visitorPhone.length >= 8 && !lookupLoading && (
+                <View style={styles.appOnlyWarning}>
+                  <Ionicons name="alert-circle" size={18} color={COLORS.orange} />
+                  <Text style={styles.appOnlyWarningText}>
+                    Esta comunidad requiere que los códigos QR se envíen dentro de ISSY. El destinatario debe tener la app instalada.
+                  </Text>
+                </View>
+              )}
+
+              {!requireVisitorId && (
+                <>
+                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+                {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t('visits.visitorIdPlaceholder')}
+                placeholderTextColor={COLORS.textMuted}
+                value={visitorId}
+                onChangeText={setVisitorId}
+                maxFontSizeMultiplier={1.2}
+              />
+                </>
+              )}
+              </>
+            )}
 
             {/* SINGLE QR OPTIONS */}
             {qrType === 'single' && (
@@ -2470,6 +2541,31 @@ const styles = StyleSheet.create({
   },
 
   // Form Inputs
+  moreDataButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: scale(12),
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+  },
+  moreDataTextWrap: {
+    flex: 1,
+  },
+  moreDataText: {
+    fontSize: scale(14),
+    fontWeight: '600',
+    color: COLORS.cyan,
+  },
+  moreDataHint: {
+    fontSize: scale(12),
+    color: COLORS.textMuted,
+    marginTop: scale(2),
+  },
   inputLabel: {
     fontSize: scale(13),
     fontWeight: '600',

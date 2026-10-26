@@ -311,6 +311,12 @@
       "time": "Time",
       "notes": "Additional notes"
     },
+    "addMoreData": "+ Add more details (optional)",
+    "moreDataCount": "More details ({{n}})",
+    "moreDataHint": {
+      "full": "Phone to send it through ISSY · ID",
+      "phoneOnly": "Phone to send it through ISSY"
+    },
     "errors": {
       "nameRequired": "Name is required",
       "invalidDate": "Invalid date",

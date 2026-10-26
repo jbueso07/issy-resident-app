@@ -255,6 +255,12 @@
       "time": "Heure",
       "notes": "Notes supplémentaires"
     },
+    "addMoreData": "+ Ajouter plus d’infos (facultatif)",
+    "moreDataCount": "Plus d’infos ({{n}})",
+    "moreDataHint": {
+      "full": "Téléphone pour l’envoyer via ISSY · Pièce d’identité",
+      "phoneOnly": "Téléphone pour l’envoyer via ISSY"
+    },
     "errors": {
       "nameRequired": "Le nom est requis",
       "invalidDate": "Date invalide",
