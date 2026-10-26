@@ -317,6 +317,28 @@
       "full": "Phone to send it through ISSY · ID",
       "phoneOnly": "Phone to send it through ISSY"
     },
+    "list": {
+      "statActive": "Active QR",
+      "statExpectedToday": "Expected today",
+      "statExpiringWeek": "Expire this week",
+      "filters": {
+        "active": "Active",
+        "frequent": "Frequent",
+        "temporary": "Temporary",
+        "event": "Events",
+        "history": "History"
+      },
+      "status": {
+        "enteredToday": "Arrived today at {{time}}",
+        "notArrived": "Not here yet",
+        "dayOf": "Day {{i}} of {{n}}",
+        "nextVisit": "Next visit: {{day}}",
+        "usedOnceExpired": "Used once · expired",
+        "usedTimesExpired": "Used {{n}} times · expired",
+        "expiredUnused": "Expired, never used"
+      },
+      "emptyFilter": "No codes here"
+    },
     "errors": {
       "nameRequired": "Name is required",
       "invalidDate": "Invalid date",

@@ -4,6 +4,11 @@
 // Residencial, coordenadas y casa todavía no vienen del backend: se leen si llegan
 // (location, creator_house_number) y si no, se usan respaldos.
 
+import { colors } from '../theme/tokens';
+
+// Color de cada tipo de QR (chips del pase recibido, Mis accesos y la lista de Visitantes)
+export const TYPE_COLORS = { single: colors.coral, frequent: colors.lime, temporary: colors.purple, event: colors.amber };
+
 const LOCALES = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
 export const localeFor = (language) => LOCALES[language] || LOCALES.es;
 

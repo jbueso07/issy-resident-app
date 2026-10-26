@@ -41,6 +41,9 @@ import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
 import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
 import PressableScale from '../../src/components/home/PressableScale';
+import { colors as tk, radius, spacing } from '../../src/theme/tokens';
+import { TYPE_COLORS } from '../../src/utils/receivedQR';
+import { getMyQRStatusLine, getMyQRSummary, filterMyQRs, MY_QR_FILTERS } from '../../src/utils/myQRStatus';
 
 // Logo ISSY
 const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
@@ -233,46 +236,8 @@ export default function Visits() {
   const [activeTab, setActiveTab] = useState("myqr");
 
   // Mejora 2: secciones colapsables de codigos por tipo. "single" (Una vez) abierta por defecto.
-  const [expandedSections, setExpandedSections] = useState({ single: true, frequent: false, temporary: false, event: false });
-  const toggleSection = (id) => setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  // Renderiza una seccion colapsable de codigos QR agrupados por tipo.
-  const renderQRSection = (id, title, iconName, items, comingSoon = false, onCreate = null) => {
-    const open = !!expandedSections[id];
-    return (
-      <View key={id} style={styles.qrSection}>
-        <TouchableOpacity style={styles.qrSectionHeader} onPress={() => toggleSection(id)} activeOpacity={0.7}>
-          <Ionicons name={iconName} size={18} color={COLORS.textSecondary} style={{ marginRight: scale(8) }} />
-          <Text style={styles.qrSectionTitle} maxFontSizeMultiplier={1.2}>{title}</Text>
-          {comingSoon ? (
-            <Text style={styles.qrSectionSoon} maxFontSizeMultiplier={1.2}>Próximamente</Text>
-          ) : (
-            <Text style={styles.qrSectionCount} maxFontSizeMultiplier={1.2}>{items.length}</Text>
-          )}
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-        {open && (
-          <View style={styles.qrSectionBody}>
-            {comingSoon ? (
-              <Text style={styles.qrSectionEmpty} maxFontSizeMultiplier={1.2}>Disponible próximamente</Text>
-            ) : items.length === 0 ? (
-              <Text style={styles.qrSectionEmpty} maxFontSizeMultiplier={1.2}>Sin códigos</Text>
-            ) : (
-              items.map((qr) => renderQRCard(qr))
-            )}
-            {!comingSoon && onCreate && (
-              <TouchableOpacity style={styles.qrSectionCreateBtn} onPress={onCreate} activeOpacity={0.7}>
-                <Ionicons name="add-circle-outline" size={18} color={COLORS.lime} style={{ marginRight: scale(6) }} />
-                <Text style={styles.qrSectionCreateText} maxFontSizeMultiplier={1.2}>
-                  {t('visits.events.createButton', 'Crear evento')}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
-    );
-  };
+  // Lista K1: filtro en pastillas (activos, frecuentes, temporales, eventos, historial)
+  const [qrFilter, setQrFilter] = useState('active');
 
   // Mejora 1: acceso directo desde el boton "Nuevo QR" del home.
   // Lee params de navegacion para abrir el tab Visitantes + el modal de crear.
@@ -468,7 +433,8 @@ export default function Visits() {
       return;
     }
     try {
-      const result = await getMyQRCodes(selectedLocationId);
+      // Activos + historial (últimos 30) + último ingreso; un backend viejo ignora los extras
+      const result = await getMyQRCodes(selectedLocationId, { includeExpired: true, historyLimit: 30, includeUsage: true });
       if (result.success) {
         setQrCodes(result.data || []);
       }
@@ -903,18 +869,6 @@ const getQRTypeLabel = (type) => {
   return found?.label || type;
 };
 
-const getQRTypeConfig = (type) => {
-  const found = QR_TYPES.find(t => t.id === type);
-  if (found) {
-    return {
-      bg: found.color,
-      text: type === 'frequent' ? COLORS.textDark : COLORS.textPrimary,
-      label: found.label.toUpperCase()
-    };
-  }
-  return { bg: COLORS.bgCardAlt, text: COLORS.textPrimary, label: type.toUpperCase() };
-};
-
 const isQRActive = (qr) => {
   if (qr.status === 'used') return false;
   if (qr.status === 'expired') return false;
@@ -1026,105 +980,134 @@ const houseNumber = selectedQRCommunity.houseNumber;
 
 // Render QR Card - Todo el card es touchable
 const renderQRCard = (qr) => {
-  const typeConfig = getQRTypeConfig(qr.qr_type);
-  const active = isQRActive(qr);
+  const typeColor = TYPE_COLORS[qr.qr_type] || tk.cyan;
+  const past = !isQRActive(qr);
+  // Estado ("Entró hoy…", "Aún no llega", "Día 3 de 8"…); sin datos, la vigencia de siempre
+  const statusLine =
+    getMyQRStatusLine(qr, t, language) ||
+    (qr.qr_type === 'event'
+      ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
+      : getCardValidityText(qr));
+
+  // TODO(Tanda 2): los eventos deberían abrir `/event-detail?id=${qr.id}` (lista de invitados);
+  // por ahora abren el mismo modal de QR que una visita.
+  const openQR = () => {
+    setSelectedQR(qr);
+    setShowQRModal(true);
+  };
 
   return (
-    <TouchableOpacity
+    <PressableScale
       key={qr.id}
-      style={styles.qrCard}
-      onPress={() => {
-        if (qr.qr_type === 'event') {
-          // TODO(Tanda 2): enrutar a `/event-detail?id=${qr.id}` — detalle con
-          // lista de invitados y contadores (GET /api/events/:id, shape §4.1).
-          // Por ahora el evento abre el VIEW QR MODAL genérico igual que una
-          // visita (el QR compartible funciona; falta el tracking de invitados).
-          setSelectedQR(qr);
-          setShowQRModal(true);
-          return;
-        }
-        setSelectedQR(qr);
-        setShowQRModal(true);
-      }}
-      activeOpacity={0.7}
+      style={[styles.k1Card, past && styles.k1CardPast]}
+      onPress={openQR}
+      scaleTo={0.98}
+      accessibilityLabel={`${qr.visitor_name}. ${statusLine}`}
     >
-      <View style={styles.qrCardContent}>
-        {/* Top row with badges */}
-        <View style={styles.qrCardTopRow}>
-          <View style={[styles.typeBadge, { backgroundColor: typeConfig.bg }]}>
-            <Text style={[styles.typeBadgeText, { color: typeConfig.text }]} maxFontSizeMultiplier={1.2}>
-              {typeConfig.label}
-            </Text>
-          </View>
-
-          {active ? (
-            <LinearGradient
-              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.statusBadge}
-            >
-              <Text style={[styles.statusBadgeText, { color: COLORS.textDark }]} maxFontSizeMultiplier={1.2}>{t('visits.status.active')}</Text>
-            </LinearGradient>
-          ) : (
-            <View style={[styles.statusBadge, { backgroundColor: COLORS.bgCardAlt }]}>
-              <Text style={styles.statusBadgeText} maxFontSizeMultiplier={1.2}>{t('visits.status.expired')}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Visitor info */}
-        <Text style={styles.visitorName} maxFontSizeMultiplier={1.2}>{qr.visitor_name}</Text>
-        {/* Eventos: visitor_phone es el literal 'N/A' que escribe createEvent
-            (qr_codes no admite null y un evento no tiene telefono de visitante).
-            El conteo de invitados no viaja en GET /qr, asi que va fecha + horario. */}
-        {/* Sin teléfono el backend guarda 'N/A': no se muestra */}
-        {(qr.qr_type === 'event' || (qr.visitor_phone && qr.visitor_phone !== 'N/A')) && (
-          <Text style={styles.visitorPhone} maxFontSizeMultiplier={1.2}>
-            {qr.qr_type === 'event'
-              ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
-              : qr.visitor_phone}
+      <View style={styles.k1CardTop}>
+        <Text style={styles.k1Name} maxFontSizeMultiplier={1.2} numberOfLines={1}>{qr.visitor_name}</Text>
+        <View style={[styles.k1Chip, { backgroundColor: `${typeColor}26` }]}>
+          <Text style={[styles.k1ChipText, { color: typeColor }]} maxFontSizeMultiplier={1.2}>
+            {t(`home2.receivedQR.types.${qr.qr_type}`, qr.qr_type)}
           </Text>
-        )}
-        <Text style={styles.validDate} maxFontSizeMultiplier={1.2}>{getCardValidityText(qr)}</Text>
-
-        {/* Action row */}
-        <View style={styles.cardActionsRow}>
-          {/* Ver QR button */}
-          <TouchableOpacity
-            style={styles.viewQRButton}
-            onPress={() => {
-              setSelectedQR(qr);
-              setShowQRModal(true);
-            }}
-          >
-            <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
-            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
-          </TouchableOpacity>
-
-          {/* Share button — comparte la MISMA imagen del QR que el modal (Opción A) */}
-          <TouchableOpacity
-            style={styles.viewQRButton}
-            onPress={() => {
-              setSelectedQR(qr);
-              setShowQRModal(true);
-              setPendingShare(qr.id);
-            }}
-          >
-            <Ionicons name="share-outline" size={18} color={COLORS.cyan} />
-            <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
-          </TouchableOpacity>
-
-          {/* Delete button */}
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={(e) => handleDeleteQR(qr, e)}
-          >
-            <Ionicons name="trash-outline" size={18} color={COLORS.coral} />
-          </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+      {!!statusLine && (
+        <View style={styles.k1StatusRow}>
+          <View style={[styles.k1Dot, { backgroundColor: past ? tk.textMuted : typeColor }]} />
+          <Text style={styles.k1Status} maxFontSizeMultiplier={1.2} numberOfLines={2}>{statusLine}</Text>
+        </View>
+      )}
+
+      {/* Acciones de siempre */}
+      <View style={styles.cardActionsRow}>
+        <TouchableOpacity style={styles.viewQRButton} onPress={openQR}>
+          <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
+          <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
+        </TouchableOpacity>
+
+        {/* Share button — comparte la MISMA imagen del QR que el modal (Opción A) */}
+        <TouchableOpacity
+          style={styles.viewQRButton}
+          onPress={() => {
+            setSelectedQR(qr);
+            setShowQRModal(true);
+            setPendingShare(qr.id);
+          }}
+        >
+          <Ionicons name="share-outline" size={18} color={COLORS.cyan} />
+          <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={(e) => handleDeleteQR(qr, e)}>
+          <Ionicons name="trash-outline" size={18} color={COLORS.coral} />
+        </TouchableOpacity>
+      </View>
+    </PressableScale>
+  );
+};
+
+// Tres números + pastillas + tarjetas del filtro elegido
+const renderMyQRList = () => {
+  const summary = getMyQRSummary(qrCodes);
+  const visible = filterMyQRs(qrCodes, qrFilter);
+  const stats = [
+    { key: 'active', value: summary.active, label: t('visits.list.statActive', 'QR activos'), color: tk.lime },
+    { key: 'today', value: summary.expectedToday, label: t('visits.list.statExpectedToday', 'Esperados hoy'), color: tk.cyan },
+    { key: 'week', value: summary.expiringThisWeek, label: t('visits.list.statExpiringWeek', 'Vencen esta semana'), color: tk.amber },
+  ];
+  return (
+    <>
+      <View style={styles.k1Stats}>
+        {stats.map((stat) => (
+          <View key={stat.key} style={styles.k1Stat}>
+            <Text style={[styles.k1StatValue, { color: stat.color }]} maxFontSizeMultiplier={1.2}>{stat.value}</Text>
+            <Text style={styles.k1StatLabel} maxFontSizeMultiplier={1.2} numberOfLines={2}>{stat.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.k1Pills}
+        accessibilityRole="tablist"
+      >
+        {MY_QR_FILTERS.map((filter) => {
+          const selected = filter === qrFilter;
+          return (
+            <PressableScale
+              key={filter}
+              style={[styles.k1Pill, selected && styles.k1PillActive]}
+              onPress={() => setQrFilter(filter)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+            >
+              <Text style={[styles.k1PillText, selected && styles.k1PillTextActive]} maxFontSizeMultiplier={1.2}>
+                {t(`visits.list.filters.${filter}`)}
+              </Text>
+            </PressableScale>
+          );
+        })}
+      </ScrollView>
+
+      {visible.length === 0 ? (
+        <Text style={styles.k1Empty} maxFontSizeMultiplier={1.2}>
+          {t('visits.list.emptyFilter', 'No hay códigos aquí')}
+        </Text>
+      ) : (
+        visible.map((qr) => renderQRCard(qr))
+      )}
+
+      {qrFilter === 'event' && (
+        <TouchableOpacity style={styles.qrSectionCreateBtn} onPress={() => navRouter.push('/create-event')} activeOpacity={0.7}>
+          <Ionicons name="add-circle-outline" size={18} color={COLORS.lime} style={{ marginRight: scale(6) }} />
+          <Text style={styles.qrSectionCreateText} maxFontSizeMultiplier={1.2}>
+            {t('visits.events.createButton', 'Crear evento')}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </>
   );
 };
 
@@ -1254,8 +1237,7 @@ return (
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* QR List Section */}
-            <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.2}>{t('visits.activeCodes')}</Text>
+            {/* Mis QR (K1): resumen, filtros y tarjetas */}
 
             {loadingQRs ? (
               <View style={styles.loadingContainer}>
@@ -1270,21 +1252,7 @@ return (
                 <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
               </View>
             ) : (
-              (() => {
-                const activos = qrCodes.filter((qr) => isQRActive(qr));
-                const single = activos.filter((q) => q.qr_type === 'single');
-                const frequent = activos.filter((q) => q.qr_type === 'frequent');
-                const temporary = activos.filter((q) => q.qr_type === 'temporary');
-                const event = activos.filter((q) => q.qr_type === 'event');
-                return (
-                  <>
-                    {renderQRSection('single', t('visits.qrTypes.single'), 'flash-outline', single)}
-                    {renderQRSection('frequent', t('visits.qrTypes.frequent'), 'infinite-outline', frequent)}
-                    {renderQRSection('temporary', t('visits.qrTypes.temporary'), 'calendar-outline', temporary)}
-                    {renderQRSection('event', t('visits.qrTypes.events', 'Eventos'), 'balloon-outline', event, false, () => navRouter.push('/create-event'))}
-                  </>
-                );
-              })()
+              renderMyQRList()
             )}
           </>
         )}
@@ -2552,6 +2520,107 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderStyle: 'dashed',
+  },
+  // ===== Lista K1 (Mis QR) =====
+  k1Stats: {
+    flexDirection: 'row',
+    gap: scale(spacing.sm),
+    marginTop: scale(spacing.md),
+    marginBottom: scale(spacing.md),
+  },
+  k1Stat: {
+    flex: 1,
+    padding: scale(spacing.md),
+    borderRadius: scale(radius.md),
+    backgroundColor: tk.card,
+    borderWidth: 1,
+    borderColor: tk.border,
+  },
+  k1StatValue: {
+    fontSize: scale(22),
+    fontWeight: '800',
+  },
+  k1StatLabel: {
+    fontSize: scale(12),
+    color: tk.textSecondary,
+    marginTop: scale(2),
+  },
+  k1Pills: {
+    gap: scale(spacing.sm),
+    paddingBottom: scale(spacing.md),
+  },
+  k1Pill: {
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+    borderRadius: radius.pill,
+    backgroundColor: tk.card,
+    borderWidth: 1,
+    borderColor: tk.border,
+  },
+  k1PillActive: {
+    backgroundColor: tk.cyan,
+    borderColor: tk.cyan,
+  },
+  k1PillText: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    color: tk.textSecondary,
+  },
+  k1PillTextActive: {
+    color: tk.textDark,
+  },
+  k1Card: {
+    backgroundColor: tk.card,
+    borderRadius: scale(radius.md),
+    borderWidth: 1,
+    borderColor: tk.border,
+    padding: scale(spacing.lg),
+    marginBottom: scale(spacing.md),
+    gap: scale(spacing.sm),
+  },
+  k1CardPast: {
+    opacity: 0.6,
+  },
+  k1CardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(spacing.sm),
+  },
+  k1Name: {
+    flex: 1,
+    fontSize: scale(16),
+    fontWeight: '700',
+    color: tk.text,
+  },
+  k1Chip: {
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: radius.pill,
+  },
+  k1ChipText: {
+    fontSize: scale(11),
+    fontWeight: '700',
+  },
+  k1StatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(spacing.sm),
+  },
+  k1Dot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: radius.pill,
+  },
+  k1Status: {
+    flex: 1,
+    fontSize: scale(13),
+    color: tk.textSecondary,
+  },
+  k1Empty: {
+    fontSize: scale(14),
+    color: tk.textSecondary,
+    textAlign: 'center',
+    paddingVertical: scale(spacing.xl),
   },
   moreDataTextWrap: {
     flex: 1,

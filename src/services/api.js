@@ -196,10 +196,16 @@ export const updateUserProfile = async (profileData) => {
 // QR CODES
 // ==========================================
 
-export const getMyQRCodes = async (locationId) => {
+// options (opcionales): includeExpired, historyLimit, includeUsage (último ingreso por QR)
+export const getMyQRCodes = async (locationId, options = {}) => {
   try {
-    const url = locationId ? `/qr?location_id=${locationId}` : '/qr';
-    const data = await authFetch(url);
+    const params = new URLSearchParams();
+    if (locationId) params.append('location_id', locationId);
+    if (options.includeExpired) params.append('includeExpired', 'true');
+    if (options.historyLimit) params.append('history_limit', String(options.historyLimit));
+    if (options.includeUsage) params.append('include_usage', 'true');
+    const query = params.toString();
+    const data = await authFetch(query ? `/qr?${query}` : '/qr');
     return { success: true, data: data.data || data };
   } catch (error) {
     console.error('Error fetching QR codes:', error);

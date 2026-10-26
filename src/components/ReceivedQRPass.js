@@ -25,13 +25,13 @@ import {
   getDestination,
   dayLetters,
   WEEK_ORDER,
+  TYPE_COLORS,
 } from '../utils/receivedQR';
 
 // TODO build: guardado directo en Fotos con expo-media-library, probado en la build nueva.
 
 const QR_SIZE = 220;
 const STATUS_COLORS = { active: colors.lime, scheduled: colors.amber, used: colors.textSecondary, expired: colors.textMuted };
-const TYPE_COLORS = { single: colors.coral, frequent: colors.lime, temporary: colors.purple, event: colors.amber };
 
 function PassContent({ qr, onClose, userLocations }) {
   const { t, language } = useTranslation();

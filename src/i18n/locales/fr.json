@@ -261,6 +261,28 @@
       "full": "Téléphone pour l’envoyer via ISSY · Pièce d’identité",
       "phoneOnly": "Téléphone pour l’envoyer via ISSY"
     },
+    "list": {
+      "statActive": "QR actifs",
+      "statExpectedToday": "Attendus aujourd’hui",
+      "statExpiringWeek": "Expirent cette semaine",
+      "filters": {
+        "active": "Actifs",
+        "frequent": "Fréquents",
+        "temporary": "Temporaires",
+        "event": "Événements",
+        "history": "Historique"
+      },
+      "status": {
+        "enteredToday": "Entré aujourd’hui à {{time}}",
+        "notArrived": "Pas encore arrivé",
+        "dayOf": "Jour {{i}} sur {{n}}",
+        "nextVisit": "Prochaine visite : {{day}}",
+        "usedOnceExpired": "Utilisé 1 fois · expiré",
+        "usedTimesExpired": "Utilisé {{n}} fois · expiré",
+        "expiredUnused": "Expiré sans utilisation"
+      },
+      "emptyFilter": "Aucun code ici"
+    },
     "errors": {
       "nameRequired": "Le nom est requis",
       "invalidDate": "Date invalide",

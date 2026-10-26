@@ -331,6 +331,28 @@
       "full": "Teléfono para enviarlo por ISSY · Identificación",
       "phoneOnly": "Teléfono para enviarlo por ISSY"
     },
+    "list": {
+      "statActive": "QR activos",
+      "statExpectedToday": "Esperados hoy",
+      "statExpiringWeek": "Vencen esta semana",
+      "filters": {
+        "active": "Activos",
+        "frequent": "Frecuentes",
+        "temporary": "Temporales",
+        "event": "Eventos",
+        "history": "Historial"
+      },
+      "status": {
+        "enteredToday": "Entró hoy a las {{time}}",
+        "notArrived": "Aún no llega",
+        "dayOf": "Día {{i}} de {{n}}",
+        "nextVisit": "Próxima visita: {{day}}",
+        "usedOnceExpired": "Usado 1 vez · vencido",
+        "usedTimesExpired": "Usado {{n}} veces · vencido",
+        "expiredUnused": "Vencido sin usar"
+      },
+      "emptyFilter": "No hay códigos aquí"
+    },
     "errors": {
       "nameRequired": "El nombre es requerido",
       "invalidDate": "Fecha inválida",

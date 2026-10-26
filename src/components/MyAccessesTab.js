@@ -12,7 +12,7 @@ import { getReceivedQRCodes } from '../services/api';
 import PressableScale from './home/PressableScale';
 import ReceivedQRPass from './ReceivedQRPass';
 import { colors, radius, spacing, MAX_FONT_SCALE } from '../theme/tokens';
-import { getPassStatus, getScheduleParts, getDestination } from '../utils/receivedQR';
+import { getPassStatus, getScheduleParts, getDestination, TYPE_COLORS } from '../utils/receivedQR';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -29,7 +29,6 @@ const COLORS = {
   border: 'rgba(255, 255, 255, 0.1)',
 };
 
-const TYPE_COLORS = { single: colors.coral, frequent: colors.lime, temporary: colors.purple, event: colors.amber };
 const STATUS_STYLES = {
   active: { bg: colors.lime, text: colors.textDark },
   scheduled: { bg: colors.amber, text: colors.textDark },
