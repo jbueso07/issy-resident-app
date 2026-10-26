@@ -323,14 +323,21 @@ export default function Visits() {
   const [endTime, setEndTime] = useState(new Date(new Date().setHours(18, 0, 0)));
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
 
+  // Al cambiar de residencial: Mi QR se vacía al momento (nunca el QR de la otra) y recarga
   useEffect(() => {
     if (selectedLocationId) {
+      setResidentQRData(null);
+      setLoadingResidentQR(true);
       loadResidentQRSecret();
     }
   }, [selectedLocationId]);
 
+  // Solo cuenta la respuesta más reciente (al cambiar rápido de residencial)
+  const residentQRRequestIdRef = useRef(0);
   const loadResidentQRSecret = async () => {
     if (!selectedLocationId) return;
+    const requestId = ++residentQRRequestIdRef.current;
+    const isStale = () => requestId !== residentQRRequestIdRef.current;
     setResidentQRDisabled(false); // Reset disabled state
     setResidentQRNoHome(false);
     // Sin casa "con certeza" (cuando /auth/me ya manda unit_number): no se pide el secreto
@@ -344,6 +351,7 @@ export default function Visits() {
     setLoadingResidentQR(true);
     try {
       const result = await getResidentQRSecret(selectedLocationId);
+      if (isStale()) return;
       if (result.success) {
         setResidentQRData(result.data);
       } else {
@@ -357,15 +365,19 @@ export default function Visits() {
         }
       }
     } catch (error) {
+      if (isStale()) return;
       console.error("Error loading resident QR:", error);
     } finally {
-      setLoadingResidentQR(false);
+      if (!isStale()) setLoadingResidentQR(false);
     }
   };
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
+  // Al cambiar de residencial: la lista (y los números de arriba) se vacían al momento y recargan
   useEffect(() => {
     if (selectedLocationId) {
+      setQrCodes([]);
+      setLoadingQRs(true);
       loadQRCodes();
     }
   }, [selectedLocationId]);
@@ -381,12 +393,18 @@ export default function Visits() {
 
   // Load sharing mode for location
   useEffect(() => {
+    // cancelled: si la residencial cambia antes de la respuesta, se descarta la anterior
+    let cancelled = false;
     if (selectedLocationId) {
       getQRSharingMode(selectedLocationId).then(result => {
+        if (cancelled) return;
         if (result.success) setSharingMode(result.mode);
         setRequireVisitorId(result.requireVisitorId === true);
       });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLocationId]);
 
   // Debounced phone/email lookup for in-app sharing
@@ -427,22 +445,30 @@ export default function Visits() {
     }
   }, [visitorPhone, sharingMode]);
 
+  // Solo cuenta la respuesta más reciente (al cambiar rápido de residencial)
+  const qrRequestIdRef = useRef(0);
   const loadQRCodes = async () => {
     if (!selectedLocationId) {
       setLoadingQRs(false);
       return;
     }
+    const requestId = ++qrRequestIdRef.current;
+    const isStale = () => requestId !== qrRequestIdRef.current;
     try {
       // Activos + historial (últimos 30) + último ingreso; un backend viejo ignora los extras
       const result = await getMyQRCodes(selectedLocationId, { includeExpired: true, historyLimit: 30, includeUsage: true });
+      if (isStale()) return;
       if (result.success) {
         setQrCodes(result.data || []);
       }
     } catch (error) {
+      if (isStale()) return;
       console.error('Error loading QRs:', error);
     } finally {
-      setLoadingQRs(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoadingQRs(false);
+        setRefreshing(false);
+      }
     }
   };
 

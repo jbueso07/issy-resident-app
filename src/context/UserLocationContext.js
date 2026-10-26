@@ -45,23 +45,31 @@ export const UserLocationProvider = ({ children }) => {
         // Try to restore saved location
         const savedId = await AsyncStorage.getItem(STORAGE_KEY);
         const validSavedLocation = activeLocations.find(l => l.location_id === savedId || l.id === savedId);
+        // /users/my-locations solo trae membresías CON casa. Si la guardada es la residencial
+        // actual del usuario (profile.location_id, recién cambiada desde el home) se respeta
+        // aunque no esté en esa lista; antes se caía a la primera (la residencial anterior).
+        const savedIsCurrent = !!savedId && savedId === profile?.location_id;
 
-        if (savedId && !validSavedLocation) {
-          // ID huérfano (comunidad desactivada o membresía eliminada):
-          // limpiarlo para que no quede pegado en futuros arranques.
-          await AsyncStorage.removeItem(STORAGE_KEY);
-        }
-
-        if (validSavedLocation) {
+        if (savedIsCurrent && !validSavedLocation) {
+          setSelectedLocationId(savedId);
+          setSelectedLocation(null);
+        } else if (validSavedLocation) {
           const locId = validSavedLocation.location_id || validSavedLocation.id;
           setSelectedLocationId(locId);
           setSelectedLocation(validSavedLocation);
-        } else if (activeLocations.length > 0) {
-          // Default to primary location or first one
-          const primaryLoc = activeLocations.find(l => l.is_primary) || activeLocations[0];
-          const locId = primaryLoc.location_id || primaryLoc.id;
-          setSelectedLocationId(locId);
-          setSelectedLocation(primaryLoc);
+        } else {
+          if (savedId) {
+            // ID huérfano (comunidad desactivada o membresía eliminada):
+            // limpiarlo para que no quede pegado en futuros arranques.
+            await AsyncStorage.removeItem(STORAGE_KEY);
+          }
+          if (activeLocations.length > 0) {
+            // Default to primary location or first one
+            const primaryLoc = activeLocations.find(l => l.is_primary) || activeLocations[0];
+            const locId = primaryLoc.location_id || primaryLoc.id;
+            setSelectedLocationId(locId);
+            setSelectedLocation(primaryLoc);
+          }
         }
       } else {
         // Fallback to profile's location_id
