@@ -162,7 +162,7 @@ const ShareableQRCard = forwardRef(({
   };
   
   // Código manual (primeros 8-10 caracteres)
-  const manualCode = (qr.qr_code || qr.id || '').substring(0, 10).toUpperCase();
+  const manualCode = (qr.qr_code || qr.id || '').toUpperCase();
   
   return (
     <View ref={ref} style={styles.container} collapsable={false}>

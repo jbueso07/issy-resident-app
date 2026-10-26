@@ -38,7 +38,7 @@ import {
 } from '../../src/components/Icons';
 
 import NotificationBell from '../../src/components/NotificationBell';
-import { createPanic, getMyActivePanic, cancelPanic } from '../../src/services/api';
+import { createPanic, getMyActivePanic, cancelPanic, authFetch } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -105,17 +105,13 @@ const QuickActionIcon = ({ actionId, color, size = 28 }) => {
 // ============ API ============
 const API_URL = 'https://api.joinissy.com/api';
 
-const switchLocationAPI = async (token, locationId) => {
+// authFetch: token vigente de AsyncStorage y renovación en 401 (el de AuthContext puede estar vencido)
+const switchLocationAPI = async (locationId) => {
   try {
-    const response = await fetch(`${API_URL}/auth/switch-location`, {
+    return await authFetch('/auth/switch-location', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify({ location_id: locationId }),
     });
-    return await response.json();
   } catch (error) {
     console.error('Error switching location:', error);
     return { success: false, error: error.message };
@@ -123,7 +119,7 @@ const switchLocationAPI = async (token, locationId) => {
 };
 
 export default function Home() {
-  const { user, profile, token, hasLocation, refreshProfile } = useAuth();
+  const { user, profile, hasLocation, refreshProfile } = useAuth();
   const { selectLocation } = useUserLocation();
   const router = useRouter();
   const { t } = useTranslation();
@@ -570,7 +566,7 @@ export default function Home() {
     if (!location?.location_id || switchingLocation) return;
     setSwitchingLocation(true);
     try {
-      const result = await switchLocationAPI(token, location.location_id);
+      const result = await switchLocationAPI(location.location_id);
       if (result.success) {
         // Sincronizar UserLocationContext (fuente del location_id en los QRs):
         // sin esto, el INSERT de QRs sigue usando la comunidad anterior.

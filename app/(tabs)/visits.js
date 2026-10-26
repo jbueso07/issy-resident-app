@@ -325,28 +325,41 @@ export default function Visits() {
   const [endTime, setEndTime] = useState(new Date(new Date().setHours(18, 0, 0)));
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
 
+  // Al cambiar de residencial: Mi QR se vacía al momento (nunca el QR de la otra) y recarga
   useEffect(() => {
     if (selectedLocationId) {
+      setResidentQRData(null);
+      setLoadingResidentQR(true);
       loadResidentQRSecret();
     }
   }, [selectedLocationId]);
 
+  // Solo cuenta la respuesta más reciente (al cambiar rápido de residencial)
+  const residentQRRequestIdRef = useRef(0);
   const loadResidentQRSecret = async () => {
     if (!selectedLocationId) return;
+    const requestId = ++residentQRRequestIdRef.current;
+    const isStale = () => requestId !== residentQRRequestIdRef.current;
     setResidentQRDisabled(false); // Reset disabled state
     try {
       const result = await getResidentQRSecret(selectedLocationId);
+      if (isStale()) return;
       if (result.success) {
         setResidentQRData(result.data);
-      } else if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
-        // ✅ Feature is disabled by admin
-        setResidentQRDisabled(true);
+      } else {
+        // Cualquier fallo limpia el QR: nunca queda a la vista el de otra residencial
         setResidentQRData(null);
+        if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
+          // ✅ Feature is disabled by admin
+          setResidentQRDisabled(true);
+        }
       }
     } catch (error) {
+      if (isStale()) return;
       console.error("Error loading resident QR:", error);
+      setResidentQRData(null);
     } finally {
-      setLoadingResidentQR(false);
+      if (!isStale()) setLoadingResidentQR(false);
     }
   };
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
@@ -1848,7 +1861,7 @@ return (
                   <View style={styles.manualCodeSection}>
                     <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
                     <Text style={styles.manualCode} maxFontSizeMultiplier={1.2}>
-                      {(selectedQR.qr_code || selectedQR.id).substring(0, 10).toUpperCase()}
+                      {(selectedQR.qr_code || selectedQR.id).toUpperCase()}
                     </Text>
                   </View>
                   <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>
