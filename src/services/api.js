@@ -324,6 +324,20 @@ export const getQRSharingMode = async (locationId) => {
 };
 
 
+// Sugerencias del formulario "Nuevo QR": visitantes de mis QR anteriores.
+// notSupported: backend sin GET /qr/recent-visitors (la pantalla usa los QR ya cargados)
+export const getRecentVisitors = async ({ limit = 50, since } = {}) => {
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (since) params.append('since', since);
+    const data = await authFetch(`/qr/recent-visitors?${params.toString()}`);
+    const list = data.data || data;
+    return { success: true, data: Array.isArray(list) ? list : [] };
+  } catch (error) {
+    return { success: false, notSupported: error.status === 404, data: [] };
+  }
+};
+
 // ==========================================
 // PAGOS DE COMUNIDAD
 // ==========================================

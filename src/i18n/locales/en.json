@@ -229,6 +229,12 @@
     "announcements": "Announcements"
   },
   "visits": {
+    "suggestions": {
+      "title": "Previous visitors",
+      "remove": "Remove from suggestions",
+      "removeShort": "Remove",
+      "hint": "Tap to use their details. Press and hold to remove it."
+    },
     "title": "Visits",
     "generateQr": "Generate QR",
     "myVisits": "My Visits",
@@ -456,6 +462,20 @@
     }
   },
   "profile": {
+    "privacy": {
+      "title": "Privacy",
+      "menuDesc": "Visitor suggestions",
+      "visitsSection": "Visits",
+      "suggestTitle": "Suggest previous visitors",
+      "suggestDesc": "When you type a visitor's name, we show people you already created a QR for.",
+      "clearTitle": "Clear visitor suggestions",
+      "clearDesc": "Start fresh with the suggestions in the QR form.",
+      "clearConfirmTitle": "Clear visitor suggestions?",
+      "clearConfirmMessage": "People from your previous QR codes will no longer be suggested. Visitors you add from now on will still be suggested.",
+      "clearConfirm": "Clear",
+      "cleared": "Suggestions cleared",
+      "qrNote": "The QR codes you created are still in My QR → History. You can delete them there."
+    },
     "myHomeLocation": "My location",
     "myHomeLocationDesc": "Mark your home for emergencies",
     "emergencyContacts": "Emergency contacts",

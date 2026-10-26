@@ -243,6 +243,12 @@
     }
   },
   "visits": {
+    "suggestions": {
+      "title": "Visitas anteriores",
+      "remove": "Quitar de sugerencias",
+      "removeShort": "Quitar",
+      "hint": "Toca para usar sus datos. Mantén presionado para quitarla."
+    },
     "title": "Visitas",
     "generateQr": "Generar QR",
     "myVisits": "Mis Visitas",
@@ -503,6 +509,20 @@
     "notificationsEnabled": "Notificaciones activadas"
   },
   "profile": {
+    "privacy": {
+      "title": "Privacidad",
+      "menuDesc": "Sugerencias de visitas",
+      "visitsSection": "Visitas",
+      "suggestTitle": "Sugerir visitas anteriores",
+      "suggestDesc": "Al escribir el nombre de un visitante, te mostramos a quienes ya les creaste un QR.",
+      "clearTitle": "Borrar sugerencias de visitas",
+      "clearDesc": "Empieza de cero con las sugerencias del formulario de QR.",
+      "clearConfirmTitle": "¿Borrar sugerencias de visitas?",
+      "clearConfirmMessage": "Dejarás de ver como sugerencia a las personas de tus QR anteriores. Las visitas que crees desde ahora sí se sugerirán.",
+      "clearConfirm": "Borrar",
+      "cleared": "Sugerencias borradas",
+      "qrNote": "Los QR que creaste siguen en Mis QR → Historial. Puedes eliminarlos ahí."
+    },
     "myHomeLocation": "Mi ubicación",
     "myHomeLocationDesc": "Marca tu casa para emergencias",
     "emergencyContacts": "Contactos de emergencia",

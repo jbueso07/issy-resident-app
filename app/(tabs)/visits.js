@@ -35,7 +35,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { useUserLocation } from '../../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../../src/components/UserLocationPicker';
-import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode } from '../../src/services/api';
+import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode, getRecentVisitors } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
@@ -44,6 +44,15 @@ import PressableScale from '../../src/components/home/PressableScale';
 import { colors as tk, radius, spacing } from '../../src/theme/tokens';
 import { TYPE_COLORS } from '../../src/utils/receivedQR';
 import { getMyQRStatusLine, getMyQRSummary, filterMyQRs, MY_QR_FILTERS } from '../../src/utils/myQRStatus';
+import {
+  loadSuggestionPrefs,
+  hideSuggestion,
+  buildSuggestionsFromQRs,
+  applySuggestionPrefs,
+  matchSuggestions,
+  normalizeVisitorName,
+} from '../../src/utils/visitorSuggestions';
+import VisitorSuggestions from '../../src/components/VisitorSuggestions';
 
 // Logo ISSY
 const IssyLogoNegro = require('../../assets/isologotipo-negro.png');
@@ -177,7 +186,8 @@ const formatTimeForBackend = (date) => {
 };
 
 export default function Visits() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+  const userId = user?.id || profile?.id;
   const { t, language } = useTranslation();
   const { userLocations, selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
   const qrRef = useRef(null);
@@ -257,8 +267,8 @@ export default function Visits() {
   }, [navTab, navCreate, navType]);
 
   // Al abrir el formulario, la sección "más datos" aparece desplegada si ya trae teléfono o
-  // identificación (lo escrito no se borra al cerrar) o si la comunidad exige enviar dentro de
-  // ISSY (app_only), donde el teléfono hace falta para encontrar al destinatario.
+  // identificación (hoy el formulario siempre abre vacío; queda para un futuro "reutilizar/editar")
+  // o si la comunidad exige enviar dentro de ISSY (app_only), donde el teléfono hace falta.
   useEffect(() => {
     if (!showCreateModal) return;
     const hasExtraData = !!visitorPhone.trim() || (!requireVisitorId && !!visitorId.trim());
@@ -287,6 +297,74 @@ export default function Visits() {
   const [requireVisitorId, setRequireVisitorId] = useState(false);
   // Cuántos datos opcionales hay escritos dentro de la sección (para "Más datos (N)")
   const extraDataCount = (visitorPhone.trim() ? 1 : 0) + (!requireVisitorId && visitorId.trim() ? 1 : 0);
+
+  // Sugerencias de visitas anteriores bajo "Nombre del visitante"
+  const [suggestionPrefs, setSuggestionPrefs] = useState(null);
+  // null: sin respuesta del backend (aún no desplegado o falló) → se arman con los QR cargados
+  const [remoteSuggestions, setRemoteSuggestions] = useState(null);
+  const [nameFocused, setNameFocused] = useState(false);
+  // Tras elegir una, la lista no vuelve a abrirse hasta que se escriba otra vez
+  const [suggestionPicked, setSuggestionPicked] = useState(false);
+  const suggestionsRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!showCreateModal) return undefined;
+    const requestId = ++suggestionsRequestIdRef.current;
+    const isStale = () => requestId !== suggestionsRequestIdRef.current;
+    setRemoteSuggestions(null);
+    (async () => {
+      const prefs = await loadSuggestionPrefs(userId);
+      if (isStale()) return;
+      setSuggestionPrefs(prefs);
+      // Interruptor apagado: no se pide nada
+      if (!prefs.enabled) return;
+      const result = await getRecentVisitors({ limit: 50, since: prefs.cutoff || undefined });
+      if (isStale()) return;
+      setRemoteSuggestions(result.success ? result.data : null);
+    })();
+    return () => {
+      suggestionsRequestIdRef.current += 1;
+    };
+  }, [showCreateModal, userId]);
+
+  const allSuggestions = useMemo(() => {
+    if (!suggestionPrefs?.enabled) return [];
+    const base = remoteSuggestions ?? buildSuggestionsFromQRs(qrCodes);
+    return applySuggestionPrefs(base, suggestionPrefs);
+  }, [suggestionPrefs, remoteSuggestions, qrCodes]);
+
+  const visibleSuggestions = useMemo(
+    () => (nameFocused && !suggestionPicked ? matchSuggestions(allSuggestions, visitorName) : []),
+    [allSuggestions, nameFocused, suggestionPicked, visitorName]
+  );
+
+  const handleVisitorNameChange = (text) => {
+    setVisitorName(text);
+    setSuggestionPicked(false);
+  };
+
+  // Llena nombre, teléfono e identidad; con teléfono abre "más datos" (la búsqueda ISSY corre sola)
+  const selectSuggestion = (item) => {
+    setSuggestionPicked(true);
+    setVisitorName(item.name);
+    setVisitorPhone(item.phone || '');
+    setVisitorId(item.visitor_id || '');
+    if (item.phone && !showMoreData) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setShowMoreData(true);
+    }
+  };
+
+  const removeSuggestion = async (item) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // Se oculta al instante; luego se guarda
+    const hiddenAt = new Date().toISOString();
+    setSuggestionPrefs((prefs) =>
+      prefs ? { ...prefs, hidden: { ...prefs.hidden, [normalizeVisitorName(item.name)]: hiddenAt } } : prefs
+    );
+    const saved = await hideSuggestion(userId, item.name);
+    setSuggestionPrefs(saved);
+  };
 
   // Quick Delivery states
   const [showQuickModal, setShowQuickModal] = useState(false);
@@ -480,6 +558,8 @@ export default function Visits() {
 
   const resetForm = () => {
     setQrType('single');
+    setSuggestionPicked(false);
+    setNameFocused(false);
     setVisitorName('');
     setVisitorPhone('');
     setVisitorId('');
@@ -495,6 +575,12 @@ export default function Visits() {
     setEndTime(new Date(new Date().setHours(18, 0, 0)));
     setFoundUser(null);
     setSendInApp(false);
+  };
+
+  // Cerrar sin crear: no queda nada escrito a medias
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    resetForm();
   };
 
   const toggleAllDays = () => {
@@ -1299,19 +1385,19 @@ return (
       visible={showCreateModal}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={() => setShowCreateModal(false)}
+      onRequestClose={closeCreateModal}
     >
       <View style={styles.modalContainer}>
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+            <TouchableOpacity onPress={closeCreateModal}>
               <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>{t('visits.newQRCode')}</Text>
             <View style={{ width: scale(60) }} />
           </View>
 
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* QR Type Selector */}
             <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.qrType')}</Text>
             <View style={styles.typeSelector}>
@@ -1350,8 +1436,18 @@ return (
               placeholder={t('visits.visitorNamePlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               value={visitorName}
-              onChangeText={setVisitorName}
+              onChangeText={handleVisitorNameChange}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setNameFocused(false)}
+              autoCorrect={false}
               maxFontSizeMultiplier={1.2}
+            />
+            {/* Visitas anteriores: con 2 letras o más, hasta 6 */}
+            <VisitorSuggestions
+              items={visibleSuggestions}
+              t={t}
+              onSelect={selectSuggestion}
+              onRemove={removeSuggestion}
             />
 
             {/* Identificación obligatoria en esta comunidad: siempre visible, fuera de la sección */}
@@ -1651,7 +1747,7 @@ return (
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setShowCreateModal(false)}
+                onPress={closeCreateModal}
               >
                 <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
               </TouchableOpacity>

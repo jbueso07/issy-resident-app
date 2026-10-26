@@ -210,6 +210,13 @@ export default function Profile() {
           route: '/edit-profile',
           color: COLORS.indigo,
         },
+        {
+          icon: 'shield-checkmark-outline',
+          title: t('profile.privacy.title', 'Privacidad'),
+          subtitle: t('profile.privacy.menuDesc', 'Sugerencias de visitas'),
+          route: '/privacy',
+          color: COLORS.teal,
+        },
       ]
     },
     {
