@@ -9,6 +9,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Misma escala que home.js: diseño base en 375 de ancho
 export const scale = (size) => (SCREEN_WIDTH / 375) * size;
+// Letra del home: crece solo el 40% de lo que crece scale() (en pantallas anchas se veía grande y pesada)
+export const fs = (size) => size + (scale(size) - size) * 0.4;
 
 // ============ COLORES ============
 export const colors = {
@@ -67,11 +69,15 @@ export const MAX_FONT_SCALE = 1.6;
 // Solo para las pantallas del home. boxShadow necesita la nueva arquitectura (RN 0.81 la tiene)
 // y en Android: sombras externas desde Android 9 (API 28), internas desde Android 10 (API 29).
 // Más viejo: RN no dibuja la sombra; se usa un borde sutil para que las formas no desaparezcan.
-const NEU_LIGHT = 'rgba(255, 255, 255, 0.05)';
-const NEU_DARK = 'rgba(0, 0, 0, 0.42)';
+const NEU_LIGHT = 'rgba(255, 255, 255, 0.06)';
+const NEU_DARK = 'rgba(0, 0, 0, 0.5)';
 
 export const neu = {
-  bg: '#202B2E',
+  bg: '#1E272A',
+  // Superficies en relieve (tarjeta, acciones, recientes, barra, botones del encabezado)
+  raised: '#253135',
+  // Superficies hundidas (chips, carril del selector, círculo de ícono en recientes)
+  sunken: '#202A2D',
   // Solo respaldo (Android viejo) y fondo detrás de filas deslizables
   bgDeep: '#1A2326',
   light: NEU_LIGHT,
@@ -84,15 +90,16 @@ export const neu = {
   blue: '#8FC9F5',
 
   text: '#E4ECEB',
+  textLabel: '#C9D1D0',
   textSoft: '#9A9FA4',
 };
 
 const NEU_SHADOWS = {
-  raised: `-6px -6px 14px ${NEU_LIGHT}, 7px 7px 16px ${NEU_DARK}`,
-  sunken: `inset -6px -6px 14px ${NEU_LIGHT}, inset 7px 7px 16px ${NEU_DARK}`,
-  // Mitad de distancia para piezas chicas (chips, pastilla del selector)
-  raisedSm: `-3px -3px 7px ${NEU_LIGHT}, 4px 4px 8px ${NEU_DARK}`,
-  sunkenSm: `inset -3px -3px 7px ${NEU_LIGHT}, inset 4px 4px 8px ${NEU_DARK}`,
+  raised: `-5px -5px 12px ${NEU_LIGHT}, 6px 6px 14px ${NEU_DARK}`,
+  sunken: `inset -5px -5px 12px ${NEU_LIGHT}, inset 6px 6px 14px ${NEU_DARK}`,
+  // Mitad de distancia y desenfoque para piezas chicas (chips, pastilla del selector, botón QR)
+  raisedSm: `-2.5px -2.5px 6px ${NEU_LIGHT}, 3px 3px 7px ${NEU_DARK}`,
+  sunkenSm: `inset -2.5px -2.5px 6px ${NEU_LIGHT}, inset 3px 3px 7px ${NEU_DARK}`,
 };
 
 const ANDROID_API = Platform.OS === 'android' ? Platform.Version : null;
@@ -102,12 +109,12 @@ const CAN_INSET = ANDROID_API === null || ANDROID_API >= 29;
 const RAISED_FALLBACK = { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' };
 const SUNKEN_FALLBACK = { backgroundColor: neu.bgDeep, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.25)' };
 
-// Estilos listos: style={[styles.x, neuSurface.raised]}
+// Estilos listos (traen su color de fondo): style={[styles.x, neuSurface.raised]}
 export const neuSurface = {
-  raised: CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raised } : RAISED_FALLBACK,
-  sunken: CAN_INSET ? { boxShadow: NEU_SHADOWS.sunken } : SUNKEN_FALLBACK,
-  raisedSm: CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raisedSm } : RAISED_FALLBACK,
-  sunkenSm: CAN_INSET ? { boxShadow: NEU_SHADOWS.sunkenSm } : SUNKEN_FALLBACK,
+  raised: { backgroundColor: neu.raised, ...(CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raised } : RAISED_FALLBACK) },
+  sunken: { backgroundColor: neu.sunken, ...(CAN_INSET ? { boxShadow: NEU_SHADOWS.sunken } : SUNKEN_FALLBACK) },
+  raisedSm: { backgroundColor: neu.raised, ...(CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raisedSm } : RAISED_FALLBACK) },
+  sunkenSm: { backgroundColor: neu.sunken, ...(CAN_INSET ? { boxShadow: NEU_SHADOWS.sunkenSm } : SUNKEN_FALLBACK) },
 };
 
 // Colores de la piel actual → su equivalente neu (íconos de funciones y de recientes)
@@ -126,4 +133,4 @@ const NEU_ACCENTS = {
 };
 export const toNeuAccent = (color) => NEU_ACCENTS[color] || color || neu.textSoft;
 
-export default { colors, gradients, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent };
+export default { colors, gradients, radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent };

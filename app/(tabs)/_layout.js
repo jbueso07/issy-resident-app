@@ -2,7 +2,7 @@
 // ISSY Resident App - Tab Bar ProHome Dark Theme + i18n
 // Estructura: Inicio | Anuncios | + (Nuevo QR) | Mis QR | Perfil
 // Barra propia (tabBar) para el indicador deslizante y el botón + que abre NewQRSheet.
-// Piel i5: barra en relieve, pestaña activa en círculo teal y + en círculo en relieve.
+// Piel i5: barra en relieve, pestaña activa con ícono teal y punto debajo, + en círculo en relieve.
 
 import { useEffect, useRef, useState } from 'react';
 import { Tabs } from 'expo-router';
@@ -53,6 +53,7 @@ const BAR_ITEMS = [
 ];
 
 const PILL_WIDTH = 42;
+const ACTIVE_DOT = 4;
 const BAR_PADDING = 4;
 const BAR_BORDER = 0;
 // Lo que el botón + sobresale por arriba de la barra
@@ -133,7 +134,7 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
               { left: BAR_PADDING, opacity: indicatorOpacity, transform: [{ translateX: indicatorX }] },
             ]}
           >
-            <View style={styles.indicatorPill} />
+            <View style={styles.indicatorDot} />
           </Animated.View>
         )}
 
@@ -152,7 +153,7 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
               accessibilityState={{ selected: isActive }}
             >
               <View style={styles.tabIconContainer}>
-                <Icon size={22} color={isActive ? neu.bg : neu.textSoft} />
+                <Icon size={22} color={isActive ? neu.teal : neu.textSoft} />
               </View>
             </Pressable>
           );
@@ -224,7 +225,6 @@ const styles = StyleSheet.create({
     height: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: neu.bg,
     borderRadius: 40,
     paddingHorizontal: BAR_PADDING,
     ...neuSurface.raised,
@@ -244,17 +244,17 @@ const styles = StyleSheet.create({
     height: PILL_WIDTH,
   },
 
-  // Círculo teal que se desliza detrás del icono activo
+  // Punto teal que se desliza debajo del icono activo
   indicator: {
     position: 'absolute',
-    top: (60 - PILL_WIDTH) / 2,
+    top: (60 + PILL_WIDTH) / 2 - ACTIVE_DOT,
     width: PILL_WIDTH,
     alignItems: 'center',
   },
-  indicatorPill: {
-    width: PILL_WIDTH,
-    height: PILL_WIDTH,
-    borderRadius: PILL_WIDTH / 2,
+  indicatorDot: {
+    width: ACTIVE_DOT,
+    height: ACTIVE_DOT,
+    borderRadius: ACTIVE_DOT / 2,
     backgroundColor: neu.teal,
   },
 
@@ -268,10 +268,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   centerButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: neu.bg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },

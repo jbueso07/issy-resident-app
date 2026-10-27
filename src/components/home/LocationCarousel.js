@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/useTranslation';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -27,9 +27,9 @@ const SHADOW_ROOM = scale(22);
 
 // Marca de agua: logo "issy" completo, recortado por la esquina inferior derecha de la tarjeta.
 // Ajustar la opacidad después de verla en el teléfono.
-export const CARD_WATERMARK_OPACITY = 0.07;
+export const CARD_WATERMARK_OPACITY = 0.045;
 const WATERMARK = require('../../../assets/logos/issy-watermark.png');
-const WATERMARK_WIDTH = CARD_WIDTH * 0.45;
+const WATERMARK_WIDTH = CARD_WIDTH * 0.58;
 const WATERMARK_HEIGHT = (WATERMARK_WIDTH * 549) / 720;
 
 // Con más residenciales que esto, los puntos se ocultan y queda solo el chip "X de Y"
@@ -180,6 +180,7 @@ export default function LocationCarousel({
                 </View>
                 <PressableScale
                   variant="neu"
+                  neuSmall
                   style={styles.cameraButton}
                   onPress={() => router.push('/edit-profile')}
                   hitSlop={8}
@@ -193,7 +194,7 @@ export default function LocationCarousel({
 
           <View style={styles.userInfo}>
             <Text
-              style={[styles.userName, font(700)]}
+              style={[styles.userName, font(600)]}
               maxFontSizeMultiplier={MAX_FONT_SCALE}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -203,7 +204,7 @@ export default function LocationCarousel({
             </Text>
             {roleLabel && (
               <Text
-                style={[styles.role, font(500)]}
+                style={[styles.role, font(400)]}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -218,6 +219,7 @@ export default function LocationCarousel({
           {!hasKnownNoHome(item) && (
             <PressableScale
               variant="neu"
+              neuSmall
               style={styles.qrButton}
               onPress={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
               accessibilityLabel={t('visits.tabs.myQR')}
@@ -229,10 +231,10 @@ export default function LocationCarousel({
 
         <View style={styles.bottomRow}>
           <View style={styles.locationInfo}>
-            <Text style={[styles.eyebrow, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+            <Text style={[styles.eyebrow, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
               {t('home2.myResidence', 'Mi residencial')}
             </Text>
-            <Text style={[styles.locationName, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+            <Text style={[styles.locationName, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
               {item.name || t('home.myCommunity')}
             </Text>
             {!!item.house_number && (
@@ -324,9 +326,10 @@ export default function LocationCarousel({
   );
 }
 
-const PHOTO_WIDTH = scale(62);
-const PHOTO_HEIGHT = scale(72);
-const PHOTO_RING = 3;
+const PHOTO_WIDTH = scale(58);
+const PHOTO_HEIGHT = scale(66);
+const PHOTO_RING = 2;
+const CHIP_HEIGHT = scale(30);
 
 const styles = StyleSheet.create({
   // Los márgenes negativos devuelven el espacio que se agregó para la sombra
@@ -341,14 +344,13 @@ const styles = StyleSheet.create({
   cardShadow: {
     width: CARD_WIDTH,
     borderRadius: CARD_RADIUS,
-    backgroundColor: neu.bg,
   },
   card: {
     width: CARD_WIDTH,
     minHeight: scale(176),
     justifyContent: 'space-between',
     borderRadius: CARD_RADIUS,
-    backgroundColor: neu.bg,
+    backgroundColor: neu.raised,
     overflow: 'hidden',
     padding: scale(spacing.lg),
     gap: scale(spacing.lg),
@@ -359,8 +361,8 @@ const styles = StyleSheet.create({
   // Esquina inferior derecha (detrás del chip "X de Y"), cortada por los bordes derecho e inferior
   watermark: {
     position: 'absolute',
-    right: -WATERMARK_WIDTH * 0.14,
-    bottom: -WATERMARK_HEIGHT * 0.2,
+    right: '-10%',
+    bottom: -14,
     width: WATERMARK_WIDTH,
     height: WATERMARK_HEIGHT,
     opacity: CARD_WATERMARK_OPACITY,
@@ -384,16 +386,16 @@ const styles = StyleSheet.create({
     height: PHOTO_HEIGHT,
     borderRadius: scale(19),
     borderWidth: PHOTO_RING,
-    borderColor: neu.coral,
+    borderColor: neu.teal,
   },
   initialsBox: {
-    backgroundColor: neu.bg,
+    backgroundColor: neu.sunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initials: {
-    fontSize: scale(22),
-    fontWeight: '700',
+    fontSize: fs(20),
+    fontWeight: '600',
     color: neu.text,
   },
   cameraButton: {
@@ -403,7 +405,7 @@ const styles = StyleSheet.create({
     width: scale(26),
     height: scale(26),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -412,13 +414,13 @@ const styles = StyleSheet.create({
     paddingTop: scale(spacing.xs),
   },
   userName: {
-    fontSize: scale(17),
-    fontWeight: '700',
+    fontSize: fs(17),
+    fontWeight: '600',
     color: neu.text,
   },
   role: {
-    fontSize: scale(13),
-    fontWeight: '500',
+    fontSize: fs(13),
+    fontWeight: '400',
     color: neu.textSoft,
     marginTop: scale(2),
   },
@@ -426,13 +428,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(2),
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(5),
+    height: CHIP_HEIGHT,
+    paddingHorizontal: scale(12),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   chipText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     fontWeight: '600',
     color: neu.text,
   },
@@ -445,34 +446,34 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eyebrow: {
-    fontSize: scale(12),
-    fontWeight: '500',
+    fontSize: fs(11.5),
+    fontWeight: '400',
     color: neu.textSoft,
   },
   locationName: {
-    fontSize: scale(20),
-    fontWeight: '700',
+    fontSize: fs(22),
+    fontWeight: '600',
     color: neu.text,
     marginTop: scale(2),
   },
   houseChip: {
     alignSelf: 'flex-start',
+    justifyContent: 'center',
     marginTop: scale(spacing.sm),
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
+    height: CHIP_HEIGHT,
+    paddingHorizontal: scale(12),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   house: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     fontWeight: '500',
     color: neu.text,
   },
   qrButton: {
-    width: scale(48),
-    height: scale(48),
+    width: scale(52),
+    height: scale(52),
     borderRadius: scale(radius.md),
-    backgroundColor: neu.bg,
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -483,7 +484,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.md),
     paddingVertical: scale(spacing.xs),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   dots: {
     flexDirection: 'row',

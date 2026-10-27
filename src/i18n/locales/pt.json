@@ -2201,7 +2201,8 @@
       "recentShort": "Recentes",
       "functions": "Todas as funções",
       "functionsShort": "Funções",
-      "admin": "Administração"
+      "admin": "Administração",
+      "adminShort": "Admin"
     },
     "switchFailed": "Não foi possível trocar de residencial. Tente novamente.",
     "receivedQR": {

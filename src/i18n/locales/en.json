@@ -2389,7 +2389,8 @@
       "recentShort": "Recent",
       "functions": "All functions",
       "functionsShort": "Functions",
-      "admin": "Administration"
+      "admin": "Administration",
+      "adminShort": "Admin"
     },
     "switchFailed": "Couldn't switch residence. Please try again.",
     "receivedQR": {

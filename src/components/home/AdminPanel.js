@@ -7,7 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 import FunctionGrid from './FunctionGrid';
 import { useHomeFont } from '../../theme/homeFont';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { colors, radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 export default function AdminPanel({ isSuperAdmin = false, locationName, size = 1 }) {
   const { t } = useTranslation();
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   managing: {
     flex: 1,
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: neu.text,
   },
@@ -118,17 +118,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
     paddingVertical: scale(4),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   roleTagSuper: {
     backgroundColor: neu.teal,
   },
   roleText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     fontWeight: '700',
     color: neu.textSoft,
   },
   roleTextSuper: {
-    color: neu.bg,
+    color: neu.raised,
   },
 });

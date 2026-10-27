@@ -11,7 +11,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import FunctionGrid, { GRID_SIZES } from './FunctionGrid';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { colors, radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const ICON_SIZE_KEY = 'home_icon_size';
 const DEFAULT_ICON_SIZE = 1;
@@ -299,11 +299,10 @@ const styles = StyleSheet.create({
     minHeight: scale(44),
     paddingHorizontal: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: neu.bg,
   },
   searchInput: {
     flex: 1,
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: neu.text,
     paddingVertical: scale(spacing.sm),
   },
@@ -311,7 +310,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: scale(4),
     borderRadius: scale(radius.md),
-    backgroundColor: neu.bg,
   },
   sizeButton: {
     width: scale(38),
@@ -320,23 +318,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sizeButtonActive: {
-    backgroundColor: neu.bg,
-  },
+  sizeButtonActive: {},
   empty: {
     alignItems: 'center',
     gap: scale(spacing.sm),
     paddingVertical: scale(spacing.xl),
     borderRadius: scale(radius.lg),
-    backgroundColor: neu.bg,
   },
   emptyText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: neu.textSoft,
     textAlign: 'center',
   },
   hint: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: neu.textSoft,
     textAlign: 'center',
     marginTop: scale(spacing.xs),

@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale, { getNeuSurface } from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent } from '../../theme/tokens';
+import { radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent } from '../../theme/tokens';
 
 export const GRID_SIZES = [
   { columns: 4, box: 52, icon: 22, font: 11 },
@@ -73,7 +73,7 @@ export default function FunctionGrid({ groups, size = 1 }) {
                       )}
                     </View>
                     <Text
-                      style={[styles.label, { fontSize: scale(config.font) }, font(500)]}
+                      style={[styles.label, { fontSize: fs(config.font) }, font(500)]}
                       maxFontSizeMultiplier={MAX_FONT_SCALE}
                       numberOfLines={2}
                     >
@@ -95,7 +95,6 @@ const styles = StyleSheet.create({
     gap: scale(spacing.lg),
   },
   card: {
-    backgroundColor: neu.bg,
     borderRadius: scale(radius.xl),
     paddingTop: scale(spacing.lg),
     paddingBottom: scale(spacing.sm),
@@ -115,12 +114,12 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '700',
     color: neu.text,
   },
   count: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: neu.textSoft,
   },
@@ -138,7 +137,6 @@ const styles = StyleSheet.create({
   iconBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: neu.bg,
   },
   badge: {
     position: 'absolute',
@@ -153,9 +151,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    fontSize: scale(10),
+    fontSize: fs(10),
     fontWeight: '700',
-    color: neu.bg,
+    color: neu.raised,
   },
   label: {
     fontWeight: '500',

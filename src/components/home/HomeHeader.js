@@ -7,7 +7,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import NotificationBell from '../NotificationBell';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { radius, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { radius, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const ISSY_URL = 'https://joinissy.com';
 const LOGO = require('../../../assets/logos/issy-header.png');
@@ -52,6 +52,7 @@ export default function HomeHeader() {
       <View style={styles.actions}>
         <PressableScale
           variant="neu"
+          neuSmall
           style={styles.iconButton}
           onPress={handleShare}
           hitSlop={6}
@@ -62,7 +63,7 @@ export default function HomeHeader() {
         <NotificationBell
           size={scale(22)}
           color={neu.text}
-          style={[styles.iconButton, neuSurface.raised]}
+          style={[styles.iconButton, neuSurface.raisedSm]}
           badgeStyle={styles.bellBadge}
         />
       </View>
@@ -92,12 +93,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   tagline: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: neu.text,
   },
   domain: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: neu.textSoft,
     marginTop: scale(2),
   },
@@ -110,12 +111,12 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bellBadge: {
     backgroundColor: neu.coral,
-    borderColor: neu.bg,
+    borderColor: neu.raised,
   },
 });

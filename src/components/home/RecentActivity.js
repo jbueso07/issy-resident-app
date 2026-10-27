@@ -32,7 +32,7 @@ import { sendTokenToBackend } from '../../hooks/useNotifications';
 import { getNotificationGroup, getNotificationRoute } from '../../utils/notificationRoute';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -71,6 +71,11 @@ const GROUP_ICONS = {
 };
 
 const LOCALES = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
+
+// Los títulos del backend traen un emoji al inicio (🚪, 🚗…); en el home no se muestra
+// Solo pictogramas (con tono de piel, selector de variante y unión): los dígitos no son emoji
+const EMOJI_PREFIX = /^(?:[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}]+\s*)+/u;
+const stripEmoji = (text) => String(text || '').replace(EMOJI_PREFIX, '').trim();
 
 // Mismo type + title + minuto de created_at = un solo elemento (conserva todos los ids)
 const dedupe = (list) => {
@@ -176,29 +181,24 @@ function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint,
             <Ionicons name={GROUP_ICONS[group] || 'notifications-outline'} size={scale(18)} color={color} />
           </View>
           <View style={styles.rowContent}>
-            <View style={styles.rowHeader}>
-              {isUnread && <View style={[styles.unreadDot, { backgroundColor: color }]} />}
-              <Text style={[styles.group, { color }, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                {groupLabel}
+            {/* "Visita · 11 oct" */}
+            <Text style={[styles.group, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+              {groupLabel} · {timeLabel}
+            </Text>
+            <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+              {stripEmoji(item.title)}
+            </Text>
+            {!!item.message && (
+              <Text style={[styles.message, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                {item.message}
               </Text>
-              <Text style={[styles.time, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                {timeLabel}
-              </Text>
-            </View>
-            <View style={styles.rowBody}>
-              <View style={styles.rowText}>
-                <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                {!!item.message && (
-                  <Text style={[styles.message, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                    {item.message}
-                  </Text>
-                )}
-              </View>
-              {route && <Ionicons name="chevron-forward" size={scale(18)} color={neu.textSoft} />}
-            </View>
+            )}
           </View>
+          {isUnread ? (
+            <View style={styles.unreadDot} />
+          ) : (
+            route && <Ionicons name="chevron-forward" size={scale(18)} color={neu.textSoft} />
+          )}
         </PressableScale>
       </Animated.View>
     </View>
@@ -612,14 +612,14 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
             <View key={item.key} style={[styles.row, styles.hiddenRow, neuSurface.sunken]}>
               <View style={styles.rowText}>
                 <Text
-                  style={[styles.group, { color: GROUP_COLORS[getNotificationGroup(item.type)] }, font(700)]}
+                  style={[styles.group, font(400)]}
                   maxFontSizeMultiplier={MAX_FONT_SCALE}
                   numberOfLines={1}
                 >
                   {groupLabel(item.type)}
                 </Text>
                 <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                  {item.title}
+                  {stripEmoji(item.title)}
                 </Text>
               </View>
               <PressableScale variant="neu" style={styles.unhideButton} onPress={() => unhideItem(item)}>
@@ -644,7 +644,6 @@ const styles = StyleSheet.create({
   },
   rowShadow: {
     borderRadius: scale(radius.lg),
-    backgroundColor: neu.bg,
   },
   rowWrap: {
     borderRadius: scale(radius.lg),
@@ -653,60 +652,43 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: neu.bg,
+    backgroundColor: neu.raised,
     borderRadius: scale(radius.lg),
     paddingVertical: scale(spacing.md),
     paddingHorizontal: scale(spacing.md),
     gap: scale(spacing.md),
   },
   typeIcon: {
-    width: scale(40),
-    height: scale(40),
+    width: scale(44),
+    height: scale(44),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowContent: {
     flex: 1,
-    gap: scale(spacing.xs),
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(6),
+    gap: scale(2),
   },
   unreadDot: {
-    width: scale(8),
-    height: scale(8),
+    width: 8,
+    height: 8,
     borderRadius: radius.pill,
+    backgroundColor: neu.teal,
   },
   group: {
-    flex: 1,
-    fontSize: scale(11),
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  time: {
-    fontSize: scale(12),
+    fontSize: fs(11),
     color: neu.textSoft,
-  },
-  rowBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(spacing.sm),
   },
   rowText: {
     flex: 1,
   },
   title: {
-    fontSize: scale(15),
+    fontSize: fs(14.5),
     fontWeight: '600',
     color: neu.text,
   },
   message: {
-    fontSize: scale(13),
+    fontSize: fs(12.5),
     color: neu.textSoft,
     marginTop: scale(2),
   },
@@ -725,25 +707,24 @@ const styles = StyleSheet.create({
     gap: scale(2),
   },
   hideText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     fontWeight: '600',
     color: neu.text,
   },
   card: {
-    backgroundColor: neu.bg,
     borderRadius: scale(radius.lg),
     padding: scale(spacing.xl),
     alignItems: 'center',
     gap: scale(spacing.sm),
   },
   cardTitle: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: neu.text,
     textAlign: 'center',
   },
   cardText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: neu.textSoft,
     textAlign: 'center',
   },
@@ -763,9 +744,9 @@ const styles = StyleSheet.create({
     backgroundColor: neu.teal,
   },
   primaryButtonText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '700',
-    color: neu.bg,
+    color: neu.raised,
     textAlign: 'center',
   },
   undoBar: {
@@ -776,18 +757,17 @@ const styles = StyleSheet.create({
     paddingVertical: scale(spacing.md),
     paddingHorizontal: scale(spacing.lg),
     borderRadius: scale(radius.lg),
-    backgroundColor: neu.bg,
   },
   undoText: {
     flex: 1,
   },
   undoTitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: neu.text,
   },
   undoSub: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: neu.textSoft,
     marginTop: scale(2),
   },
@@ -796,7 +776,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(spacing.sm),
   },
   undoButtonText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '700',
     color: neu.teal,
   },
@@ -807,7 +787,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(spacing.sm),
   },
   showHiddenText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: neu.textSoft,
   },
@@ -821,10 +801,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.md),
     paddingVertical: scale(spacing.sm),
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   unhideText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: neu.text,
   },

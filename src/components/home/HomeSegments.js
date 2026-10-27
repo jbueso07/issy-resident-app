@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, ActivityIndicator } from 'react-native';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
+import { radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const TRACK_PADDING = scale(5);
 const CONTENT_SHIFT = scale(16);
@@ -106,11 +106,9 @@ export default function HomeSegments({ segments, value, onChange, loading = fals
               accessibilityState={{ selected: isActive }}
             >
               <Text
-                style={[styles.label, isActive && styles.labelActive, font(600)]}
+                style={[styles.label, isActive && styles.labelActive, font(isActive ? 600 : 500)]}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
               >
                 {label}
               </Text>
@@ -145,7 +143,6 @@ const styles = StyleSheet.create({
     marginHorizontal: scale(spacing.lg),
     padding: TRACK_PADDING,
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   pill: {
     position: 'absolute',
@@ -153,7 +150,6 @@ const styles = StyleSheet.create({
     bottom: TRACK_PADDING,
     left: TRACK_PADDING,
     borderRadius: radius.pill,
-    backgroundColor: neu.bg,
   },
   segment: {
     flex: 1,
@@ -165,12 +161,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.xs),
   },
   label: {
-    fontSize: scale(13),
-    fontWeight: '600',
+    fontSize: fs(13),
+    fontWeight: '500',
     color: neu.textSoft,
   },
   labelActive: {
-    color: neu.teal,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   content: {
     marginTop: scale(spacing.lg),

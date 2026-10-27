@@ -12,12 +12,12 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { PlusIcon, CreditCardIcon } from '../Icons';
 import PressableScale, { getNeuSurface } from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
-import { scale, MAX_FONT_SCALE, neu } from '../../theme/tokens';
+import { scale, fs, MAX_FONT_SCALE, neu } from '../../theme/tokens';
 
 const PANIC_HOLD_MS = 2000;
 
-// Círculos de 72 en relieve (piel i5)
-const BOX = scale(72);
+// Círculos de 64 en relieve (piel i5)
+const BOX = scale(64);
 const BOX_RADIUS = BOX / 2;
 const RING_STROKE = 3;
 // Perímetro del anillo (con radio = mitad del lado, el rectángulo redondeado es un círculo)
@@ -64,13 +64,13 @@ export default function QuickActions({ onPanicLongPress }) {
   const renderIcon = (action) => {
     switch (action.id) {
       case 'qr':
-        return <PlusIcon size={scale(30)} color={neu.teal} />;
+        return <PlusIcon size={scale(24)} color={neu.teal} />;
       case 'report':
-        return <Ionicons name="alert-circle-outline" size={scale(28)} color={neu.amber} />;
+        return <Ionicons name="alert-circle-outline" size={scale(24)} color={neu.amber} />;
       case 'pay':
-        return <CreditCardIcon size={scale(28)} color={neu.lilac} />;
+        return <CreditCardIcon size={scale(24)} color={neu.lilac} />;
       case 'panic':
-        return <Ionicons name="warning" size={scale(28)} color={neu.coral} />;
+        return <Ionicons name="warning" size={scale(24)} color={neu.coral} />;
       default:
         return null;
     }
@@ -126,13 +126,11 @@ export default function QuickActions({ onPanicLongPress }) {
           {({ pressed }) => (
             <>
               {renderBox(action, pressed)}
-              {/* Una sola línea en todos los idiomas: "Emergencia" se partía en Android */}
+              {/* Una sola línea y mismo tamaño en todas: "Emergencia" se partía en Android */}
               <Text
-                style={[styles.label, action.isPanic && styles.labelPanic, font(action.isPanic ? 600 : 500)]}
+                style={[styles.label, action.isPanic && styles.labelPanic, font(500)]}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
               >
                 {action.label}
               </Text>
@@ -149,7 +147,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(12),
+    paddingHorizontal: scale(10),
+    gap: scale(6),
     marginBottom: scale(24),
   },
   item: {
@@ -162,7 +161,6 @@ const styles = StyleSheet.create({
     width: BOX,
     height: BOX,
     borderRadius: BOX_RADIUS,
-    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(10),
@@ -174,14 +172,12 @@ const styles = StyleSheet.create({
   },
   label: {
     alignSelf: 'stretch',
-    fontSize: scale(12),
+    fontSize: fs(12),
     fontWeight: '500',
-    color: neu.textSoft,
+    color: neu.textLabel,
     textAlign: 'center',
-    paddingHorizontal: scale(2),
   },
   labelPanic: {
     color: neu.coral,
-    fontWeight: '600',
   },
 });

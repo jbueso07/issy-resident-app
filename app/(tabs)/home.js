@@ -313,7 +313,7 @@ export default function Home() {
   const segments = [
     { key: 'recent', label: t('home2.segments.recent', 'Actividades recientes'), shortLabel: t('home2.segments.recentShort', 'Recientes') },
     { key: 'functions', label: t('home2.segments.functions', 'Todas las funciones'), shortLabel: t('home2.segments.functionsShort', 'Funciones') },
-    ...(isAdmin ? [{ key: 'admin', label: t('home2.segments.admin', 'Administración') }] : []),
+    ...(isAdmin ? [{ key: 'admin', label: t('home2.segments.admin', 'Administración'), shortLabel: t('home2.segments.adminShort', 'Admin') }] : []),
   ];
 
   // Solo la primera carga decide: si Recientes llega vacía, arrancar en Todas las funciones.
