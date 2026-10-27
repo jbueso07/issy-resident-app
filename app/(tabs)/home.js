@@ -34,6 +34,7 @@ import HomeSegments from '../../src/components/home/HomeSegments';
 import RecentActivity from '../../src/components/home/RecentActivity';
 import AllFunctions, { useHomeIconSize } from '../../src/components/home/AllFunctions';
 import AdminPanel from '../../src/components/home/AdminPanel';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -627,7 +628,7 @@ export default function Home() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[neu.teal]} tintColor={neu.teal} />
           }
         >
           <HomeHeader />
@@ -667,7 +668,7 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.cyan]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[neu.teal]} tintColor={neu.teal} />
         }
       >
         <HomeHeader />
@@ -758,9 +759,10 @@ export default function Home() {
 
 // ============ STYLES ============
 const styles = StyleSheet.create({
+  // Piel i5: fondo neu solo en el home
   container: {
     flex: 1,
-    backgroundColor: COLORS.bgPrimary,
+    backgroundColor: neu.bg,
   },
   scrollContent: {
     paddingTop: scale(10),

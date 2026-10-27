@@ -6,10 +6,12 @@ import { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 import FunctionGrid from './FunctionGrid';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 export default function AdminPanel({ isSuperAdmin = false, locationName, size = 1 }) {
   const { t } = useTranslation();
+  const font = useHomeFont();
 
   const groups = useMemo(() => {
     const list = [
@@ -77,11 +79,15 @@ export default function AdminPanel({ isSuperAdmin = false, locationName, size = 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.managing} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+        <Text style={[styles.managing, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
           {t('home2.adminManaging', { name: locationName || t('home.myCommunity'), defaultValue: 'Administrando {{name}}' })}
         </Text>
-        <View style={[styles.roleTag, isSuperAdmin && styles.roleTagSuper]}>
-          <Text style={[styles.roleText, isSuperAdmin && styles.roleTextSuper]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <View style={[styles.roleTag, isSuperAdmin ? styles.roleTagSuper : neuSurface.sunkenSm]}>
+          <Text
+            style={[styles.roleText, isSuperAdmin && styles.roleTextSuper, font(700)]}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+            numberOfLines={1}
+          >
             {isSuperAdmin ? t('home2.roleSuperAdmin', 'Super Admin') : t('home2.roleAdmin', 'Administrador')}
           </Text>
         </View>
@@ -106,26 +112,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: scale(15),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   roleTag: {
     paddingHorizontal: scale(10),
     paddingVertical: scale(4),
     borderRadius: radius.pill,
-    backgroundColor: colors.well,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: neu.bg,
   },
   roleTagSuper: {
-    backgroundColor: colors.lime,
-    borderColor: colors.lime,
+    backgroundColor: neu.teal,
   },
   roleText: {
     fontSize: scale(12),
     fontWeight: '700',
-    color: colors.textSecondary,
+    color: neu.textSoft,
   },
   roleTextSuper: {
-    color: colors.textDark,
+    color: neu.bg,
   },
 });

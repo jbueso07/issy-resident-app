@@ -9,11 +9,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/useTranslation';
 import PressableScale from './PressableScale';
-import { colors, gradients, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -21,6 +21,16 @@ const GUTTER = scale(spacing.lg);
 const GAP = scale(spacing.md);
 const CARD_WIDTH = SCREEN_WIDTH - GUTTER * 2;
 const INTERVAL = CARD_WIDTH + GAP;
+const CARD_RADIUS = scale(28);
+// Espacio arriba y abajo de la lista para que la sombra en relieve no se corte
+const SHADOW_ROOM = scale(22);
+
+// Marca de agua: logo "issy" completo, recortado por la esquina inferior derecha de la tarjeta.
+// Ajustar la opacidad después de verla en el teléfono.
+export const CARD_WATERMARK_OPACITY = 0.07;
+const WATERMARK = require('../../../assets/logos/issy-watermark.png');
+const WATERMARK_WIDTH = CARD_WIDTH * 0.45;
+const WATERMARK_HEIGHT = (WATERMARK_WIDTH * 549) / 720;
 
 // Con más residenciales que esto, los puntos se ocultan y queda solo el chip "X de Y"
 const MAX_DOTS = 7;
@@ -64,6 +74,7 @@ export default function LocationCarousel({
 }) {
   const router = useRouter();
   const { t } = useTranslation();
+  const font = useHomeFont();
   const listRef = useRef(null);
 
   const cards = useMemo(() => (locations || []).filter((loc) => loc?.location_id), [locations]);
@@ -144,12 +155,18 @@ export default function LocationCarousel({
         scaleTo={0.98}
         accessible={false}
       >
-      <LinearGradient
-        colors={gradients.brand}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
+      {/* Sombra afuera, recorte adentro: así la marca de agua se corta sin cortar el relieve */}
+      <View style={[styles.cardShadow, neuSurface.raised]}>
+      <View style={styles.card}>
+        {/* Va primero: queda detrás de todo; no recibe toques ni la lee el lector de pantalla */}
+        <View
+          style={styles.watermark}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Image source={WATERMARK} style={styles.watermarkImage} resizeMode="contain" />
+        </View>
         <View style={styles.topRow}>
           <View style={styles.photoWrap}>
             {photoUri ? (
@@ -157,60 +174,42 @@ export default function LocationCarousel({
             ) : (
               <>
                 <View style={[styles.photo, styles.initialsBox]}>
-                  <Text style={styles.initials} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  <Text style={[styles.initials, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {getInitials(user)}
                   </Text>
                 </View>
                 <PressableScale
+                  variant="neu"
                   style={styles.cameraButton}
                   onPress={() => router.push('/edit-profile')}
                   hitSlop={8}
                   accessibilityLabel={t('profile.editProfile')}
                 >
-                  <Ionicons name="camera" size={scale(14)} color={colors.text} />
+                  <Ionicons name="camera" size={scale(14)} color={neu.teal} />
                 </PressableScale>
               </>
             )}
           </View>
 
           <View style={styles.userInfo}>
-            <Text style={styles.userName} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+            <Text
+              style={[styles.userName, font(700)]}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {userName}
             </Text>
             {roleLabel && (
-              <Text style={styles.role} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <Text
+                style={[styles.role, font(500)]}
+                maxFontSizeMultiplier={MAX_FONT_SCALE}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
                 {roleLabel}
-              </Text>
-            )}
-          </View>
-
-          {hasMany && (
-            <PressableScale
-              style={styles.chip}
-              onPress={onOpenLocationList}
-              disabled={switching}
-              hitSlop={6}
-              accessibilityLabel={t('home.changeLocation')}
-            >
-              <Text style={styles.chipText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {t('home2.ofN', { i: index + 1, n: total, defaultValue: '{{i}} de {{n}}' })}
-              </Text>
-              <Ionicons name="chevron-down" size={scale(12)} color={colors.textDark} />
-            </PressableScale>
-          )}
-        </View>
-
-        <View style={styles.bottomRow}>
-          <View style={styles.locationInfo}>
-            <Text style={styles.eyebrow} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {t('home2.myResidence', 'Mi residencial')}
-            </Text>
-            <Text style={styles.locationName} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
-              {item.name || t('home.myCommunity')}
-            </Text>
-            {!!item.house_number && (
-              <Text style={styles.house} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {t('myUnit.details.unit')} {item.house_number}
               </Text>
             )}
           </View>
@@ -218,26 +217,61 @@ export default function LocationCarousel({
           {/* Sin casa en esta residencial no hay QR de residente */}
           {!hasKnownNoHome(item) && (
             <PressableScale
+              variant="neu"
               style={styles.qrButton}
               onPress={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
               accessibilityLabel={t('visits.tabs.myQR')}
             >
-              <Ionicons name="qr-code-outline" size={scale(24)} color={colors.lime} />
+              <Ionicons name="qr-code-outline" size={scale(24)} color={neu.teal} />
+            </PressableScale>
+          )}
+        </View>
+
+        <View style={styles.bottomRow}>
+          <View style={styles.locationInfo}>
+            <Text style={[styles.eyebrow, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+              {t('home2.myResidence', 'Mi residencial')}
+            </Text>
+            <Text style={[styles.locationName, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+              {item.name || t('home.myCommunity')}
+            </Text>
+            {!!item.house_number && (
+              <View style={[styles.houseChip, neuSurface.sunkenSm]}>
+                <Text style={[styles.house, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                  {t('myUnit.details.unit')} {item.house_number}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {hasMany && (
+            <PressableScale
+              style={[styles.chip, neuSurface.sunkenSm]}
+              onPress={onOpenLocationList}
+              disabled={switching}
+              hitSlop={6}
+              accessibilityLabel={t('home.changeLocation')}
+            >
+              <Text style={[styles.chipText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                {t('home2.ofN', { i: index + 1, n: total, defaultValue: '{{i}} de {{n}}' })}
+              </Text>
+              <Ionicons name="chevron-down" size={scale(12)} color={neu.textSoft} />
             </PressableScale>
           )}
         </View>
 
         {switching && isVisible && (
           <View
-            style={styles.switchingBadge}
+            style={[styles.switchingBadge, neuSurface.sunkenSm]}
             accessible
             accessibilityLabel={t('home.switchingLocation')}
             accessibilityLiveRegion="polite"
           >
-            <ActivityIndicator size="small" color={colors.textDark} />
+            <ActivityIndicator size="small" color={neu.teal} />
           </View>
         )}
-      </LinearGradient>
+      </View>
+      </View>
       </PressableScale>
     );
   };
@@ -292,24 +326,49 @@ export default function LocationCarousel({
 
 const PHOTO_WIDTH = scale(62);
 const PHOTO_HEIGHT = scale(72);
+const PHOTO_RING = 3;
 
 const styles = StyleSheet.create({
+  // Los márgenes negativos devuelven el espacio que se agregó para la sombra
   container: {
-    marginBottom: scale(20),
+    marginTop: -SHADOW_ROOM,
+    marginBottom: scale(20) - SHADOW_ROOM,
   },
   listContent: {
     paddingHorizontal: GUTTER,
+    paddingVertical: SHADOW_ROOM,
+  },
+  cardShadow: {
+    width: CARD_WIDTH,
+    borderRadius: CARD_RADIUS,
+    backgroundColor: neu.bg,
   },
   card: {
     width: CARD_WIDTH,
     minHeight: scale(176),
     justifyContent: 'space-between',
-    borderRadius: scale(radius.xl),
+    borderRadius: CARD_RADIUS,
+    backgroundColor: neu.bg,
+    overflow: 'hidden',
     padding: scale(spacing.lg),
     gap: scale(spacing.lg),
   },
   cardGap: {
     marginRight: GAP,
+  },
+  // Esquina inferior derecha (detrás del chip "X de Y"), cortada por los bordes derecho e inferior
+  watermark: {
+    position: 'absolute',
+    right: -WATERMARK_WIDTH * 0.14,
+    bottom: -WATERMARK_HEIGHT * 0.2,
+    width: WATERMARK_WIDTH,
+    height: WATERMARK_HEIGHT,
+    opacity: CARD_WATERMARK_OPACITY,
+  },
+  watermarkImage: {
+    width: '100%',
+    height: '100%',
+    tintColor: '#FFFFFF',
   },
   topRow: {
     flexDirection: 'row',
@@ -324,16 +383,18 @@ const styles = StyleSheet.create({
     width: PHOTO_WIDTH,
     height: PHOTO_HEIGHT,
     borderRadius: scale(19),
+    borderWidth: PHOTO_RING,
+    borderColor: neu.coral,
   },
   initialsBox: {
-    backgroundColor: colors.darkOverlay,
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   initials: {
     fontSize: scale(22),
     fontWeight: '700',
-    color: colors.textDark,
+    color: neu.text,
   },
   cameraButton: {
     position: 'absolute',
@@ -342,7 +403,7 @@ const styles = StyleSheet.create({
     width: scale(26),
     height: scale(26),
     borderRadius: radius.pill,
-    backgroundColor: colors.textDark,
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -353,12 +414,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: scale(17),
     fontWeight: '700',
-    color: colors.textDark,
+    color: neu.text,
   },
   role: {
     fontSize: scale(13),
     fontWeight: '500',
-    color: colors.textDarkSecondary,
+    color: neu.textSoft,
     marginTop: scale(2),
   },
   chip: {
@@ -368,12 +429,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
     paddingVertical: scale(5),
     borderRadius: radius.pill,
-    backgroundColor: colors.darkOverlay,
+    backgroundColor: neu.bg,
   },
   chipText: {
     fontSize: scale(12),
     fontWeight: '600',
-    color: colors.textDark,
+    color: neu.text,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -386,24 +447,32 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: scale(12),
     fontWeight: '500',
-    color: colors.textDarkSecondary,
+    color: neu.textSoft,
   },
   locationName: {
     fontSize: scale(20),
     fontWeight: '700',
-    color: colors.textDark,
+    color: neu.text,
     marginTop: scale(2),
   },
+  houseChip: {
+    alignSelf: 'flex-start',
+    marginTop: scale(spacing.sm),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: radius.pill,
+    backgroundColor: neu.bg,
+  },
   house: {
-    fontSize: scale(13),
-    color: colors.textDarkSecondary,
-    marginTop: scale(2),
+    fontSize: scale(12),
+    fontWeight: '500',
+    color: neu.text,
   },
   qrButton: {
     width: scale(48),
     height: scale(48),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.textDark,
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -414,13 +483,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.md),
     paddingVertical: scale(spacing.xs),
     borderRadius: radius.pill,
-    backgroundColor: colors.darkOverlay,
+    backgroundColor: neu.bg,
   },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: scale(spacing.sm),
+    marginTop: scale(spacing.sm) - SHADOW_ROOM,
   },
   // Área táctil de 24×24 alrededor del punto visible
   dotHitArea: {
@@ -433,10 +502,10 @@ const styles = StyleSheet.create({
     width: scale(6),
     height: scale(6),
     borderRadius: radius.pill,
-    backgroundColor: colors.textMuted,
+    backgroundColor: neu.textSoft,
   },
   dotActive: {
     width: scale(18),
-    backgroundColor: colors.cyan,
+    backgroundColor: neu.teal,
   },
 });

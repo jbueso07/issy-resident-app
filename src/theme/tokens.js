@@ -3,7 +3,7 @@
 // Solo los usan los componentes nuevos de src/components/home/.
 // No migrar aquí los colores de otras pantallas en esta etapa.
 
-import { Dimensions } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -63,4 +63,67 @@ export const spacing = {
 // Tope de letra para los componentes nuevos del home (las pantallas de QR no escalan)
 export const MAX_FONT_SCALE = 1.6;
 
-export default { colors, gradients, radius, spacing, scale, MAX_FONT_SCALE };
+// ============ TEMA NEU (piel i5 del home: relieve y hundido) ============
+// Solo para las pantallas del home. boxShadow necesita la nueva arquitectura (RN 0.81 la tiene)
+// y en Android: sombras externas desde Android 9 (API 28), internas desde Android 10 (API 29).
+// Más viejo: RN no dibuja la sombra; se usa un borde sutil para que las formas no desaparezcan.
+const NEU_LIGHT = 'rgba(255, 255, 255, 0.05)';
+const NEU_DARK = 'rgba(0, 0, 0, 0.42)';
+
+export const neu = {
+  bg: '#202B2E',
+  // Solo respaldo (Android viejo) y fondo detrás de filas deslizables
+  bgDeep: '#1A2326',
+  light: NEU_LIGHT,
+  dark: NEU_DARK,
+
+  teal: '#4FD3B8',
+  coral: '#F2766B',
+  amber: '#F2BE55',
+  lilac: '#A594F5',
+  blue: '#8FC9F5',
+
+  text: '#E4ECEB',
+  textSoft: '#9A9FA4',
+};
+
+const NEU_SHADOWS = {
+  raised: `-6px -6px 14px ${NEU_LIGHT}, 7px 7px 16px ${NEU_DARK}`,
+  sunken: `inset -6px -6px 14px ${NEU_LIGHT}, inset 7px 7px 16px ${NEU_DARK}`,
+  // Mitad de distancia para piezas chicas (chips, pastilla del selector)
+  raisedSm: `-3px -3px 7px ${NEU_LIGHT}, 4px 4px 8px ${NEU_DARK}`,
+  sunkenSm: `inset -3px -3px 7px ${NEU_LIGHT}, inset 4px 4px 8px ${NEU_DARK}`,
+};
+
+const ANDROID_API = Platform.OS === 'android' ? Platform.Version : null;
+const CAN_OUTSET = ANDROID_API === null || ANDROID_API >= 28;
+const CAN_INSET = ANDROID_API === null || ANDROID_API >= 29;
+
+const RAISED_FALLBACK = { borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' };
+const SUNKEN_FALLBACK = { backgroundColor: neu.bgDeep, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.25)' };
+
+// Estilos listos: style={[styles.x, neuSurface.raised]}
+export const neuSurface = {
+  raised: CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raised } : RAISED_FALLBACK,
+  sunken: CAN_INSET ? { boxShadow: NEU_SHADOWS.sunken } : SUNKEN_FALLBACK,
+  raisedSm: CAN_OUTSET ? { boxShadow: NEU_SHADOWS.raisedSm } : RAISED_FALLBACK,
+  sunkenSm: CAN_INSET ? { boxShadow: NEU_SHADOWS.sunkenSm } : SUNKEN_FALLBACK,
+};
+
+// Colores de la piel actual → su equivalente neu (íconos de funciones y de recientes)
+const NEU_ACCENTS = {
+  [colors.teal]: neu.teal,
+  [colors.lime]: neu.teal,
+  [colors.cyan]: neu.blue,
+  [colors.blue]: neu.blue,
+  [colors.purple]: neu.lilac,
+  [colors.indigo]: neu.lilac,
+  [colors.orange]: neu.amber,
+  [colors.amber]: neu.amber,
+  [colors.coral]: neu.coral,
+  [colors.danger]: neu.coral,
+  [colors.textSecondary]: neu.textSoft,
+};
+export const toNeuAccent = (color) => NEU_ACCENTS[color] || color || neu.textSoft;
+
+export default { colors, gradients, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent };

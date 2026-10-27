@@ -10,7 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from '../../hooks/useTranslation';
 import FunctionGrid, { GRID_SIZES } from './FunctionGrid';
 import PressableScale from './PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const ICON_SIZE_KEY = 'home_icon_size';
 const DEFAULT_ICON_SIZE = 1;
@@ -88,6 +89,7 @@ function GridSizeIcon({ cells, color }) {
 
 export default function AllFunctions({ featureFlags = {}, size: sizeProp, onSizeChange }) {
   const { t } = useTranslation();
+  const font = useHomeFont();
   const [query, setQuery] = useState('');
   const [ownSize, setOwnSize] = useHomeIconSize();
 
@@ -219,14 +221,14 @@ export default function AllFunctions({ featureFlags = {}, size: sizeProp, onSize
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
-        <View style={styles.search}>
-          <Ionicons name="search" size={scale(18)} color={colors.textMuted} />
+        <View style={[styles.search, neuSurface.sunken]}>
+          <Ionicons name="search" size={scale(18)} color={neu.textSoft} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, font(400)]}
             value={query}
             onChangeText={setQuery}
             placeholder={t('home2.searchFunction', 'Buscar función')}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={neu.textSoft}
             maxFontSizeMultiplier={MAX_FONT_SCALE}
             autoCorrect={false}
             autoCapitalize="none"
@@ -235,24 +237,24 @@ export default function AllFunctions({ featureFlags = {}, size: sizeProp, onSize
           />
           {query.length > 0 && (
             <PressableScale onPress={() => setQuery('')} hitSlop={10} accessibilityLabel={t('common.close')}>
-              <Ionicons name="close-circle" size={scale(18)} color={colors.textMuted} />
+              <Ionicons name="close-circle" size={scale(18)} color={neu.textSoft} />
             </PressableScale>
           )}
         </View>
 
-        <View style={styles.sizeSelector} accessibilityRole="radiogroup">
+        <View style={[styles.sizeSelector, neuSurface.sunken]} accessibilityRole="radiogroup">
           {GRID_ICON_CELLS.map((cells, index) => {
             const isActive = index === size;
             return (
               <PressableScale
                 key={cells}
-                style={[styles.sizeButton, isActive && styles.sizeButtonActive]}
+                style={[styles.sizeButton, isActive && styles.sizeButtonActive, isActive && neuSurface.raisedSm]}
                 onPress={() => changeSize(index)}
                 accessibilityRole="radio"
                 accessibilityLabel={sizeLabels[index]}
                 accessibilityState={{ selected: isActive }}
               >
-                <GridSizeIcon cells={cells} color={isActive ? colors.textDark : colors.textSecondary} />
+                <GridSizeIcon cells={cells} color={isActive ? neu.teal : neu.textSoft} />
               </PressableScale>
             );
           })}
@@ -263,16 +265,16 @@ export default function AllFunctions({ featureFlags = {}, size: sizeProp, onSize
         {filteredGroups.length > 0 ? (
           <FunctionGrid groups={filteredGroups} size={size} />
         ) : (
-          <View style={styles.empty}>
-            <Ionicons name="search-outline" size={scale(26)} color={colors.textMuted} />
-            <Text style={styles.emptyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={[styles.empty, neuSurface.raised]}>
+            <Ionicons name="search-outline" size={scale(26)} color={neu.textSoft} />
+            <Text style={[styles.emptyText, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t('home2.noFunctionResults', 'No encontramos esa función')}
             </Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+      <Text style={[styles.hint, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {t('home2.profileHint', 'Perfil, soporte e idioma están en la pestaña Perfil')}
       </Text>
     </View>
@@ -297,19 +299,19 @@ const styles = StyleSheet.create({
     minHeight: scale(44),
     paddingHorizontal: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.card,
+    backgroundColor: neu.bg,
   },
   searchInput: {
     flex: 1,
     fontSize: scale(14),
-    color: colors.text,
+    color: neu.text,
     paddingVertical: scale(spacing.sm),
   },
   sizeSelector: {
     flexDirection: 'row',
-    padding: scale(3),
+    padding: scale(4),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.card,
+    backgroundColor: neu.bg,
   },
   sizeButton: {
     width: scale(38),
@@ -319,23 +321,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sizeButtonActive: {
-    backgroundColor: colors.cyan,
+    backgroundColor: neu.bg,
   },
   empty: {
     alignItems: 'center',
     gap: scale(spacing.sm),
     paddingVertical: scale(spacing.xl),
     borderRadius: scale(radius.lg),
-    backgroundColor: colors.card,
+    backgroundColor: neu.bg,
   },
   emptyText: {
     fontSize: scale(14),
-    color: colors.textSecondary,
+    color: neu.textSoft,
     textAlign: 'center',
   },
   hint: {
     fontSize: scale(12),
-    color: colors.textMuted,
+    color: neu.textSoft,
     textAlign: 'center',
     marginTop: scale(spacing.xs),
   },

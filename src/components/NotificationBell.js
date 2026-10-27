@@ -26,7 +26,8 @@ const COLORS = {
   textPrimary: '#FFFFFF',
 };
 
-export default function NotificationBell({ size = 24, color = COLORS.textPrimary }) {
+// style / badgeStyle: opcionales para la piel del home (sin ellos se ve igual que siempre)
+export default function NotificationBell({ size = 24, color = COLORS.textPrimary, style, badgeStyle }) {
   const router = useRouter();
   const { token } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -70,14 +71,14 @@ export default function NotificationBell({ size = 24, color = COLORS.textPrimary
 
   return (
     <TouchableOpacity 
-      style={styles.container} 
+      style={[styles.container, style]}
       onPress={handlePress}
       activeOpacity={0.7}
     >
       <Ionicons name="notifications-outline" size={size} color={color} />
       
       {unreadCount > 0 && (
-        <View style={styles.badge}>
+        <View style={[styles.badge, badgeStyle]}>
           <Text style={styles.badgeText}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </Text>

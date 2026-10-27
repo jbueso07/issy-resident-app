@@ -1,17 +1,20 @@
 // src/components/home/HomeSegments.js
-// ISSY - Selector de secciones del Home v2 (2 o 3): píldora cian animada y entrada suave del contenido.
+// ISSY - Selector de secciones del Home v2 (2 o 3): carril hundido, píldora en relieve que se desliza
+// y entrada suave del contenido.
 // children: el contenido de la sección activa, o una función (activeKey) => contenido.
 // loading: el contenido se monta pero no se ve (con un indicador en su lugar); al pasar a false entra suave.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, ActivityIndicator } from 'react-native';
 import PressableScale from './PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
-const TRACK_PADDING = scale(4);
+const TRACK_PADDING = scale(5);
 const CONTENT_SHIFT = scale(16);
 
 export default function HomeSegments({ segments, value, onChange, loading = false, children }) {
+  const font = useHomeFont();
   const [trackWidth, setTrackWidth] = useState(0);
   const count = segments.length;
   const activeIndex = Math.max(0, segments.findIndex((s) => s.key === value));
@@ -79,14 +82,14 @@ export default function HomeSegments({ segments, value, onChange, loading = fals
   return (
     <View>
       <View
-        style={styles.track}
+        style={[styles.track, neuSurface.sunken]}
         onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
         accessibilityRole="tablist"
       >
         {segmentWidth > 0 && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.pill, { width: segmentWidth, transform: [{ translateX: pillX }] }]}
+            style={[styles.pill, neuSurface.raisedSm, { width: segmentWidth, transform: [{ translateX: pillX }] }]}
           />
         )}
         {segments.map((segment, index) => {
@@ -103,9 +106,11 @@ export default function HomeSegments({ segments, value, onChange, loading = fals
               accessibilityState={{ selected: isActive }}
             >
               <Text
-                style={[styles.label, isActive && styles.labelActive]}
+                style={[styles.label, isActive && styles.labelActive, font(600)]}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
               >
                 {label}
               </Text>
@@ -126,7 +131,7 @@ export default function HomeSegments({ segments, value, onChange, loading = fals
         </View>
         {loading && (
           <View style={styles.loading} pointerEvents="none">
-            <ActivityIndicator size="small" color={colors.cyan} />
+            <ActivityIndicator size="small" color={neu.teal} />
           </View>
         )}
       </Animated.View>
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
     marginHorizontal: scale(spacing.lg),
     padding: TRACK_PADDING,
     borderRadius: radius.pill,
-    backgroundColor: colors.well,
+    backgroundColor: neu.bg,
   },
   pill: {
     position: 'absolute',
@@ -148,7 +153,7 @@ const styles = StyleSheet.create({
     bottom: TRACK_PADDING,
     left: TRACK_PADDING,
     borderRadius: radius.pill,
-    backgroundColor: colors.cyan,
+    backgroundColor: neu.bg,
   },
   segment: {
     flex: 1,
@@ -162,10 +167,10 @@ const styles = StyleSheet.create({
   label: {
     fontSize: scale(13),
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: neu.textSoft,
   },
   labelActive: {
-    color: colors.textDark,
+    color: neu.teal,
   },
   content: {
     marginTop: scale(spacing.lg),

@@ -2,30 +2,19 @@
 // ISSY Resident App - Tab Bar ProHome Dark Theme + i18n
 // Estructura: Inicio | Anuncios | + (Nuevo QR) | Mis QR | Perfil
 // Barra propia (tabBar) para el indicador deslizante y el botón + que abre NewQRSheet.
+// Piel i5: barra en relieve, pestaña activa en círculo teal y + en círculo en relieve.
 
 import { useEffect, useRef, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform, Pressable, Animated, Keyboard } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { useAuth } from '../../src/context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NewQRSheet from '../../src/components/home/NewQRSheet';
-
-// Colors ProHome Theme
-const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  white: '#FFFFFF',
-  lime: '#D4FE48',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  border: 'rgba(255, 255, 255, 0.1)',
-  inactive: 'rgba(255,255,255,0.5)',
-};
+import PressableScale from '../../src/components/home/PressableScale';
+import { neu, neuSurface } from '../../src/theme/tokens';
 
 // ============ CUSTOM SVG ICONS ============
 
@@ -65,7 +54,7 @@ const BAR_ITEMS = [
 
 const PILL_WIDTH = 42;
 const BAR_PADDING = 4;
-const BAR_BORDER = 1;
+const BAR_BORDER = 0;
 // Lo que el botón + sobresale por arriba de la barra
 const CENTER_OVERHANG = 20;
 
@@ -145,7 +134,6 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
             ]}
           >
             <View style={styles.indicatorPill} />
-            <View style={styles.indicatorLine} />
           </Animated.View>
         )}
 
@@ -164,7 +152,7 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
               accessibilityState={{ selected: isActive }}
             >
               <View style={styles.tabIconContainer}>
-                <Icon size={22} color={isActive ? COLORS.bgPrimary : COLORS.inactive} />
+                <Icon size={22} color={isActive ? neu.bg : neu.textSoft} />
               </View>
             </Pressable>
           );
@@ -172,23 +160,15 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
       </View>
 
       <View style={styles.centerOverlay} pointerEvents="box-none">
-        <Pressable
+        <PressableScale
+          variant="neu"
+          style={styles.centerButton}
           onPress={onOpenNewQR}
-          style={({ pressed }) => pressed && styles.centerPressed}
           accessibilityRole="button"
           accessibilityLabel={labels.new}
         >
-          <View style={styles.centerButtonGap}>
-            <LinearGradient
-              colors={[COLORS.teal, COLORS.lime]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.centerButtonCircle}
-            >
-              <Ionicons name="add" size={30} color={COLORS.bgPrimary} />
-            </LinearGradient>
-          </View>
-        </Pressable>
+          <Ionicons name="add" size={30} color={neu.teal} />
+        </PressableScale>
       </View>
     </View>
   );
@@ -239,20 +219,15 @@ const styles = StyleSheet.create({
     paddingTop: CENTER_OVERHANG,
   },
 
+  // Sin elevation: en Android dibujaría una segunda sombra encima del relieve
   tabBar: {
     height: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.bgSecondary,
+    backgroundColor: neu.bg,
     borderRadius: 40,
-    borderWidth: BAR_BORDER,
-    borderColor: COLORS.border,
     paddingHorizontal: BAR_PADDING,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
+    ...neuSurface.raised,
   },
 
   slot: {
@@ -266,31 +241,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: PILL_WIDTH,
-    height: 38,
+    height: PILL_WIDTH,
   },
 
-  // Píldora cian + línea inferior, se deslizan juntas detrás del icono activo
+  // Círculo teal que se desliza detrás del icono activo
   indicator: {
     position: 'absolute',
-    top: 11,
+    top: (60 - PILL_WIDTH) / 2,
     width: PILL_WIDTH,
     alignItems: 'center',
   },
   indicatorPill: {
     width: PILL_WIDTH,
-    height: 38,
-    borderRadius: 15,
-    backgroundColor: COLORS.cyan,
-  },
-  indicatorLine: {
-    marginTop: 3,
-    width: 37,
-    height: 3,
-    borderRadius: 10,
-    backgroundColor: COLORS.cyan,
+    height: PILL_WIDTH,
+    borderRadius: PILL_WIDTH / 2,
+    backgroundColor: neu.teal,
   },
 
-  // Encima de la barra: en Android el orden lo decide la elevación (la barra tiene 15)
+  // Encima de la barra (va después en el árbol; zIndex por si acaso)
   centerOverlay: {
     position: 'absolute',
     top: 0,
@@ -298,28 +266,12 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 2,
-    elevation: 16,
   },
-  centerPressed: {
-    transform: [{ scale: 0.94 }],
-  },
-  centerButtonGap: {
+  centerButton: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: COLORS.bgPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  centerButtonCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },

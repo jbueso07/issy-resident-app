@@ -2,12 +2,14 @@
 // ISSY - Cuadrícula de funciones del Home v2 (Todas las funciones y Administración).
 // groups: [{ key, title, color, items: [{ key, label, icon, color, route, params, badge }] }]
 // size: 0 = 4 por fila, 1 = 3 por fila, 2 = 2 por fila
+// Piel i5: grupos e íconos en relieve; los colores de cada función pasan a su equivalente neu.
 
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import PressableScale from './PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import PressableScale, { getNeuSurface } from './PressableScale';
+import { useHomeFont } from '../../theme/homeFont';
+import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, toNeuAccent } from '../../theme/tokens';
 
 export const GRID_SIZES = [
   { columns: 4, box: 52, icon: 22, font: 11 },
@@ -15,11 +17,9 @@ export const GRID_SIZES = [
   { columns: 2, box: 78, icon: 34, font: 15 },
 ];
 
-// Fondo teñido del color de la función (hex #RRGGBB + alfa)
-const tint = (hex, alpha = '26') => (/^#[0-9A-Fa-f]{6}$/.test(hex) ? `${hex}${alpha}` : colors.well);
-
 export default function FunctionGrid({ groups, size = 1 }) {
   const router = useRouter();
+  const font = useHomeFont();
   const config = GRID_SIZES[size] || GRID_SIZES[1];
   const itemWidth = `${100 / config.columns}%`;
   const box = scale(config.box);
@@ -32,13 +32,13 @@ export default function FunctionGrid({ groups, size = 1 }) {
   return (
     <View style={styles.container}>
       {groups.map((group) => (
-        <View key={group.key} style={styles.card}>
+        <View key={group.key} style={[styles.card, neuSurface.raised]}>
           <View style={styles.header}>
-            <View style={[styles.dot, { backgroundColor: group.color }]} />
-            <Text style={styles.title} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+            <View style={[styles.dot, { backgroundColor: toNeuAccent(group.color) }]} />
+            <Text style={[styles.title, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
               {group.title}
             </Text>
-            <Text style={styles.count} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.count, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {group.items.length}
             </Text>
           </View>
@@ -47,38 +47,40 @@ export default function FunctionGrid({ groups, size = 1 }) {
             {group.items.map((item) => (
               <PressableScale
                 key={item.key}
+                variant="neu"
+                neuSurface="none"
                 containerStyle={{ width: itemWidth }}
                 style={styles.item}
                 onPress={() => openItem(item)}
                 accessibilityLabel={item.badge ? `${item.label}, ${item.badge}` : item.label}
               >
-                <View
-                  style={[
-                    styles.iconBox,
-                    {
-                      width: box,
-                      height: box,
-                      borderRadius: box * 0.3,
-                      backgroundColor: tint(item.color),
-                    },
-                  ]}
-                >
-                  <Ionicons name={item.icon} size={scale(config.icon)} color={item.color} />
-                  {item.badge != null && item.badge !== '' && item.badge !== 0 && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                        {item.badge}
-                      </Text>
+                {({ pressed }) => (
+                  <>
+                    <View
+                      style={[
+                        styles.iconBox,
+                        getNeuSurface(pressed),
+                        { width: box, height: box, borderRadius: box * 0.3 },
+                      ]}
+                    >
+                      <Ionicons name={item.icon} size={scale(config.icon)} color={toNeuAccent(item.color)} />
+                      {item.badge != null && item.badge !== '' && item.badge !== 0 && (
+                        <View style={styles.badge}>
+                          <Text style={[styles.badgeText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                            {item.badge}
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-                <Text
-                  style={[styles.label, { fontSize: scale(config.font) }]}
-                  maxFontSizeMultiplier={MAX_FONT_SCALE}
-                  numberOfLines={2}
-                >
-                  {item.label}
-                </Text>
+                    <Text
+                      style={[styles.label, { fontSize: scale(config.font) }, font(500)]}
+                      maxFontSizeMultiplier={MAX_FONT_SCALE}
+                      numberOfLines={2}
+                    >
+                      {item.label}
+                    </Text>
+                  </>
+                )}
               </PressableScale>
             ))}
           </View>
@@ -90,11 +92,11 @@ export default function FunctionGrid({ groups, size = 1 }) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: scale(spacing.md),
+    gap: scale(spacing.lg),
   },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: scale(radius.lg),
+    backgroundColor: neu.bg,
+    borderRadius: scale(radius.xl),
     paddingTop: scale(spacing.lg),
     paddingBottom: scale(spacing.sm),
     paddingHorizontal: scale(spacing.sm),
@@ -115,12 +117,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: scale(15),
     fontWeight: '700',
-    color: colors.text,
+    color: neu.text,
   },
   count: {
     fontSize: scale(13),
     fontWeight: '600',
-    color: colors.textMuted,
+    color: neu.textSoft,
   },
   grid: {
     flexDirection: 'row',
@@ -129,12 +131,14 @@ const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
     paddingHorizontal: scale(spacing.xs),
+    paddingTop: scale(spacing.xs),
     paddingBottom: scale(spacing.md),
-    gap: scale(6),
+    gap: scale(spacing.sm),
   },
   iconBox: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: neu.bg,
   },
   badge: {
     position: 'absolute',
@@ -144,18 +148,18 @@ const styles = StyleSheet.create({
     height: scale(18),
     paddingHorizontal: scale(4),
     borderRadius: radius.pill,
-    backgroundColor: colors.coral,
+    backgroundColor: neu.coral,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
     fontSize: scale(10),
     fontWeight: '700',
-    color: colors.text,
+    color: neu.bg,
   },
   label: {
     fontWeight: '500',
-    color: colors.text,
+    color: neu.text,
     textAlign: 'center',
   },
 });

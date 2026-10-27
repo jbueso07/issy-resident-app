@@ -6,13 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/useTranslation';
 import NotificationBell from '../NotificationBell';
 import PressableScale from './PressableScale';
-import { colors, radius, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { radius, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const ISSY_URL = 'https://joinissy.com';
 const LOGO = require('../../../assets/logos/issy-header.png');
 
 export default function HomeHeader() {
   const { t } = useTranslation();
+  const font = useHomeFont();
 
   const handleShare = async () => {
     try {
@@ -38,10 +40,10 @@ export default function HomeHeader() {
           accessibilityLabel="ISSY"
         />
         <View style={styles.brandText}>
-          <Text style={styles.tagline} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.tagline, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.brandTagline', 'Vive tranquilo')}
           </Text>
-          <Text style={styles.domain} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.domain, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             joinissy.com
           </Text>
         </View>
@@ -49,14 +51,20 @@ export default function HomeHeader() {
 
       <View style={styles.actions}>
         <PressableScale
+          variant="neu"
           style={styles.iconButton}
           onPress={handleShare}
           hitSlop={6}
           accessibilityLabel={t('home2.referral.cta', 'Recomendar ISSY')}
         >
-          <Ionicons name="gift-outline" size={scale(22)} color={colors.cyan} />
+          <Ionicons name="gift-outline" size={scale(22)} color={neu.teal} />
         </PressableScale>
-        <NotificationBell />
+        <NotificationBell
+          size={scale(22)}
+          color={neu.text}
+          style={[styles.iconButton, neuSurface.raised]}
+          badgeStyle={styles.bellBadge}
+        />
       </View>
     </View>
   );
@@ -86,24 +94,28 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: scale(15),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   domain: {
     fontSize: scale(12),
-    color: colors.textSecondary,
+    color: neu.textSoft,
     marginTop: scale(2),
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(12),
   },
   iconButton: {
     width: scale(44),
     height: scale(44),
     borderRadius: radius.pill,
-    backgroundColor: colors.card,
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bellBadge: {
+    backgroundColor: neu.coral,
+    borderColor: neu.bg,
   },
 });

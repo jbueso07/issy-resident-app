@@ -31,7 +31,8 @@ import { authFetch } from '../../services/api';
 import { sendTokenToBackend } from '../../hooks/useNotifications';
 import { getNotificationGroup, getNotificationRoute } from '../../utils/notificationRoute';
 import PressableScale from './PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
+import { radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,13 +50,24 @@ const HIDE_ACTION_WIDTH = scale(92);
 const TAB_BAR_OVERLAP = scale(110);
 
 const GROUP_COLORS = {
-  visit: colors.teal,
-  report: colors.orange,
-  announcement: colors.cyan,
-  reservation: colors.amber,
-  payment: colors.purple,
-  emergency: colors.danger,
-  account: colors.textSecondary,
+  visit: neu.teal,
+  report: neu.amber,
+  announcement: neu.blue,
+  reservation: neu.amber,
+  payment: neu.lilac,
+  emergency: neu.coral,
+  account: neu.textSoft,
+};
+
+// Ícono del círculo hundido de cada fila (mismo color del tipo)
+const GROUP_ICONS = {
+  visit: 'people-outline',
+  report: 'alert-circle-outline',
+  announcement: 'megaphone-outline',
+  reservation: 'calendar-outline',
+  payment: 'card-outline',
+  emergency: 'warning-outline',
+  account: 'person-outline',
 };
 
 const LOCALES = { es: 'es-HN', en: 'en-US', fr: 'fr-FR', pt: 'pt-BR' };
@@ -78,7 +90,7 @@ const dedupe = (list) => {
 };
 
 // ============ FILA DESLIZABLE ============
-function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint, onPress, onHide, registerNode }) {
+function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint, onPress, onHide, registerNode, font }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const offsetRef = useRef(0);
   const [open, setOpen] = useState(false);
@@ -119,7 +131,8 @@ function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint,
     extrapolate: 'clamp',
   });
 
-  const color = GROUP_COLORS[getNotificationGroup(item.type)];
+  const group = getNotificationGroup(item.type);
+  const color = GROUP_COLORS[group] || neu.textSoft;
   const isUnread = item.read === false;
 
   const handlePress = () => {
@@ -136,11 +149,13 @@ function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint,
   };
 
   return (
-    <View ref={registerNode} collapsable={false} style={styles.rowWrap}>
+    // Relieve en la capa de afuera; la de adentro recorta la fila al deslizar
+    <View ref={registerNode} collapsable={false} style={[styles.rowShadow, neuSurface.raised]}>
+    <View style={styles.rowWrap}>
       <Animated.View style={[styles.hideAction, { opacity: actionOpacity }]}>
         <PressableScale style={styles.hideButton} onPress={handleHide} accessibilityLabel={hideLabel}>
-          <Ionicons name="eye-off-outline" size={scale(20)} color={colors.text} />
-          <Text style={styles.hideText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Ionicons name="eye-off-outline" size={scale(20)} color={neu.text} />
+          <Text style={[styles.hideText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {hideLabel}
           </Text>
         </PressableScale>
@@ -157,30 +172,36 @@ function ActivityRow({ item, route, timeLabel, groupLabel, hideLabel, swipeHint,
           accessibilityActions={[{ name: 'hide', label: hideLabel }]}
           onAccessibilityAction={(e) => e.nativeEvent.actionName === 'hide' && onHide()}
         >
-          <View style={styles.rowHeader}>
-            {isUnread && <View style={[styles.unreadDot, { backgroundColor: color }]} />}
-            <Text style={[styles.group, { color }]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-              {groupLabel}
-            </Text>
-            <Text style={styles.time} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-              {timeLabel}
-            </Text>
+          <View style={[styles.typeIcon, neuSurface.sunkenSm]}>
+            <Ionicons name={GROUP_ICONS[group] || 'notifications-outline'} size={scale(18)} color={color} />
           </View>
-          <View style={styles.rowBody}>
-            <View style={styles.rowText}>
-              <Text style={styles.title} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                {item.title}
+          <View style={styles.rowContent}>
+            <View style={styles.rowHeader}>
+              {isUnread && <View style={[styles.unreadDot, { backgroundColor: color }]} />}
+              <Text style={[styles.group, { color }, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                {groupLabel}
               </Text>
-              {!!item.message && (
-                <Text style={styles.message} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
-                  {item.message}
-                </Text>
-              )}
+              <Text style={[styles.time, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                {timeLabel}
+              </Text>
             </View>
-            {route && <Ionicons name="chevron-forward" size={scale(18)} color={colors.textMuted} />}
+            <View style={styles.rowBody}>
+              <View style={styles.rowText}>
+                <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                {!!item.message && (
+                  <Text style={[styles.message, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                    {item.message}
+                  </Text>
+                )}
+              </View>
+              {route && <Ionicons name="chevron-forward" size={scale(18)} color={neu.textSoft} />}
+            </View>
           </View>
         </PressableScale>
       </Animated.View>
+    </View>
     </View>
   );
 }
@@ -191,6 +212,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
   const insets = useSafeAreaInsets();
   const { t, language } = useTranslation();
   const { user } = useAuth();
+  const font = useHomeFont();
   const userId = user?.id;
   const storageKey = userId ? `hidden_activity_${userId}` : null;
 
@@ -465,21 +487,21 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
 
   // ---------- Render ----------
   const renderEmpty = () => (
-    <View style={styles.card}>
-      <Ionicons name="time-outline" size={scale(28)} color={colors.textMuted} />
-      <Text style={styles.cardTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+    <View style={[styles.card, neuSurface.raised]}>
+      <Ionicons name="time-outline" size={scale(28)} color={neu.textSoft} />
+      <Text style={[styles.cardTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {t('home2.emptyTitle', 'Aún no tienes actividad')}
       </Text>
-      <Text style={styles.cardText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+      <Text style={[styles.cardText, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {t('home2.emptySub', 'Aquí verás tus visitas, pagos y avisos.')}
       </Text>
       {permission && !permission.granted && (
         <View style={styles.permissionBlock}>
-          <Text style={styles.cardText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.cardText, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.enableNotifs', 'Activa las notificaciones para saber cuándo llega tu visita')}
           </Text>
           <PressableScale style={styles.primaryButton} onPress={handleEnableNotifications}>
-            <Text style={styles.primaryButtonText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.primaryButtonText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {permission.canAskAgain === false
                 ? t('home2.openSettingsCta', 'Abrir ajustes')
                 : t('home2.enableNotifsCta', 'Activar notificaciones')}
@@ -491,9 +513,9 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
   );
 
   const renderError = () => (
-    <View style={styles.card}>
-      <Ionicons name="cloud-offline-outline" size={scale(28)} color={colors.textMuted} />
-      <Text style={styles.cardTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+    <View style={[styles.card, neuSurface.raised]}>
+      <Ionicons name="cloud-offline-outline" size={scale(28)} color={neu.textSoft} />
+      <Text style={[styles.cardTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {t('home2.loadError', 'No pudimos cargar tu actividad')}
       </Text>
       <PressableScale
@@ -503,7 +525,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
           load();
         }}
       >
-        <Text style={styles.primaryButtonText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+        <Text style={[styles.primaryButtonText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {t('common.retry')}
         </Text>
       </PressableScale>
@@ -513,8 +535,8 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
   const renderBody = () => {
     if (loading && items.length === 0) {
       return (
-        <View style={styles.card}>
-          <ActivityIndicator color={colors.cyan} />
+        <View style={[styles.card, neuSurface.raised]}>
+          <ActivityIndicator color={neu.teal} />
         </View>
       );
     }
@@ -535,6 +557,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
               swipeHint={swipeHint}
               onPress={() => openItem(route)}
               onHide={() => hideItem(item)}
+              font={font}
               registerNode={(node) => {
                 if (node) rowNodes.current.set(item.key, node);
                 else rowNodes.current.delete(item.key);
@@ -549,17 +572,17 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
   return (
     <View style={styles.container}>
       {lastHidden && (
-        <View style={styles.undoBar} accessibilityLiveRegion="polite">
+        <View style={[styles.undoBar, neuSurface.sunken]} accessibilityLiveRegion="polite">
           <View style={styles.undoText}>
-            <Text style={styles.undoTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.undoTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t('home2.hiddenForYou', 'Oculto solo para ti')}
             </Text>
-            <Text style={styles.undoSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.undoSub, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t('home2.hiddenForYouSub', 'Sigue en Notificaciones')}
             </Text>
           </View>
           <PressableScale style={styles.undoButton} onPress={handleUndo} hitSlop={8}>
-            <Text style={styles.undoButtonText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.undoButtonText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t('home2.undo', 'Deshacer')}
             </Text>
           </PressableScale>
@@ -575,7 +598,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
           hitSlop={8}
           accessibilityState={{ expanded: showHidden }}
         >
-          <Text style={styles.showHiddenText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.showHiddenText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {showHidden
               ? t('home2.closeHidden', 'Cerrar ocultas')
               : t('home2.showHidden', { n: hiddenItems.length, defaultValue: 'Ver ocultas ({{n}})' })}
@@ -586,21 +609,21 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
       {showHidden && (
         <View style={styles.list}>
           {hiddenItems.map((item) => (
-            <View key={item.key} style={[styles.row, styles.hiddenRow]}>
+            <View key={item.key} style={[styles.row, styles.hiddenRow, neuSurface.sunken]}>
               <View style={styles.rowText}>
                 <Text
-                  style={[styles.group, { color: GROUP_COLORS[getNotificationGroup(item.type)] }]}
+                  style={[styles.group, { color: GROUP_COLORS[getNotificationGroup(item.type)] }, font(700)]}
                   maxFontSizeMultiplier={MAX_FONT_SCALE}
                   numberOfLines={1}
                 >
                   {groupLabel(item.type)}
                 </Text>
-                <Text style={styles.title} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+                <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
                   {item.title}
                 </Text>
               </View>
-              <PressableScale style={styles.unhideButton} onPress={() => unhideItem(item)}>
-                <Text style={styles.unhideText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <PressableScale variant="neu" style={styles.unhideButton} onPress={() => unhideItem(item)}>
+                <Text style={[styles.unhideText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {t('home2.unhide', 'Mostrar')}
                 </Text>
               </PressableScale>
@@ -617,17 +640,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.lg),
   },
   list: {
-    gap: scale(spacing.sm),
+    gap: scale(spacing.md),
+  },
+  rowShadow: {
+    borderRadius: scale(radius.lg),
+    backgroundColor: neu.bg,
   },
   rowWrap: {
-    borderRadius: scale(radius.md),
+    borderRadius: scale(radius.lg),
     overflow: 'hidden',
   },
   row: {
-    backgroundColor: colors.card,
-    borderRadius: scale(radius.md),
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: neu.bg,
+    borderRadius: scale(radius.lg),
     paddingVertical: scale(spacing.md),
-    paddingHorizontal: scale(spacing.lg),
+    paddingHorizontal: scale(spacing.md),
+    gap: scale(spacing.md),
+  },
+  typeIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: radius.pill,
+    backgroundColor: neu.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowContent: {
+    flex: 1,
     gap: scale(spacing.xs),
   },
   rowHeader: {
@@ -649,7 +690,7 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: scale(12),
-    color: colors.textMuted,
+    color: neu.textSoft,
   },
   rowBody: {
     flexDirection: 'row',
@@ -662,19 +703,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: scale(15),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   message: {
     fontSize: scale(13),
-    color: colors.textSecondary,
+    color: neu.textSoft,
     marginTop: scale(2),
   },
   hideAction: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    backgroundColor: colors.well,
-    borderRadius: scale(radius.md),
+    backgroundColor: neu.bgDeep,
+    borderRadius: scale(radius.lg),
   },
   hideButton: {
     width: HIDE_ACTION_WIDTH,
@@ -686,10 +727,10 @@ const styles = StyleSheet.create({
   hideText: {
     fontSize: scale(12),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: neu.bg,
     borderRadius: scale(radius.lg),
     padding: scale(spacing.xl),
     alignItems: 'center',
@@ -698,12 +739,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: scale(16),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
     textAlign: 'center',
   },
   cardText: {
     fontSize: scale(13),
-    color: colors.textSecondary,
+    color: neu.textSoft,
     textAlign: 'center',
   },
   permissionBlock: {
@@ -713,18 +754,18 @@ const styles = StyleSheet.create({
     marginTop: scale(spacing.sm),
     paddingTop: scale(spacing.md),
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   primaryButton: {
     paddingHorizontal: scale(spacing.xl),
     paddingVertical: scale(spacing.md),
     borderRadius: radius.pill,
-    backgroundColor: colors.cyan,
+    backgroundColor: neu.teal,
   },
   primaryButtonText: {
     fontSize: scale(14),
     fontWeight: '700',
-    color: colors.textDark,
+    color: neu.bg,
     textAlign: 'center',
   },
   undoBar: {
@@ -734,10 +775,8 @@ const styles = StyleSheet.create({
     marginBottom: scale(spacing.sm),
     paddingVertical: scale(spacing.md),
     paddingHorizontal: scale(spacing.lg),
-    borderRadius: scale(radius.md),
-    backgroundColor: colors.well,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: scale(radius.lg),
+    backgroundColor: neu.bg,
   },
   undoText: {
     flex: 1,
@@ -745,11 +784,11 @@ const styles = StyleSheet.create({
   undoTitle: {
     fontSize: scale(14),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   undoSub: {
     fontSize: scale(12),
-    color: colors.textSecondary,
+    color: neu.textSoft,
     marginTop: scale(2),
   },
   undoButton: {
@@ -759,7 +798,7 @@ const styles = StyleSheet.create({
   undoButtonText: {
     fontSize: scale(14),
     fontWeight: '700',
-    color: colors.cyan,
+    color: neu.teal,
   },
   showHiddenButton: {
     alignSelf: 'center',
@@ -770,7 +809,7 @@ const styles = StyleSheet.create({
   showHiddenText: {
     fontSize: scale(13),
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: neu.textSoft,
   },
   hiddenRow: {
     flexDirection: 'row',
@@ -782,12 +821,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(spacing.md),
     paddingVertical: scale(spacing.sm),
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: neu.bg,
   },
   unhideText: {
     fontSize: scale(13),
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
 });
