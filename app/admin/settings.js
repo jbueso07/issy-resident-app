@@ -24,6 +24,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -32,21 +33,21 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const getTabs = (t) => [

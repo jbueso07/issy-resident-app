@@ -28,6 +28,7 @@ import { getIncidents, getIncidentById, updateIncidentStatus, addIncidentComment
 import PhotoGallery, { PhotoViewer } from '../../src/components/PhotoGallery';
 import { IncidentChat, IncidentComposer } from '../../src/components/IncidentChat';
 import IncidentLocation from '../../src/components/IncidentLocation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -36,20 +37,20 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#6366F1',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const getStatusConfig = (t) => ({
@@ -63,7 +64,7 @@ const getSeverityConfig = (t) => ({
   low: { label: t('admin.incidents.severity.low'), color: COLORS.success, bg: COLORS.success + '20' },
   medium: { label: t('admin.incidents.severity.medium'), color: COLORS.warning, bg: COLORS.warning + '20' },
   high: { label: t('admin.incidents.severity.high'), color: COLORS.danger, bg: COLORS.danger + '20' },
-  critical: { label: t('admin.incidents.severity.critical'), color: '#DC2626', bg: '#DC262620' },
+  critical: { label: t('admin.incidents.severity.critical'), color: neu.coral, bg: neu.coral + '20' },
 });
 
 const getTypeLabels = (t) => ({

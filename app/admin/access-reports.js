@@ -16,6 +16,7 @@ import { LocationHeader, LocationPickerModal } from '../../src/components/AdminL
 import { useTranslation } from '../../src/hooks/useTranslation';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { neu } from '../../src/theme/tokens';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -26,21 +27,21 @@ const hnDate = (d = new Date()) =>
   d.toLocaleDateString('en-CA', { timeZone: 'America/Tegucigalpa' });
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 export default function AccessReportsScreen() {
@@ -427,8 +428,8 @@ export default function AccessReportsScreen() {
 
           {/* Nota de retencion: las fotos de acceso se conservan 45 dias */}
           {exportStartDate && (new Date(exportStartDate) < new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)) && (
-            <View style={{ backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
-              <Text style={{ color: '#93C5FD', fontSize: 12, lineHeight: 17 }} maxFontSizeMultiplier={1.2}>
+            <View style={{ backgroundColor: neu.blue + '1F', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+              <Text style={{ color: neu.blue, fontSize: 12, lineHeight: 17 }} maxFontSizeMultiplier={1.2}>
                 ℹ️ Las fotos de acceso se conservan 45 días. Los registros más antiguos incluyen todos los datos, pero sin fotografía.
               </Text>
             </View>
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
   incidentPhoto: { width: scale(60), height: scale(60), borderRadius: scale(8) },
   incidentPhotoMore: { width: scale(60), height: scale(60), borderRadius: scale(8), backgroundColor: COLORS.backgroundTertiary, justifyContent: 'center', alignItems: 'center' },
   incidentPhotoMoreText: { fontSize: scale(14), fontWeight: '600', color: COLORS.textSecondary },
-  loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(15, 26, 26, 0.9)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: neu.overlay, justifyContent: 'center', alignItems: 'center', zIndex: 100 },
   loadingOverlayText: { marginTop: scale(12), color: COLORS.textSecondary, fontSize: scale(14) },
   detailContainer: { flex: 1, backgroundColor: COLORS.background },
   detailHeader: { paddingTop: scale(10), flexDirection: 'row', alignItems: 'center', paddingHorizontal: scale(16), paddingVertical: scale(12), borderBottomWidth: 1, borderBottomColor: COLORS.border },
@@ -935,7 +936,7 @@ const styles = StyleSheet.create({
   photoCard: { width: (SCREEN_WIDTH - scale(74)) / 2, aspectRatio: 1, borderRadius: scale(12), overflow: 'hidden', position: 'relative' },
   photoImage: { width: '100%', height: '100%' },
   photoOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', opacity: 0 },
-  photoLabelContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: scale(6), paddingHorizontal: scale(8) },
+  photoLabelContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: neu.overlay, paddingVertical: scale(6), paddingHorizontal: scale(8) },
   photoLabel: { fontSize: scale(11), color: COLORS.textPrimary, fontWeight: '500' },
   photoHint: { fontSize: scale(12), color: COLORS.textMuted, textAlign: 'center' },
   noPhotosSection: { alignItems: 'center', backgroundColor: COLORS.backgroundSecondary, borderRadius: scale(14), padding: scale(32), marginBottom: scale(16), borderWidth: 1, borderColor: COLORS.border },
@@ -948,7 +949,7 @@ const styles = StyleSheet.create({
   detailRowLabel: { fontSize: scale(13), color: COLORS.textMuted },
   detailRowValue: { fontSize: scale(13), color: COLORS.textPrimary, fontWeight: '500', maxWidth: '50%', textAlign: 'right' },
   zoomContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
-  zoomCloseButton: { position: 'absolute', top: scale(50), right: scale(20), width: scale(44), height: scale(44), borderRadius: scale(22), backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  zoomCloseButton: { position: 'absolute', top: scale(50), right: scale(20), width: scale(44), height: scale(44), borderRadius: scale(22), backgroundColor: neu.raised, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   zoomTitleContainer: { position: 'absolute', top: scale(50), left: scale(20), right: scale(80), zIndex: 10 },
   zoomTitle: { fontSize: scale(16), fontWeight: '600', color: COLORS.textPrimary },
   zoomImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.7 },

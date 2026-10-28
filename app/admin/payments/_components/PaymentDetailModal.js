@@ -86,6 +86,7 @@ import {
   cancelPayment as cancelPaymentApi,
 } from '../../../../src/services/api';
 import usePayments from '../_hooks/usePayments';
+import { neu } from '../../../../src/theme/tokens';
 
 // Hotfix 4: width explícito para el ImageViewer. react-native-image-zoom-viewer
 // @3.0.1 no se mide bien dentro de Modal fullScreen — necesita un width
@@ -1556,7 +1557,7 @@ function ProofViewerSubModal({
         >
           <View style={styles.proofViewerHeader}>
             <Pressable onPress={onClose} style={styles.proofViewerHeaderBtn} hitSlop={8}>
-              <ArrowLeft size={24} color="#fff" strokeWidth={2} />
+              <ArrowLeft size={24} color={neu.text} strokeWidth={2} />
             </Pressable>
             <Text style={styles.proofViewerTitle}>
               {t('admin.payments.detail.proof', 'Comprobante')}
@@ -1937,7 +1938,7 @@ const styles = StyleSheet.create({
   // Cash sub-modal
   subModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: neu.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
@@ -2242,7 +2243,7 @@ const styles = StyleSheet.create({
   },
   proofViewerTitle: {
     ...typography.bodyLg,
-    color: '#fff',
+    color: neu.text,
     fontWeight: '600',
   },
   // Hotfix 4: `proofViewerImageWrap` eliminado — el ImageViewer ahora es

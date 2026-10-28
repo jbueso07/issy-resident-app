@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -36,21 +37,21 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const getRoles = (t) => ({
@@ -1291,7 +1292,7 @@ export default function AdminUsers() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.6)',
+            backgroundColor: neu.overlay,
             justifyContent: 'center',
             alignItems: 'center',
             padding: 20,
@@ -1429,9 +1430,9 @@ export default function AdminUsers() {
                   disabled={resettingPassword}
                 >
                   {resettingPassword ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color={neu.text} />
                   ) : (
-                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                    <Text style={{ color: neu.text, fontWeight: '600', fontSize: 15 }}>
                       Resetear
                     </Text>
                   )}

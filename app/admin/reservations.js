@@ -23,25 +23,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#6366F1',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const getStatusConfig = (t) => ({
@@ -52,14 +53,14 @@ const getStatusConfig = (t) => ({
 });
 
 const TYPE_INFO = {
-  pool: { icon: 'water', color: '#3B82F6' },
-  gym: { icon: 'fitness', color: '#EF4444' },
-  court: { icon: 'tennisball', color: '#10B981' },
-  bbq: { icon: 'flame', color: '#F59E0B' },
-  salon: { icon: 'wine', color: '#8B5CF6' },
-  playground: { icon: 'happy', color: '#EC4899' },
-  terrace: { icon: 'sunny', color: '#6366F1' },
-  garden: { icon: 'leaf', color: '#22C55E' },
+  pool: { icon: 'water', color: neu.blue },
+  gym: { icon: 'fitness', color: neu.coral },
+  court: { icon: 'tennisball', color: neu.teal },
+  bbq: { icon: 'flame', color: neu.amber },
+  salon: { icon: 'wine', color: neu.lilac },
+  playground: { icon: 'happy', color: neu.lilac },
+  terrace: { icon: 'sunny', color: neu.lilac },
+  garden: { icon: 'leaf', color: neu.teal },
   other: { icon: 'grid', color: '#78716C' }
 };
 

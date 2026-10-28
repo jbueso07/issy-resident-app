@@ -24,6 +24,7 @@ import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../../src/theme/tokens';
 
 // Map imports
 let MapView = null;
@@ -44,21 +45,21 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const STATUS_CONFIG = {
@@ -731,7 +732,7 @@ export default function PatrolReportsScreen() {
                     {Polyline && (
                       <Polyline
                         coordinates={gpsTrack.map(p => ({ latitude: p.latitude, longitude: p.longitude }))}
-                        strokeColor="#D4FE48"
+                        strokeColor={neu.teal}
                         strokeWidth={3}
                       />
                     )}
@@ -739,14 +740,14 @@ export default function PatrolReportsScreen() {
                       <Marker
                         coordinate={{ latitude: gpsTrack[0].latitude, longitude: gpsTrack[0].longitude }}
                         title="Inicio"
-                        pinColor="#10B981"
+                        pinColor={neu.teal}
                       />
                     )}
                     {Marker && gpsTrack.length > 1 && (
                       <Marker
                         coordinate={{ latitude: gpsTrack[gpsTrack.length - 1].latitude, longitude: gpsTrack[gpsTrack.length - 1].longitude }}
                         title="Fin"
-                        pinColor="#EF4444"
+                        pinColor={neu.coral}
                       />
                     )}
                     {Marker && checkpoints.filter(cp => cp.latitude && cp.longitude).map((cp, i) => (
@@ -754,7 +755,7 @@ export default function PatrolReportsScreen() {
                         key={cp.id || i}
                         coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
                         title={cp.name || cp.checkpoint_name || `Punto ${i + 1}`}
-                        pinColor={cp.status === 'verified' ? '#5DDED8' : '#F59E0B'}
+                        pinColor={cp.status === 'verified' ? neu.teal : neu.amber}
                       />
                     ))}
                   </MapView>
@@ -1601,7 +1602,7 @@ const styles = StyleSheet.create({
   },
   pickerOverlayBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: neu.overlay,
   },
   pickerContent: {
     backgroundColor: COLORS.background,
@@ -1941,7 +1942,7 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: neu.raised,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -1977,7 +1978,7 @@ const styles = StyleSheet.create({
   // Loading Overlay
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 26, 26, 0.9)',
+    backgroundColor: neu.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,

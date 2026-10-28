@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 import MapView, { Marker, Circle, Polyline } from 'react-native-maps';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -41,28 +42,28 @@ const ANDROID_MAPS_KEY =
 const MAPS_AVAILABLE = Platform.OS !== 'android' || Boolean(ANDROID_MAPS_KEY);
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  blue: '#3B82F6',
-  orange: '#F97316',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  blue: neu.blue,
+  orange: neu.amber,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 // Checkpoint marker colors cycle
 const CHECKPOINT_COLORS = [
-  '#D4FE48', '#5DDED8', '#8B5CF6', '#F59E0B', '#3B82F6',
-  '#EC4899', '#F97316', '#10B981', '#EF4444', '#06B6D4',
+  neu.teal, neu.teal, neu.lilac, neu.amber, neu.blue,
+  neu.lilac, neu.amber, neu.teal, neu.coral, neu.blue,
 ];
 
 const VERIFICATION_METHODS = [
@@ -1661,7 +1662,7 @@ export default function AdminPatrols() {
                           longitude: parseFloat(checkpointForm.longitude),
                         }}
                         radius={parseInt(checkpointForm.geofence_radius) || 30}
-                        fillColor="rgba(212, 254, 72, 0.15)"
+                        fillColor={neu.teal + '26'}
                         strokeColor={COLORS.lime}
                         strokeWidth={2}
                       />
@@ -1865,7 +1866,7 @@ const styles = StyleSheet.create({
   pickerButtonHint: { fontSize: scale(11), color: COLORS.textMuted, marginTop: 2 },
   pickerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
   pickerOverlayModal: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end', zIndex: 1000 },
-  pickerOverlayBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)' },
+  pickerOverlayBg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: neu.overlay },
   pickerContent: { backgroundColor: COLORS.background, borderTopLeftRadius: scale(20), borderTopRightRadius: scale(20), padding: scale(20), maxHeight: '60%' },
   pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(16) },
   pickerTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
@@ -1937,7 +1938,7 @@ const styles = StyleSheet.create({
 
   // Location button
   locationButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.blue, paddingVertical: scale(12), borderRadius: scale(10), gap: scale(8), marginBottom: scale(12) },
-  locationButtonText: { fontSize: scale(14), fontWeight: '600', color: '#FFFFFF' },
+  locationButtonText: { fontSize: scale(14), fontWeight: '600', color: neu.text },
   mapContainer: { marginBottom: scale(16), borderRadius: scale(12), overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
   mapHeaderBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: scale(6), paddingVertical: scale(8), backgroundColor: COLORS.backgroundTertiary },
   mapHint: { fontSize: scale(12), color: COLORS.textSecondary },

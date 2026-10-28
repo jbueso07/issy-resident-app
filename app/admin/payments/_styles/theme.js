@@ -1,3 +1,4 @@
+import { neu } from '../../../../src/theme/tokens';
 // app/admin/payments/_styles/theme.js
 // ISSY Admin Payments — Theme nuevo (Material-3 inspired) para el rediseño
 // Sprint 3 D3+.
@@ -9,33 +10,33 @@
 
 export const colors = {
   // Surfaces (dark)
-  background: '#111316',
-  surface: '#111316',
-  surfaceContainer: '#1e2023',
-  surfaceContainerHigh: '#282a2d',
-  surfaceContainerHighest: '#333538',
-  surfaceContainerLow: '#1a1c1f',
+  background: neu.bg,
+  surface: neu.bg,
+  surfaceContainer: neu.raised,
+  surfaceContainerHigh: neu.sunken,
+  surfaceContainerHighest: neu.sunken,
+  surfaceContainerLow: neu.bg,
 
   // Primary (lime)
-  primary: '#c8f328',
-  primaryContainer: '#c8f328',
-  onPrimaryContainer: '#576c00',
-  primaryFixed: '#c8f328',
-  onPrimaryFixed: '#171e00',
+  primary: neu.teal,
+  primaryContainer: neu.teal,
+  onPrimaryContainer: neu.onAccent,
+  primaryFixed: neu.teal,
+  onPrimaryFixed: neu.onAccent,
 
   // Text
-  onSurface: '#e2e2e6',
-  onSurfaceVariant: '#c5c9ae',
-  outline: '#8f937a',
-  outlineVariant: '#444934',
+  onSurface: neu.text,
+  onSurfaceVariant: neu.textLabel,
+  outline: neu.border,
+  outlineVariant: neu.border,
 
   // Status colors
-  error: '#ffb4ab',
-  errorContainer: '#93000a',
-  onErrorContainer: '#ffdad6',
-  secondaryContainer: '#00c19f',
-  onSecondaryContainer: '#00493a',
-  tertiaryFixedDim: '#ffba20',
+  error: neu.coral,
+  errorContainer: neu.coral + '26',
+  onErrorContainer: neu.text,
+  secondaryContainer: neu.teal,
+  onSecondaryContainer: neu.onAccent,
+  tertiaryFixedDim: neu.amber,
 };
 
 export const spacing = {

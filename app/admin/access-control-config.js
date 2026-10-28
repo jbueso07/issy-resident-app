@@ -22,29 +22,30 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 const API_URL = 'https://api.joinissy.com/api';
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  cyan: '#00E5FF',
-  purple: '#6366F1',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  lime: neu.teal,
+  teal: neu.teal,
+  cyan: neu.teal,
+  purple: neu.lilac,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  border: neu.border,
 };
 
 const DEVICE_MODELS = [

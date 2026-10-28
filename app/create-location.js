@@ -23,6 +23,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from '../src/hooks/useTranslation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -31,26 +32,26 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  blue: '#60A5FA',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
-  border: 'rgba(255, 255, 255, 0.1)',
-  success: '#10B981',
-  danger: '#EF4444',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  blue: neu.blue,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
+  border: neu.border,
+  success: neu.teal,
+  danger: neu.coral,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 const LOCATION_TYPES = [

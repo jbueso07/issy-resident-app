@@ -25,6 +25,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -32,21 +33,21 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  cyan: '#00E5FF',
-  purple: '#6366F1',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  lime: neu.teal,
+  teal: neu.teal,
+  cyan: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 export default function AdminCommonAreas() {
@@ -57,16 +58,16 @@ export default function AdminCommonAreas() {
 
   // Categories with translations
   const CATEGORIES = [
-    { id: 'pool', icon: 'water', label: t('admin.commonAreas.categories.pool'), color: '#3B82F6' },
-    { id: 'gym', icon: 'barbell', label: t('admin.commonAreas.categories.gym'), color: '#EF4444' },
-    { id: 'court', icon: 'tennisball', label: t('admin.commonAreas.categories.court'), color: '#10B981' },
-    { id: 'bbq', icon: 'flame', label: t('admin.commonAreas.categories.bbq'), color: '#F59E0B' },
-    { id: 'salon', icon: 'sparkles', label: t('admin.commonAreas.categories.salon'), color: '#8B5CF6' },
-    { id: 'playground', icon: 'happy', label: t('admin.commonAreas.categories.playground'), color: '#EC4899' },
-    { id: 'terrace', icon: 'sunny', label: t('admin.commonAreas.categories.terrace'), color: '#6366F1' },
-    { id: 'garden', icon: 'leaf', label: t('admin.commonAreas.categories.garden'), color: '#22C55E' },
-    { id: 'parking', icon: 'car', label: t('admin.commonAreas.categories.parking'), color: '#64748B' },
-    { id: 'other', icon: 'location', label: t('admin.commonAreas.categories.other'), color: '#78716C' },
+    { id: 'pool', icon: 'water', label: t('admin.commonAreas.categories.pool'), color: neu.blue },
+    { id: 'gym', icon: 'barbell', label: t('admin.commonAreas.categories.gym'), color: neu.coral },
+    { id: 'court', icon: 'tennisball', label: t('admin.commonAreas.categories.court'), color: neu.teal },
+    { id: 'bbq', icon: 'flame', label: t('admin.commonAreas.categories.bbq'), color: neu.amber },
+    { id: 'salon', icon: 'sparkles', label: t('admin.commonAreas.categories.salon'), color: neu.lilac },
+    { id: 'playground', icon: 'happy', label: t('admin.commonAreas.categories.playground'), color: neu.lilac },
+    { id: 'terrace', icon: 'sunny', label: t('admin.commonAreas.categories.terrace'), color: neu.lilac },
+    { id: 'garden', icon: 'leaf', label: t('admin.commonAreas.categories.garden'), color: neu.teal },
+    { id: 'parking', icon: 'car', label: t('admin.commonAreas.categories.parking'), color: neu.textSoft },
+    { id: 'other', icon: 'location', label: t('admin.commonAreas.categories.other'), color: neu.textSoft },
   ];
 
   // Days of week with translations
@@ -792,7 +793,7 @@ export default function AdminCommonAreas() {
           <Text style={styles.headerTitle}>{t('admin.commonAreas.title')}</Text>
           {canSwitchLocation && selectedLocation ? (
             <TouchableOpacity onPress={openPicker}>
-              <Text style={[styles.headerSubtitle, { color: '#D4FE48' }]}>{selectedLocation.name} ▾</Text>
+              <Text style={[styles.headerSubtitle, { color: neu.teal }]}>{selectedLocation.name} ▾</Text>
             </TouchableOpacity>
           ) : (
             <Text style={styles.headerSubtitle}>{t('admin.commonAreas.subtitle')}</Text>
@@ -1602,7 +1603,7 @@ const styles = StyleSheet.create({
   blockDayChipTextActive: { color: COLORS.purple },
   blockCardReason: { fontSize: scale(12), color: COLORS.textMuted, fontStyle: 'italic', marginTop: scale(6) },
   // Block creation modal styles
-  blockModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  blockModalOverlay: { flex: 1, backgroundColor: neu.overlay, justifyContent: 'flex-end' },
   blockModalContent: { backgroundColor: COLORS.background, borderTopLeftRadius: scale(20), borderTopRightRadius: scale(20), padding: scale(20), maxHeight: '85%' },
   blockModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(16) },
   blockModalTitle: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },

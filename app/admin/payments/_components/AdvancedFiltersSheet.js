@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, typography, radii } from '../_styles/theme';
+import { neu } from '../../../../src/theme/tokens';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -361,7 +362,7 @@ export function countAdvancedFilters(params = {}) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {

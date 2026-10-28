@@ -2,6 +2,7 @@
 // ISSY Admin - Payment Module Constants
 
 import { Dimensions } from 'react-native';
+import { neu } from '../../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -10,22 +11,22 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.
 
 // ProHome Dark Theme Colors
 export const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  surface: '#1A2C2C',
-  lime: '#D4FE48',
-  teal: '#5DCED8',
-  purple: '#8B5CF6',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  error: '#EF4444',
-  blue: '#3B82F6',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  surface: neu.raised,
+  lime: neu.teal,
+  teal: neu.teal,
+  purple: neu.lilac,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  error: neu.coral,
+  blue: neu.blue,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 // Payment Status Config
@@ -68,84 +69,84 @@ export const getPaymentTypes = (t) => [
     value: 'maintenance', 
     label: t('admin.payments.types.maintenance', 'Mantenimiento'), 
     icon: 'home', 
-    color: '#5DCED8',
+    color: neu.categories[0],
     description: t('admin.payments.types.maintenanceDesc', 'Cuota mensual de mantenimiento')
   },
   { 
     value: 'water', 
     label: t('admin.payments.types.water', 'Agua'), 
     icon: 'water', 
-    color: '#3B82F6',
+    color: neu.categories[1],
     description: t('admin.payments.types.waterDesc', 'Servicio de agua potable')
   },
   { 
     value: 'gas', 
     label: t('admin.payments.types.gas', 'Gas'), 
     icon: 'flame', 
-    color: '#F97316',
+    color: neu.categories[2],
     description: t('admin.payments.types.gasDesc', 'Servicio de gas')
   },
   { 
     value: 'electricity', 
     label: t('admin.payments.types.electricity', 'Energía'), 
     icon: 'flash', 
-    color: '#EAB308',
+    color: neu.categories[3],
     description: t('admin.payments.types.electricityDesc', 'Servicio de electricidad')
   },
   { 
     value: 'extraordinary', 
     label: t('admin.payments.types.extraordinary', 'Extraordinario'), 
     icon: 'star', 
-    color: '#8B5CF6',
+    color: neu.categories[4],
     description: t('admin.payments.types.extraordinaryDesc', 'Cobros especiales o únicos')
   },
   { 
     value: 'fine', 
     label: t('admin.payments.types.fine', 'Multa'), 
     icon: 'warning', 
-    color: '#EF4444',
+    color: neu.categories[5],
     description: t('admin.payments.types.fineDesc', 'Multas y moras')
   },
   { 
     value: 'parking', 
     label: t('admin.payments.types.parking', 'Estacionamiento'), 
     icon: 'car', 
-    color: '#6366F1',
+    color: neu.categories[6],
     description: t('admin.payments.types.parkingDesc', 'Cuota de estacionamiento')
   },
   { 
     value: 'security', 
     label: t('admin.payments.types.security', 'Seguridad'), 
     icon: 'shield-checkmark', 
-    color: '#10B981',
+    color: neu.categories[7],
     description: t('admin.payments.types.securityDesc', 'Servicio de vigilancia')
   },
   { 
     value: 'cleaning', 
     label: t('admin.payments.types.cleaning', 'Limpieza'), 
     icon: 'sparkles', 
-    color: '#EC4899',
+    color: neu.categories[8],
     description: t('admin.payments.types.cleaningDesc', 'Servicio de limpieza')
   },
   { 
     value: 'reserve_fund', 
     label: t('admin.payments.types.reserveFund', 'Fondo de Reserva'), 
     icon: 'wallet', 
-    color: '#14B8A6',
+    color: neu.categories[9],
     description: t('admin.payments.types.reserveFundDesc', 'Aportación al fondo de reserva')
   },
   { 
     value: 'service', 
     label: t('admin.payments.types.service', 'Servicio'), 
     icon: 'construct', 
-    color: '#64748B',
+    color: neu.categories[10],
     description: t('admin.payments.types.serviceDesc', 'Servicios varios')
   },
   { 
     value: 'other', 
     label: t('admin.payments.types.other', 'Otro'), 
     icon: 'document-text', 
-    color: '#94A3B8',
+    color: neu.categories[11],
     description: t('admin.payments.types.otherDesc', 'Otros conceptos')
   },
 ];

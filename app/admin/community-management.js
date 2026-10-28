@@ -27,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -35,23 +36,23 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  cyan: '#00E5FF',
-  purple: '#6366F1',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  lime: neu.teal,
+  teal: neu.teal,
+  cyan: neu.teal,
+  purple: neu.lilac,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  border: neu.border,
 };
 
 const getRolesConfig = (t) => ({
@@ -1139,7 +1140,7 @@ export default function CommunityManagement() {
                       onPress={() => handleApproveMember(member.id)}
                       disabled={actionLoading}
                     >
-                      <Ionicons name="checkmark" size={22} color="#fff" />
+                      <Ionicons name="checkmark" size={22} color={neu.text} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.rejectButton}
@@ -1371,8 +1372,8 @@ export default function CommunityManagement() {
                 <Text style={styles.inputLabel}>{t('admin.communityManagement.unitType', 'Tipo de unidad')}</Text>
                 <View style={styles.roleSelector}>
                   {[
-                    { key: 'house', label: t('admin.communityManagement.unitTypeHouse', 'Casa'), color: '#10B981', bg: '#D1FAE5' },
-                    { key: 'lot', label: t('admin.communityManagement.unitTypeLot', 'Lote'), color: '#F59E0B', bg: '#FEF3C7' },
+                    { key: 'house', label: t('admin.communityManagement.unitTypeHouse', 'Casa'), color: neu.teal, bg: neu.teal + '26' },
+                    { key: 'lot', label: t('admin.communityManagement.unitTypeLot', 'Lote'), color: neu.amber, bg: neu.amber + '26' },
                   ].map(({ key, label, color, bg }) => (
                     <TouchableOpacity
                       key={key}
@@ -1526,17 +1527,17 @@ export default function CommunityManagement() {
                     marginBottom: 20,
                     padding: 16,
                     borderRadius: 12,
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    backgroundColor: neu.coral + '1A',
                     borderWidth: 1,
-                    borderColor: '#EF4444',
+                    borderColor: neu.coral,
                     alignItems: 'center',
                   }}
                   onPress={handleDeleteMember}
                   disabled={actionLoading}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 16 }}>
+                    <Ionicons name="trash-outline" size={20} color={neu.coral} />
+                    <Text style={{ color: neu.coral, fontWeight: '600', fontSize: 16 }}>
                       Eliminar de la comunidad
                     </Text>
                   </View>

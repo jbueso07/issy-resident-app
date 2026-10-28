@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -35,22 +36,22 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  cyan: '#00E5FF',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  success: '#10B981',
-  warning: '#F59E0B',
-  danger: '#EF4444',
-  border: 'rgba(255,255,255,0.1)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  lime: neu.teal,
+  teal: neu.teal,
+  cyan: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  success: neu.teal,
+  warning: neu.amber,
+  danger: neu.coral,
+  border: neu.border,
 };
 
 export default function AdminAnnouncements() {
@@ -98,7 +99,7 @@ export default function AdminAnnouncements() {
     { value: 'normal', label: t('admin.announcements.priorities.normal'), color: COLORS.teal },
     { value: 'medium', label: t('admin.announcements.priorities.medium'), color: COLORS.warning },
     { value: 'high', label: t('admin.announcements.priorities.high'), color: COLORS.danger },
-    { value: 'urgent', label: t('admin.announcements.priorities.urgent'), color: '#DC2626' },
+    { value: 'urgent', label: t('admin.announcements.priorities.urgent'), color: neu.coral },
   ];
 
   // Audiencias con traducciones

@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -22,27 +23,27 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  green: '#10B981',
-  blue: '#60A5FA',
-  yellow: '#FBBF24',
-  red: '#EF4444',
-  pink: '#EC4899',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  green: neu.teal,
+  blue: neu.blue,
+  yellow: neu.amber,
+  red: neu.coral,
+  pink: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 // ============ API HELPER ============
@@ -462,24 +463,24 @@ export default function AdminMarketplace() {
                 {(item.status === 'pending_kyc' || item.kyc_status === 'pending') && (
                   <>
                     <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSuccess]} onPress={() => approveProvider(item.id)}>
-                      <Ionicons name="checkmark" size={16} color="#fff" />
+                      <Ionicons name="checkmark" size={16} color={neu.text} />
                       <Text style={styles.actionBtnText}>Aprobar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => rejectProvider(item.id)}>
-                      <Ionicons name="close" size={16} color="#fff" />
+                      <Ionicons name="close" size={16} color={neu.text} />
                       <Text style={styles.actionBtnText}>Rechazar</Text>
                     </TouchableOpacity>
                   </>
                 )}
                 {item.status === 'active' && (
                   <TouchableOpacity style={[styles.actionBtn, styles.actionBtnWarning]} onPress={() => suspendProvider(item.id)}>
-                    <Ionicons name="pause" size={16} color="#fff" />
+                    <Ionicons name="pause" size={16} color={neu.text} />
                     <Text style={styles.actionBtnText}>Suspender</Text>
                   </TouchableOpacity>
                 )}
                 {item.status === 'suspended' && (
                   <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSuccess]} onPress={() => reactivateProvider(item.id)}>
-                    <Ionicons name="play" size={16} color="#fff" />
+                    <Ionicons name="play" size={16} color={neu.text} />
                     <Text style={styles.actionBtnText}>Reactivar</Text>
                   </TouchableOpacity>
                 )}
@@ -573,7 +574,7 @@ export default function AdminMarketplace() {
                   style={[styles.actionBtn, item.status === 'active' ? styles.actionBtnWarning : styles.actionBtnSuccess]}
                   onPress={() => toggleServiceStatus(item.id, item.status)}
                 >
-                  <Ionicons name={item.status === 'active' ? 'pause' : 'play'} size={14} color="#fff" />
+                  <Ionicons name={item.status === 'active' ? 'pause' : 'play'} size={14} color={neu.text} />
                   <Text style={styles.actionBtnText}>{item.status === 'active' ? 'Desactivar' : 'Activar'}</Text>
                 </TouchableOpacity>
               </View>
@@ -1252,7 +1253,7 @@ const styles = StyleSheet.create({
 
   // Action buttons
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-  actionBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+  actionBtnText: { fontSize: 12, color: neu.text, fontWeight: '600' },
   actionBtnSuccess: { backgroundColor: COLORS.green },
   actionBtnDanger: { backgroundColor: COLORS.red },
   actionBtnWarning: { backgroundColor: COLORS.orange },
@@ -1283,7 +1284,7 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 14, color: COLORS.textSecondary, marginTop: 12 },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: neu.overlay, justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: COLORS.bgPrimary, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

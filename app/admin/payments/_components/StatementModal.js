@@ -23,6 +23,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { COLORS, scale } from '../_constants';
 import { formatCurrency, formatDate, getAuthHeaders } from '../_helpers';
+import { neu } from '../../../../src/theme/tokens';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.joinissy.com';
 

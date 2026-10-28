@@ -3,6 +3,7 @@
 
 import { StyleSheet } from 'react-native';
 import { COLORS, scale } from './_constants';
+import { neu } from '../../../src/theme/tokens';
 
 export const sharedStyles = StyleSheet.create({
   // ============================================
@@ -91,7 +92,7 @@ export const sharedStyles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -238,7 +239,7 @@ export const sharedStyles = StyleSheet.create({
     flex: 1,
     paddingVertical: scale(14),
     borderRadius: scale(12),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: neu.raised,
     alignItems: 'center',
   },
   secondaryButtonText: {

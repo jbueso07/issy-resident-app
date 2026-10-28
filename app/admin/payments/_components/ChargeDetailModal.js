@@ -68,6 +68,7 @@ import {
   formatRelativeCancelledAt,
 } from '../_helpers';
 import { useChargePayments } from '../_hooks/useChargePayments';
+import { neu } from '../../../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -423,7 +424,7 @@ export function ChargeDetailModal({
           <SafeAreaView style={styles.fullscreenSafeArea}>
             <View style={styles.fullscreenHeader}>
               <TouchableOpacity style={styles.fullscreenButton} onPress={closeImageFullscreen}>
-                <Ionicons name="arrow-back" size={26} color="#fff" />
+                <Ionicons name="arrow-back" size={26} color={neu.text} />
               </TouchableOpacity>
               <Text style={styles.fullscreenTitle}>
                 {t('admin.payments.detail.proof', 'Comprobante')}
@@ -1121,7 +1122,7 @@ function PaymentView({
                   resizeMode="contain"
                 />
                 <View style={styles.expandOverlay}>
-                  <Ionicons name="expand-outline" size={20} color="#fff" />
+                  <Ionicons name="expand-outline" size={20} color={neu.text} />
                   <Text style={styles.expandText}>
                     {t('admin.payments.detail.tapToExpand', 'Toca para ampliar')}
                   </Text>
@@ -1300,7 +1301,7 @@ function CancelConfirmationModal({
               disabled={!canConfirm}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={neu.text} />
               ) : (
                 <Text style={styles.confirmModalButtonConfirmText}>{confirmLabel}</Text>
               )}
@@ -1707,12 +1708,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: neu.overlay,
     paddingVertical: scale(8),
     gap: scale(6),
   },
   expandText: {
-    color: '#fff',
+    color: neu.text,
     fontSize: scale(13),
     fontWeight: '500',
   },
@@ -1795,7 +1796,7 @@ const styles = StyleSheet.create({
   // CancelConfirmationModal styles (Sprint 2 D7)
   confirmModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: neu.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(16),
@@ -1863,7 +1864,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   confirmModalButtonConfirmText: {
-    color: '#fff',
+    color: neu.text,
     fontWeight: '600',
     fontSize: scale(14),
   },
@@ -1892,7 +1893,7 @@ const styles = StyleSheet.create({
   fullscreenTitle: {
     fontSize: scale(17),
     fontWeight: '600',
-    color: '#fff',
+    color: neu.text,
   },
   fullscreenImageContainer: {
     flex: 1,

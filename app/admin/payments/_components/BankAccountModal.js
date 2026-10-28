@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { COLORS, scale } from '../_constants';
+import { neu } from '../../../../src/theme/tokens';
 
 export function BankAccountModal({
   visible,
@@ -186,7 +187,7 @@ export function BankAccountModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: scale(12),
     borderRadius: scale(8),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: neu.raised,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: scale(14),
     borderRadius: scale(12),
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: neu.raised,
     alignItems: 'center',
   },
   cancelButtonText: {

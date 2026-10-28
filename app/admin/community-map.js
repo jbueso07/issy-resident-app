@@ -31,6 +31,7 @@ import Constants from 'expo-constants';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useAuth } from '../../src/context/AuthContext';
 import { authFetch, deleteUnitLocation } from '../../src/services/api';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -52,17 +53,17 @@ const DEFAULT_REGION = {
 const EMPTY_FORM = { latitude: '', longitude: '', notes: '' };
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.1)',
-  panic: '#E24B4A',
-  success: '#10B981',
-  warning: '#F59E0B',
-  teal: '#5DDED8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  card: neu.raised,
+  cardBorder: neu.border,
+  panic: neu.coral,
+  success: neu.teal,
+  warning: neu.amber,
+  teal: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 };
 
 export default function CommunityMapScreen() {
@@ -580,7 +581,7 @@ export default function CommunityMapScreen() {
       {/* Barra de estado del "modo ubicar" (solo con mapa) */}
       {MAPS_AVAILABLE && selectedUnit && !showPinModal && (
         <View style={styles.selectedBar}>
-          <Ionicons name="pin" size={16} color="#FFFFFF" />
+          <Ionicons name="pin" size={16} color={neu.text} />
           <View style={{ flex: 1 }}>
             <Text style={styles.selectedBarText}>
               {t('communityMap.locating', { unit: selectedUnit })}
@@ -592,10 +593,10 @@ export default function CommunityMapScreen() {
             onPress={() => openPinModal(selectedUnit)}
             accessibilityLabel={t('communityMap.enterCoords')}
           >
-            <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+            <Ionicons name="create-outline" size={16} color={neu.text} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setSelectedUnit(null)}>
-            <Ionicons name="close" size={18} color="#FFFFFF" />
+            <Ionicons name="close" size={18} color={neu.text} />
           </TouchableOpacity>
         </View>
       )}
@@ -712,7 +713,7 @@ export default function CommunityMapScreen() {
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={neu.text} />
                 ) : (
                   <Text style={styles.modalBtnConfirmText}>{t('communityMap.savePin')}</Text>
                 )}
@@ -802,12 +803,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: scale(10),
   },
-  selectedBarText: { color: '#FFFFFF', fontSize: scale(13), fontWeight: '500' },
-  selectedBarHint: { color: 'rgba(255,255,255,0.8)', fontSize: scale(11), marginTop: 1 },
+  selectedBarText: { color: neu.text, fontSize: scale(13), fontWeight: '500' },
+  selectedBarHint: { color: neu.textLabel, fontSize: scale(11), marginTop: 1 },
   selectedBarBtn: {
     padding: scale(6),
     borderRadius: scale(8),
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: neu.raised,
   },
 
   body: { flex: 1, flexDirection: 'row' },
@@ -816,7 +817,7 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   mapLoading: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: neu.overlay,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -848,7 +849,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: scale(8),
-    backgroundColor: 'rgba(93, 222, 216, 0.08)',
+    backgroundColor: neu.teal + '14',
     borderRadius: scale(10),
     padding: scale(10),
     marginBottom: scale(12),
@@ -876,11 +877,11 @@ const styles = StyleSheet.create({
   },
   unitRowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: scale(8), minWidth: 0 },
   unitRowAction: { padding: scale(4) },
-  unitRowUnmapped: { backgroundColor: 'rgba(245, 158, 11, 0.08)' },
-  unitRowMapped: { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  unitRowUnmapped: { backgroundColor: neu.amber + '14' },
+  unitRowMapped: { backgroundColor: neu.teal + '14' },
   unitRowSelected: {
     borderColor: COLORS.panic,
-    backgroundColor: 'rgba(226, 75, 74, 0.15)',
+    backgroundColor: neu.coral + '26',
   },
   unitRowText: { color: COLORS.textPrimary, fontSize: scale(13), fontWeight: '500', flex: 1 },
   unitRowTextSelected: { color: COLORS.panic },
@@ -897,14 +898,14 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: neu.overlay,
     alignItems: 'center',
     justifyContent: 'center',
     padding: scale(20),
   },
   modalCard: {
     width: '100%',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: neu.raised,
     borderRadius: scale(16),
     padding: scale(20),
     borderWidth: 1,
@@ -912,7 +913,7 @@ const styles = StyleSheet.create({
   },
   pickerCard: {
     width: '100%',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: neu.raised,
     borderRadius: scale(16),
     padding: scale(16),
   },
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: scale(8),
     borderWidth: 1,
-    borderColor: 'rgba(93, 222, 216, 0.4)',
+    borderColor: neu.teal + '66',
     borderRadius: scale(10),
     paddingVertical: scale(10),
     marginBottom: scale(6),
@@ -973,7 +974,7 @@ const styles = StyleSheet.create({
   },
   modalBtnCancelText: { color: COLORS.textSecondary, fontSize: scale(14) },
   modalBtnConfirm: { backgroundColor: COLORS.panic },
-  modalBtnConfirmText: { color: '#FFFFFF', fontSize: scale(14), fontWeight: '600' },
+  modalBtnConfirmText: { color: neu.text, fontSize: scale(14), fontWeight: '600' },
 
   pickerRow: {
     flexDirection: 'row',
@@ -983,6 +984,6 @@ const styles = StyleSheet.create({
     borderRadius: scale(10),
     marginBottom: scale(4),
   },
-  pickerRowActive: { backgroundColor: 'rgba(93, 222, 216, 0.1)' },
+  pickerRowActive: { backgroundColor: neu.teal + '1A' },
   pickerRowText: { color: COLORS.textPrimary, fontSize: scale(14), flex: 1 },
 });
