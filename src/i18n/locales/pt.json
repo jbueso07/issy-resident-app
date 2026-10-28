@@ -37,6 +37,21 @@
     "welcome": "Bem-vindo",
     "loading": "Carregando..."
   },
+  "deviceTools": {
+    "gallery": {
+      "saved": "Imagem salva na sua galeria",
+      "deniedTitle": "Não foi possível salvar a imagem",
+      "deniedMessage": "Para salvá-la na sua galeria precisamos da sua permissão. Você pode ativá-la nos ajustes do celular ou compartilhar a imagem agora.",
+      "errorMessage": "Não foi possível salvar a imagem na sua galeria. Você pode compartilhá-la agora.",
+      "share": "Compartilhar",
+      "notNow": "Agora não",
+      "saveButton": "Salvar na galeria"
+    },
+    "contacts": {
+      "button": "Contatos",
+      "a11y": "Escolher visitante nos seus contatos"
+    }
+  },
   "tabs": {
     "home": "Início",
     "visits": "Visitas",

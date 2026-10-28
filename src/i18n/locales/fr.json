@@ -37,6 +37,21 @@
     "welcome": "Bienvenue",
     "loading": "Chargement..."
   },
+  "deviceTools": {
+    "gallery": {
+      "saved": "Image enregistrée dans ta galerie",
+      "deniedTitle": "Impossible d’enregistrer l’image",
+      "deniedMessage": "Pour l’enregistrer dans ta galerie, nous avons besoin de ton autorisation. Tu peux l’activer dans les réglages du téléphone ou partager l’image maintenant.",
+      "errorMessage": "Impossible d’enregistrer l’image dans ta galerie. Tu peux la partager maintenant.",
+      "share": "Partager",
+      "notNow": "Pas maintenant",
+      "saveButton": "Enregistrer dans la galerie"
+    },
+    "contacts": {
+      "button": "Contacts",
+      "a11y": "Choisir le visiteur dans tes contacts"
+    }
+  },
   "tabs": {
     "home": "Accueil",
     "visits": "Visites",

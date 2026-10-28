@@ -48,6 +48,21 @@
     "welcome": "Welcome",
     "loading": "Loading..."
   },
+  "deviceTools": {
+    "gallery": {
+      "saved": "Image saved to your gallery",
+      "deniedTitle": "We couldn't save the image",
+      "deniedMessage": "To save it to your gallery we need your permission. You can turn it on in your phone settings or share the image now.",
+      "errorMessage": "We couldn't save the image to your gallery. You can share it now.",
+      "share": "Share",
+      "notNow": "Not now",
+      "saveButton": "Save to gallery"
+    },
+    "contacts": {
+      "button": "Contacts",
+      "a11y": "Choose visitor from your contacts"
+    }
+  },
   "tabs": {
     "home": "Home",
     "visits": "Visits",

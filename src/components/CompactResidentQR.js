@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import useQrBrightness from '../hooks/useQrBrightness';
 import { Ionicons } from '@expo/vector-icons';
 import { generateResidentQRData, getSecondsUntilChange, getTimeStep } from '../utils/totp';
 import { useTranslation } from '../hooks/useTranslation';
@@ -38,6 +39,8 @@ const getCurrentStep = () => Math.floor(Date.now() / 1000 / TIME_STEP);
 
 const CompactResidentQR = ({ secret, userId, locationName, houseNumber, fullName, onError }) => {
   const { t } = useTranslation();
+  // Mi QR a la vista: brillo al máximo mientras esté montado y la pantalla en foco
+  useQrBrightness(true);
 
   // Core state
   const [qrCode, setQrCode] = useState(null);

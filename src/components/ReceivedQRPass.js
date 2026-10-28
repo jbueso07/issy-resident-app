@@ -11,9 +11,10 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import * as Sharing from 'expo-sharing';
+import { saveImageWithFallback } from '../utils/saveImageToGallery';
 import { captureRef } from 'react-native-view-shot';
 import { useTranslation } from '../hooks/useTranslation';
+import useQrBrightness from '../hooks/useQrBrightness';
 import PressableScale from './home/PressableScale';
 import { openInMaps } from './IncidentLocation';
 import { colors, gradients, radius, spacing, scale, neu, neuSurface } from '../theme/tokens';
@@ -35,6 +36,8 @@ const QR_SIZE = 220;
 const STATUS_COLORS = { active: colors.lime, scheduled: colors.amber, used: colors.textSecondary, expired: colors.textMuted };
 
 function PassContent({ qr, onClose, userLocations }) {
+  // Pase abierto para que lo escaneen: brillo al máximo hasta cerrarlo
+  useQrBrightness(true);
   const font = useHomeFont();
   const { t, language } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -74,14 +77,8 @@ function PassContent({ qr, onClose, userLocations }) {
     setSaving(true);
     try {
       const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile' });
-      // Menú de compartir en iOS y Android: ofrece "Guardar imagen" sin pedir permiso de Fotos
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          UTI: 'public.png',
-          dialogTitle: t('home2.receivedQR.saveImage'),
-        });
-      }
+      // Guarda directo en Fotos/Galería (solo permiso de escritura); si no se puede, ofrece compartir
+      await saveImageWithFallback(uri, t, { dialogTitle: t('home2.receivedQR.saveImage') });
     } catch (error) {
       console.error('Error saving pass image:', error);
       Alert.alert(t('home2.receivedQR.saveError', 'No se pudo guardar la imagen'));

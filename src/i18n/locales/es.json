@@ -54,6 +54,21 @@
     "welcome": "Bienvenido",
     "loading": "Cargando..."
   },
+  "deviceTools": {
+    "gallery": {
+      "saved": "Imagen guardada en tu galería",
+      "deniedTitle": "No pudimos guardar la imagen",
+      "deniedMessage": "Para guardarla en tu galería necesitamos tu permiso. Puedes activarlo en los ajustes del teléfono o compartir la imagen ahora.",
+      "errorMessage": "No se pudo guardar la imagen en tu galería. Puedes compartirla ahora.",
+      "share": "Compartir",
+      "notNow": "Ahora no",
+      "saveButton": "Guardar en galería"
+    },
+    "contacts": {
+      "button": "Contactos",
+      "a11y": "Elegir visitante desde tus contactos"
+    }
+  },
   "tabs": {
     "home": "Inicio",
     "visits": "Visitas",

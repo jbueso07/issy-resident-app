@@ -2908,6 +2908,11 @@ expo-auth-session@~7.0.9:
     expo-web-browser "~15.0.10"
     invariant "^2.2.4"
 
+expo-brightness@~14.0.8:
+  version "14.0.8"
+  resolved "https://registry.npmjs.org/expo-brightness/-/expo-brightness-14.0.8.tgz"
+  integrity sha512-WOg3UxzkHFTKBW3XvROlrVRmnJmZLhGBGd1RdzTfrtt2/MdSzvVmCevqWh4bohkeLABh0Yc9YRo1vFgfT73DWw==
+
 expo-camera@~17.0.10:
   version "17.0.10"
   resolved "https://registry.npmjs.org/expo-camera/-/expo-camera-17.0.10.tgz"
@@ -2927,6 +2932,11 @@ expo-constants@^18.0.13, expo-constants@~18.0.11, expo-constants@~18.0.12, expo-
   dependencies:
     "@expo/config" "~12.0.13"
     "@expo/env" "~2.0.8"
+
+expo-contacts@~15.0.11:
+  version "15.0.11"
+  resolved "https://registry.npmjs.org/expo-contacts/-/expo-contacts-15.0.11.tgz"
+  integrity sha512-buKkoQuWJgVSEvR1Yloa5SvGC/ud7T2YeYDe0R7Aa0oz8pwQpjk3W7OoL3QrXIfYcuKTrIz6ffqC8lc3peaAyg==
 
 expo-crypto@~15.0.8:
   version "15.0.8"

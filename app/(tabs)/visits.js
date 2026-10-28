@@ -36,6 +36,9 @@ import { useUserLocation } from '../../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../../src/components/UserLocationPicker';
 import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode, getRecentVisitors } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
+import useQrBrightness from '../../src/hooks/useQrBrightness';
+import { saveImageWithFallback } from '../../src/utils/saveImageToGallery';
+import * as Contacts from 'expo-contacts';
 import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
 import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
@@ -233,8 +236,11 @@ export default function Visits() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedQR, setSelectedQR] = useState(null);
   const [sharingImage, setSharingImage] = useState(false);
+  const [savingGallery, setSavingGallery] = useState(false);
   // Opción A: id del QR pendiente de compartir mientras se abre el modal y se monta cardRef.
   const [pendingShare, setPendingShare] = useState(null);
+  // Modal "Ver QR" abierto para escanear: brillo al máximo (no cuando solo se abre para compartir la imagen)
+  useQrBrightness(showQRModal && !pendingShare);
 
   // Resident QR TOTP
   const [residentQRData, setResidentQRData] = useState(null);
@@ -353,6 +359,36 @@ export default function Visits() {
     if (item.phone && !showMoreData) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setShowMoreData(true);
+    }
+  };
+
+  // Elegir un visitante desde Contactos: selector nativo de UN contacto, nunca se lee la agenda completa.
+  // Solo llena nombre y teléfono del formulario; no se sube ni se guarda nada del contacto.
+  const handlePickContact = async () => {
+    try {
+      // iOS no pide permiso para el selector; Android sí (READ_CONTACTS)
+      if (Platform.OS === 'android') {
+        const permission = await Contacts.requestPermissionsAsync();
+        if (!permission.granted) return;
+      }
+      const contact = await Contacts.presentContactPickerAsync();
+      if (!contact) return;
+      const name = (contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ')).trim();
+      const phone = contact.phoneNumbers?.[0]?.number?.trim() || '';
+      if (name) {
+        setSuggestionPicked(true);
+        setVisitorName(name);
+      }
+      if (phone) {
+        setVisitorPhone(phone);
+        if (!showMoreData) {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setShowMoreData(true);
+        }
+      }
+    } catch (error) {
+      // Cancelar o fallar no cambia el formulario
+      console.log('Contact picker unavailable:', error?.message);
     }
   };
 
@@ -906,6 +942,30 @@ const handleShareQRImage = async (qr) => {
   }
 };
 
+// Guardar la misma imagen del QR directo en Fotos/Galería (solo permiso de escritura).
+// Si se niega el permiso o falla, se ofrece compartir como antes.
+const handleSaveQRImage = async () => {
+  if (!cardRef.current || savingGallery) {
+    if (!cardRef.current) Alert.alert('Error', t('visits.errors.captureError'));
+    return;
+  }
+  setSavingGallery(true);
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const uri = await captureRef(cardRef, { format: 'png', quality: 0.9, result: 'tmpfile' });
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists || fileInfo.size === 0) {
+      throw new Error(t('visits.errors.captureError'));
+    }
+    await saveImageWithFallback(uri, t, { dialogTitle: 'Compartir código QR - ISSY' });
+  } catch (error) {
+    console.error('[handleSaveQRImage] Error:', error.message, error);
+    Alert.alert('Error', error.message || t('visits.errors.captureError'));
+  } finally {
+    setSavingGallery(false);
+  }
+};
+
 // Opción A — auto-compartir imagen desde una tarjeta:
 // abre el modal por detrás, espera a que cardRef se monte, comparte la misma
 // imagen que el modal, y luego cierra el modal para volver a la lista.
@@ -1435,7 +1495,18 @@ return (
             </View>
 
             {/* Visitor Info */}
-            <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.visitorName')} *</Text>
+            <View style={styles.nameLabelRow}>
+              <Text style={[styles.inputLabel, styles.nameLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.visitorName')} *</Text>
+              <PressableScale variant="neu" neuSmall
+                style={styles.contactsButton}
+                onPress={handlePickContact}
+                accessibilityRole="button"
+                accessibilityLabel={t('deviceTools.contacts.a11y')}
+              >
+                <Ionicons name="book-outline" size={16} color={neu.teal} />
+                <Text style={[styles.contactsButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('deviceTools.contacts.button')}</Text>
+              </PressableScale>
+            </View>
             <TextInput
               style={styles.input}
               placeholder={t('visits.visitorNamePlaceholder')}
@@ -2215,6 +2286,24 @@ return (
                   <>
                     <Ionicons name="share-outline" size={20} color={neu.onAccent} style={{ marginRight: scale(8) }} />
                     <Text style={[styles.shareButtonPrimaryText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
+                  </>
+                )}
+              </PressableScale>
+
+              {/* Guardar en galería */}
+              <PressableScale variant="neu" neuSmall
+                containerStyle={savingGallery && styles.buttonDisabled}
+                style={styles.saveGalleryButton}
+                onPress={handleSaveQRImage}
+                disabled={savingGallery || sharingImage}
+                accessibilityLabel={t('deviceTools.gallery.saveButton')}
+              >
+                {savingGallery ? (
+                  <ActivityIndicator color={neu.teal} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="download-outline" size={20} color={neu.teal} style={{ marginRight: scale(8) }} />
+                    <Text style={[styles.saveGalleryButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('deviceTools.gallery.saveButton')}</Text>
                   </>
                 )}
               </PressableScale>
@@ -3171,6 +3260,46 @@ const styles = StyleSheet.create({
   shareButtonPrimaryText: {
     color: neu.onAccent,
     fontSize: fs(16),
+    fontWeight: '600',
+  },
+  saveGalleryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(32),
+    borderRadius: scale(14),
+    marginTop: scale(14),
+    width: scale(300),
+  },
+  saveGalleryButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: fs(15),
+    fontWeight: '600',
+  },
+  nameLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: scale(16),
+    marginBottom: scale(8),
+  },
+  nameLabel: {
+    flex: 1,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  contactsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    paddingVertical: scale(6),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(12),
+  },
+  contactsButtonText: {
+    color: COLORS.textPrimary,
+    fontSize: fs(12),
     fontWeight: '600',
   },
   closeModalButton: {
