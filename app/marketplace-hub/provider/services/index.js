@@ -20,26 +20,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { getMyServices, updateService, deleteService } from '../../../../src/services/marketplaceApi';
+import { neu } from '../../../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  green: '#10B981',
-  red: '#EF4444',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  border: 'rgba(255, 255, 255, 0.1)',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  green: neu.teal,
+  red: neu.coral,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 export default function ProviderServicesScreen() {

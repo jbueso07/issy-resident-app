@@ -22,32 +22,33 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { registerAsProvider } from '../../../src/services/marketplaceApi';
+import { neu } from '../../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
 
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  green: '#10B981',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  green: neu.teal,
 
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
 
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 const BUSINESS_TYPES = [

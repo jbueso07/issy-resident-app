@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useAuth } from '../src/context/AuthContext';
+import { neu } from '../src/theme/tokens';
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -61,7 +62,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1A1E',
+    backgroundColor: neu.bg,
     alignItems: 'center',
     justifyContent: 'center',
   },

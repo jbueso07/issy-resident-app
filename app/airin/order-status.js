@@ -16,32 +16,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { getOrderStatus } from '../../src/services/airinService';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
 
-  orange: '#FF6B35',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  coral: '#FF6B6B',
-  green: '#10B981',
-  purple: '#A78BFA',
-  blue: '#60A5FA',
-  yellow: '#FBBF24',
+  orange: neu.amber,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  coral: neu.coral,
+  green: neu.teal,
+  purple: neu.lilac,
+  blue: neu.blue,
+  yellow: neu.amber,
 
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 
-  border: 'rgba(255, 255, 255, 0.1)',
+  border: neu.border,
 };
 
 // ============ ORDER STATUSES CONFIG ============

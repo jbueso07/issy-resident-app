@@ -3,11 +3,12 @@
 // Línea gráfica ProHome
 
 import { Stack } from 'expo-router';
+import { neu } from '../../src/theme/tokens';
 
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  textPrimary: '#FFFFFF',
-  orange: '#FF6B35',
+  bgPrimary: neu.bg,
+  textPrimary: neu.text,
+  orange: neu.amber,
 };
 
 export default function AirinLayout() {

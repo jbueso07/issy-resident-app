@@ -29,30 +29,31 @@ import {
   getPaymentMethods,
 } from '../../src/services/api';
 import { supabase } from '../../src/config/supabase';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  tealDark: '#4BCDC7',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  purpleLight: '#818CF8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
-  yellow: '#F59E0B',
-  blue: '#3B82F6',
-  orange: '#F97316',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  tealDark: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  purpleLight: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
+  yellow: neu.amber,
+  blue: neu.blue,
+  orange: neu.amber,
 };
 
 // API Base URL
@@ -1038,7 +1039,7 @@ const processCardPayment = async () => {
               <View
                 style={[
                   styles.verificationNote,
-                  { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
+                  { backgroundColor: neu.teal + '1A' },
                 ]}
               >
                 <Ionicons
@@ -1209,7 +1210,7 @@ detailStatusText: {
   decoCircle: {
     position: 'absolute',
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: neu.raised,
   },
   decoCircle1: {
     width: scale(150),
@@ -1229,7 +1230,7 @@ detailStatusText: {
   balanceLeft: {},
   balanceLabel: {
     fontSize: scale(13),
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: neu.textLabel,
   },
   balanceAmount: {
     fontSize: scale(28),
@@ -1239,7 +1240,7 @@ detailStatusText: {
   },
   balanceCount: {
     fontSize: scale(12),
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: neu.textLabel,
     marginTop: scale(4),
   },
 
@@ -1416,7 +1417,7 @@ detailStatusText: {
   rejectionBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: neu.coral + '1A',
     padding: scale(10),
     borderRadius: scale(8),
     marginTop: scale(10),
@@ -1471,7 +1472,7 @@ detailStatusText: {
   waitingBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: neu.blue + '1A',
     padding: scale(10),
     borderRadius: scale(8),
     marginTop: scale(10),
@@ -1488,7 +1489,7 @@ detailStatusText: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: neu.teal + '26',
     paddingVertical: scale(6),
     paddingHorizontal: scale(12),
     borderRadius: scale(20),
@@ -1504,7 +1505,7 @@ detailStatusText: {
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContainer: {
@@ -1700,7 +1701,7 @@ detailStatusText: {
   verificationNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: neu.blue + '1A',
     padding: scale(12),
     borderRadius: scale(12),
     marginBottom: scale(20),
@@ -1801,7 +1802,7 @@ detailStatusText: {
     marginTop: scale(2),
   },
   defaultBadge: {
-    backgroundColor: 'rgba(212, 254, 72, 0.2)',
+    backgroundColor: neu.teal + '33',
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
     borderRadius: scale(8),

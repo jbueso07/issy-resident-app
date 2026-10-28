@@ -30,24 +30,25 @@ import * as Sharing from 'expo-sharing';
 import { useUserLocation } from '../src/context/UserLocationContext';
 import { useTranslation } from '../src/hooks/useTranslation';
 import { createEvent } from '../src/services/api';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.1)',
-  lime: '#D4FE48',
-  teal: '#5DDED8',
-  cyan: '#5DDED8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  textDark: '#0F1A1A',
-  red: '#EF4444',
-  success: '#10B981',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  card: neu.raised,
+  cardBorder: neu.border,
+  lime: neu.teal,
+  teal: neu.teal,
+  cyan: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
+  red: neu.coral,
+  success: neu.teal,
 };
 
 // Fecha date-only en local (NUNCA toISOString: corrimiento -1 día en UTC-6,
@@ -234,7 +235,7 @@ export default function CreateEventScreen() {
             mode={mode}
             display="spinner"
             themeVariant="dark"
-            textColor="#FFFFFF"
+            textColor={neu.text}
             minimumDate={minimumDate}
             onChange={(event, d) => {
               if (d) onChange(d);
@@ -707,7 +708,7 @@ const styles = StyleSheet.create({
   shareCardEvent: {
     fontSize: scale(20),
     fontWeight: '800',
-    color: '#1A3D4D',
+    color: neu.onAccent,
     textAlign: 'center',
   },
   shareCardCommunity: {
@@ -736,7 +737,7 @@ const styles = StyleSheet.create({
   shareCardCode: {
     fontSize: scale(13),
     fontWeight: '700',
-    color: '#1A3D4D',
+    color: neu.onAccent,
     marginTop: scale(10),
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -750,12 +751,12 @@ const styles = StyleSheet.create({
   pickerModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: neu.overlay,
   },
   // Mismo patron que visits.js (:3045): fondo oscuro. El spinner de iOS se
   // pinta en claro sobre este fondo; ver renderPickerModalIOS.
   pickerModalContent: {
-    backgroundColor: '#1C2E35',
+    backgroundColor: neu.raised,
     borderTopLeftRadius: scale(20),
     borderTopRightRadius: scale(20),
     paddingBottom: scale(30),
@@ -767,16 +768,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(20),
     paddingVertical: scale(14),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: neu.border,
   },
   pickerModalCancel: {
     fontSize: scale(15),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: neu.textLabel,
     fontWeight: '500',
   },
   pickerModalDone: {
     fontSize: scale(15),
-    color: '#AAFF00',
+    color: neu.teal,
     fontWeight: '600',
   },
 });

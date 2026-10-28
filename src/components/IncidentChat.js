@@ -18,29 +18,30 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // Lima de las pantallas de incidentes (app/incidents.js, app/admin/incidents.js,
 // app/incident-detail.js). La app no tiene un tema compartido en uso:
-// src/components/ui/index.js exporta COLORS.lime = '#AAFF00', pero ninguna
+// src/components/ui/index.js exporta COLORS.lime = neu.teal, pero ninguna
 // pantalla lo importa.
-const LIME = '#D4FE48';
+const LIME = neu.teal;
 
 // Paleta oscura de la app (app.json → userInterfaceStyle: "dark")
 export const CHAT_COLORS = {
-  background: '#0F1A1A',
-  bubbleOther: '#1A2C2C',
+  background: neu.bg,
+  bubbleOther: neu.raised,
   bubbleMine: LIME,
-  textOnOther: '#FFFFFF',
-  textOnMine: '#0F1A1A',
-  metaOnOther: '#8E9A9A',
+  textOnOther: neu.text,
+  textOnMine: neu.onAccent,
+  metaOnOther: neu.textLabel,
   metaOnMine: '#3A4A1A',
-  muted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
-  inputBg: '#243636',
-  teal: '#5DDED8',
+  muted: neu.textSoft,
+  border: neu.border,
+  inputBg: neu.sunken,
+  teal: neu.teal,
   lime: LIME,
 };
 

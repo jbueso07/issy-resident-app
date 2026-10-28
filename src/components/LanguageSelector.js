@@ -12,22 +12,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  border: 'rgba(255, 255, 255, 0.1)',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const LanguageSelector = ({ style }) => {
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     padding: scale(16),
   },
   languageItemActive: {
-    backgroundColor: 'rgba(170, 255, 0, 0.15)',
+    backgroundColor: neu.teal + '26',
     borderWidth: 1,
     borderColor: COLORS.lime,
   },

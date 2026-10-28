@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { getReceivedQRCodes } from '../services/api';
 import PressableScale from './home/PressableScale';
 import ReceivedQRPass from './ReceivedQRPass';
-import { colors, radius, spacing, MAX_FONT_SCALE } from '../theme/tokens';
+import { colors, radius, spacing, MAX_FONT_SCALE, neu } from '../theme/tokens';
 import { getPassStatus, getScheduleParts, getDestination, TYPE_COLORS } from '../utils/receivedQR';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -19,14 +19,14 @@ const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // Colores del estado vacío (sin cambios)
 const COLORS = {
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  border: 'rgba(255, 255, 255, 0.1)',
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  border: neu.border,
 };
 
 const STATUS_STYLES = {
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     width: scale(80),
     height: scale(80),
     borderRadius: scale(40),
-    backgroundColor: 'rgba(0,191,166,0.15)',
+    backgroundColor: neu.teal + '26',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),

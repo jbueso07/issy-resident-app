@@ -28,6 +28,7 @@ import {
   IncidentComposer,
   INCIDENT_CLOSED_STATUSES,
 } from '../src/components/IncidentChat';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -35,18 +36,18 @@ const scale = (size) => (SCREEN_WIDTH / 375) * size;
 // Tema oscuro de la app (app.json → userInterfaceStyle: "dark"),
 // misma paleta que app/incidents.js y app/admin/incidents.js.
 const COLORS = {
-  lime: '#D4FE48',
-  cyan: '#009FF5',
-  cyanLight: '#11D6E6',
-  white: '#FFFFFF',
-  background: '#0F1A1A',
-  card: '#1A2C2C',
-  cardAlt: '#243636',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  red: '#FA5967',
-  green: '#10B981',
-  yellow: '#F59E0B',
+  lime: neu.teal,
+  cyan: neu.teal,
+  cyanLight: neu.teal,
+  white: neu.onAccent,
+  background: neu.bg,
+  card: neu.raised,
+  cardAlt: neu.sunken,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  red: neu.coral,
+  green: neu.teal,
+  yellow: neu.amber,
 };
 
 const getStatusConfig = (t) => ({

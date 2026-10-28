@@ -19,29 +19,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { getRestaurant, getMenu, createOrder } from '../../src/services/airinService';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
 
-  orange: '#FF6B35',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  coral: '#FF6B6B',
-  green: '#10B981',
+  orange: neu.amber,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  coral: neu.coral,
+  green: neu.teal,
 
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 
-  border: 'rgba(255, 255, 255, 0.1)',
+  border: neu.border,
 };
 
 export default function RestaurantMenuScreen() {
@@ -606,7 +607,7 @@ const styles = StyleSheet.create({
     gap: scale(10),
   },
   cartBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: neu.textSoft,
     borderRadius: scale(10),
     width: scale(24),
     height: scale(24),
@@ -632,7 +633,7 @@ const styles = StyleSheet.create({
   // Cart Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   cartModal: {

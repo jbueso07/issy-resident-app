@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-na
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
+import { neu } from '../src/theme/tokens';
 
 const COLORS = {
-  background: '#0a0a0a',
-  card: '#1a1a1a',
-  lime: '#c6f135',
-  textLight: '#ffffff',
-  textMuted: '#888888',
+  background: neu.bg,
+  card: neu.raised,
+  lime: neu.teal,
+  textLight: neu.text,
+  textMuted: neu.textSoft,
 };
 
 export default function PendingApprovalScreen() {

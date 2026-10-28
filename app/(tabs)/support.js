@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 export default function Support() {
   const { t } = useTranslation();
@@ -58,7 +59,7 @@ export default function Support() {
       title: t('support.contact.email'),
       subtitle: 'info@joinissy.com',
       action: () => Linking.openURL('mailto:info@joinissy.com'),
-      color: '#6366F1',
+      color: neu.lilac,
     },
     {
       id: 'web',
@@ -66,7 +67,7 @@ export default function Support() {
       title: t('support.contact.website'),
       subtitle: 'joinissy.com',
       action: () => Linking.openURL('https://joinissy.com'),
-      color: '#00BFA6',
+      color: neu.teal,
     },
   ];
 
@@ -150,7 +151,7 @@ export default function Support() {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={['#EF4444', '#DC2626']}
+            colors={[neu.coral, neu.coral]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.emergencyGradient}
@@ -178,7 +179,7 @@ export default function Support() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: neu.bg,
   },
   header: {
     padding: 24,
@@ -187,17 +188,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1F2937',
+    color: neu.text,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: neu.textSoft,
     marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: neu.text,
     marginBottom: 16,
   },
   // Contact Section
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
   },
   contactCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: neu.raised,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -235,12 +236,12 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: neu.text,
     marginBottom: 2,
   },
   contactSubtitle: {
     fontSize: 11,
-    color: '#6B7280',
+    color: neu.textSoft,
     textAlign: 'center',
   },
   // FAQ Section
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   faqItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: neu.raised,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -267,17 +268,17 @@ const styles = StyleSheet.create({
   faqQuestion: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: neu.text,
     flex: 1,
     paddingRight: 12,
   },
   faqArrow: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: neu.textSoft,
   },
   faqAnswer: {
     fontSize: 14,
-    color: '#6B7280',
+    color: neu.textSoft,
     marginTop: 12,
     lineHeight: 20,
   },
@@ -303,15 +304,15 @@ const styles = StyleSheet.create({
   emergencyTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: neu.text,
   },
   emergencySubtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    color: neu.textLabel,
     marginTop: 2,
   },
   emergencyBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: neu.raised,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
   emergencyBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: neu.text,
   },
   // App Info
   appInfo: {
@@ -328,11 +329,11 @@ const styles = StyleSheet.create({
   },
   appVersion: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: neu.textSoft,
   },
   appCopyright: {
     fontSize: 12,
-    color: '#D1D5DB',
+    color: neu.text,
     marginTop: 4,
   },
 });

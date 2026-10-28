@@ -3,12 +3,13 @@
 // Línea gráfica ProHome
 
 import { Stack } from 'expo-router';
+import { neu } from '../../src/theme/tokens';
 
 // Colores ProHome
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  textPrimary: '#FFFFFF',
-  teal: '#00BFA6',
+  bgPrimary: neu.bg,
+  textPrimary: neu.text,
+  teal: neu.teal,
 };
 
 export default function MarketplaceLayout() {

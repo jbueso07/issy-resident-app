@@ -24,6 +24,7 @@ import { useAuth } from '../src/context/AuthContext';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from '../src/hooks/useTranslation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -32,34 +33,34 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  tealDark: '#4BCDC7',
-  lime: '#D4FE48',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  red: '#EF4444',
-  yellow: '#F59E0B',
-  green: '#10B981',
-  blue: '#3B82F6',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  tealDark: neu.teal,
+  lime: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  red: neu.coral,
+  yellow: neu.amber,
+  green: neu.teal,
+  blue: neu.blue,
 };
 
 // Info visual por tipo de área
 const TYPE_INFO = {
-  pool: { icon: 'water', color: '#3B82F6', label: 'Piscina' },
-  gym: { icon: 'fitness', color: '#EF4444', label: 'Gimnasio' },
-  court: { icon: 'tennisball', color: '#10B981', label: 'Cancha' },
-  bbq: { icon: 'flame', color: '#F59E0B', label: 'BBQ' },
-  salon: { icon: 'wine', color: '#8B5CF6', label: 'Salón' },
-  playground: { icon: 'happy', color: '#EC4899', label: 'Parque' },
-  terrace: { icon: 'sunny', color: '#6366F1', label: 'Terraza' },
-  garden: { icon: 'leaf', color: '#22C55E', label: 'Jardín' },
-  parking: { icon: 'car', color: '#64748B', label: 'Parqueo' },
+  pool: { icon: 'water', color: neu.blue, label: 'Piscina' },
+  gym: { icon: 'fitness', color: neu.coral, label: 'Gimnasio' },
+  court: { icon: 'tennisball', color: neu.teal, label: 'Cancha' },
+  bbq: { icon: 'flame', color: neu.amber, label: 'BBQ' },
+  salon: { icon: 'wine', color: neu.lilac, label: 'Salón' },
+  playground: { icon: 'happy', color: neu.lilac, label: 'Parque' },
+  terrace: { icon: 'sunny', color: neu.lilac, label: 'Terraza' },
+  garden: { icon: 'leaf', color: neu.teal, label: 'Jardín' },
+  parking: { icon: 'car', color: neu.textSoft, label: 'Parqueo' },
   other: { icon: 'grid', color: '#78716C', label: 'Otro' }
 };
 
@@ -84,11 +85,11 @@ const CATEGORIES = [
 
 // Estados de reserva - Se traducen dinámicamente
 const getStatusConfig = (t) => ({
-  pending: { label: t('reservations.status.pending'), color: COLORS.yellow, bgColor: 'rgba(245, 158, 11, 0.2)' },
-  approved: { label: t('reservations.status.approved'), color: COLORS.green, bgColor: 'rgba(16, 185, 129, 0.2)' },
-  rejected: { label: t('reservations.status.rejected'), color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
+  pending: { label: t('reservations.status.pending'), color: COLORS.yellow, bgColor: neu.amber + '33' },
+  approved: { label: t('reservations.status.approved'), color: COLORS.green, bgColor: neu.teal + '33' },
+  rejected: { label: t('reservations.status.rejected'), color: COLORS.red, bgColor: neu.coral + '33' },
   cancelled: { label: t('reservations.status.cancelled'), color: COLORS.textMuted, bgColor: 'rgba(107, 114, 128, 0.2)' },
-  expired: { label: t('reservations.status.expired'), color: COLORS.red, bgColor: 'rgba(239, 68, 68, 0.2)' },
+  expired: { label: t('reservations.status.expired'), color: COLORS.red, bgColor: neu.coral + '33' },
 });
 
 export default function ReservationsScreen() {
@@ -1082,7 +1083,7 @@ const styles = StyleSheet.create({
   },
   reservationOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: neu.overlay,
     padding: scale(16),
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1273,7 +1274,7 @@ const styles = StyleSheet.create({
   },
   areaOptionSelected: {
     borderColor: COLORS.lime,
-    backgroundColor: 'rgba(212,254,72,0.1)',
+    backgroundColor: neu.teal + '1A',
   },
   areaIcon: {
     width: scale(48),
@@ -1530,8 +1531,8 @@ const styles = StyleSheet.create({
     paddingVertical: scale(14),
     borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: neu.coral + '4C',
+    backgroundColor: neu.coral + '1A',
     gap: scale(8),
   },
   cancelDetailButtonText: {
@@ -1543,7 +1544,7 @@ const styles = StyleSheet.create({
   // Success Modal
   successOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: neu.overlay,
     alignItems: 'center',
     justifyContent: 'center',
     padding: scale(40),
@@ -1584,13 +1585,13 @@ const styles = StyleSheet.create({
 
   // QR Access Card
   qrAccessCard: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: neu.teal + '14',
     borderRadius: scale(20),
     padding: scale(20),
     alignItems: 'center',
     marginTop: scale(20),
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: neu.teal + '4C',
   },
   qrAccessHeader: {
     flexDirection: 'row',

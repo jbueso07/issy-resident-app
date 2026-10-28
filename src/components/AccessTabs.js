@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
-const COLORS = { bgPrimary: '#0F1A1E', bgCard: '#1C2E35', bgCardAlt: '#243B44', lime: '#AAFF00', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.5)', border: 'rgba(255,255,255,0.1)' };
+const COLORS = { bgPrimary: neu.bg, bgCard: neu.raised, bgCardAlt: neu.sunken, lime: neu.teal, textPrimary: neu.text, textSecondary: neu.textSoft, border: neu.border };
 
 const AccessTabs = ({ activeTab, onTabChange }) => {
   const { t } = useTranslation();

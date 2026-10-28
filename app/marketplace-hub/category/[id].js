@@ -16,30 +16,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { getServices } from '../../../src/services/marketplaceApi';
+import { neu } from '../../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgCard: '#1C2E35',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  border: 'rgba(255, 255, 255, 0.1)',
+  bgPrimary: neu.bg,
+  bgCard: neu.raised,
+  teal: neu.teal,
+  orange: neu.amber,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const CATEGORIES = {
-  home: { name: 'Hogar', icon: 'home', color: '#00BFA6' },
-  beauty: { name: 'Belleza', icon: 'sparkles', color: '#A78BFA' },
-  tech: { name: 'Tecnología', icon: 'laptop', color: '#60A5FA' },
-  health: { name: 'Salud', icon: 'fitness', color: '#10B981' },
-  education: { name: 'Educación', icon: 'school', color: '#818CF8' },
-  automotive: { name: 'Automotriz', icon: 'car', color: '#FF8A50' },
-  events: { name: 'Eventos', icon: 'calendar', color: '#FF6B6B' },
-  pets: { name: 'Mascotas', icon: 'paw', color: '#00E5FF' },
+  home: { name: 'Hogar', icon: 'home', color: neu.teal },
+  beauty: { name: 'Belleza', icon: 'sparkles', color: neu.lilac },
+  tech: { name: 'Tecnología', icon: 'laptop', color: neu.blue },
+  health: { name: 'Salud', icon: 'fitness', color: neu.teal },
+  education: { name: 'Educación', icon: 'school', color: neu.lilac },
+  automotive: { name: 'Automotriz', icon: 'car', color: neu.amber },
+  events: { name: 'Eventos', icon: 'calendar', color: neu.coral },
+  pets: { name: 'Mascotas', icon: 'paw', color: neu.teal },
 };
 
 

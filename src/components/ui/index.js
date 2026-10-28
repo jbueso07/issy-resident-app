@@ -13,34 +13,35 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { neu } from '../../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 export const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
   
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  indigo: '#818CF8',
-  blue: '#60A5FA',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  indigo: neu.lilac,
+  blue: neu.blue,
   
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
   
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 // ============ SECTION HEADER ============
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(12),
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: neu.textSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(10),
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
   },
   menuCardSubtitle: {
     fontSize: scale(11),
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: neu.textLabel,
   },
   menuCardSubtitleSmall: {
     fontSize: scale(10),
@@ -530,13 +531,13 @@ const styles = StyleSheet.create({
   },
   gradientCardSubtitle: {
     fontSize: scale(13),
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: neu.textLabel,
   },
   gradientCardIconBox: {
     width: scale(44),
     height: scale(44),
     borderRadius: scale(12),
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },

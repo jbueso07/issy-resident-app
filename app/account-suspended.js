@@ -6,17 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../src/theme/tokens';
 
 const COLORS = {
-  primary: '#6366F1',
-  danger: '#EF4444',
-  warning: '#F59E0B',
-  success: '#10B981',
-  navy: '#1A1A2E',
-  white: '#FFFFFF',
-  background: '#F3F4F6',
-  gray: '#6B7280',
-  grayLight: '#E5E7EB',
+  primary: neu.lilac,
+  danger: neu.coral,
+  warning: neu.amber,
+  success: neu.teal,
+  navy: neu.text,
+  white: neu.raised,
+  background: neu.bg,
+  gray: neu.textSoft,
+  grayLight: neu.border,
 };
 
 const getSuspensionInfo = (t) => ({
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonText: {
-    color: COLORS.white,
+    color: neu.onAccent,
     fontSize: 16,
     fontWeight: '600',
   },

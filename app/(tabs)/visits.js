@@ -41,7 +41,7 @@ import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
 import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
 import PressableScale from '../../src/components/home/PressableScale';
-import { colors as tk, radius, spacing } from '../../src/theme/tokens';
+import { colors as tk, radius, spacing, neu } from '../../src/theme/tokens';
 import { TYPE_COLORS } from '../../src/utils/receivedQR';
 import { getMyQRStatusLine, getMyQRSummary, filterMyQRs, MY_QR_FILTERS } from '../../src/utils/myQRStatus';
 import {
@@ -62,29 +62,29 @@ const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
 
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  indigo: '#818CF8',
-  blue: '#60A5FA',
-  pink: '#F472B6',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  indigo: neu.lilac,
+  blue: neu.blue,
+  pink: neu.lilac,
 
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
 
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 // QR types - defined dynamically in component with translations
@@ -113,7 +113,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
       { id: 'indriver', name: 'InDriver', color: '#2FD058', icon: 'car-sport', initial: 'iD' },
-      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Otro', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
   US: {
@@ -125,7 +125,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'amazon', name: 'Amazon', color: '#FF9900', icon: 'cube', initial: 'A' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
       { id: 'lyft', name: 'Lyft', color: '#FF00BF', icon: 'car-sport', initial: 'L' },
-      { id: 'otro', name: 'Other', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Other', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
   MX: {
@@ -136,7 +136,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'didi_food', name: 'DiDi Food', color: '#FF7B00', icon: 'restaurant', initial: 'DD' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
       { id: 'didi', name: 'DiDi', color: '#FF7B00', icon: 'car-sport', initial: 'D' },
-      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Otro', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
   GT: {
@@ -145,7 +145,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
-      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Otro', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
   SV: {
@@ -154,7 +154,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'pedidosya', name: 'PedidosYa', color: '#FF0044', icon: 'restaurant', initial: 'PY' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
-      { id: 'otro', name: 'Otro', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Otro', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
   DEFAULT: {
@@ -163,7 +163,7 @@ const DELIVERY_PROVIDERS = {
       { id: 'uber_eats', name: 'Uber Eats', color: '#06C167', icon: 'fast-food', initial: 'UE' },
       { id: 'uber', name: 'Uber', color: '#276EF1', icon: 'car', initial: 'U' },
       { id: 'delivery', name: 'Delivery', color: '#FF6B00', icon: 'bicycle', initial: 'D' },
-      { id: 'otro', name: 'Other', color: '#8B5CF6', icon: 'cube', initial: '?' },
+      { id: 'otro', name: 'Other', color: neu.lilac, icon: 'cube', initial: '?' },
     ],
   },
 };
@@ -2072,21 +2072,21 @@ return (
                   <View style={styles.infoCardsRow}>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="time-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="calendar-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
@@ -2100,21 +2100,21 @@ return (
                   <View style={styles.infoCardsRow}>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="time-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.events.entryLabel', 'Ingreso')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getEventEntryWindow(selectedQR)}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
-                        <Ionicons name="calendar-outline" size={16} color="#1A3D4D" />
+                        <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
                       </View>
                       <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
                       <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
@@ -2151,21 +2151,21 @@ return (
                     <View style={styles.infoCardsRow}>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
-                          <Ionicons name="time-outline" size={16} color="#1A3D4D" />
+                          <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                         </View>
                         <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
-                          <Ionicons name="home-outline" size={16} color="#1A3D4D" />
+                          <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                         </View>
                         <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
-                          <Ionicons name="checkmark-circle-outline" size={16} color="#1A3D4D" />
+                          <Ionicons name="checkmark-circle-outline" size={16} color={neu.onAccent} />
                         </View>
                         <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.valid')}</Text>
                         <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>
@@ -2318,10 +2318,10 @@ return (
                   disabled={generatingQuick}
                 >
                   {generatingQuick ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color={neu.text} size="small" />
                   ) : (
                     <>
-                      <Ionicons name="flash" size={22} color="#fff" style={{ marginRight: scale(8) }} />
+                      <Ionicons name="flash" size={22} color={neu.text} style={{ marginRight: scale(8) }} />
                       <Text style={styles.quickGenerateText} maxFontSizeMultiplier={1.2}>
                         Generar QR para {selectedProvider.name}
                       </Text>
@@ -2595,7 +2595,7 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(10),
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    backgroundColor: neu.coral + '26',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2923,7 +2923,7 @@ const styles = StyleSheet.create({
   // QR Modal Overlay
   qrModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: neu.overlay,
   },
   qrModalScrollContent: {
     flexGrow: 1,
@@ -2952,7 +2952,7 @@ const styles = StyleSheet.create({
   shareableVisitorName: {
     fontSize: scale(32),
     fontWeight: '700',
-    color: '#1A3D4D',
+    color: neu.onAccent,
     marginBottom: scale(6),
     letterSpacing: -0.5,
     textAlign: 'center',
@@ -2966,7 +2966,7 @@ const styles = StyleSheet.create({
   },
   shareableAuthorized: {
     fontSize: scale(13),
-    color: '#7A9E9E',
+    color: neu.textSoft,
     fontWeight: '500',
   },
   shareableHostName: {
@@ -2985,12 +2985,12 @@ const styles = StyleSheet.create({
     paddingVertical: scale(10),
     paddingHorizontal: scale(16),
     borderRadius: scale(20),
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: neu.textLabel,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.7)',
+    borderColor: neu.textLabel,
   },
   qrTypePillActive: {
-    backgroundColor: '#1A3D4D',
+    backgroundColor: neu.sunken,
     borderColor: 'rgba(26, 61, 77, 0.3)',
   },
   qrTypePillText: {
@@ -2999,7 +2999,7 @@ const styles = StyleSheet.create({
     color: '#6B8A8A',
   },
   qrTypePillTextActive: {
-    color: '#FFFFFF',
+    color: neu.text,
   },
 
   // Card del QR
@@ -3051,14 +3051,14 @@ const styles = StyleSheet.create({
   },
   showGuardText: {
     fontSize: scale(13),
-    color: '#7A9E9E',
+    color: neu.textSoft,
     fontWeight: '600',
     textAlign: 'center',
   },
 
   // Days Row Card
   daysRowCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: neu.textLabel,
     borderRadius: scale(14),
     paddingVertical: scale(10),
     paddingHorizontal: scale(14),
@@ -3067,11 +3067,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: neu.textLabel,
   },
   daysRowLabel: {
     fontSize: scale(9),
-    color: '#7A9E9E',
+    color: neu.textSoft,
     fontWeight: '600',
     letterSpacing: 0.3,
   },
@@ -3088,7 +3088,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayPillActive: {
-    backgroundColor: '#1A3D4D',
+    backgroundColor: neu.sunken,
   },
   dayPillText: {
     fontSize: scale(9),
@@ -3096,7 +3096,7 @@ const styles = StyleSheet.create({
     color: '#A0B5B5',
   },
   dayPillTextActive: {
-    color: '#FFFFFF',
+    color: neu.text,
   },
 
   // Info Cards Row
@@ -3107,13 +3107,13 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: neu.textLabel,
     borderRadius: scale(16),
     paddingVertical: scale(12),
     paddingHorizontal: scale(8),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: neu.textLabel,
   },
   infoCardIcon: {
     width: scale(32),
@@ -3126,7 +3126,7 @@ const styles = StyleSheet.create({
   },
   infoCardLabel: {
     fontSize: scale(9),
-    color: '#7A9E9E',
+    color: neu.textSoft,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -3135,7 +3135,7 @@ const styles = StyleSheet.create({
   infoCardValue: {
     fontSize: scale(11),
     fontWeight: '700',
-    color: '#1A3D4D',
+    color: neu.onAccent,
     textAlign: 'center',
     lineHeight: scale(14),
   },
@@ -3301,7 +3301,7 @@ const styles = StyleSheet.create({
   quickGenerateText: {
     fontSize: scale(16),
     fontWeight: '700',
-    color: '#fff',
+    color: neu.text,
   },
   phoneInputRow: {
     position: 'relative',
@@ -3434,10 +3434,10 @@ const styles = StyleSheet.create({
   pickerModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: neu.overlay,
   },
   pickerModalContent: {
-    backgroundColor: '#1C2E35',
+    backgroundColor: neu.raised,
     borderTopLeftRadius: scale(20),
     borderTopRightRadius: scale(20),
     paddingBottom: scale(30),
@@ -3449,16 +3449,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(20),
     paddingVertical: scale(14),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: neu.border,
   },
   pickerModalCancel: {
     fontSize: scale(15),
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: neu.textLabel,
     fontWeight: '500',
   },
   pickerModalDone: {
     fontSize: scale(15),
-    color: '#AAFF00',
+    color: neu.teal,
     fontWeight: '600',
   },
 });

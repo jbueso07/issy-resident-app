@@ -23,6 +23,7 @@ import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
 import { useTranslation } from '../src/hooks/useTranslation';
 import { useUserLocation } from '../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../src/components/UserLocationPicker';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -30,21 +31,21 @@ const IMAGE_SIZE = SCREEN_WIDTH - scale(80);
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
   cyan: '#11DAE9',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
-  blue: '#3B82F6',
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
+  blue: neu.blue,
 };
 
 // fromTab: abierta desde la pestaña Anuncios de la barra (sin flecha atrás)
@@ -186,7 +187,7 @@ export default function AnnouncementsScreen({ fromTab = false }) {
             {/* Badge NUEVO/VISTO */}
             <View style={[
               styles.statusBadge,
-              { backgroundColor: item.is_read ? 'rgba(93, 222, 216, 0.15)' : 'rgba(212, 254, 72, 0.15)' }
+              { backgroundColor: item.is_read ? neu.teal + '26' : neu.teal + '26' }
             ]}>
               <Text style={[
                 styles.statusBadgeText,
@@ -543,7 +544,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: neu.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(20),

@@ -14,16 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { authFetch } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 
 const COLORS = {
-  bgCard: '#1C2E35',
-  lime: '#AAFF00',
-  coral: '#FF6B6B',
-  textPrimary: '#FFFFFF',
+  bgCard: neu.raised,
+  lime: neu.teal,
+  coral: neu.coral,
+  textPrimary: neu.text,
 };
 
 // style / badgeStyle: opcionales para la piel del home (sin ellos se ve igual que siempre)
@@ -110,7 +111,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: scale(4),
     borderWidth: 2,
-    borderColor: '#0F1A1E',
+    borderColor: neu.bg,
   },
   badgeText: {
     fontSize: scale(10),

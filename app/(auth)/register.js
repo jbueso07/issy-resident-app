@@ -21,23 +21,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 };
 
 export default function Register() {
@@ -315,7 +316,7 @@ export default function Register() {
                 )}
                 {codeVerified && (
                   <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
+                    <Ionicons name="checkmark-circle" size={22} color={neu.teal} />
                   </View>
                 )}
               </View>
@@ -479,10 +480,10 @@ const styles = StyleSheet.create({
     marginTop: scale(8),
     marginBottom: scale(20),
     padding: scale(16),
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: neu.lilac + '1A',
     borderRadius: scale(14),
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderColor: neu.lilac + '33',
   },
   invitationLabel: {
     fontSize: scale(14),
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: scale(12),
     borderRadius: scale(12),
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: neu.lilac + '33',
   },
   verifyCodeText: {
     color: COLORS.purple,

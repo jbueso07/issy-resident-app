@@ -30,6 +30,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -97,7 +98,7 @@ export function PhotoViewer({ uris = [], index, onClose, inline = false }) {
           accessibilityRole="button"
           accessibilityLabel="Cerrar"
         >
-          <Ionicons name="close" size={26} color="#FFFFFF" />
+          <Ionicons name="close" size={26} color={neu.text} />
         </TouchableOpacity>
 
         {uris.length > 1 && (
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: neu.raised,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -234,10 +235,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: scale(6),
     borderRadius: scale(14),
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: neu.raised,
   },
   viewerCounterText: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(12),
     fontWeight: '600',
   },

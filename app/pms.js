@@ -14,29 +14,30 @@ import {
   getPMSTenants, getPMSPayments, recordPMSPayment, getPMSMaintenance
 } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  tealDark: '#4BCDC7',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  purpleLight: '#818CF8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
-  yellow: '#F59E0B',
-  blue: '#3B82F6',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  tealDark: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  purpleLight: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
+  yellow: neu.amber,
+  blue: neu.blue,
 };
 
 const getTabs = (t) => [
@@ -208,7 +209,7 @@ export default function PMSScreen() {
         {/* KPI Grid */}
         <View style={styles.kpiGrid}>
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.blue }]}>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: neu.blue + '26' }]}>
               <Ionicons name="home" size={22} color={COLORS.blue} />
             </View>
             <Text style={styles.kpiValue}>{propertiesCount}</Text>
@@ -216,7 +217,7 @@ export default function PMSScreen() {
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.green }]}>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: neu.teal + '26' }]}>
               <Ionicons name="people" size={22} color={COLORS.green} />
             </View>
             <Text style={styles.kpiValue}>{tenantsCount}</Text>
@@ -224,7 +225,7 @@ export default function PMSScreen() {
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.lime }]}>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(212, 254, 72, 0.15)' }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: neu.teal + '26' }]}>
               <Ionicons name="wallet" size={22} color={COLORS.lime} />
             </View>
             <Text style={styles.kpiValue}>L{(monthlyIncome / 1000).toFixed(1)}k</Text>
@@ -232,7 +233,7 @@ export default function PMSScreen() {
           </View>
           
           <View style={[styles.kpiCard, { borderLeftColor: COLORS.red }]}>
-            <View style={[styles.kpiIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+            <View style={[styles.kpiIconBox, { backgroundColor: neu.coral + '26' }]}>
               <Ionicons name="time" size={22} color={COLORS.red} />
             </View>
             <Text style={styles.kpiValue}>{pendingCount}</Text>
@@ -318,7 +319,7 @@ export default function PMSScreen() {
           <View key={prop.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleRow}>
-                <View style={[styles.propertyTypeIcon, { backgroundColor: 'rgba(99, 102, 241, 0.15)' }]}>
+                <View style={[styles.propertyTypeIcon, { backgroundColor: neu.lilac + '26' }]}>
                   <Ionicons 
                     name={prop.property_type === 'house' ? 'home' : prop.property_type === 'commercial' ? 'storefront' : 'business'} 
                     size={20} 
@@ -364,7 +365,7 @@ export default function PMSScreen() {
           <View key={tenant.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleRow}>
-                <View style={[styles.avatarBox, { backgroundColor: tenant.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
+                <View style={[styles.avatarBox, { backgroundColor: tenant.status === 'active' ? neu.teal + '26' : neu.coral + '26' }]}>
                   <Text style={styles.avatarText}>
                     {(tenant.first_name?.[0] || tenant.name?.[0] || tenant.email?.[0] || '?').toUpperCase()}
                   </Text>
@@ -378,7 +379,7 @@ export default function PMSScreen() {
                   <Text style={styles.cardSubtitle}>{tenant.email}</Text>
                 </View>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: tenant.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
+              <View style={[styles.statusBadge, { backgroundColor: tenant.status === 'active' ? neu.teal + '26' : neu.coral + '26' }]}>
                 <Text style={[styles.statusText, { color: tenant.status === 'active' ? COLORS.green : COLORS.red }]}>
                   {tenant.status === 'active' ? t('pms.tenants.active') : t('pms.tenants.inactive')}
                 </Text>
@@ -405,12 +406,12 @@ export default function PMSScreen() {
       <View style={styles.content}>
         {/* Summary Cards */}
         <View style={styles.paymentSummary}>
-          <View style={[styles.summaryCard, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}>
+          <View style={[styles.summaryCard, { backgroundColor: neu.teal + '26', borderColor: neu.teal + '4C' }]}>
             <Ionicons name="checkmark-circle" size={24} color={COLORS.green} />
             <Text style={styles.summaryLabel}>{t('pms.payments.collected')}</Text>
             <Text style={[styles.summaryValue, { color: COLORS.green }]}>L{totalPaid.toLocaleString()}</Text>
           </View>
-          <View style={[styles.summaryCard, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+          <View style={[styles.summaryCard, { backgroundColor: neu.coral + '26', borderColor: neu.coral + '4C' }]}>
             <Ionicons name="time" size={24} color={COLORS.red} />
             <Text style={styles.summaryLabel}>{t('pms.payments.pending')}</Text>
             <Text style={[styles.summaryValue, { color: COLORS.red }]}>L{totalPending.toLocaleString()}</Text>
@@ -430,8 +431,8 @@ export default function PMSScreen() {
               <View style={styles.cardHeader}>
                 <View style={styles.cardTitleRow}>
                   <View style={[styles.paymentIcon, { 
-                    backgroundColor: payment.status === 'paid' ? 'rgba(16, 185, 129, 0.15)' : 
-                                    payment.status === 'overdue' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)' 
+                    backgroundColor: payment.status === 'paid' ? neu.teal + '26' : 
+                                    payment.status === 'overdue' ? neu.coral + '26' : neu.amber + '26' 
                   }]}>
                     <Ionicons 
                       name={payment.status === 'paid' ? 'checkmark-circle' : payment.status === 'overdue' ? 'alert-circle' : 'time'} 
@@ -483,8 +484,8 @@ export default function PMSScreen() {
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleRow}>
                 <View style={[styles.ticketIcon, { 
-                  backgroundColor: ticket.priority === 'high' ? 'rgba(239, 68, 68, 0.15)' : 
-                                  ticket.priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)' 
+                  backgroundColor: ticket.priority === 'high' ? neu.coral + '26' : 
+                                  ticket.priority === 'medium' ? neu.amber + '26' : neu.blue + '26' 
                 }]}>
                   <Ionicons 
                     name="construct" 
@@ -498,8 +499,8 @@ export default function PMSScreen() {
                 </View>
               </View>
               <View style={[styles.priorityBadge, { 
-                backgroundColor: ticket.priority === 'high' ? 'rgba(239, 68, 68, 0.15)' : 
-                                ticket.priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)'
+                backgroundColor: ticket.priority === 'high' ? neu.coral + '26' : 
+                                ticket.priority === 'medium' ? neu.amber + '26' : neu.blue + '26'
               }]}>
                 <Text style={[styles.priorityText, {
                   color: ticket.priority === 'high' ? COLORS.red : ticket.priority === 'medium' ? COLORS.yellow : COLORS.blue
@@ -510,8 +511,8 @@ export default function PMSScreen() {
             </View>
             <View style={styles.ticketFooter}>
               <View style={[styles.statusChip, { 
-                backgroundColor: ticket.status === 'completed' ? 'rgba(16, 185, 129, 0.15)' : 
-                                ticket.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)'
+                backgroundColor: ticket.status === 'completed' ? neu.teal + '26' : 
+                                ticket.status === 'in_progress' ? neu.blue + '26' : neu.amber + '26'
               }]}>
                 <Text style={[styles.statusChipText, {
                   color: ticket.status === 'completed' ? COLORS.green : ticket.status === 'in_progress' ? COLORS.blue : COLORS.yellow
@@ -831,13 +832,13 @@ const styles = StyleSheet.create({
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: neu.amber + '1A',
     borderRadius: scale(12),
     padding: scale(12),
     marginBottom: scale(8),
     gap: scale(10),
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: neu.amber + '33',
   },
   alertText: {
     color: COLORS.textPrimary,
@@ -915,7 +916,7 @@ const styles = StyleSheet.create({
     width: scale(36),
     height: scale(36),
     borderRadius: scale(18),
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: neu.coral + '1A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1079,7 +1080,7 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   keyboardAvoid: {

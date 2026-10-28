@@ -11,25 +11,26 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { updateUserProfile, changePassword, uploadAvatar } from '../src/services/api';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
 };
 
 export default function EditProfileScreen() {
@@ -459,7 +460,7 @@ export default function EditProfileScreen() {
                     <Switch
                       value={biometricEnabled}
                       onValueChange={handleToggleBiometric}
-                      trackColor={{ false: COLORS.backgroundTertiary, true: 'rgba(212, 254, 72, 0.3)' }}
+                      trackColor={{ false: COLORS.backgroundTertiary, true: neu.teal + '4C' }}
                       thumbColor={biometricEnabled ? COLORS.lime : COLORS.textMuted}
                       ios_backgroundColor={COLORS.backgroundTertiary}
                     />
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
 
   // Currency selector
   currencySelector: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
-  currencyOption: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)' },
+  currencyOption: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: neu.border, backgroundColor: neu.raised },
   currencyOptionActive: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
   currencyOptionText: { color: COLORS.textSecondary, fontWeight: '600', fontSize: 13 },
   currencyOptionTextActive: { color: COLORS.background },
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     width: scale(72),
     height: scale(72),
     borderRadius: scale(36),
-    backgroundColor: 'rgba(212, 254, 72, 0.15)',
+    backgroundColor: neu.teal + '26',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
@@ -624,12 +625,12 @@ const styles = StyleSheet.create({
   },
   securityInfoBox: {
     marginTop: scale(24),
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: neu.teal + '1A',
     borderRadius: scale(12),
     padding: scale(16),
     gap: scale(12),
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: neu.teal + '33',
   },
   securityInfoRow: {
     flexDirection: 'row',

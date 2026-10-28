@@ -11,13 +11,14 @@ import {
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { neu } from '../theme/tokens';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  overlay: 'rgba(0, 0, 0, 0.7)',
-  textMuted: '#5A6666',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  overlay: neu.overlay,
+  textMuted: neu.textSoft,
 };
 
 const AppModal = ({ 
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,

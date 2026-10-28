@@ -26,34 +26,35 @@ import { deleteUserAccount } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import LanguageSelector from '../../src/components/LanguageSelector';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
   
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  indigo: '#818CF8',
-  blue: '#60A5FA',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  indigo: neu.lilac,
+  blue: neu.blue,
   
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
   
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 export default function Profile() {
@@ -174,7 +175,7 @@ export default function Profile() {
           title: t('profile.emergencyContacts'),
           subtitle: t('profile.emergencyContactsDesc'),
           route: '/emergency-contacts',
-          color: '#E24B4A',
+          color: neu.coral,
         },
         {
           icon: 'location-outline',
@@ -345,7 +346,7 @@ export default function Profile() {
                   )}
                 </View>
 
-                <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.6)" />
+                <Ionicons name="chevron-forward" size={24} color={neu.textLabel} />
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -545,17 +546,17 @@ const styles = StyleSheet.create({
     height: scale(60),
     borderRadius: scale(30),
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: neu.textSoft,
   },
   avatarPlaceholder: {
     width: scale(60),
     height: scale(60),
     borderRadius: scale(30),
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: neu.raised,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: neu.textSoft,
   },
   avatarText: {
     fontSize: scale(24),
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
   },
   profileRole: {
     fontSize: scale(13),
-    color: 'rgba(255,255,255,0.8)',
+    color: neu.textLabel,
     marginTop: scale(2),
   },
   locationBadge: {
@@ -716,7 +717,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {

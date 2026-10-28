@@ -25,24 +25,25 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { createIncident } from '../services/api';
 import { supabase } from '../config/supabase';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  lime: '#D4FE48',
-  cyan: '#009FF5',
-  cyanLight: '#11D6E6',
-  black: '#000000',
-  white: '#FFFFFF',
-  background: '#FAFAFA',
-  gray: '#707883',
-  grayLight: '#F2F2F2',
-  red: '#FA5967',
-  green: '#10B981',
-  amberText: '#92400E',
-  inputBorder: '#707883',
-  photoBg: '#EFF6FF',
+  lime: neu.teal,
+  cyan: neu.teal,
+  cyanLight: neu.teal,
+  black: neu.text,
+  white: neu.raised,
+  background: neu.bg,
+  gray: neu.textSoft,
+  grayLight: neu.sunken,
+  red: neu.coral,
+  green: neu.teal,
+  amberText: neu.amber,
+  inputBorder: neu.border,
+  photoBg: neu.sunken,
 };
 
 const INCIDENT_TYPES = [
@@ -506,7 +507,7 @@ export default function IncidentFormModal({ visible, onClose, onSuccess }) {
                     style={styles.removePhotoButton}
                     onPress={() => removePhoto(index)}
                   >
-                    <Ionicons name="close" size={12} color={COLORS.white} />
+                    <Ionicons name="close" size={12} color={neu.onAccent} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   typeChipTextSelected: {
-    color: COLORS.white,
+    color: neu.onAccent,
   },
   severityRow: {
     flexDirection: 'row',

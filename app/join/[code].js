@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -26,26 +27,26 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  purpleLight: 'rgba(99, 102, 241, 0.15)',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  greenLight: 'rgba(16, 185, 129, 0.15)',
-  red: '#EF4444',
-  redLight: 'rgba(239, 68, 68, 0.15)',
-  yellow: '#F59E0B',
-  yellowLight: 'rgba(245, 158, 11, 0.15)',
-  blue: '#3B82F6',
-  blueLight: 'rgba(59, 130, 246, 0.15)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  purpleLight: neu.lilac + '26',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  greenLight: neu.teal + '26',
+  red: neu.coral,
+  redLight: neu.coral + '26',
+  yellow: neu.amber,
+  yellowLight: neu.amber + '26',
+  blue: neu.blue,
+  blueLight: neu.blue + '26',
 };
 
 export default function JoinScreen() {

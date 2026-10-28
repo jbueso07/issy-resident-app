@@ -9,19 +9,20 @@
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  card: '#1A2C2C',
-  border: 'rgba(255,255,255,0.1)',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  amber: '#F59E0B',
+  card: neu.raised,
+  border: neu.border,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  teal: neu.teal,
+  lime: neu.teal,
+  amber: neu.amber,
 };
 
 const toNumber = (v) => {

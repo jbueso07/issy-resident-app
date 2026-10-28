@@ -18,6 +18,7 @@ import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -26,18 +27,18 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
 };
 
 export default function ForgotPassword() {
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
     width: scale(100),
     height: scale(100),
     borderRadius: scale(50),
-    backgroundColor: 'rgba(212, 254, 72, 0.1)',
+    backgroundColor: neu.teal + '1A',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -315,7 +316,7 @@ const styles = StyleSheet.create({
     width: scale(100),
     height: scale(100),
     borderRadius: scale(50),
-    backgroundColor: 'rgba(93, 222, 216, 0.1)',
+    backgroundColor: neu.teal + '1A',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',

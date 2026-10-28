@@ -30,27 +30,28 @@ import {
   deletePaymentMethod,
   setDefaultPaymentMethod 
 } from '../src/services/api';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  purpleLight: '#818CF8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
-  yellow: '#F59E0B',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  purpleLight: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
+  yellow: neu.amber,
 };
 
 export default function PaymentMethodsScreen() {
@@ -125,7 +126,7 @@ export default function PaymentMethodsScreen() {
       case 'visa': return ['#1A1F71', '#2B308C'];
       case 'mastercard': return ['#EB001B', '#F79E1B'];
       case 'amex': return ['#006FCF', '#0080FF'];
-      default: return ['#374151', '#6B7280'];
+      default: return [neu.sunken, neu.textSoft];
     }
   };
 
@@ -258,7 +259,7 @@ export default function PaymentMethodsScreen() {
 
           {item.is_default && (
             <View style={styles.defaultBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
+              <Ionicons name="checkmark-circle" size={14} color={neu.text} />
               <Text style={styles.defaultBadgeText}>{t('paymentMethods.default')}</Text>
             </View>
           )}
@@ -577,14 +578,14 @@ const styles = StyleSheet.create({
   securityInfo: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: 'rgba(16, 185, 129, 0.1)', 
+    backgroundColor: neu.teal + '1A', 
     marginHorizontal: scale(16),
     paddingHorizontal: scale(16), 
     paddingVertical: scale(12), 
     borderRadius: scale(12),
     gap: scale(10),
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: neu.teal + '33',
   },
   securityText: { 
     flex: 1, 
@@ -628,13 +629,13 @@ const styles = StyleSheet.create({
   cardBrand: { 
     fontSize: scale(18), 
     fontWeight: '700', 
-    color: '#FFFFFF', 
+    color: neu.text, 
     letterSpacing: 1 
   },
   cardNumber: { 
     fontSize: scale(22), 
     fontWeight: '500', 
-    color: '#FFFFFF', 
+    color: neu.text, 
     letterSpacing: 3, 
     marginBottom: scale(24) 
   },
@@ -644,14 +645,14 @@ const styles = StyleSheet.create({
   },
   cardLabel: { 
     fontSize: scale(10), 
-    color: 'rgba(255,255,255,0.7)', 
+    color: neu.textLabel, 
     marginBottom: scale(4), 
     letterSpacing: 1 
   },
   cardValue: { 
     fontSize: scale(14), 
     fontWeight: '600', 
-    color: '#FFFFFF', 
+    color: neu.text, 
     letterSpacing: 1 
   },
   defaultBadge: { 
@@ -660,7 +661,7 @@ const styles = StyleSheet.create({
     right: scale(12), 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: 'rgba(255,255,255,0.2)', 
+    backgroundColor: neu.raised, 
     paddingHorizontal: scale(8), 
     paddingVertical: scale(4), 
     borderRadius: scale(12), 
@@ -669,7 +670,7 @@ const styles = StyleSheet.create({
   defaultBadgeText: { 
     fontSize: scale(11), 
     fontWeight: '500', 
-    color: '#FFFFFF' 
+    color: neu.text 
   },
   
   // Empty State
@@ -747,7 +748,7 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   keyboardAvoid: {

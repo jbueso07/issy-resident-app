@@ -41,29 +41,29 @@ const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ============ COLORES PROHOME ============
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
-  bgCardOff: '#1A2630',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
+  bgCardOff: neu.raised,
   
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  indigo: '#818CF8',
-  blue: '#60A5FA',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  indigo: neu.lilac,
+  blue: neu.blue,
   
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
-  textDark: '#0F1A1E',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  textDark: neu.onAccent,
   
-  border: 'rgba(255, 255, 255, 0.1)',
-  gradientStart: '#00BFA6',
-  gradientEnd: '#AAFF00',
+  border: neu.border,
+  gradientStart: neu.teal,
+  gradientEnd: neu.teal,
 };
 
 // ============ API ============
@@ -366,7 +366,7 @@ export default function Home() {
       <View style={styles.panicModalOverlay}>
         <View style={styles.panicModalContent}>
           <View style={styles.panicModalIconWrap}>
-            <Ionicons name="warning" size={44} color="#FFFFFF" />
+            <Ionicons name="warning" size={44} color={neu.text} />
           </View>
           <Text style={styles.panicModalTitle} maxFontSizeMultiplier={1.2}>
             ¿Activar alerta de emergencia?
@@ -378,7 +378,7 @@ export default function Home() {
             // Sin casa marcada: ofrecer marcarla, pero NUNCA bloquear el disparo
             <View style={styles.panicModalHomePinBlock}>
               <View style={styles.panicModalHomePinHeader}>
-                <Ionicons name="home-outline" size={18} color="#F59E0B" />
+                <Ionicons name="home-outline" size={18} color={neu.amber} />
                 <Text style={styles.panicModalHomePinTitle} maxFontSizeMultiplier={1.2}>
                   {t('home.panicModal.markFirstTitle')}
                 </Text>
@@ -399,7 +399,7 @@ export default function Home() {
                 disabled={sendingPanic}
               >
                 {sendingPanic ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={neu.text} />
                 ) : (
                   <Text style={styles.panicModalButtonConfirmText}>{t('home.panicModal.continueWithout')}</Text>
                 )}
@@ -412,7 +412,7 @@ export default function Home() {
               disabled={sendingPanic}
             >
               {sendingPanic ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={neu.text} />
               ) : (
                 <Text style={styles.panicModalButtonConfirmText}>Sí, enviar alerta</Text>
               )}
@@ -470,7 +470,7 @@ export default function Home() {
                 <Ionicons
                   name={r.icon}
                   size={20}
-                  color={selectedCancelReason === r.key ? '#E24B4A' : COLORS.textMuted}
+                  color={selectedCancelReason === r.key ? neu.coral : COLORS.textMuted}
                 />
                 <Text
                   style={[
@@ -482,7 +482,7 @@ export default function Home() {
                   {r.label}
                 </Text>
                 {selectedCancelReason === r.key && (
-                  <Ionicons name="checkmark" size={18} color="#E24B4A" />
+                  <Ionicons name="checkmark" size={18} color={neu.coral} />
                 )}
               </TouchableOpacity>
             ))}
@@ -494,7 +494,7 @@ export default function Home() {
             disabled={cancellingPanic}
           >
             {cancellingPanic ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={neu.text} />
             ) : (
               <Text style={styles.panicModalButtonConfirmText}>Confirmar cancelación</Text>
             )}
@@ -634,9 +634,9 @@ export default function Home() {
           <HomeHeader />
 
           {isPendingApproval && (
-            <View style={{ backgroundColor: '#1a1a1a', margin: 16, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 3, borderLeftColor: '#c6f135' }}>
-              <Ionicons name="time-outline" size={24} color="#c6f135" />
-              <Text style={{ color: '#ffffff', flex: 1, fontSize: 14 }}>Tu solicitud está pendiente de aprobación por el administrador.</Text>
+            <View style={{ backgroundColor: neu.raised, margin: 16, padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 3, borderLeftColor: neu.teal }}>
+              <Ionicons name="time-outline" size={24} color={neu.teal} />
+              <Text style={{ color: neu.text, flex: 1, fontSize: 14 }}>Tu solicitud está pendiente de aprobación por el administrador.</Text>
             </View>
           )}
 
@@ -688,7 +688,7 @@ export default function Home() {
           <View style={styles.panicBannerContainer}>
             <View style={styles.panicBanner}>
               <View style={styles.panicBannerIconWrap}>
-                <Ionicons name="warning" size={22} color="#FFFFFF" />
+                <Ionicons name="warning" size={22} color={neu.text} />
               </View>
               <View style={styles.panicBannerBody}>
                 <Text style={styles.panicBannerTitle} maxFontSizeMultiplier={1.2}>
@@ -717,7 +717,7 @@ export default function Home() {
           <View style={styles.homePinCardContainer}>
             <TouchableOpacity style={styles.homePinCard} onPress={goToMyHomeLocation} activeOpacity={0.85}>
               <View style={styles.homePinIconWrap}>
-                <Ionicons name="home-outline" size={20} color="#F59E0B" />
+                <Ionicons name="home-outline" size={20} color={neu.amber} />
               </View>
               <View style={styles.homePinBody}>
                 <Text style={styles.homePinTitle} maxFontSizeMultiplier={1.2}>
@@ -729,7 +729,7 @@ export default function Home() {
               </View>
               <View style={styles.homePinCta}>
                 <Text style={styles.homePinCtaText} maxFontSizeMultiplier={1.2}>{t('home.homePin.cta')}</Text>
-                <Ionicons name="chevron-forward" size={14} color="#F59E0B" />
+                <Ionicons name="chevron-forward" size={14} color={neu.amber} />
               </View>
             </TouchableOpacity>
           </View>
@@ -770,17 +770,17 @@ const styles = StyleSheet.create({
 
   panicModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: neu.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: scale(24),
   },
   panicModalContent: {
     width: '100%',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: neu.raised,
     borderRadius: scale(20),
     borderWidth: 1,
-    borderColor: '#E24B4A',
+    borderColor: neu.coral,
     padding: scale(24),
     alignItems: 'center',
   },
@@ -788,20 +788,20 @@ const styles = StyleSheet.create({
     width: scale(64),
     height: scale(64),
     borderRadius: scale(16),
-    backgroundColor: '#E24B4A',
+    backgroundColor: neu.coral,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
   },
   panicModalTitle: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(18),
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: scale(8),
   },
   panicModalSubtitle: {
-    color: '#888888',
+    color: neu.textSoft,
     fontSize: scale(13),
     textAlign: 'center',
     lineHeight: scale(18),
@@ -815,27 +815,27 @@ const styles = StyleSheet.create({
     marginBottom: scale(8),
   },
   panicModalButtonConfirm: {
-    backgroundColor: '#E24B4A',
+    backgroundColor: neu.coral,
   },
   panicModalButtonConfirmText: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(15),
     fontWeight: '600',
   },
   panicModalButtonCancel: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: neu.border,
   },
   panicModalButtonCancelText: {
-    color: '#888888',
+    color: neu.textSoft,
     fontSize: scale(15),
   },
   panicModalHomePinBlock: {
     width: '100%',
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: neu.amber + '14',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderColor: neu.amber + '59',
     borderRadius: scale(14),
     padding: scale(12),
     marginBottom: scale(8),
@@ -847,21 +847,21 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   panicModalHomePinTitle: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(14),
     fontWeight: '600',
   },
   panicModalHomePinText: {
-    color: '#B8B8B8',
+    color: neu.textLabel,
     fontSize: scale(12),
     lineHeight: scale(17),
     marginBottom: scale(12),
   },
   panicModalButtonMarkHome: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: neu.amber,
   },
   panicModalButtonMarkHomeText: {
-    color: '#0F1A1E',
+    color: neu.onAccent,
     fontSize: scale(15),
     fontWeight: '600',
   },
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.bgCard,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderColor: neu.amber + '59',
     borderRadius: scale(14),
     padding: scale(12),
     gap: scale(10),
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
     width: scale(36),
     height: scale(36),
     borderRadius: scale(10),
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: neu.amber + '26',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -908,7 +908,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   homePinCtaText: {
-    color: '#F59E0B',
+    color: neu.amber,
     fontSize: scale(12),
     fontWeight: '600',
   },
@@ -920,9 +920,9 @@ const styles = StyleSheet.create({
   panicBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2A0A0A',
+    backgroundColor: neu.coral + '26',
     borderWidth: 1,
-    borderColor: '#E24B4A',
+    borderColor: neu.coral,
     borderRadius: scale(14),
     padding: scale(12),
     gap: scale(10),
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
     width: scale(38),
     height: scale(38),
     borderRadius: scale(10),
-    backgroundColor: '#E24B4A',
+    backgroundColor: neu.coral,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -940,46 +940,46 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   panicBannerTitle: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(14),
     fontWeight: '600',
   },
   panicBannerSubtitle: {
-    color: '#F09595',
+    color: neu.coral,
     fontSize: scale(11),
     marginTop: 2,
   },
   panicBannerCancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: neu.raised,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: neu.border,
     paddingHorizontal: scale(10),
     paddingVertical: scale(6),
     borderRadius: scale(8),
   },
   panicBannerCancelText: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(11),
     fontWeight: '600',
   },
   // ============ CANCEL PANIC MODAL ============
   cancelPanicModalContent: {
     width: '100%',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: neu.raised,
     borderRadius: scale(20),
     borderWidth: 1,
-    borderColor: '#E24B4A',
+    borderColor: neu.coral,
     padding: scale(20),
   },
   cancelPanicModalTitle: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontSize: scale(18),
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: scale(4),
   },
   cancelPanicModalSubtitle: {
-    color: '#888888',
+    color: neu.textSoft,
     fontSize: scale(13),
     textAlign: 'center',
     marginBottom: scale(16),
@@ -994,21 +994,21 @@ const styles = StyleSheet.create({
     gap: scale(10),
     padding: scale(12),
     borderRadius: scale(10),
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: neu.raised,
     borderWidth: 1,
     borderColor: 'transparent',
   },
   cancelReasonRowActive: {
-    backgroundColor: 'rgba(226,75,74,0.12)',
-    borderColor: '#E24B4A',
+    backgroundColor: neu.coral + '1F',
+    borderColor: neu.coral,
   },
   cancelReasonLabel: {
     flex: 1,
-    color: '#CCCCCC',
+    color: neu.textLabel,
     fontSize: scale(14),
   },
   cancelReasonLabelActive: {
-    color: '#FFFFFF',
+    color: neu.text,
     fontWeight: '600',
   },
 
@@ -1064,7 +1064,7 @@ const styles = StyleSheet.create({
   // ============ MODAL ============
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: neu.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -1103,7 +1103,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgCardAlt,
   },
   locationItemActive: {
-    backgroundColor: 'rgba(170,255,0,0.15)',
+    backgroundColor: neu.teal + '26',
     borderWidth: 1,
     borderColor: COLORS.lime,
   },

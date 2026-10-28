@@ -10,25 +10,26 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { getMyOrganizations, switchOrganization } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  red: '#EF4444',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  red: neu.coral,
 };
 
 export default function MyUnitScreen() {
@@ -154,14 +155,14 @@ export default function MyUnitScreen() {
                       <Text style={styles.activeAddress}>{activeOrg.location?.address || t('myUnit.noAddress')}</Text>
                     </View>
                     {activeOrg.deactivation_reason ? (
-                      <View style={[styles.activeBadge, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
+                      <View style={[styles.activeBadge, { backgroundColor: neu.coral + '26' }]}>
                         <Ionicons name="alert-circle" size={16} color={COLORS.red} />
                         <Text style={[styles.activeBadgeText, { color: COLORS.red }]}>{t('myUnit.suspended')}</Text>
                       </View>
                     ) : (
                       <View style={styles.activeBadge}>
                         {activeOrg.deactivation_reason && (
-                    <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', padding: scale(12), borderRadius: scale(8), marginTop: scale(12) }}>
+                    <View style={{ backgroundColor: neu.coral + '1A', padding: scale(12), borderRadius: scale(8), marginTop: scale(12) }}>
                       <Text style={{ color: COLORS.red, fontSize: scale(13), textAlign: 'center' }}>
                         ⚠️ {activeOrg.deactivation_reason}
                       </Text>
@@ -275,11 +276,11 @@ const styles = StyleSheet.create({
   // Active Card
   activeCard: { backgroundColor: COLORS.card, borderRadius: scale(16), padding: scale(16), borderWidth: 1, borderColor: COLORS.cardBorder },
   activeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(16) },
-  activeIconContainer: { width: scale(56), height: scale(56), borderRadius: scale(16), backgroundColor: 'rgba(93, 222, 216, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: scale(12) },
+  activeIconContainer: { width: scale(56), height: scale(56), borderRadius: scale(16), backgroundColor: neu.teal + '26', alignItems: 'center', justifyContent: 'center', marginRight: scale(12) },
   activeInfo: { flex: 1 },
   activeName: { fontSize: scale(18), fontWeight: '700', color: COLORS.textPrimary },
   activeAddress: { fontSize: scale(14), color: COLORS.textSecondary, marginTop: scale(2) },
-  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: scale(4), backgroundColor: 'rgba(16, 185, 129, 0.15)', paddingHorizontal: scale(10), paddingVertical: scale(6), borderRadius: scale(12) },
+  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: scale(4), backgroundColor: neu.teal + '26', paddingHorizontal: scale(10), paddingVertical: scale(6), borderRadius: scale(12) },
   activeBadgeText: { fontSize: scale(12), fontWeight: '600', color: COLORS.green },
   
   activeDetails: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(12), paddingTop: scale(16), borderTopWidth: 1, borderTopColor: COLORS.cardBorder },
@@ -292,11 +293,11 @@ const styles = StyleSheet.create({
 
   // Org Card
   orgCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: scale(14), borderRadius: scale(12), marginBottom: scale(10), borderWidth: 1, borderColor: COLORS.cardBorder },
-  orgIcon: { width: scale(44), height: scale(44), borderRadius: scale(12), backgroundColor: 'rgba(93, 222, 216, 0.15)', alignItems: 'center', justifyContent: 'center' },
+  orgIcon: { width: scale(44), height: scale(44), borderRadius: scale(12), backgroundColor: neu.teal + '26', alignItems: 'center', justifyContent: 'center' },
   orgInfo: { flex: 1, marginLeft: scale(12) },
   orgName: { fontSize: scale(15), fontWeight: '600', color: COLORS.textPrimary },
   orgRole: { fontSize: scale(13), color: COLORS.textSecondary, marginTop: scale(2) },
-  switchBtn: { backgroundColor: 'rgba(99, 102, 241, 0.15)', paddingHorizontal: scale(14), paddingVertical: scale(8), borderRadius: scale(8) },
+  switchBtn: { backgroundColor: neu.lilac + '26', paddingHorizontal: scale(14), paddingVertical: scale(8), borderRadius: scale(8) },
   switchBtnText: { fontSize: scale(13), fontWeight: '600', color: COLORS.purple },
 
   // Empty state

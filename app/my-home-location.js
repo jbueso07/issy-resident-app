@@ -27,6 +27,7 @@ import Constants from 'expo-constants';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useAuth } from '../src/context/AuthContext';
 import { getMyUnitLocations, setMyUnitLocation } from '../src/services/api';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -42,21 +43,21 @@ const MAX_ACCURACY_METERS = 50;
 const GPS_WINDOW_MS = 20000;
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  panic: '#E24B4A',
-  panicMuted: 'rgba(226, 75, 74, 0.15)',
-  success: '#10B981',
-  successMuted: 'rgba(16, 185, 129, 0.15)',
-  warning: '#F59E0B',
-  warningMuted: 'rgba(245, 158, 11, 0.15)',
-  teal: '#5DDED8',
-  tealMuted: 'rgba(93, 222, 216, 0.15)',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  card: neu.raised,
+  cardBorder: neu.border,
+  panic: neu.coral,
+  panicMuted: neu.coral + '26',
+  success: neu.teal,
+  successMuted: neu.teal + '26',
+  warning: neu.amber,
+  warningMuted: neu.amber + '26',
+  teal: neu.teal,
+  tealMuted: neu.teal + '26',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 };
 
 // Fases del GPS para la unidad seleccionada (estados explícitos del encargo)
@@ -665,8 +666,8 @@ const styles = StyleSheet.create({
     borderRadius: scale(14),
     padding: scale(14),
   },
-  statusCardSuccess: { backgroundColor: COLORS.successMuted, borderColor: 'rgba(16,185,129,0.35)' },
-  statusCardWarning: { backgroundColor: COLORS.warningMuted, borderColor: 'rgba(245,158,11,0.35)' },
+  statusCardSuccess: { backgroundColor: COLORS.successMuted, borderColor: neu.teal + '59' },
+  statusCardWarning: { backgroundColor: COLORS.warningMuted, borderColor: neu.amber + '59' },
   statusCardColumn: { flexDirection: 'column', gap: scale(12) },
   statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: scale(10) },
   statusTitle: { color: COLORS.textPrimary, fontSize: scale(14), fontWeight: '600', marginBottom: 2 },
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
   gpsCard: {
     backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: 'rgba(93,222,216,0.35)',
+    borderColor: neu.teal + '59',
     borderRadius: scale(14),
     padding: scale(14),
     gap: scale(12),

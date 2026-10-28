@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -25,25 +26,25 @@ const API_URL = 'https://api.joinissy.com/api';
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  bgCardAlt: '#243B44',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  bgCardAlt: neu.sunken,
   
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  orange: '#FF8A50',
-  purple: '#A78BFA',
-  coral: '#FF6B6B',
-  blue: '#60A5FA',
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  orange: neu.amber,
+  purple: neu.lilac,
+  coral: neu.coral,
+  blue: neu.blue,
   
-  textPrimary: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.7)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
   
-  border: 'rgba(255, 255, 255, 0.1)',
-  unreadBg: 'rgba(170, 255, 0, 0.08)',
+  border: neu.border,
+  unreadBg: neu.teal + '14',
 };
 
 export default function NotificationsScreen() {
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: scale(10),
-    backgroundColor: 'rgba(170, 255, 0, 0.1)',
+    backgroundColor: neu.teal + '1A',
     gap: scale(8),
   },
   unreadBannerText: {
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
   },
   notificationUnread: {
     backgroundColor: COLORS.unreadBg,
-    borderColor: 'rgba(170, 255, 0, 0.2)',
+    borderColor: neu.teal + '33',
   },
   
   iconContainer: {

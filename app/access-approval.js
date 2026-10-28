@@ -23,26 +23,27 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 const API_URL = 'https://api.joinissy.com/api';
 
 const COLORS = {
-  bgPrimary: '#0F1A1E',
-  bgSecondary: '#152328',
-  bgCard: '#1C2E35',
-  lime: '#AAFF00',
-  cyan: '#00E5FF',
-  teal: '#00BFA6',
-  success: '#10B981',
-  danger: '#EF4444',
-  warning: '#F59E0B',
-  purple: '#A78BFA',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  border: 'rgba(255,255,255,0.1)',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.sunken,
+  bgCard: neu.raised,
+  lime: neu.teal,
+  cyan: neu.teal,
+  teal: neu.teal,
+  success: neu.teal,
+  danger: neu.coral,
+  warning: neu.amber,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  border: neu.border,
 };
 
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
@@ -219,7 +220,7 @@ export default function AccessApprovalScreen() {
   // Derive swipe background color
   const swipeBgColor = pan.x.interpolate({
     inputRange: [-SCREEN_WIDTH * 0.5, 0, SCREEN_WIDTH * 0.5],
-    outputRange: ['rgba(239, 68, 68, 0.15)', 'transparent', 'rgba(16, 185, 129, 0.15)'],
+    outputRange: [neu.coral + '26', 'transparent', neu.teal + '26'],
     extrapolate: 'clamp',
   });
 
@@ -348,7 +349,7 @@ export default function AccessApprovalScreen() {
               onPress={() => handleRespond('rejected')}
             >
               {responding ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={neu.text} size="small" />
               ) : (
                 <Text style={styles.rejectBtnText}>Confirmar Rechazo</Text>
               )}
@@ -374,10 +375,10 @@ export default function AccessApprovalScreen() {
             onPress={() => handleRespond('approved')}
           >
             {responding ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={neu.text} size="small" />
             ) : (
               <>
-                <Ionicons name="checkmark" size={22} color="#fff" />
+                <Ionicons name="checkmark" size={22} color={neu.text} />
                 <Text style={styles.quickApproveText}>Aprobar Ingreso</Text>
               </>
             )}
@@ -503,7 +504,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(167, 139, 250, 0.12)',
+    backgroundColor: neu.lilac + '1F',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -609,7 +610,7 @@ const styles = StyleSheet.create({
   quickApproveText: {
     fontSize: scale(15),
     fontWeight: '700',
-    color: '#fff',
+    color: neu.text,
   },
 
   // Rejection
@@ -661,7 +662,7 @@ const styles = StyleSheet.create({
   },
   rejectBtnText: {
     fontSize: scale(14),
-    color: '#fff',
+    color: neu.text,
     fontWeight: '700',
   },
 

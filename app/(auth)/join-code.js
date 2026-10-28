@@ -15,6 +15,7 @@ import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
+import { neu } from '../../src/theme/tokens';
 
 export default function JoinCode() {
   const { t } = useTranslation();
@@ -110,7 +111,7 @@ export default function JoinCode() {
             <TextInput
               style={styles.codeInput}
               placeholder={t('auth.joinCode.placeholder')}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={neu.textSoft}
               value={code}
               onChangeText={(text) => setCode(text.toUpperCase())}
               autoCapitalize="characters"
@@ -126,7 +127,7 @@ export default function JoinCode() {
             activeOpacity={0.8}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={neu.text} />
             ) : (
               <Text style={styles.buttonText}>{t('auth.joinCode.verifyCode')}</Text>
             )}
@@ -219,7 +220,7 @@ export default function JoinCode() {
             <TextInput
               style={styles.houseNumberInput}
               placeholder="Ej: Casa 12, Apt 3B"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={neu.textSoft}
               value={houseNumber}
               onChangeText={setHouseNumber}
             />
@@ -232,7 +233,7 @@ export default function JoinCode() {
             activeOpacity={0.8}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={neu.text} />
             ) : (
               <Text style={styles.buttonText}>
                 {isAuthenticated ? t('auth.joinCode.acceptInvitation') : t('common.next')}
@@ -285,7 +286,7 @@ export default function JoinCode() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: neu.bg,
   },
   content: {
     flex: 1,
@@ -297,14 +298,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backButtonText: {
-    color: '#6366F1',
+    color: neu.lilac,
     fontSize: 16,
   },
   iconContainer: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: neu.lilac + '26',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -315,12 +316,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: neu.text,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: neu.textSoft,
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 32,
@@ -332,19 +333,19 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   codeInput: {
-    backgroundColor: '#fff',
+    backgroundColor: neu.raised,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: neu.border,
     borderRadius: 16,
     padding: 20,
     fontSize: 24,
     fontWeight: '600',
     textAlign: 'center',
-    color: '#1F2937',
+    color: neu.text,
     letterSpacing: 4,
   },
   button: {
-    backgroundColor: '#6366F1',
+    backgroundColor: neu.lilac,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -360,14 +361,14 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
-    color: '#fff',
+    color: neu.text,
     fontSize: 16,
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: '#fff',
+    backgroundColor: neu.raised,
     borderWidth: 2,
-    borderColor: '#6366F1',
+    borderColor: neu.lilac,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -376,18 +377,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   secondaryButtonText: {
-    color: '#6366F1',
+    color: neu.lilac,
     fontSize: 16,
     fontWeight: '600',
   },
   hint: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: neu.textSoft,
     textAlign: 'center',
     marginTop: 16,
   },
   detailsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: neu.raised,
     borderRadius: 16,
     padding: 20,
     width: '100%',
@@ -405,28 +406,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: neu.border,
   },
   detailLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: neu.textSoft,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: neu.text,
     textAlign: 'right',
     flex: 1,
     marginLeft: 16,
   },
   badge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: neu.lilac + '26',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 8,
   },
   badgeText: {
-    color: '#6366F1',
+    color: neu.lilac,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -443,16 +444,16 @@ const styles = StyleSheet.create({
   houseNumberLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#4B5563',
+    color: neu.textSoft,
     marginBottom: 8,
   },
   houseNumberInput: {
-    backgroundColor: '#fff',
+    backgroundColor: neu.raised,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: neu.border,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: '#1F2937',
+    color: neu.text,
   },
 });

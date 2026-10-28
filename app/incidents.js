@@ -20,6 +20,7 @@ import { useAuth } from '../src/context/AuthContext';
 import { getIncidents } from '../src/services/api';
 import IncidentFormModal from '../src/components/IncidentFormModal';
 import { useTranslation } from '../src/hooks/useTranslation';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -27,31 +28,31 @@ const scale = (size) => (SCREEN_WIDTH / 375) * size;
 // ProHome Dark Theme Colors
 const COLORS = {
   // Backgrounds
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
   
   // Cards
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  cardHover: 'rgba(255, 255, 255, 0.08)',
+  card: neu.raised,
+  cardBorder: neu.border,
+  cardHover: neu.raised,
   
   // Accent colors
-  teal: '#5DDED8',
-  tealDark: '#4BCDC7',
-  lime: '#D4FE48',
+  teal: neu.teal,
+  tealDark: neu.teal,
+  lime: neu.teal,
   
   // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
   
   // Status colors
   cyan: '#009FF5',
   red: '#FA5967',
-  yellow: '#F59E0B',
-  green: '#10B981',
-  gray: '#6B7280',
+  yellow: neu.amber,
+  green: neu.teal,
+  gray: neu.textSoft,
 };
 
 // Status and severity configs defined dynamically in component
@@ -63,10 +64,10 @@ export default function IncidentsScreen() {
 
   // Dynamic status config with translations
   const STATUS_CONFIG = {
-    reported: { label: t('incidents.status.reported'), bg: COLORS.cyan, color: '#FFFFFF' },
+    reported: { label: t('incidents.status.reported'), bg: COLORS.cyan, color: neu.text },
     in_progress: { label: t('incidents.status.inProgress'), bg: COLORS.yellow, color: '#000000' },
-    resolved: { label: t('incidents.status.resolved'), bg: COLORS.green, color: '#FFFFFF' },
-    closed: { label: t('incidents.status.closed'), bg: COLORS.gray, color: '#FFFFFF' },
+    resolved: { label: t('incidents.status.resolved'), bg: COLORS.green, color: neu.text },
+    closed: { label: t('incidents.status.closed'), bg: COLORS.gray, color: neu.text },
   };
 
   // Dynamic severity config with translations

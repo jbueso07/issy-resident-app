@@ -15,25 +15,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors (idénticos a marketplace.js)
 const COLORS = {
-  bgPrimary: '#0F1A1A',
-  bgSecondary: '#1A2C2C',
-  bgCard: '#243636',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#8B5CF6',
-  orange: '#F97316',
+  bgPrimary: neu.bg,
+  bgSecondary: neu.raised,
+  bgCard: neu.sunken,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  orange: neu.amber,
   cyan: '#06B6D4',
-  coral: '#F43F5E',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
+  coral: neu.coral,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  cardBorder: neu.border,
 };
 
 export default function ServicesScreen() {
@@ -81,7 +82,7 @@ export default function ServicesScreen() {
         {/* Features Preview */}
         <View style={styles.featuresContainer}>
           <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: 'rgba(93, 222, 216, 0.15)' }]}>
+            <View style={[styles.featureIcon, { backgroundColor: neu.teal + '26' }]}>
               <Ionicons name="search" size={scale(22)} color={COLORS.teal} />
             </View>
             <View style={styles.featureText}>
@@ -91,7 +92,7 @@ export default function ServicesScreen() {
           </View>
 
           <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+            <View style={[styles.featureIcon, { backgroundColor: neu.lilac + '26' }]}>
               <Ionicons name="star" size={scale(22)} color={COLORS.purple} />
             </View>
             <View style={styles.featureText}>
@@ -101,7 +102,7 @@ export default function ServicesScreen() {
           </View>
 
           <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: 'rgba(212, 254, 72, 0.15)' }]}>
+            <View style={[styles.featureIcon, { backgroundColor: neu.teal + '26' }]}>
               <Ionicons name="checkmark-circle" size={scale(22)} color={COLORS.lime} />
             </View>
             <View style={styles.featureText}>
@@ -111,7 +112,7 @@ export default function ServicesScreen() {
           </View>
 
           <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
+            <View style={[styles.featureIcon, { backgroundColor: neu.amber + '26' }]}>
               <Ionicons name="chatbubbles" size={scale(22)} color={COLORS.orange} />
             </View>
             <View style={styles.featureText}>
@@ -255,12 +256,12 @@ const styles = StyleSheet.create({
   notifyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    backgroundColor: neu.lilac + '1A',
     paddingHorizontal: scale(16),
     paddingVertical: scale(10),
     borderRadius: scale(20),
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: neu.lilac + '33',
   },
   notifyText: {
     color: COLORS.purple,

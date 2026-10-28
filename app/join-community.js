@@ -18,29 +18,30 @@ import {
   joinWithPublicCode 
 } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 // ProHome Dark Theme Colors
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  teal: '#5DDED8',
-  lime: '#D4FE48',
-  purple: '#6366F1',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
-  green: '#10B981',
-  greenLight: 'rgba(16, 185, 129, 0.15)',
-  red: '#EF4444',
-  redLight: 'rgba(239, 68, 68, 0.15)',
-  yellow: '#F59E0B',
-  yellowLight: 'rgba(245, 158, 11, 0.15)',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  teal: neu.teal,
+  lime: neu.teal,
+  purple: neu.lilac,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
+  green: neu.teal,
+  greenLight: neu.teal + '26',
+  red: neu.coral,
+  redLight: neu.coral + '26',
+  yellow: neu.amber,
+  yellowLight: neu.amber + '26',
 };
 
 // Nomenclature field labels
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     width: scale(70),
     height: scale(70),
     borderRadius: scale(18),
-    backgroundColor: 'rgba(93, 222, 216, 0.15)',
+    backgroundColor: neu.teal + '26',
     alignItems: 'center',
     justifyContent: 'center',
     transform: [{ rotate: '-10deg' }],
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
     width: scale(50),
     height: scale(50),
     borderRadius: scale(14),
-    backgroundColor: 'rgba(212, 254, 72, 0.15)',
+    backgroundColor: neu.teal + '26',
     alignItems: 'center',
     justifyContent: 'center',
     transform: [{ rotate: '10deg' }],
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: neu.teal + '4C',
   },
   invitationHeader: {
     flexDirection: 'row',

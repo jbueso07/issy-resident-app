@@ -92,6 +92,28 @@ export const neu = {
   text: '#E4ECEB',
   textLabel: '#C9D1D0',
   textSoft: '#9A9FA4',
+
+  // Etapa 2a (colores en toda la app)
+  // Texto sobre un botón o chip de acento
+  onAccent: '#0F1A1E',
+  border: 'rgba(255, 255, 255, 0.08)',
+  // Fondo detrás de un modal
+  overlay: 'rgba(0, 0, 0, 0.6)',
+  // Categorías de gastos (admin/payments/_constants.js), en este orden
+  categories: [
+    '#4FD3B8',
+    '#8FC9F5',
+    '#F2BE55',
+    '#A594F5',
+    '#F2766B',
+    '#7ED68B',
+    '#EE8FB8',
+    '#F5CF7A',
+    '#7EE2C9',
+    '#F2905E',
+    '#C3C7CB',
+    '#9C9DC0',
+  ],
 };
 
 const NEU_SHADOWS = {

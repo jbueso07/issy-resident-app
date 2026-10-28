@@ -30,22 +30,23 @@ import {
   removeEmergencyContact,
   searchUsersForEmergencyContact,
 } from '../src/services/api';
+import { neu } from '../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
 const COLORS = {
-  background: '#0F1A1A',
-  backgroundSecondary: '#1A2C2C',
-  backgroundTertiary: '#243636',
-  card: 'rgba(255, 255, 255, 0.05)',
-  cardBorder: 'rgba(255, 255, 255, 0.08)',
-  panic: '#E24B4A',
-  panicMuted: 'rgba(226, 75, 74, 0.15)',
-  teal: '#5DDED8',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E9A9A',
-  textMuted: '#5A6666',
+  background: neu.bg,
+  backgroundSecondary: neu.raised,
+  backgroundTertiary: neu.sunken,
+  card: neu.raised,
+  cardBorder: neu.border,
+  panic: neu.coral,
+  panicMuted: neu.coral + '26',
+  teal: neu.teal,
+  textPrimary: neu.text,
+  textSecondary: neu.textLabel,
+  textMuted: neu.textSoft,
 };
 
 const RELATIONSHIP_OPTIONS = [
@@ -397,7 +398,7 @@ export default function EmergencyContactsScreen() {
                   disabled={addingContact}
                 >
                   {addingContact ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={neu.text} />
                   ) : (
                     <Text style={styles.confirmBtnText}>Agregar a {selectedUser.name.split(' ')[0]}</Text>
                   )}
@@ -433,9 +434,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: scale(8),
-    backgroundColor: 'rgba(93, 222, 216, 0.08)',
+    backgroundColor: neu.teal + '14',
     borderWidth: 1,
-    borderColor: 'rgba(93, 222, 216, 0.2)',
+    borderColor: neu.teal + '33',
     borderRadius: scale(12),
     padding: scale(12),
     marginBottom: scale(16),
@@ -478,9 +479,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: scale(8),
-    backgroundColor: 'rgba(226, 75, 74, 0.1)',
+    backgroundColor: neu.coral + '1A',
     borderWidth: 1,
-    borderColor: 'rgba(226, 75, 74, 0.3)',
+    borderColor: neu.coral + '4C',
     borderStyle: 'dashed',
     borderRadius: scale(14),
     padding: scale(14),
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
   },
   searchResultRowActive: {
     borderColor: COLORS.teal,
-    backgroundColor: 'rgba(93, 222, 216, 0.08)',
+    backgroundColor: neu.teal + '14',
   },
   searchResultRowDisabled: {
     opacity: 0.5,
@@ -544,7 +545,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.cardBorder,
   },
   relationshipChipActive: {
-    backgroundColor: 'rgba(226, 75, 74, 0.15)',
+    backgroundColor: neu.coral + '26',
     borderColor: COLORS.panic,
   },
   relationshipChipText: { color: COLORS.textSecondary, fontSize: scale(12) },
@@ -562,5 +563,5 @@ const styles = StyleSheet.create({
     borderRadius: scale(12),
     alignItems: 'center',
   },
-  confirmBtnText: { color: '#FFFFFF', fontSize: scale(15), fontWeight: '600' },
+  confirmBtnText: { color: neu.text, fontSize: scale(15), fontWeight: '600' },
 });
