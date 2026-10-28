@@ -1,5 +1,5 @@
 // app/my-unit.js - Mi Unidad / Mis Organizaciones - ProHome Dark Theme
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, RefreshControl, Dimensions
@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
+import { useUserLocation } from '../src/context/UserLocationContext';
 import { getMyOrganizations, switchOrganization } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
 import { neu } from '../src/theme/tokens';
@@ -35,20 +36,26 @@ const COLORS = {
 export default function MyUnitScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshProfile } = useAuth();
+  const { selectedLocationId, selectLocation } = useUserLocation();
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [switching, setSwitching] = useState(null);
 
+  // Recarga al abrir y al cambiar de residencial (desde el carrusel del home o desde aquí)
   useEffect(() => {
     loadOrganizations();
-  }, []);
+  }, [selectedLocationId]);
 
+  // Solo cuenta la respuesta más reciente (al cambiar rápido de residencial)
+  const loadRequestIdRef = useRef(0);
   const loadOrganizations = async () => {
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     const res = await getMyOrganizations();
+    if (requestId !== loadRequestIdRef.current) return;
     if (res.success) {
       setOrganizations(res.data || []);
     }
@@ -70,7 +77,10 @@ export default function MyUnitScreen() {
     
     if (res.success) {
       Alert.alert(t('myUnit.switchSuccess.title'), t('myUnit.switchSuccess.message', { name: org.location?.name }));
-      if (refreshUser) refreshUser();
+      // Igual que el carrusel del home: sincronizar la residencial activa de la app y el perfil
+      // (refreshUser no existe en AuthContext, era un no-op). selectLocation dispara la recarga.
+      await selectLocation(org.location?.id);
+      refreshProfile?.();
       loadOrganizations();
     } else {
       Alert.alert(t('common.error'), res.error);
@@ -97,7 +107,12 @@ export default function MyUnitScreen() {
     }
   };
 
-  const activeOrg = organizations.find(o => o.is_active) || organizations.find(o => o.deactivation_reason) || organizations[0];
+  // La residencial activa de la app (la del carrusel) manda; sin coincidencia, se usa la regla de antes
+  const activeOrg =
+    organizations.find(o => selectedLocationId && o.location?.id === selectedLocationId) ||
+    organizations.find(o => o.is_active) ||
+    organizations.find(o => o.deactivation_reason) ||
+    organizations[0];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

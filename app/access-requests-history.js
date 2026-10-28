@@ -2,7 +2,7 @@
 // ISSY - Access Requests History Screen (Resident)
 // Shows list of past access requests with status
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
+import { useUserLocation } from '../src/context/UserLocationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { neu } from '../src/theme/tokens';
 
@@ -49,6 +50,7 @@ const STATUS_CONFIG = {
 export default function AccessRequestsHistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { selectedLocationId } = useUserLocation();
 
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,23 +58,43 @@ export default function AccessRequestsHistoryScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // Al cambiar de residencial: la lista se vacía al momento y se recarga desde la página 1
+  const locationIdRef = useRef(selectedLocationId);
   useEffect(() => {
+    if (locationIdRef.current !== selectedLocationId) {
+      locationIdRef.current = selectedLocationId;
+      setRequests([]);
+      setPage(1);
+      setHasMore(true);
+      setLoading(true);
+    }
     fetchHistory(1, true);
-  }, []);
+  }, [selectedLocationId]);
 
+  // Solo cuenta la respuesta más reciente: una recarga invalida cualquier página en vuelo
+  const requestIdRef = useRef(0);
   const fetchHistory = async (pageNum = 1, reset = false) => {
+    const requestId = reset ? ++requestIdRef.current : requestIdRef.current;
+    const isStale = () => requestId !== requestIdRef.current;
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) return;
 
+      // GET /access-requests/history/me hoy filtra solo por resident_id (no recibe ni devuelve location_id);
+      // location_id viaja por si el backend lo respeta.
+      const locationQuery = selectedLocationId ? `&location_id=${encodeURIComponent(selectedLocationId)}` : '';
       const response = await fetch(
-        `${API_URL}/access-requests/history/me?page=${pageNum}&limit=20`,
+        `${API_URL}/access-requests/history/me?page=${pageNum}&limit=20${locationQuery}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const result = await response.json();
+      if (isStale()) return;
 
       if (result.success) {
-        const newData = result.data || [];
+        // Solo las de la residencial activa cuando la fila trae location_id; sin él no hay forma de saberlo
+        const newData = (result.data || []).filter(
+          (r) => !selectedLocationId || !r.location_id || r.location_id === selectedLocationId
+        );
         if (reset) {
           setRequests(newData);
         } else {
@@ -82,17 +104,20 @@ export default function AccessRequestsHistoryScreen() {
         setPage(pageNum);
       }
     } catch (err) {
+      if (isStale()) return;
       console.error('Error fetching history:', err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchHistory(1, true);
-  }, []);
+  }, [selectedLocationId]);
 
   const onEndReached = () => {
     if (hasMore && !loading) {

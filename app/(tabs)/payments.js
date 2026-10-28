@@ -2,7 +2,7 @@
 // ISSY Resident App - Community Payments Screen
 // ProHome Dark Theme + i18n + Proof Upload + Card Payment
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
+import { useUserLocation } from '../../src/context/UserLocationContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { 
   getPaymentMethods,
@@ -65,6 +66,7 @@ export default function Payments() {
   const font = useHomeFont();
   const router = useRouter();
   const { profile, token } = useAuth();
+  const { selectedLocationId } = useUserLocation();
   const { t } = useTranslation();
   
   // State
@@ -91,34 +93,53 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
   // DATA LOADING
   // ============================================
 
+  // Al cambiar de residencial: se vacían cargos y datos de pago al momento (nunca los de la otra)
+  // y se recarga. Solo cuenta la respuesta más reciente (al cambiar rápido de residencial).
+  const locationIdRef = useRef(selectedLocationId);
+  const loadRequestIdRef = useRef(0);
+
   useEffect(() => {
+    if (locationIdRef.current !== selectedLocationId) {
+      locationIdRef.current = selectedLocationId;
+      setCharges({ pending: [], paid: [] });
+      setPaymentSettings(null);
+      setLoading(true);
+    }
     loadData();
-  }, []);
+  }, [selectedLocationId]);
 
   const loadData = async () => {
+    const requestId = ++loadRequestIdRef.current;
+    const isStale = () => requestId !== loadRequestIdRef.current;
     try {
       await Promise.all([
-        loadCharges(),
-        loadPaymentSettings(),
+        loadCharges(isStale),
+        loadPaymentSettings(isStale),
         loadCards()
       ]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isStale()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 
-  const loadCharges = async () => {
+  // El backend toma la residencial del usuario (users.location_id); location_id viaja por si algún día la respeta
+  const locationQuery = selectedLocationId ? `?location_id=${encodeURIComponent(selectedLocationId)}` : '';
+
+  const loadCharges = async (isStale = () => false) => {
     try {
-      const response = await fetch(`${API_URL}/community-payments/my-charges`, {
+      const response = await fetch(`${API_URL}/community-payments/my-charges${locationQuery}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
+      if (isStale()) return;
       
       if (data.success) {
         setCharges({
@@ -127,24 +148,27 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
         });
       }
     } catch (error) {
+      if (isStale()) return;
       console.error('Error loading charges:', error);
     }
   };
 
-  const loadPaymentSettings = async () => {
+  const loadPaymentSettings = async (isStale = () => false) => {
     try {
-      const response = await fetch(`${API_URL}/community-payments/settings`, {
+      const response = await fetch(`${API_URL}/community-payments/settings${locationQuery}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
       const data = await response.json();
+      if (isStale()) return;
       
       if (data.success) {
         setPaymentSettings(data.data);
       }
     } catch (error) {
+      if (isStale()) return;
       console.error('Error loading payment settings:', error);
     }
   };
@@ -163,10 +187,11 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
     }
   };
 
+  // Depende de la residencial: loadData arma la consulta con la activa
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
-  }, []);
+  }, [selectedLocationId]);
 
   // ============================================
   // HELPERS
