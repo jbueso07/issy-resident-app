@@ -29,7 +29,9 @@ import {
   getPaymentMethods,
 } from '../../src/services/api';
 import { supabase } from '../../src/config/supabase';
-import { neu } from '../../src/theme/tokens';
+import PressableScale from '../../src/components/home/PressableScale';
+import { neu, neuSurface, fs } from '../../src/theme/tokens';
+import { useHomeFont } from '../../src/theme/homeFont';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -60,6 +62,7 @@ const COLORS = {
 const API_URL = 'https://api.joinissy.com/api';
 
 export default function Payments() {
+  const font = useHomeFont();
   const router = useRouter();
   const { profile, token } = useAuth();
   const { t } = useTranslation();
@@ -435,7 +438,7 @@ const processCardPayment = async () => {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>{t('communityPayments.loading')}</Text>
+          <Text style={[styles.loadingText, font(400)]}>{t('communityPayments.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -458,12 +461,12 @@ const processCardPayment = async () => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>{t('communityPayments.title')}</Text>
-            <Text style={styles.subtitle}>{t('communityPayments.subtitle')}</Text>
+            <Text style={[styles.title, font(600)]}>{t('communityPayments.title')}</Text>
+            <Text style={[styles.subtitle, font(400)]}>{t('communityPayments.subtitle')}</Text>
           </View>
-          <TouchableOpacity style={styles.methodsBtn} onPress={handleGoToMethods}>
+          <PressableScale variant="neu" style={styles.methodsBtn} onPress={handleGoToMethods}>
             <Ionicons name="card-outline" size={22} color={COLORS.textPrimary} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Balance Card */}
@@ -474,9 +477,9 @@ const processCardPayment = async () => {
           </View>
           <View style={styles.balanceContent}>
             <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>{t('communityPayments.pendingBalance')}</Text>
-              <Text style={styles.balanceAmount}>{formatCurrency(totalPending)}</Text>
-              <Text style={styles.balanceCount}>
+              <Text style={[styles.balanceLabel, font(400)]}>{t('communityPayments.pendingBalance')}</Text>
+              <Text style={[styles.balanceAmount, font(600)]}>{formatCurrency(totalPending)}</Text>
+              <Text style={[styles.balanceCount, font(400)]}>
                 {charges.pending.length} {charges.pending.length === 1 
                   ? t('communityPayments.pendingPayment') 
                   : t('communityPayments.pendingPayments')}
@@ -487,54 +490,60 @@ const processCardPayment = async () => {
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
+          <PressableScale variant="neu" 
+            containerStyle={{ flex: 1 }}
+            neuSurface="none"
+            style={[styles.tab, activeTab === 'pending' ? styles.tabActive : styles.tabIdle]}
             onPress={() => setActiveTab('pending')}
           >
             <Ionicons 
               name="time-outline" 
               size={18} 
-              color={activeTab === 'pending' ? COLORS.background : COLORS.textSecondary} 
+              color={activeTab === 'pending' ? neu.teal : neu.textLabel} 
             />
-            <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive, font(activeTab === 'pending' ? 600 : 500)]}>
               {t('communityPayments.tabs.pending')}
             </Text>
             {charges.pending.length > 0 && (
               <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgeActive]}>
-                <Text style={[styles.tabBadgeText, activeTab === 'pending' && styles.tabBadgeTextActive]}>
+                <Text style={[styles.tabBadgeText, activeTab === 'pending' && styles.tabBadgeTextActive, font(600)]}>
                   {charges.pending.length}
                 </Text>
               </View>
             )}
-          </TouchableOpacity>
+          </PressableScale>
           
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'history' && styles.tabActive]}
+          <PressableScale variant="neu" 
+            containerStyle={{ flex: 1 }}
+            neuSurface="none"
+            style={[styles.tab, activeTab === 'history' ? styles.tabActive : styles.tabIdle]}
             onPress={() => setActiveTab('history')}
           >
             <Ionicons 
               name="checkmark-done-outline" 
               size={18} 
-              color={activeTab === 'history' ? COLORS.background : COLORS.textSecondary} 
+              color={activeTab === 'history' ? neu.teal : neu.textLabel} 
             />
-            <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === 'history' && styles.tabTextActive, font(activeTab === 'history' ? 600 : 500)]}>
               {t('communityPayments.tabs.history')}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
           
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
+          <PressableScale variant="neu" 
+            containerStyle={{ flex: 1 }}
+            neuSurface="none"
+            style={[styles.tab, activeTab === 'cards' ? styles.tabActive : styles.tabIdle]}
             onPress={() => setActiveTab('cards')}
           >
             <Ionicons 
               name="card-outline" 
               size={18} 
-              color={activeTab === 'cards' ? COLORS.background : COLORS.textSecondary} 
+              color={activeTab === 'cards' ? neu.teal : neu.textLabel} 
             />
-            <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive, font(activeTab === 'cards' ? 600 : 500)]}>
               {t('communityPayments.tabs.cards')}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* Content */}
@@ -543,12 +552,12 @@ const processCardPayment = async () => {
             <View style={styles.emptyIconBox}>
               <Ionicons name="card-outline" size={48} color={COLORS.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>{t('communityPayments.empty.cards.title')}</Text>
-            <Text style={styles.emptyText}>{t('communityPayments.empty.cards.subtitle')}</Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleGoToMethods}>
-              <Ionicons name="add" size={20} color={COLORS.textPrimary} />
-              <Text style={styles.emptyButtonText}>{t('payments.addCard')}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.emptyTitle, font(600)]}>{t('communityPayments.empty.cards.title')}</Text>
+            <Text style={[styles.emptyText, font(400)]}>{t('communityPayments.empty.cards.subtitle')}</Text>
+            <PressableScale variant="neu" neuFill={neu.teal} style={styles.emptyButton} onPress={handleGoToMethods}>
+              <Ionicons name="add" size={20} color={neu.onAccent} />
+              <Text style={[styles.emptyButtonText, font(600)]}>{t('payments.addCard')}</Text>
+            </PressableScale>
           </View>
         ) : currentCharges.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -559,12 +568,12 @@ const processCardPayment = async () => {
                 color={COLORS.textMuted} 
               />
             </View>
-            <Text style={styles.emptyTitle}>
+            <Text style={[styles.emptyTitle, font(600)]}>
               {activeTab === 'pending' 
                 ? t('communityPayments.empty.pending.title')
                 : t('communityPayments.empty.history.title')}
             </Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, font(400)]}>
               {activeTab === 'pending' 
                 ? t('communityPayments.empty.pending.subtitle')
                 : t('communityPayments.empty.history.subtitle')}
@@ -606,10 +615,10 @@ const processCardPayment = async () => {
                           />
                         </View>
                         <View style={styles.chargeDetails}>
-                          <Text style={styles.chargeTitle} numberOfLines={1}>
+                          <Text style={[styles.chargeTitle, font(600)]} numberOfLines={1}>
                             {charge.title}
                           </Text>
-                          <Text style={styles.chargeDueDate}>
+                          <Text style={[styles.chargeDueDate, font(400)]}>
                             {charge.payment_status === 'paid' 
                               ? `${t('communityPayments.detail.paidAt')}: ${formatDate(charge.paid_at)}`
                               : charge.payment_status === 'proof_submitted'
@@ -621,7 +630,7 @@ const processCardPayment = async () => {
                       <View style={styles.chargeAmountContainer}>
                         <Text style={[styles.chargeAmount, {
                           color: getStatusColor(charge.payment_status, charge.due_date)
-                        }]}>
+                        }, font(600)]}>
                           {formatCurrency(charge.amount, charge.currency)}
                         </Text>
                         {isTouchable && (
@@ -637,7 +646,7 @@ const processCardPayment = async () => {
                       }]}>
                         <Text style={[styles.statusBadgeText, {
                           color: getStatusColor(charge.payment_status, charge.due_date)
-                        }]}>
+                        }, font(600)]}>
                           {getStatusText(charge.payment_status, charge.due_date)}
                         </Text>
                       </View>
@@ -647,7 +656,7 @@ const processCardPayment = async () => {
                     {charge.payment_status === 'rejected' && charge.rejection_reason && (
                       <View style={styles.rejectionBox}>
                         <Ionicons name="information-circle" size={16} color={COLORS.red} />
-                        <Text style={styles.rejectionText}>{charge.rejection_reason}</Text>
+                        <Text style={[styles.rejectionText, font(400)]}>{charge.rejection_reason}</Text>
                       </View>
                     )}
                     
@@ -655,29 +664,30 @@ const processCardPayment = async () => {
                     {activeTab === 'pending' && charge.payment_status !== 'proof_submitted' && (
                       <View style={styles.paymentButtons}>
                         {canPayWithCard(charge) && (
-                          <TouchableOpacity 
+                          <PressableScale variant="neu" 
+                            neuFill={neu.teal}
+                            containerStyle={{ flex: 1 }}
                             style={styles.payButtonCard}
                             onPress={() => openCardModal(charge)}
-                            activeOpacity={0.8}
                           >
-                            <Ionicons name="card" size={18} color={COLORS.background} />
-                            <Text style={styles.payButtonCardText}>
+                            <Ionicons name="card" size={18} color={neu.onAccent} />
+                            <Text style={[styles.payButtonCardText, font(600)]}>
                               {t('communityPayments.actions.payWithCard')}
                             </Text>
-                          </TouchableOpacity>
+                          </PressableScale>
                         )}
                         
                         {canPayWithProof(charge) && (
-                          <TouchableOpacity 
+                          <PressableScale variant="neu" 
+                            containerStyle={{ flex: 1 }}
                             style={styles.payButtonProof}
                             onPress={() => openProofModal(charge)}
-                            activeOpacity={0.8}
                           >
                             <Ionicons name="cloud-upload" size={18} color={COLORS.purple} />
-                            <Text style={styles.payButtonProofText}>
+                            <Text style={[styles.payButtonProofText, font(600)]}>
                               {t('communityPayments.actions.uploadProof')}
                             </Text>
-                          </TouchableOpacity>
+                          </PressableScale>
                         )}
                       </View>
                     )}
@@ -687,18 +697,18 @@ const processCardPayment = async () => {
                       <View style={styles.waitingContainer}>
                         <View style={styles.waitingBox}>
                           <Ionicons name="hourglass" size={16} color={COLORS.blue} />
-                          <Text style={styles.waitingText}>
+                          <Text style={[styles.waitingText, font(400)]}>
                             {t('communityPayments.proofUpload.verificationNote')}
                           </Text>
                         </View>
                         {charge.proof_of_payment && (
-                          <TouchableOpacity 
+                          <PressableScale variant="neu" 
                             style={styles.viewProofButton}
                             onPress={() => openPaymentDetail(charge)}
                           >
                             <Ionicons name="eye" size={16} color={COLORS.purple} />
-                            <Text style={styles.viewProofButtonText}>Ver comprobante</Text>
-                          </TouchableOpacity>
+                            <Text style={[styles.viewProofButtonText, font(400)]}>Ver comprobante</Text>
+                          </PressableScale>
                        )}
                      </View>
                    )}
@@ -707,7 +717,7 @@ const processCardPayment = async () => {
                     {activeTab === 'history' && (
                       <View style={styles.paidBadge}>
                         <Ionicons name="checkmark-circle" size={16} color={COLORS.green} />
-                        <Text style={styles.paidBadgeText}>
+                        <Text style={[styles.paidBadgeText, font(500)]}>
 {charge.payment_method === 'card' ? 'Tarjeta' : 'Comprobante verificado'}
 </Text>
 </View>
@@ -732,21 +742,21 @@ const processCardPayment = async () => {
             
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('communityPayments.proofUpload.title')}</Text>
-              <TouchableOpacity 
+              <Text style={[styles.modalTitle, font(600)]}>{t('communityPayments.proofUpload.title')}</Text>
+              <PressableScale variant="neu" 
                 style={styles.modalCloseBtn} 
                 onPress={() => setProofModalVisible(false)}
               >
                 <Ionicons name="close" size={24} color={COLORS.textPrimary} />
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
             <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Charge Info */}
               {selectedCharge && (
                 <View style={styles.chargeInfoBox}>
-                  <Text style={styles.chargeInfoTitle}>{selectedCharge.title}</Text>
-                  <Text style={styles.chargeInfoAmount}>
+                  <Text style={[styles.chargeInfoTitle, font(600)]}>{selectedCharge.title}</Text>
+                  <Text style={[styles.chargeInfoAmount, font(600)]}>
                     {formatCurrency(selectedCharge.amount, selectedCharge.currency)}
                   </Text>
                 </View>
@@ -755,45 +765,45 @@ const processCardPayment = async () => {
               {/* Bank Info */}
               {paymentSettings?.bank_name && (
                 <View style={styles.bankInfoBox}>
-                  <Text style={styles.bankInfoTitle}>
+                  <Text style={[styles.bankInfoTitle, font(600)]}>
                     {t('communityPayments.proofUpload.bankInfo')}
                   </Text>
                   
                   <View style={styles.bankInfoRow}>
-                    <Text style={styles.bankInfoLabel}>
+                    <Text style={[styles.bankInfoLabel, font(400)]}>
                       {t('communityPayments.proofUpload.bankName')}
                     </Text>
-                    <Text style={styles.bankInfoValue}>{paymentSettings.bank_name}</Text>
+                    <Text style={[styles.bankInfoValue, font(500)]}>{paymentSettings.bank_name}</Text>
                   </View>
                   
                   <View style={styles.bankInfoRow}>
-                    <Text style={styles.bankInfoLabel}>
+                    <Text style={[styles.bankInfoLabel, font(400)]}>
                       {t('communityPayments.proofUpload.accountNumber')}
                     </Text>
                     <View style={styles.bankInfoCopyRow}>
-                      <Text style={styles.bankInfoValue}>{paymentSettings.bank_account_number}</Text>
-                      <TouchableOpacity 
+                      <Text style={[styles.bankInfoValue, font(500)]}>{paymentSettings.bank_account_number}</Text>
+                      <PressableScale variant="neu" 
                         onPress={() => copyToClipboard(paymentSettings.bank_account_number)}
                         style={styles.copyBtn}
                       >
                         <Ionicons name="copy-outline" size={18} color={COLORS.purple} />
-                      </TouchableOpacity>
+                      </PressableScale>
                     </View>
                   </View>
                   
                   <View style={styles.bankInfoRow}>
-                    <Text style={styles.bankInfoLabel}>
+                    <Text style={[styles.bankInfoLabel, font(400)]}>
                       {t('communityPayments.proofUpload.accountName')}
                     </Text>
-                    <Text style={styles.bankInfoValue}>{paymentSettings.bank_account_name}</Text>
+                    <Text style={[styles.bankInfoValue, font(500)]}>{paymentSettings.bank_account_name}</Text>
                   </View>
 
                   {paymentSettings.bank_instructions && (
                     <View style={styles.bankInstructions}>
-                      <Text style={styles.bankInstructionsLabel}>
+                      <Text style={[styles.bankInstructionsLabel, font(400)]}>
                         {t('communityPayments.proofUpload.instructions')}
                       </Text>
-                      <Text style={styles.bankInstructionsText}>
+                      <Text style={[styles.bankInstructionsText, font(400)]}>
                         {paymentSettings.bank_instructions}
                       </Text>
                     </View>
@@ -802,7 +812,7 @@ const processCardPayment = async () => {
               )}
 
               {/* Image Picker */}
-              <Text style={styles.sectionTitle}>{t('communityPayments.proofUpload.subtitle')}</Text>
+              <Text style={[styles.sectionTitle, font(600)]}>{t('communityPayments.proofUpload.subtitle')}</Text>
               
               {proofImage ? (
                 <View style={styles.imagePreviewContainer}>
@@ -816,31 +826,33 @@ const processCardPayment = async () => {
                 </View>
               ) : (
                 <View style={styles.imagePickerButtons}>
-                  <TouchableOpacity 
+                  <PressableScale variant="neu" 
+                    containerStyle={{ flex: 1 }}
                     style={styles.imagePickerBtn}
                     onPress={() => pickImage(true)}
                   >
                     <Ionicons name="camera" size={32} color={COLORS.purple} />
-                    <Text style={styles.imagePickerBtnText}>
+                    <Text style={[styles.imagePickerBtnText, font(400)]}>
                       {t('communityPayments.proofUpload.takePhoto')}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                   
-                  <TouchableOpacity 
+                  <PressableScale variant="neu" 
+                    containerStyle={{ flex: 1 }}
                     style={styles.imagePickerBtn}
                     onPress={() => pickImage(false)}
                   >
                     <Ionicons name="images" size={32} color={COLORS.purple} />
-                    <Text style={styles.imagePickerBtnText}>
+                    <Text style={[styles.imagePickerBtnText, font(400)]}>
                       {t('communityPayments.proofUpload.selectFromGallery')}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               )}
 
               {/* Reference */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
+                <Text style={[styles.formLabel, font(500)]}>
                   {t('communityPayments.proofUpload.reference')}
                 </Text>
                 <TextInput
@@ -854,7 +866,7 @@ const processCardPayment = async () => {
 
               {/* Notes */}
               <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
+                <Text style={[styles.formLabel, font(500)]}>
                   {t('communityPayments.proofUpload.notes')}
                 </Text>
                 <TextInput
@@ -871,28 +883,30 @@ const processCardPayment = async () => {
               {/* Verification Note */}
               <View style={styles.verificationNote}>
                 <Ionicons name="information-circle" size={20} color={COLORS.blue} />
-                <Text style={styles.verificationNoteText}>
+                <Text style={[styles.verificationNoteText, font(400)]}>
                   {t('communityPayments.proofUpload.verificationNote')}
                 </Text>
               </View>
 
               {/* Submit Button */}
-              <TouchableOpacity
-                style={[styles.submitButton, !proofImage && styles.submitButtonDisabled]}
+              <PressableScale variant="neu"
+                neuFill={neu.teal}
+                containerStyle={(!proofImage || submitting) && styles.submitButtonDisabled}
+                style={styles.submitButton}
                 onPress={submitProof}
                 disabled={!proofImage || submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator color={neu.onAccent} />
                 ) : (
                   <>
-                    <Ionicons name="cloud-upload" size={20} color={COLORS.background} />
-                    <Text style={styles.submitButtonText}>
+                    <Ionicons name="cloud-upload" size={20} color={neu.onAccent} />
+                    <Text style={[styles.submitButtonText, font(600)]}>
                       {t('communityPayments.proofUpload.submit')}
                     </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableScale>
 
               <View style={{ height: scale(40) }} />
             </ScrollView>
@@ -910,17 +924,17 @@ const processCardPayment = async () => {
       
       {/* Modal Header */}
       <View style={styles.modalHeader}>
-        <Text style={styles.modalTitle}>
+        <Text style={[styles.modalTitle, font(600)]}>
           {selectedPaymentDetail?.payment_status === 'paid' 
             ? 'Detalle de Pago'
             : 'Comprobante Enviado'}
         </Text>
-        <TouchableOpacity 
+        <PressableScale variant="neu" 
           style={styles.modalCloseBtn} 
           onPress={() => setDetailModalVisible(false)}
         >
           <Ionicons name="close" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
@@ -940,19 +954,19 @@ const processCardPayment = async () => {
             {/* Payment Details */}
             <View style={styles.detailCard}>
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Concepto</Text>
-                <Text style={styles.detailValue}>{selectedPaymentDetail.title}</Text>
+                <Text style={[styles.detailLabel, font(400)]}>Concepto</Text>
+                <Text style={[styles.detailValue, font(400)]}>{selectedPaymentDetail.title}</Text>
               </View>
               
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Monto</Text>
-                <Text style={[styles.detailValue, { color: COLORS.lime, fontWeight: '700' }]}>
+                <Text style={[styles.detailLabel, font(400)]}>Monto</Text>
+                <Text style={[styles.detailValue, { color: COLORS.lime, fontWeight: '700' }, font(400)]}>
                   {formatCurrency(selectedPaymentDetail.amount, selectedPaymentDetail.currency)}
                 </Text>
               </View>
 
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Estado</Text>
+                <Text style={[styles.detailLabel, font(400)]}>Estado</Text>
                 <View
                   style={[
                     styles.detailStatusBadge,
@@ -973,7 +987,7 @@ const processCardPayment = async () => {
                           selectedPaymentDetail.due_date
                         ),
                       },
-                    ]}
+                    , font(400)]}
                   >
                     {getStatusText(
                       selectedPaymentDetail.payment_status,
@@ -986,8 +1000,8 @@ const processCardPayment = async () => {
               {selectedPaymentDetail.payment_status === 'paid' &&
                 selectedPaymentDetail.paid_at && (
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Pagado</Text>
-                    <Text style={styles.detailValue}>
+                    <Text style={[styles.detailLabel, font(400)]}>Pagado</Text>
+                    <Text style={[styles.detailValue, font(400)]}>
                       {formatDate(selectedPaymentDetail.paid_at)}
                     </Text>
                   </View>
@@ -995,8 +1009,8 @@ const processCardPayment = async () => {
 
               {selectedPaymentDetail.proof_submitted_at && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Enviado</Text>
-                  <Text style={styles.detailValue}>
+                  <Text style={[styles.detailLabel, font(400)]}>Enviado</Text>
+                  <Text style={[styles.detailValue, font(400)]}>
                     {formatDate(selectedPaymentDetail.proof_submitted_at)}
                   </Text>
                 </View>
@@ -1004,8 +1018,8 @@ const processCardPayment = async () => {
 
               {selectedPaymentDetail.payment_method && (
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Método</Text>
-                  <Text style={styles.detailValue}>
+                  <Text style={[styles.detailLabel, font(400)]}>Método</Text>
+                  <Text style={[styles.detailValue, font(400)]}>
                     {selectedPaymentDetail.payment_method === 'card'
                       ? 'Tarjeta'
                       : 'Comprobante'}
@@ -1014,8 +1028,8 @@ const processCardPayment = async () => {
               )}
 
               <View style={[styles.detailRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.detailLabel}>Vencimiento</Text>
-                <Text style={styles.detailValue}>
+                <Text style={[styles.detailLabel, font(400)]}>Vencimiento</Text>
+                <Text style={[styles.detailValue, font(400)]}>
                   {formatDate(selectedPaymentDetail.due_date)}
                 </Text>
               </View>
@@ -1029,7 +1043,7 @@ const processCardPayment = async () => {
                   size={18}
                   color={COLORS.blue}
                 />
-                <Text style={styles.verificationNoteText}>
+                <Text style={[styles.verificationNoteText, font(400)]}>
                   {t('communityPayments.proofUpload.verificationNote')}
                 </Text>
               </View>
@@ -1051,7 +1065,7 @@ const processCardPayment = async () => {
                   style={[
                     styles.verificationNoteText,
                     { color: COLORS.green },
-                  ]}
+                  , font(400)]}
                 >
                   Pago verificado por el administrador
                 </Text>
@@ -1092,7 +1106,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: scale(12),
     color: COLORS.textSecondary,
-    fontSize: scale(14),
+    fontSize: fs(14),
   },
 // Amount container with chevron
 chargeAmountContainer: {
@@ -1112,7 +1126,7 @@ viewProofButton: {
   gap: scale(6),
 },
 viewProofButtonText: {
-  fontSize: scale(13),
+  fontSize: fs(13),
   fontWeight: '500',
   color: COLORS.purple,
 },
@@ -1143,11 +1157,11 @@ detailRow: {
   borderBottomColor: COLORS.cardBorder,
 },
 detailLabel: {
-  fontSize: scale(14),
+  fontSize: fs(14),
   color: COLORS.textSecondary,
 },
 detailValue: {
-  fontSize: scale(14),
+  fontSize: fs(14),
   fontWeight: '500',
   color: COLORS.textPrimary,
   maxWidth: '60%',
@@ -1159,7 +1173,7 @@ detailStatusBadge: {
   borderRadius: scale(8),
 },
 detailStatusText: {
-  fontSize: scale(12),
+  fontSize: fs(12),
   fontWeight: '600',
 },
 
@@ -1172,12 +1186,12 @@ detailStatusText: {
     paddingBottom: scale(12),
   },
   title: {
-    fontSize: scale(24),
-    fontWeight: '700',
+    fontSize: fs(24),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginTop: scale(4),
   },
@@ -1185,20 +1199,18 @@ detailStatusText: {
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.raisedSm,
   },
 
   // Balance Card
   balanceCard: {
-    backgroundColor: COLORS.purple,
     borderRadius: scale(20),
     padding: scale(20),
     marginTop: scale(8),
     overflow: 'hidden',
+    ...neuSurface.raised,
   },
   balanceDecoration: {
     position: 'absolute',
@@ -1210,7 +1222,8 @@ detailStatusText: {
   decoCircle: {
     position: 'absolute',
     borderRadius: 999,
-    backgroundColor: neu.raised,
+    backgroundColor: neu.sunken,
+    opacity: 0.5,
   },
   decoCircle1: {
     width: scale(150),
@@ -1229,17 +1242,17 @@ detailStatusText: {
   },
   balanceLeft: {},
   balanceLabel: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: neu.textLabel,
   },
   balanceAmount: {
-    fontSize: scale(28),
-    fontWeight: '700',
+    fontSize: fs(28),
+    fontWeight: '600',
     color: COLORS.textPrimary,
     marginTop: scale(4),
   },
   balanceCount: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: neu.textLabel,
     marginTop: scale(4),
   },
@@ -1247,80 +1260,77 @@ detailStatusText: {
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.card,
-    borderRadius: scale(16),
-    marginTop: scale(20),
-    padding: scale(4),
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    gap: scale(8),
+    marginTop: scale(14),
+    paddingVertical: scale(6),
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: scale(12),
-    borderRadius: scale(12),
+    borderRadius: scale(14),
     gap: scale(6),
   },
+  tabIdle: {
+    ...neuSurface.raisedSm,
+  },
   tabActive: {
-    backgroundColor: COLORS.lime,
+    ...neuSurface.sunkenSm,
   },
   tabText: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
+    fontSize: fs(13),
+    color: neu.textLabel,
     fontWeight: '500',
   },
   tabTextActive: {
-    color: COLORS.background,
+    color: neu.teal,
     fontWeight: '600',
   },
   tabBadge: {
-    backgroundColor: COLORS.red,
     paddingHorizontal: scale(6),
     paddingVertical: scale(2),
     borderRadius: scale(10),
     minWidth: scale(20),
     alignItems: 'center',
+    ...neuSurface.sunkenSm,
   },
   tabBadgeActive: {
-    backgroundColor: COLORS.background,
+
   },
   tabBadgeText: {
-    fontSize: scale(11),
+    fontSize: fs(11),
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: neu.coral,
   },
   tabBadgeTextActive: {
-    color: COLORS.lime,
+
   },
 
   // Empty State
   emptyCard: {
-    backgroundColor: COLORS.card,
     borderRadius: scale(20),
     padding: scale(40),
     alignItems: 'center',
     marginTop: scale(20),
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.raised,
   },
   emptyIconBox: {
     width: scale(80),
     height: scale(80),
     borderRadius: scale(40),
-    backgroundColor: COLORS.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
+    ...neuSurface.sunken,
   },
   emptyTitle: {
-    fontSize: scale(18),
+    fontSize: fs(18),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
   emptyText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginTop: scale(4),
     textAlign: 'center',
@@ -1328,17 +1338,18 @@ detailStatusText: {
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.purple,
     paddingVertical: scale(12),
     paddingHorizontal: scale(20),
     borderRadius: scale(12),
     marginTop: scale(20),
     gap: scale(8),
+    ...neuSurface.raisedSm,
+    backgroundColor: neu.teal,
   },
   emptyButtonText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: neu.onAccent,
   },
 
   // Charges List
@@ -1348,13 +1359,11 @@ detailStatusText: {
 
   // Charge Card
   chargeCard: {
-    backgroundColor: COLORS.card,
     borderRadius: scale(16),
     marginBottom: scale(12),
     flexDirection: 'row',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.raised,
   },
   statusBar: {
     width: scale(4),
@@ -1381,23 +1390,24 @@ detailStatusText: {
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(12),
+    ...neuSurface.sunkenSm,
   },
   chargeDetails: {
     flex: 1,
   },
   chargeTitle: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
   chargeDueDate: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
     marginTop: scale(4),
   },
   chargeAmount: {
-    fontSize: scale(18),
-    fontWeight: '700',
+    fontSize: fs(18),
+    fontWeight: '600',
   },
 
   // Status Badge
@@ -1407,9 +1417,10 @@ detailStatusText: {
     paddingHorizontal: scale(10),
     borderRadius: scale(8),
     marginTop: scale(10),
+    ...neuSurface.sunkenSm,
   },
   statusBadgeText: {
-    fontSize: scale(11),
+    fontSize: fs(11),
     fontWeight: '600',
   },
 
@@ -1417,15 +1428,15 @@ detailStatusText: {
   rejectionBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: neu.coral + '1A',
     padding: scale(10),
     borderRadius: scale(8),
     marginTop: scale(10),
     gap: scale(8),
+    ...neuSurface.sunken,
   },
   rejectionText: {
     flex: 1,
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.red,
   },
 
@@ -1436,34 +1447,31 @@ detailStatusText: {
     marginTop: scale(12),
   },
   payButtonCard: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
     paddingVertical: scale(12),
     borderRadius: scale(12),
     gap: scale(6),
+    ...neuSurface.raised,
+    backgroundColor: neu.teal,
   },
   payButtonCardText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
-    color: COLORS.background,
+    color: neu.onAccent,
   },
   payButtonProof: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
     paddingVertical: scale(12),
     borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.purple,
     gap: scale(6),
+    ...neuSurface.raisedSm,
   },
   payButtonProofText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: COLORS.purple,
   },
@@ -1472,15 +1480,15 @@ detailStatusText: {
   waitingBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: neu.blue + '1A',
     padding: scale(10),
     borderRadius: scale(8),
     marginTop: scale(10),
     gap: scale(8),
+    ...neuSurface.sunken,
   },
   waitingText: {
     flex: 1,
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.blue,
   },
 
@@ -1489,15 +1497,15 @@ detailStatusText: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: neu.teal + '26',
     paddingVertical: scale(6),
     paddingHorizontal: scale(12),
     borderRadius: scale(20),
     marginTop: scale(12),
     gap: scale(4),
+    ...neuSurface.sunkenSm,
   },
   paidBadgeText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.green,
     fontWeight: '500',
   },
@@ -1509,15 +1517,15 @@ detailStatusText: {
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: COLORS.backgroundSecondary,
     borderTopLeftRadius: scale(24),
     borderTopRightRadius: scale(24),
     maxHeight: '90%',
+    ...neuSurface.raised,
   },
   modalHandle: {
     width: scale(40),
     height: scale(4),
-    backgroundColor: COLORS.textMuted,
+    backgroundColor: neu.sunken,
     borderRadius: scale(2),
     alignSelf: 'center',
     marginTop: scale(12),
@@ -1530,7 +1538,7 @@ detailStatusText: {
     paddingVertical: scale(16),
   },
   modalTitle: {
-    fontSize: scale(18),
+    fontSize: fs(18),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
@@ -1538,9 +1546,9 @@ detailStatusText: {
     width: scale(40),
     height: scale(40),
     borderRadius: scale(20),
-    backgroundColor: COLORS.backgroundTertiary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...neuSurface.raisedSm,
   },
   modalContent: {
     paddingHorizontal: scale(20),
@@ -1548,34 +1556,32 @@ detailStatusText: {
 
   // Charge Info Box
   chargeInfoBox: {
-    backgroundColor: COLORS.backgroundTertiary,
     borderRadius: scale(16),
     padding: scale(16),
     marginBottom: scale(20),
+    ...neuSurface.sunken,
   },
   chargeInfoTitle: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(8),
   },
   chargeInfoAmount: {
-    fontSize: scale(24),
-    fontWeight: '700',
+    fontSize: fs(24),
+    fontWeight: '600',
     color: COLORS.lime,
   },
 
   // Bank Info Box
   bankInfoBox: {
-    backgroundColor: COLORS.card,
     borderRadius: scale(16),
     padding: scale(16),
     marginBottom: scale(20),
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.sunken,
   },
   bankInfoTitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(12),
@@ -1589,11 +1595,11 @@ detailStatusText: {
     borderBottomColor: COLORS.cardBorder,
   },
   bankInfoLabel: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textSecondary,
   },
   bankInfoValue: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '500',
     color: COLORS.textPrimary,
   },
@@ -1604,6 +1610,9 @@ detailStatusText: {
   },
   copyBtn: {
     padding: scale(4),
+    ...neuSurface.raisedSm,
+    borderRadius: 999,
+    padding: scale(8),
   },
   bankInstructions: {
     marginTop: scale(12),
@@ -1612,19 +1621,19 @@ detailStatusText: {
     borderTopColor: COLORS.cardBorder,
   },
   bankInstructionsLabel: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
     marginBottom: scale(4),
   },
   bankInstructionsText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textPrimary,
     lineHeight: scale(20),
   },
 
   // Section Title
   sectionTitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: COLORS.textSecondary,
     marginBottom: scale(12),
@@ -1637,18 +1646,15 @@ detailStatusText: {
     marginBottom: scale(20),
   },
   imagePickerBtn: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.card,
     borderRadius: scale(16),
     padding: scale(20),
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
     borderStyle: 'dashed',
+    ...neuSurface.raisedSm,
   },
   imagePickerBtnText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
     marginTop: scale(8),
     textAlign: 'center',
@@ -1668,8 +1674,8 @@ detailStatusText: {
     position: 'absolute',
     top: scale(8),
     right: scale(8),
-    backgroundColor: COLORS.background,
     borderRadius: scale(14),
+    ...neuSurface.raisedSm,
   },
 
   // Form
@@ -1677,20 +1683,18 @@ detailStatusText: {
     marginBottom: scale(16),
   },
   formLabel: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '500',
     color: COLORS.textSecondary,
     marginBottom: scale(8),
   },
   formInput: {
-    backgroundColor: COLORS.backgroundTertiary,
     borderRadius: scale(12),
     paddingHorizontal: scale(16),
     paddingVertical: scale(14),
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.sunken,
   },
   formInputMultiline: {
     minHeight: scale(80),
@@ -1709,7 +1713,7 @@ detailStatusText: {
   },
   verificationNoteText: {
     flex: 1,
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.blue,
     lineHeight: scale(20),
   },
@@ -1719,18 +1723,19 @@ detailStatusText: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
     borderRadius: scale(14),
     paddingVertical: scale(16),
     gap: scale(8),
+    ...neuSurface.raised,
+    backgroundColor: neu.teal,
   },
   submitButtonDisabled: {
-    backgroundColor: COLORS.backgroundTertiary,
+    opacity: 0.45,
   },
   submitButtonText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
-    color: COLORS.background,
+    color: neu.onAccent,
   },
 
   // Price Breakdown
@@ -1739,6 +1744,7 @@ detailStatusText: {
     borderTopWidth: 1,
     borderTopColor: COLORS.cardBorder,
     paddingTop: scale(12),
+    ...neuSurface.sunken,
   },
   priceRow: {
     flexDirection: 'row',
@@ -1752,21 +1758,21 @@ detailStatusText: {
     paddingTop: scale(12),
   },
   priceLabel: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
   },
   priceValue: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textPrimary,
   },
   priceLabelTotal: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
   priceValueTotal: {
-    fontSize: scale(18),
-    fontWeight: '700',
+    fontSize: fs(18),
+    fontWeight: '600',
     color: COLORS.lime,
   },
 
@@ -1775,15 +1781,15 @@ detailStatusText: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
     borderRadius: scale(12),
     padding: scale(16),
     marginBottom: scale(10),
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    ...neuSurface.raisedSm,
+    borderColor: neu.raised,
   },
   cardOptionSelected: {
-    borderColor: COLORS.lime,
+    ...neuSurface.sunkenSm,
   },
   cardOptionLeft: {
     flexDirection: 'row',
@@ -1792,23 +1798,23 @@ detailStatusText: {
   },
   cardOptionInfo: {},
   cardOptionBrand: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
   cardOptionNumber: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
   defaultBadge: {
-    backgroundColor: neu.teal + '33',
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
     borderRadius: scale(8),
+    ...neuSurface.sunkenSm,
   },
   defaultBadgeText: {
-    fontSize: scale(10),
+    fontSize: fs(10),
     fontWeight: '600',
     color: COLORS.lime,
   },
@@ -1819,9 +1825,11 @@ detailStatusText: {
     padding: scale(16),
     gap: scale(8),
     marginBottom: scale(20),
+    ...neuSurface.raisedSm,
+    borderRadius: scale(12),
   },
   addCardOptionText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '500',
     color: COLORS.purple,
   },

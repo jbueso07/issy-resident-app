@@ -16,7 +16,8 @@ import { captureRef } from 'react-native-view-shot';
 import { useTranslation } from '../hooks/useTranslation';
 import PressableScale from './home/PressableScale';
 import { openInMaps } from './IncidentLocation';
-import { colors, gradients, radius, spacing, scale } from '../theme/tokens';
+import { colors, gradients, radius, spacing, scale, neu, neuSurface } from '../theme/tokens';
+import { useHomeFont } from '../theme/homeFont';
 import {
   getPassStatus,
   getStatusText,
@@ -34,6 +35,7 @@ const QR_SIZE = 220;
 const STATUS_COLORS = { active: colors.lime, scheduled: colors.amber, used: colors.textSecondary, expired: colors.textMuted };
 
 function PassContent({ qr, onClose, userLocations }) {
+  const font = useHomeFont();
   const { t, language } = useTranslation();
   const insets = useSafeAreaInsets();
   const cardRef = useRef(null);
@@ -99,12 +101,14 @@ function PassContent({ qr, onClose, userLocations }) {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
         <PressableScale
+          variant="neu"
+          neuSmall
           style={styles.closeButton}
           onPress={onClose}
           hitSlop={8}
           accessibilityLabel={t('common.close')}
         >
-          <Ionicons name="close" size={24} color={colors.text} />
+          <Ionicons name="close" size={24} color={neu.text} />
         </PressableScale>
       </View>
 
@@ -113,30 +117,30 @@ function PassContent({ qr, onClose, userLocations }) {
         <View ref={cardRef} collapsable={false} style={styles.card}>
           <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
             <View style={styles.headerTop}>
-              <Text allowFontScaling={false} style={styles.headerTitle}>
+              <Text allowFontScaling={false} style={[styles.headerTitle, font(600)]}>
                 {t('home2.receivedQR.title', 'Acceso de visita')}
               </Text>
               <View style={styles.headerChip}>
-                <Text allowFontScaling={false} style={styles.headerChipText}>
+                <Text allowFontScaling={false} style={[styles.headerChipText, font(600)]}>
                   {t(`home2.receivedQR.types.${qr.qr_type}`, qr.qr_type)}
                 </Text>
               </View>
             </View>
-            <Text allowFontScaling={false} style={styles.residence} numberOfLines={2}>
+            <Text allowFontScaling={false} style={[styles.residence, font(600)]} numberOfLines={2}>
               {destination.name}
             </Text>
             {!!houseText && (
-              <Text allowFontScaling={false} style={styles.house}>
+              <Text allowFontScaling={false} style={[styles.house, font(600)]}>
                 {houseText}
               </Text>
             )}
           </LinearGradient>
 
           <View style={styles.body}>
-            <Text allowFontScaling={false} style={styles.label}>
+            <Text allowFontScaling={false} style={[styles.label, font(400)]}>
               {t('home2.receivedQR.registeredAs', 'Registrado como')}
             </Text>
-            <Text allowFontScaling={false} style={styles.visitor} numberOfLines={2}>
+            <Text allowFontScaling={false} style={[styles.visitor, font(600)]} numberOfLines={2}>
               {qr.visitor_name}
             </Text>
 
@@ -151,7 +155,7 @@ function PassContent({ qr, onClose, userLocations }) {
                     size={44}
                     color={colors.textDark}
                   />
-                  <Text allowFontScaling={false} style={styles.qrCoveredText}>
+                  <Text allowFontScaling={false} style={[styles.qrCoveredText, font(600)]}>
                     {status === 'scheduled'
                       ? getActivationText(qr, t, language)
                       : status === 'used'
@@ -164,16 +168,16 @@ function PassContent({ qr, onClose, userLocations }) {
 
             <View style={styles.codeRow}>
               <View style={styles.codeText}>
-                <Text allowFontScaling={false} style={styles.label}>
+                <Text allowFontScaling={false} style={[styles.label, font(400)]}>
                   {t('home2.receivedQR.manualCode', 'Código manual')}
                 </Text>
-                <Text allowFontScaling={false} style={styles.code} selectable>
+                <Text allowFontScaling={false} style={[styles.code, font(600)]} selectable>
                   {qr.qr_code}
                 </Text>
               </View>
               <PressableScale style={styles.copyButton} onPress={handleCopy} accessibilityLabel={t('home2.receivedQR.copy')}>
-                <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={colors.cyan} />
-                <Text allowFontScaling={false} style={styles.copyText}>
+                <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={neu.teal} />
+                <Text allowFontScaling={false} style={[styles.copyText, font(600)]}>
                   {copied ? t('home2.receivedQR.copied', 'Copiado') : t('home2.receivedQR.copy', 'Copiar')}
                 </Text>
               </PressableScale>
@@ -181,7 +185,7 @@ function PassContent({ qr, onClose, userLocations }) {
 
             <View style={styles.statusRow}>
               <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[status] }]} />
-              <Text allowFontScaling={false} style={styles.statusText}>
+              <Text allowFontScaling={false} style={[styles.statusText, font(600)]}>
                 {getStatusText(qr, t, language, now)}
               </Text>
             </View>
@@ -189,10 +193,10 @@ function PassContent({ qr, onClose, userLocations }) {
             <View style={styles.boxes}>
               {boxes.map((box) => (
                 <View key={box.key} style={styles.box}>
-                  <Text allowFontScaling={false} style={styles.boxLabel}>
+                  <Text allowFontScaling={false} style={[styles.boxLabel, font(400)]}>
                     {box.label}
                   </Text>
-                  <Text allowFontScaling={false} style={styles.boxValue} numberOfLines={2}>
+                  <Text allowFontScaling={false} style={[styles.boxValue, font(600)]} numberOfLines={2}>
                     {box.value || '—'}
                   </Text>
                 </View>
@@ -201,7 +205,7 @@ function PassContent({ qr, onClose, userLocations }) {
 
             {showDays && (
               <View style={styles.daysBlock}>
-                <Text allowFontScaling={false} style={styles.label}>
+                <Text allowFontScaling={false} style={[styles.label, font(400)]}>
                   {t('home2.receivedQR.accessDays', 'Días de acceso')}
                 </Text>
                 <View style={styles.days}>
@@ -209,7 +213,7 @@ function PassContent({ qr, onClose, userLocations }) {
                     const on = schedule.days.includes(day);
                     return (
                       <View key={day} style={[styles.day, on && styles.dayOn]}>
-                        <Text allowFontScaling={false} style={[styles.dayText, on && styles.dayTextOn]}>
+                        <Text allowFontScaling={false} style={[styles.dayText, on && styles.dayTextOn, font(600)]}>
                           {letters[index]}
                         </Text>
                       </View>
@@ -221,12 +225,12 @@ function PassContent({ qr, onClose, userLocations }) {
 
             <View style={styles.gateNotice}>
               <Ionicons name="shield-checkmark-outline" size={16} color={typeColor} />
-              <Text allowFontScaling={false} style={styles.gateText}>
+              <Text allowFontScaling={false} style={[styles.gateText, font(400)]}>
                 {t('home2.receivedQR.showAtGate', 'Muéstralo en la garita.')}
               </Text>
             </View>
 
-            <Text allowFontScaling={false} style={styles.footer}>
+            <Text allowFontScaling={false} style={[styles.footer, font(400)]}>
               powered by issy · joinissy.com
             </Text>
           </View>
@@ -234,9 +238,9 @@ function PassContent({ qr, onClose, userLocations }) {
 
         <View style={styles.actions}>
           {status === 'active' && (
-            <PressableScale containerStyle={styles.actionFlex} style={styles.actionButton} onPress={handleSave} disabled={saving}>
-              <Ionicons name="download-outline" size={18} color={colors.textDark} />
-              <Text allowFontScaling={false} style={styles.actionText}>
+            <PressableScale variant="neu" neuSmall neuFill={neu.teal} containerStyle={[styles.actionFlex, saving && styles.actionDisabled]} style={styles.actionButton} onPress={handleSave} disabled={saving}>
+              <Ionicons name="download-outline" size={18} color={neu.onAccent} />
+              <Text allowFontScaling={false} style={[styles.actionText, font(600)]}>
                 {t('home2.receivedQR.saveImage', 'Guardar imagen')}
               </Text>
             </PressableScale>
@@ -244,12 +248,14 @@ function PassContent({ qr, onClose, userLocations }) {
           {/* Sin coordenadas de la residencial no hay botón */}
           {destination.coordinates && (
             <PressableScale
+              variant="neu"
+              neuSmall
               containerStyle={styles.actionFlex}
               style={[styles.actionButton, styles.actionSecondary]}
               onPress={() => openInMaps(destination.coordinates, destination.name)}
             >
-              <Ionicons name="navigate-outline" size={18} color={colors.cyan} />
-              <Text allowFontScaling={false} style={[styles.actionText, styles.actionTextSecondary]}>
+              <Ionicons name="navigate-outline" size={18} color={neu.textLabel} />
+              <Text allowFontScaling={false} style={[styles.actionText, styles.actionTextSecondary, font(600)]}>
                 {t('home2.receivedQR.directions', 'Cómo llegar')}
               </Text>
             </PressableScale>
@@ -274,7 +280,7 @@ export default function ReceivedQRPass({ qr, visible, onClose, userLocations }) 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: neu.bg,
   },
   topBar: {
     flexDirection: 'row',
@@ -286,17 +292,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.pill,
-    backgroundColor: colors.card,
+    backgroundColor: neu.raised,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scroll: {
     paddingHorizontal: scale(spacing.lg),
   },
+  // Esta tarjeta se captura con captureRef: sin boxShadow en ella ni en lo que lleva dentro
   card: {
     borderRadius: scale(radius.xl),
     overflow: 'hidden',
-    backgroundColor: colors.card,
+    backgroundColor: neu.raised,
   },
   header: {
     padding: scale(spacing.lg),
@@ -310,7 +317,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
     color: colors.textDarkSecondary,
@@ -323,12 +330,12 @@ const styles = StyleSheet.create({
   },
   headerChipText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.lime,
   },
   residence: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '600',
     color: colors.textDark,
   },
   house: {
@@ -342,12 +349,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: neu.textSoft,
   },
   visitor: {
     fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '600',
+    color: neu.text,
     marginTop: -scale(spacing.sm),
   },
   qrBox: {
@@ -368,7 +375,7 @@ const styles = StyleSheet.create({
   },
   qrCoveredText: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textDark,
     textAlign: 'center',
   },
@@ -378,16 +385,16 @@ const styles = StyleSheet.create({
     gap: scale(spacing.md),
     padding: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.well,
+    backgroundColor: neu.sunken,
   },
   codeText: {
     flex: 1,
   },
   code: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 1,
-    color: colors.text,
+    color: neu.text,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   copyButton: {
@@ -398,12 +405,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.cyan,
+    borderColor: neu.teal,
   },
   copyText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: colors.cyan,
+    fontWeight: '600',
+    color: neu.teal,
   },
   statusRow: {
     flexDirection: 'row',
@@ -419,7 +426,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   boxes: {
     flexDirection: 'row',
@@ -431,17 +438,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.well,
+    backgroundColor: neu.sunken,
     gap: 2,
   },
   boxLabel: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: neu.textSoft,
   },
   boxValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
+    color: neu.text,
   },
   daysBlock: {
     gap: scale(spacing.sm),
@@ -456,18 +463,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.well,
+    backgroundColor: neu.sunken,
   },
   dayOn: {
-    backgroundColor: colors.lime,
+    backgroundColor: neu.teal,
   },
   dayText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: colors.textMuted,
+    fontWeight: '600',
+    color: neu.textSoft,
   },
   dayTextOn: {
-    color: colors.textDark,
+    color: neu.onAccent,
   },
   gateNotice: {
     flexDirection: 'row',
@@ -475,16 +482,15 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: scale(spacing.md),
     borderRadius: scale(radius.md),
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: neu.sunken,
   },
   gateText: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: neu.textSoft,
   },
   footer: {
     fontSize: 11,
-    color: colors.textMuted,
+    color: neu.textSoft,
     textAlign: 'center',
   },
   actions: {
@@ -502,19 +508,20 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 48,
     borderRadius: scale(radius.md),
-    backgroundColor: colors.cyan,
+    backgroundColor: neu.teal,
+  },
+  actionDisabled: {
+    opacity: 0.45,
   },
   actionSecondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.cyan,
+    backgroundColor: neu.raised,
   },
   actionText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: colors.textDark,
+    fontWeight: '600',
+    color: neu.onAccent,
   },
   actionTextSecondary: {
-    color: colors.cyan,
+    color: neu.textLabel,
   },
 });

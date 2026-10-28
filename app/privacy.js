@@ -10,7 +10,8 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { useTranslation } from '../src/hooks/useTranslation';
 import PressableScale from '../src/components/home/PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../src/theme/tokens';
+import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, fs } from '../src/theme/tokens';
+import { useHomeFont } from '../src/theme/homeFont';
 import {
   loadSuggestionPrefs,
   setSuggestionsEnabled,
@@ -18,6 +19,7 @@ import {
 } from '../src/utils/visitorSuggestions';
 
 export default function Privacy() {
+  const font = useHomeFont();
   const router = useRouter();
   const { t } = useTranslation();
   const { user, profile } = useAuth();
@@ -72,6 +74,8 @@ export default function Privacy() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <View style={styles.header}>
           <PressableScale
+            variant="neu"
+            neuSmall
             style={styles.backButton}
             onPress={() => router.back()}
             accessibilityRole="button"
@@ -79,24 +83,24 @@ export default function Privacy() {
           >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </PressableScale>
-          <Text style={styles.headerTitle} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
+          <Text style={[styles.headerTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
             {t('profile.privacy.title', 'Privacidad')}
           </Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.sectionTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('profile.privacy.visitsSection', 'Visitas')}
           </Text>
 
-          <View style={styles.card}>
+          <View style={[styles.card, neuSurface.raised]}>
             <View style={styles.row}>
               <View style={styles.rowText}>
-                <Text style={styles.rowTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                <Text style={[styles.rowTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {t('profile.privacy.suggestTitle', 'Sugerir visitas anteriores')}
                 </Text>
-                <Text style={styles.rowDesc} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                <Text style={[styles.rowDesc, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {t(
                     'profile.privacy.suggestDesc',
                     'Al escribir el nombre de un visitante, te mostramos a quienes ya les creaste un QR.'
@@ -119,6 +123,8 @@ export default function Privacy() {
             <View style={styles.divider} />
 
             <PressableScale
+              variant="neu"
+              neuSmall
               style={styles.row}
               onPress={confirmClear}
               disabled={clearing || !prefs}
@@ -126,10 +132,10 @@ export default function Privacy() {
               accessibilityRole="button"
             >
               <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, styles.danger]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                <Text style={[styles.rowTitle, styles.danger, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {t('profile.privacy.clearTitle', 'Borrar sugerencias de visitas')}
                 </Text>
-                <Text style={styles.rowDesc} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                <Text style={[styles.rowDesc, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {t('profile.privacy.clearDesc', 'Empieza de cero con las sugerencias del formulario de QR.')}
                 </Text>
               </View>
@@ -141,7 +147,7 @@ export default function Privacy() {
             </PressableScale>
           </View>
 
-          <Text style={styles.note} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.note, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('profile.privacy.qrNote', 'Los QR que creaste siguen en Mis QR → Historial. Puedes eliminarlos ahí.')}
           </Text>
         </ScrollView>
@@ -166,15 +172,15 @@ const styles = StyleSheet.create({
     width: scale(40),
     height: scale(40),
     borderRadius: scale(20),
-    backgroundColor: colors.card,
+    backgroundColor: neu.raised,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: scale(18),
-    fontWeight: '700',
+    fontSize: fs(18),
+    fontWeight: '600',
     color: colors.text,
   },
   headerSpacer: {
@@ -187,20 +193,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: scale(spacing.md),
     marginBottom: scale(spacing.sm),
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: colors.card,
     borderRadius: scale(radius.lg),
-    borderWidth: 1,
-    borderColor: colors.border,
     overflow: 'hidden',
   },
   row: {
+    backgroundColor: neu.raised,
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(spacing.md),
@@ -211,13 +215,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: colors.text,
   },
   rowDesc: {
     marginTop: scale(spacing.xs),
-    fontSize: scale(13),
+    fontSize: fs(13),
     lineHeight: scale(18),
     color: colors.textSecondary,
   },
@@ -232,7 +236,7 @@ const styles = StyleSheet.create({
   note: {
     marginTop: scale(spacing.md),
     paddingHorizontal: scale(spacing.xs),
-    fontSize: scale(13),
+    fontSize: fs(13),
     lineHeight: scale(18),
     color: colors.textMuted,
   },

@@ -10,11 +10,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../hooks/useTranslation';
 import PressableScale from './PressableScale';
-import { colors, radius, spacing, scale, MAX_FONT_SCALE } from '../../theme/tokens';
+import { colors, radius, spacing, scale, MAX_FONT_SCALE, neu, neuSurface, fs } from '../../theme/tokens';
+import { useHomeFont } from '../../theme/homeFont';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function NewQRSheet({ visible, onClose, locationName }) {
+  const font = useHomeFont();
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -113,11 +115,11 @@ export default function NewQRSheet({ visible, onClose, locationName }) {
           accessibilityViewIsModal
         >
           <View style={styles.handle} />
-          <Text style={styles.title} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.newQR.title', 'Nuevo QR')}
           </Text>
           {!!locationName && (
-            <Text style={styles.subtitle} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+            <Text style={[styles.subtitle, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
               {t('home2.newQR.forLocation', { name: locationName, defaultValue: 'Para {{name}}' })}
             </Text>
           )}
@@ -126,18 +128,19 @@ export default function NewQRSheet({ visible, onClose, locationName }) {
             {OPTIONS.map((option) => (
               <PressableScale
                 key={option.key}
+                variant="neu"
                 style={styles.option}
                 onPress={() => handleSelect(option)}
                 accessibilityLabel={`${option.label}. ${option.description}`}
               >
-                <View style={[styles.optionIcon, { backgroundColor: `${option.color}26` }]}>
+                <View style={[styles.optionIcon, neuSurface.sunkenSm]}>
                   <Ionicons name={option.icon} size={scale(22)} color={option.color} />
                 </View>
                 <View style={styles.optionText}>
-                  <Text style={styles.optionLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  <Text style={[styles.optionLabel, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {option.label}
                   </Text>
-                  <Text style={styles.optionDescription} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  <Text style={[styles.optionDescription, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {option.description}
                   </Text>
                 </View>
@@ -146,8 +149,8 @@ export default function NewQRSheet({ visible, onClose, locationName }) {
             ))}
           </View>
 
-          <PressableScale style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <PressableScale variant="neu" neuSmall style={styles.cancelButton} onPress={onClose}>
+            <Text style={[styles.cancelText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t('common.cancel')}
             </Text>
           </PressableScale>
@@ -167,12 +170,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   sheet: {
-    backgroundColor: colors.bg,
+    ...neuSurface.raised,
     borderTopLeftRadius: scale(radius.xl),
     borderTopRightRadius: scale(radius.xl),
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: colors.border,
     paddingTop: scale(spacing.sm),
     paddingHorizontal: scale(spacing.lg),
   },
@@ -181,16 +181,16 @@ const styles = StyleSheet.create({
     width: scale(40),
     height: scale(4),
     borderRadius: radius.pill,
-    backgroundColor: colors.border,
+    backgroundColor: neu.sunken,
     marginBottom: scale(spacing.md),
   },
   title: {
-    fontSize: scale(20),
-    fontWeight: '700',
+    fontSize: fs(20),
+    fontWeight: '600',
     color: colors.text,
   },
   subtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: colors.textSecondary,
     marginTop: scale(2),
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     gap: scale(spacing.md),
     padding: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: colors.card,
+    backgroundColor: neu.raised,
   },
   optionIcon: {
     width: scale(44),
@@ -217,23 +217,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionLabel: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: colors.text,
   },
   optionDescription: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: colors.textSecondary,
     marginTop: scale(2),
   },
   cancelButton: {
     alignItems: 'center',
     paddingVertical: scale(spacing.md),
-    marginTop: scale(spacing.sm),
+    marginTop: scale(spacing.md),
+    borderRadius: scale(radius.md),
+    backgroundColor: neu.raised,
   },
   cancelText: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: neu.textLabel,
   },
 });

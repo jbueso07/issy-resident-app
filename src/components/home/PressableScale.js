@@ -7,6 +7,7 @@
 // - neuSurface="none": el relieve lo pone el hijo; children puede ser ({ pressed }) => ...
 //   (p. ej. solo el círculo de una acción rápida, no su etiqueta).
 // - neuSmall: sombras chicas (botones y chips).
+// - neuFill: color de fondo que se conserva al hundirse (botones principales: teal sólido).
 
 import { useRef, useState } from 'react';
 import { Pressable, Animated } from 'react-native';
@@ -22,6 +23,7 @@ export default function PressableScale({
   variant,
   neuSurface = 'self',
   neuSmall = false,
+  neuFill,
   scaleTo,
   dimTo,
   onPressIn,
@@ -63,7 +65,10 @@ export default function PressableScale({
     opacity: pressed.interpolate({ inputRange: [0, 1], outputRange: [1, toDim] }),
   };
 
-  const surfaceStyle = isNeu && neuSurface === 'self' ? getNeuSurface(isPressed, neuSmall) : null;
+  const surfaceStyle =
+    isNeu && neuSurface === 'self'
+      ? [getNeuSurface(isPressed, neuSmall), neuFill ? { backgroundColor: neuFill } : null]
+      : null;
 
   return (
     <Pressable

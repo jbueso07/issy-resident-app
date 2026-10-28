@@ -23,7 +23,9 @@ import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
 import { useTranslation } from '../src/hooks/useTranslation';
 import { useUserLocation } from '../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../src/components/UserLocationPicker';
-import { neu } from '../src/theme/tokens';
+import PressableScale from '../src/components/home/PressableScale';
+import { neu, neuSurface, fs, radius } from '../src/theme/tokens';
+import { useHomeFont } from '../src/theme/homeFont';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -50,6 +52,7 @@ const COLORS = {
 
 // fromTab: abierta desde la pestaña Anuncios de la barra (sin flecha atrás)
 export default function AnnouncementsScreen({ fromTab = false }) {
+  const font = useHomeFont();
   const router = useRouter();
   const { t, language } = useTranslation();
   const { selectedLocationId, loading: locationLoading } = useUserLocation();
@@ -158,10 +161,9 @@ export default function AnnouncementsScreen({ fromTab = false }) {
   const unreadCount = announcements.filter(a => !a.is_read).length;
 
   const renderAnnouncement = ({ item }) => (
-    <TouchableOpacity
+    <PressableScale variant="neu"
       style={styles.announcementCard}
       onPress={() => handleOpenAnnouncement(item)}
-      activeOpacity={0.7}
     >
       {/* Gradient sidebar */}
       <LinearGradient
@@ -174,25 +176,24 @@ export default function AnnouncementsScreen({ fromTab = false }) {
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleSection}>
-            <Text style={styles.announcementTitle} numberOfLines={1}>
+            <Text style={[styles.announcementTitle, font(600)]} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={styles.announcementPreview} numberOfLines={2}>
+            <Text style={[styles.announcementPreview, font(400)]} numberOfLines={2}>
               {item.message}
             </Text>
-            <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
+            <Text style={[styles.dateText, font(400)]}>{formatDate(item.created_at)}</Text>
           </View>
           
           <View style={styles.cardRight}>
             {/* Badge NUEVO/VISTO */}
             <View style={[
               styles.statusBadge,
-              { backgroundColor: item.is_read ? neu.teal + '26' : neu.teal + '26' }
             ]}>
               <Text style={[
                 styles.statusBadgeText,
                 { color: item.is_read ? COLORS.teal : COLORS.lime }
-              ]}>
+              , font(600)]}>
                 {item.is_read ? t('announcements.seen') : t('announcements.new')}
               </Text>
             </View>
@@ -207,7 +208,7 @@ export default function AnnouncementsScreen({ fromTab = false }) {
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 
   const renderEmptyState = () => (
@@ -215,8 +216,8 @@ export default function AnnouncementsScreen({ fromTab = false }) {
       <View style={styles.emptyIconContainer}>
         <Ionicons name="megaphone-outline" size={64} color={COLORS.textMuted} />
       </View>
-      <Text style={styles.emptyTitle}>{t('announcements.empty.title')}</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyTitle, font(600)]}>{t('announcements.empty.title')}</Text>
+      <Text style={[styles.emptySubtitle, font(400)]}>
         {t('announcements.empty.subtitle')}
       </Text>
     </View>
@@ -273,7 +274,7 @@ export default function AnnouncementsScreen({ fromTab = false }) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.purple} />
-          <Text style={styles.loadingText}>{t('announcements.loading')}</Text>
+          <Text style={[styles.loadingText, font(400)]}>{t('announcements.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -284,19 +285,19 @@ export default function AnnouncementsScreen({ fromTab = false }) {
       {/* Header */}
       <View style={styles.header}>
         {!fromTab && (
-          <TouchableOpacity 
+          <PressableScale variant="neu" 
             style={styles.backButton}
             onPress={() => router.back()}
           >
             <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-          </TouchableOpacity>
+          </PressableScale>
         )}
         <View style={[styles.headerTitleContainer, fromTab && { marginLeft: 0 }]}>
           <View style={styles.headerTitleRow}>
-            <Text style={styles.headerTitle}>{t('announcements.title')}</Text>
+            <Text style={[styles.headerTitle, font(600)]}>{t('announcements.title')}</Text>
             {unreadCount > 0 && (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                <Text style={[styles.unreadBadgeText, font(600)]}>{unreadCount}</Text>
               </View>
             )}
           </View>
@@ -333,12 +334,12 @@ export default function AnnouncementsScreen({ fromTab = false }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             {/* Close button */}
-            <TouchableOpacity 
+            <PressableScale variant="neu" 
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}
             >
               <Ionicons name="close" size={24} color={COLORS.textPrimary} />
-            </TouchableOpacity>
+            </PressableScale>
 
             {selectedAnnouncement && (
               <ScrollView 
@@ -349,15 +350,15 @@ export default function AnnouncementsScreen({ fromTab = false }) {
                 {renderImageCarousel()}
 
                 {/* Title */}
-                <Text style={styles.modalTitle}>{selectedAnnouncement.title}</Text>
+                <Text style={[styles.modalTitle, font(600)]}>{selectedAnnouncement.title}</Text>
 
                 {/* Message */}
-                <Text style={styles.modalMessage}>
+                <Text style={[styles.modalMessage, font(400)]}>
                   {selectedAnnouncement.message}
                 </Text>
 
                 {/* Date */}
-                <Text style={styles.modalDate}>
+                <Text style={[styles.modalDate, font(400)]}>
                   {formatFullDate(selectedAnnouncement.created_at)}
                 </Text>
               </ScrollView>
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: scale(12),
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.textSecondary,
   },
   
@@ -400,11 +401,9 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: COLORS.card,
+    ...neuSurface.raisedSm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
   },
   headerTitleContainer: {
     flex: 1,
@@ -415,12 +414,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: scale(22),
-    fontWeight: '700',
+    fontSize: fs(22),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   unreadBadge: {
-    backgroundColor: COLORS.red,
+    ...neuSurface.sunkenSm,
     borderRadius: scale(10),
     minWidth: scale(20),
     height: scale(20),
@@ -430,12 +429,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(6),
   },
   unreadBadgeText: {
-    color: COLORS.textPrimary,
-    fontSize: scale(11),
+    color: neu.coral,
+    fontSize: fs(11),
     fontWeight: '600',
   },
   headerSubtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
@@ -449,13 +448,11 @@ const styles = StyleSheet.create({
   
   // Card styles
   announcementCard: {
-    backgroundColor: COLORS.card,
+    ...neuSurface.raised,
     borderRadius: scale(16),
     marginBottom: scale(12),
     flexDirection: 'row',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
   },
   gradientBar: {
     width: scale(6),
@@ -477,37 +474,43 @@ const styles = StyleSheet.create({
     marginRight: scale(12),
   },
   announcementTitle: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(4),
   },
   announcementPreview: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textSecondary,
     marginBottom: scale(8),
     lineHeight: scale(18),
   },
   dateText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.teal,
   },
   cardRight: {
     alignItems: 'flex-end',
   },
   statusBadge: {
+    ...neuSurface.sunkenSm,
     paddingHorizontal: scale(10),
     paddingVertical: scale(4),
-    borderRadius: scale(8),
+    borderRadius: radius.pill,
     marginBottom: scale(12),
   },
   statusBadgeText: {
-    fontSize: scale(10),
-    fontWeight: '700',
+    fontSize: fs(10),
+    fontWeight: '600',
     textAlign: 'center',
   },
   arrowButton: {
-    padding: scale(4),
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...neuSurface.raisedSm,
   },
   
   // Empty state
@@ -521,21 +524,19 @@ const styles = StyleSheet.create({
     width: scale(100),
     height: scale(100),
     borderRadius: scale(50),
-    backgroundColor: COLORS.card,
+    ...neuSurface.sunken,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(24),
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
   },
   emptyTitle: {
-    fontSize: scale(20),
+    fontSize: fs(20),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(8),
   },
   emptySubtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     textAlign: 'center',
     paddingHorizontal: scale(40),
@@ -550,13 +551,11 @@ const styles = StyleSheet.create({
     padding: scale(20),
   },
   modalContainer: {
-    backgroundColor: COLORS.backgroundSecondary,
+    ...neuSurface.raised,
     borderRadius: scale(20),
     width: '100%',
     maxHeight: '85%',
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
   },
   modalCloseButton: {
     position: 'absolute',
@@ -566,7 +565,7 @@ const styles = StyleSheet.create({
     width: scale(36),
     height: scale(36),
     borderRadius: scale(18),
-    backgroundColor: COLORS.backgroundTertiary,
+    ...neuSurface.raisedSm,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -606,19 +605,19 @@ const styles = StyleSheet.create({
   
   // Modal content
   modalTitle: {
-    fontSize: scale(18),
+    fontSize: fs(18),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(12),
   },
   modalMessage: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     color: COLORS.textSecondary,
     lineHeight: scale(22),
     marginBottom: scale(24),
   },
   modalDate: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textMuted,
     textTransform: 'capitalize',
   },

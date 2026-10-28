@@ -11,7 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { getReceivedQRCodes } from '../services/api';
 import PressableScale from './home/PressableScale';
 import ReceivedQRPass from './ReceivedQRPass';
-import { colors, radius, spacing, MAX_FONT_SCALE, neu } from '../theme/tokens';
+import { colors, radius, spacing, MAX_FONT_SCALE, neu, neuSurface, fs } from '../theme/tokens';
+import { useHomeFont } from '../theme/homeFont';
 import { getPassStatus, getScheduleParts, getDestination, TYPE_COLORS } from '../utils/receivedQR';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -37,6 +38,7 @@ const STATUS_STYLES = {
 };
 
 const MyAccessesTab = ({ refreshKey }) => {
+  const font = useHomeFont();
   const { t, language } = useTranslation();
   const { profile } = useAuth();
   const userLocations = profile?.user_locations || [];
@@ -103,29 +105,30 @@ const MyAccessesTab = ({ refreshKey }) => {
     return (
       <PressableScale
         key={qr.id}
+        variant="neu"
         style={[styles.card, (status === 'expired' || status === 'used') && styles.cardExpired]}
         onPress={() => setSelectedQR(qr)}
         scaleTo={0.98}
         accessibilityLabel={`${destination.name}. ${hostLine}. ${schedule.line}`}
       >
         <View style={styles.chips}>
-          <View style={[styles.chip, { backgroundColor: `${typeColor}26` }]}>
-            <Text style={[styles.chipText, { color: typeColor }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={[styles.chip, neuSurface.sunkenSm]}>
+            <Text style={[styles.chipText, { color: typeColor }, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t(`home2.receivedQR.types.${qr.qr_type}`, qr.qr_type)}
             </Text>
           </View>
-          <View style={[styles.chip, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.chipText, { color: statusStyle.text }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <View style={[styles.chip, neuSurface.sunkenSm]}>
+            <Text style={[styles.chipText, { color: statusStyle.text }, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {t(`home2.receivedQR.status.${status}`)}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.residence} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+        <Text style={[styles.residence, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
           {destination.name}
         </Text>
         {!!hostLine && (
-          <Text style={styles.host} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+          <Text style={[styles.host, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
             {hostLine}
           </Text>
         )}
@@ -133,18 +136,18 @@ const MyAccessesTab = ({ refreshKey }) => {
         {!!schedule.line && (
           <View style={styles.whenRow}>
             <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
-            <Text style={styles.when} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
+            <Text style={[styles.when, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
               {schedule.line}
             </Text>
           </View>
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.registered} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+          <Text style={[styles.registered, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
             {t('home2.receivedQR.registeredAs', 'Registrado como')}{' '}
-            <Text style={styles.registeredName}>{qr.visitor_name}</Text>
+            <Text style={[styles.registeredName, font(600)]}>{qr.visitor_name}</Text>
           </Text>
-          <Text style={styles.viewPass} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.viewPass, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.receivedQR.viewPass', 'Ver pase')} ›
           </Text>
         </View>
@@ -162,27 +165,27 @@ const MyAccessesTab = ({ refreshKey }) => {
 
   if (receivedQRs.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
-        <View style={styles.iconContainer}>
+      <View style={[styles.emptyContainer, neuSurface.raised]}>
+        <View style={[styles.iconContainer, neuSurface.sunken]}>
           <Ionicons name="key-outline" size={scale(48)} color={COLORS.teal} />
         </View>
-        <Text style={styles.emptyTitle}>{t('visits.myAccesses.title') || 'Mis Accesos'}</Text>
-        <Text style={styles.emptySubtitle}>
+        <Text style={[styles.emptyTitle, font(600)]}>{t('visits.myAccesses.title') || 'Mis Accesos'}</Text>
+        <Text style={[styles.emptySubtitle, font(400)]}>
           Aquí aparecerán los códigos QR que te envíen dentro de ISSY
         </Text>
         <View style={styles.exampleContainer}>
-          <Text style={styles.exampleTitle}>¿Cómo funciona?</Text>
+          <Text style={[styles.exampleTitle, font(600)]}>¿Cómo funciona?</Text>
           <View style={styles.featureRow}>
             <Ionicons name="paper-plane-outline" size={scale(18)} color={COLORS.lime} />
-            <Text style={styles.featureText}>Alguien te envía un QR desde su app</Text>
+            <Text style={[styles.featureText, font(400)]}>Alguien te envía un QR desde su app</Text>
           </View>
           <View style={styles.featureRow}>
             <Ionicons name="notifications-outline" size={scale(18)} color={COLORS.lime} />
-            <Text style={styles.featureText}>Te aparece aquí automáticamente</Text>
+            <Text style={[styles.featureText, font(400)]}>Te aparece aquí automáticamente</Text>
           </View>
           <View style={styles.featureRow}>
             <Ionicons name="qr-code-outline" size={scale(18)} color={COLORS.lime} />
-            <Text style={styles.featureText}>Muestra el QR al guardia o al lector</Text>
+            <Text style={[styles.featureText, font(400)]}>Muestra el QR al guardia o al lector</Text>
           </View>
         </View>
       </View>
@@ -196,7 +199,7 @@ const MyAccessesTab = ({ refreshKey }) => {
     <View>
       {currentQRs.length > 0 && (
         <>
-          <Text style={styles.sectionTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.sectionTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.receivedQR.currentSection', { n: currentQRs.length, defaultValue: 'Accesos activos ({{n}})' })}
           </Text>
           {currentQRs.map(renderQRCard)}
@@ -205,7 +208,7 @@ const MyAccessesTab = ({ refreshKey }) => {
 
       {expiredQRs.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, styles.sectionTitleMuted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleMuted, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {t('home2.receivedQR.previousSection', { n: expiredQRs.length, defaultValue: 'Anteriores ({{n}})' })}
           </Text>
           {expiredQRs.slice(0, 5).map(renderQRCard)}
@@ -229,30 +232,26 @@ const styles = StyleSheet.create({
     paddingVertical: scale(60),
   },
   emptyContainer: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(20),
     padding: scale(24),
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   iconContainer: {
     width: scale(80),
     height: scale(80),
     borderRadius: scale(40),
-    backgroundColor: neu.teal + '26',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
   },
   emptyTitle: {
-    fontSize: scale(20),
-    fontWeight: '700',
+    fontSize: fs(20),
+    fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(8),
   },
   emptySubtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: scale(20),
@@ -260,12 +259,12 @@ const styles = StyleSheet.create({
   },
   exampleContainer: {
     width: '100%',
-    backgroundColor: COLORS.bgCardAlt,
+    ...neuSurface.sunken,
     borderRadius: scale(12),
     padding: scale(16),
   },
   exampleTitle: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: COLORS.textSecondary,
     marginBottom: scale(12),
@@ -276,15 +275,15 @@ const styles = StyleSheet.create({
     marginBottom: scale(10),
   },
   featureText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textPrimary,
     marginLeft: scale(12),
   },
 
   // Lista
   sectionTitle: {
-    fontSize: scale(15),
-    fontWeight: '700',
+    fontSize: fs(15),
+    fontWeight: '600',
     color: colors.text,
     marginBottom: scale(spacing.md),
   },
@@ -293,10 +292,7 @@ const styles = StyleSheet.create({
     marginTop: scale(spacing.lg),
   },
   card: {
-    backgroundColor: colors.card,
-    borderRadius: scale(radius.md),
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: scale(radius.lg),
     padding: scale(spacing.lg),
     marginBottom: scale(spacing.md),
     gap: scale(6),
@@ -310,21 +306,22 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   chip: {
+    height: scale(26),
+    justifyContent: 'center',
     paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
     borderRadius: radius.pill,
   },
   chipText: {
-    fontSize: scale(11),
-    fontWeight: '700',
+    fontSize: fs(11),
+    fontWeight: '600',
   },
   residence: {
-    fontSize: scale(19),
-    fontWeight: '700',
+    fontSize: fs(19),
+    fontWeight: '600',
     color: colors.text,
   },
   host: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: colors.textSecondary,
   },
   whenRow: {
@@ -335,7 +332,7 @@ const styles = StyleSheet.create({
   },
   when: {
     flex: 1,
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: colors.text,
   },
   footer: {
@@ -350,7 +347,7 @@ const styles = StyleSheet.create({
   },
   registered: {
     flex: 1,
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: colors.textMuted,
   },
   registeredName: {
@@ -358,8 +355,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   viewPass: {
-    fontSize: scale(13),
-    fontWeight: '700',
+    fontSize: fs(13),
+    fontWeight: '600',
     color: colors.cyan,
   },
 });

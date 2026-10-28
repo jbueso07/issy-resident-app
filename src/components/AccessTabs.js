@@ -1,16 +1,21 @@
+// src/components/AccessTabs.js
+// ISSY - Pestañas Mi QR · Visitantes · Mis Accesos (piel i5: carril hundido, pestaña activa en relieve).
+
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
-import { neu } from '../theme/tokens';
+import PressableScale from './home/PressableScale';
+import { useHomeFont } from '../theme/homeFont';
+import { neu, neuSurface, fs } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
-const COLORS = { bgPrimary: neu.bg, bgCard: neu.raised, bgCardAlt: neu.sunken, lime: neu.teal, textPrimary: neu.text, textSecondary: neu.textSoft, border: neu.border };
 
 const AccessTabs = ({ activeTab, onTabChange }) => {
   const { t } = useTranslation();
-  
+  const font = useHomeFont();
+
   const TABS = [
     { id: 'myqr', label: t('visits.tabs.myQR'), icon: 'qr-code' },
     { id: 'visitors', label: t('visits.tabs.visitors'), icon: 'people' },
@@ -18,14 +23,26 @@ const AccessTabs = ({ activeTab, onTabChange }) => {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="tablist">
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
-          <TouchableOpacity key={tab.id} style={[styles.tab, isActive && styles.tabActive]} onPress={() => onTabChange(tab.id)} activeOpacity={0.7}>
-            <Ionicons name={isActive ? tab.icon : `${tab.icon}-outline`} size={scale(18)} color={isActive ? COLORS.bgPrimary : COLORS.textSecondary} />
-            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
-          </TouchableOpacity>
+          <PressableScale
+            key={tab.id}
+            variant="neu"
+            neuSurface="none"
+            containerStyle={styles.tabSlot}
+            style={[styles.tab, isActive ? neuSurface.sunkenSm : neuSurface.raisedSm]}
+            onPress={() => onTabChange(tab.id)}
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected: isActive }}
+          >
+            <Ionicons name={isActive ? tab.icon : `${tab.icon}-outline`} size={scale(18)} color={isActive ? neu.teal : neu.textLabel} />
+            <Text style={[styles.tabText, isActive && styles.tabTextActive, font(isActive ? 600 : 500)]} numberOfLines={1}>
+              {tab.label}
+            </Text>
+          </PressableScale>
         );
       })}
     </View>
@@ -33,11 +50,12 @@ const AccessTabs = ({ activeTab, onTabChange }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', backgroundColor: COLORS.bgCard, borderRadius: scale(12), padding: scale(4), marginBottom: scale(16) },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: scale(10), paddingHorizontal: scale(8), borderRadius: scale(10), gap: scale(6) },
-  tabActive: { backgroundColor: COLORS.lime },
-  tabText: { fontSize: scale(12), fontWeight: '600', color: COLORS.textSecondary },
-  tabTextActive: { color: COLORS.bgPrimary },
+  // Seleccionada = hundida + teal; las demás en relieve. Espacio alrededor para que la sombra no se recorte.
+  container: { flexDirection: 'row', gap: scale(8), paddingVertical: scale(6), marginBottom: scale(10) },
+  tabSlot: { flex: 1 },
+  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: scale(10), paddingHorizontal: scale(6), borderRadius: scale(14), gap: scale(6) },
+  tabText: { fontSize: fs(12), fontWeight: '500', color: neu.textLabel },
+  tabTextActive: { color: neu.teal, fontWeight: '600' },
 });
 
 export default AccessTabs;

@@ -23,7 +23,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 // Hotfix QR: FileSystem (legacy API) para verificar que el archivo del captureRef
 // existe y no está vacío antes de pasarlo al share. En expo-file-system v19
@@ -41,7 +40,8 @@ import AccessTabs from '../../src/components/AccessTabs';
 import MyAccessesTab from '../../src/components/MyAccessesTab';
 import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
 import PressableScale from '../../src/components/home/PressableScale';
-import { colors as tk, radius, spacing, neu } from '../../src/theme/tokens';
+import { colors as tk, radius, spacing, neu, neuSurface, fs } from '../../src/theme/tokens';
+import { useHomeFont } from '../../src/theme/homeFont';
 import { TYPE_COLORS } from '../../src/utils/receivedQR';
 import { getMyQRStatusLine, getMyQRSummary, filterMyQRs, MY_QR_FILTERS } from '../../src/utils/myQRStatus';
 import {
@@ -186,6 +186,7 @@ const formatTimeForBackend = (date) => {
 };
 
 export default function Visits() {
+  const font = useHomeFont();
   const { profile, user } = useAuth();
   const userId = user?.id || profile?.id;
   const { t, language } = useTranslation();
@@ -1111,15 +1112,16 @@ const renderQRCard = (qr) => {
   return (
     <PressableScale
       key={qr.id}
+      variant="neu"
       style={[styles.k1Card, past && styles.k1CardPast]}
       onPress={openQR}
       scaleTo={0.98}
       accessibilityLabel={`${qr.visitor_name}. ${statusLine}`}
     >
       <View style={styles.k1CardTop}>
-        <Text style={styles.k1Name} maxFontSizeMultiplier={1.2} numberOfLines={1}>{qr.visitor_name}</Text>
-        <View style={[styles.k1Chip, { backgroundColor: `${typeColor}26` }]}>
-          <Text style={[styles.k1ChipText, { color: typeColor }]} maxFontSizeMultiplier={1.2}>
+        <Text style={[styles.k1Name, font(600)]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{qr.visitor_name}</Text>
+        <View style={[styles.k1Chip, neuSurface.sunkenSm]}>
+          <Text style={[styles.k1ChipText, { color: typeColor }, font(600)]} maxFontSizeMultiplier={1.2}>
             {t(`home2.receivedQR.types.${qr.qr_type}`, qr.qr_type)}
           </Text>
         </View>
@@ -1127,19 +1129,20 @@ const renderQRCard = (qr) => {
       {!!statusLine && (
         <View style={styles.k1StatusRow}>
           <View style={[styles.k1Dot, { backgroundColor: past ? tk.textMuted : typeColor }]} />
-          <Text style={styles.k1Status} maxFontSizeMultiplier={1.2} numberOfLines={2}>{statusLine}</Text>
+          <Text style={[styles.k1Status, font(400)]} maxFontSizeMultiplier={1.2} numberOfLines={2}>{statusLine}</Text>
         </View>
       )}
 
       {/* Acciones de siempre */}
       <View style={styles.cardActionsRow}>
-        <TouchableOpacity style={styles.viewQRButton} onPress={openQR}>
+        <PressableScale variant="neu" neuSmall containerStyle={{ flex: 1 }} style={styles.viewQRButton} onPress={openQR}>
           <Ionicons name="qr-code-outline" size={18} color={COLORS.cyan} />
-          <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
-        </TouchableOpacity>
+          <Text style={[styles.viewQRButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.viewQR')}</Text>
+        </PressableScale>
 
         {/* Share button — comparte la MISMA imagen del QR que el modal (Opción A) */}
-        <TouchableOpacity
+        <PressableScale variant="neu"
+          containerStyle={{ flex: 1 }}
           style={styles.viewQRButton}
           onPress={() => {
             setSelectedQR(qr);
@@ -1148,12 +1151,12 @@ const renderQRCard = (qr) => {
           }}
         >
           <Ionicons name="share-outline" size={18} color={COLORS.cyan} />
-          <Text style={styles.viewQRButtonText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
-        </TouchableOpacity>
+          <Text style={[styles.viewQRButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
+        </PressableScale>
 
-        <TouchableOpacity style={styles.deleteButton} onPress={(e) => handleDeleteQR(qr, e)}>
+        <PressableScale variant="neu" style={styles.deleteButton} onPress={(e) => handleDeleteQR(qr, e)}>
           <Ionicons name="trash-outline" size={18} color={COLORS.coral} />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </PressableScale>
   );
@@ -1173,8 +1176,8 @@ const renderMyQRList = () => {
       <View style={styles.k1Stats}>
         {stats.map((stat) => (
           <View key={stat.key} style={styles.k1Stat}>
-            <Text style={[styles.k1StatValue, { color: stat.color }]} maxFontSizeMultiplier={1.2}>{stat.value}</Text>
-            <Text style={styles.k1StatLabel} maxFontSizeMultiplier={1.2} numberOfLines={2}>{stat.label}</Text>
+            <Text style={[styles.k1StatValue, { color: stat.color }, font(600)]} maxFontSizeMultiplier={1.2}>{stat.value}</Text>
+            <Text style={[styles.k1StatLabel, font(400)]} maxFontSizeMultiplier={1.2} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{stat.label}</Text>
           </View>
         ))}
       </View>
@@ -1190,12 +1193,14 @@ const renderMyQRList = () => {
           return (
             <PressableScale
               key={filter}
+              variant="neu"
+              neuSurface="none"
               style={[styles.k1Pill, selected && styles.k1PillActive]}
               onPress={() => setQrFilter(filter)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
             >
-              <Text style={[styles.k1PillText, selected && styles.k1PillTextActive]} maxFontSizeMultiplier={1.2}>
+              <Text style={[styles.k1PillText, selected && styles.k1PillTextActive, font(selected ? 600 : 500)]} maxFontSizeMultiplier={1.2}>
                 {t(`visits.list.filters.${filter}`)}
               </Text>
             </PressableScale>
@@ -1204,7 +1209,7 @@ const renderMyQRList = () => {
       </ScrollView>
 
       {visible.length === 0 ? (
-        <Text style={styles.k1Empty} maxFontSizeMultiplier={1.2}>
+        <Text style={[styles.k1Empty, font(400)]} maxFontSizeMultiplier={1.2}>
           {t('visits.list.emptyFilter', 'No hay códigos aquí')}
         </Text>
       ) : (
@@ -1212,12 +1217,12 @@ const renderMyQRList = () => {
       )}
 
       {qrFilter === 'event' && (
-        <TouchableOpacity style={styles.qrSectionCreateBtn} onPress={() => navRouter.push('/create-event')} activeOpacity={0.7}>
+        <PressableScale variant="neu" style={styles.qrSectionCreateBtn} onPress={() => navRouter.push('/create-event')}>
           <Ionicons name="add-circle-outline" size={18} color={COLORS.lime} style={{ marginRight: scale(6) }} />
-          <Text style={styles.qrSectionCreateText} maxFontSizeMultiplier={1.2}>
+          <Text style={[styles.qrSectionCreateText, font(600)]} maxFontSizeMultiplier={1.2}>
             {t('visits.events.createButton', 'Crear evento')}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       )}
     </>
   );
@@ -1241,11 +1246,11 @@ return (
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title} maxFontSizeMultiplier={1.2}>{t('visits.title')}</Text>
+          <Text style={[styles.title, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.title')}</Text>
           {hasMultipleLocations ? (
             <UserLocationSelector style={styles.subtitle} />
           ) : (
-            <Text style={styles.subtitle} maxFontSizeMultiplier={1.2}>{t('visits.subtitle')}</Text>
+            <Text style={[styles.subtitle, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.subtitle')}</Text>
           )}
         </View>
 
@@ -1268,13 +1273,13 @@ return (
         {activeTab === 'myqr' && residentQRNoHome && !loadingResidentQR && (
           <View style={styles.disabledQRContainer}>
             <Ionicons name="home-outline" size={scale(48)} color={COLORS.textMuted} />
-            <Text style={[styles.disabledQRTitle, { textAlign: 'center' }]} maxFontSizeMultiplier={1.2}>
+            <Text style={[styles.disabledQRTitle, { textAlign: 'center' }, font(600)]} maxFontSizeMultiplier={1.2}>
               {t('home2.noHome.title', {
                 name: locationName || profile?.user_locations?.find((l) => l.location_id === selectedLocationId)?.name || '',
                 defaultValue: 'No tienes una casa registrada en {{name}}',
               })}
             </Text>
-            <Text style={styles.disabledQRText} maxFontSizeMultiplier={1.2}>
+            <Text style={[styles.disabledQRText, font(400)]} maxFontSizeMultiplier={1.2}>
               {t('home2.noHome.subtitle', 'Pídele al administrador que registre tu casa')}
             </Text>
           </View>
@@ -1284,8 +1289,8 @@ return (
         {activeTab === 'myqr' && residentQRDisabled && !loadingResidentQR && (
           <View style={styles.disabledQRContainer}>
             <Ionicons name="qr-code-outline" size={scale(48)} color={COLORS.textMuted} />
-            <Text style={styles.disabledQRTitle}>{t('visits.residentQrDisabled.title') || 'QR de Residente No Disponible'}</Text>
-            <Text style={styles.disabledQRText}>{t('visits.residentQrDisabled.message') || 'El administrador de tu comunidad ha deshabilitado esta función.'}</Text>
+            <Text style={[styles.disabledQRTitle, font(600)]}>{t('visits.residentQrDisabled.title') || 'QR de Residente No Disponible'}</Text>
+            <Text style={[styles.disabledQRText, font(400)]}>{t('visits.residentQrDisabled.message') || 'El administrador de tu comunidad ha deshabilitado esta función.'}</Text>
           </View>
         )}
 
@@ -1298,19 +1303,22 @@ return (
             <View style={styles.quickAccessSection}>
               <View style={styles.quickAccessHeader}>
                 <Ionicons name="flash" size={20} color={COLORS.orange} />
-                <Text style={styles.quickAccessTitle} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
+                <Text style={[styles.quickAccessTitle, font(600)]} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
               </View>
-              <Text style={styles.quickAccessSubtitle} maxFontSizeMultiplier={1.2}>
+              <Text style={[styles.quickAccessSubtitle, font(400)]} maxFontSizeMultiplier={1.2}>
                 Genera un QR rápido para delivery o transporte
               </Text>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
+                style={styles.providersScroll}
                 contentContainerStyle={styles.providersRow}
               >
                 {deliveryProviders.providers.map((provider) => (
-                  <TouchableOpacity
+                  <PressableScale variant="neu"
                     key={provider.id}
+                    neuSurface="none"
+                    scaleTo={0.96}
                     style={styles.providerButton}
                     onPress={() => {
                       setSelectedProvider(provider);
@@ -1319,35 +1327,33 @@ return (
                       setQuickDriverPhone('');
                       setShowQuickModal(true);
                     }}
-                    activeOpacity={0.7}
                   >
-                    <View style={[styles.providerLogoContainer, { backgroundColor: provider.color + '20', borderColor: provider.color + '50' }]}>
-                      <Ionicons name={provider.icon} size={28} color={provider.color} />
-                    </View>
-                    <Text style={styles.providerName} numberOfLines={1} maxFontSizeMultiplier={1.2}>
-                      {provider.name}
-                    </Text>
-                  </TouchableOpacity>
+                    {({ pressed }) => (
+                      <>
+                        <View style={[styles.providerLogoContainer, pressed && neuSurface.sunkenSm]}>
+                          <Ionicons name={provider.icon} size={28} color={provider.color} />
+                        </View>
+                        <Text style={[styles.providerName, font(600)]} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+                          {provider.name}
+                        </Text>
+                      </>
+                    )}
+                  </PressableScale>
                 ))}
               </ScrollView>
             </View>
 
             {/* Create QR Button */}
-            <TouchableOpacity
+            <PressableScale variant="neu"
+              neuFill={neu.teal}
               style={styles.createButton}
               onPress={() => setShowCreateModal(true)}
-              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.createButtonGradient}
-              >
-                <Ionicons name="add-circle" size={24} color={COLORS.textDark} />
-                <Text style={styles.createButtonText} maxFontSizeMultiplier={1.2}>{t('visits.createButton')}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <View style={styles.createButtonGradient}>
+                <Ionicons name="add-circle" size={24} color={neu.onAccent} />
+                <Text style={[styles.createButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.createButton')}</Text>
+              </View>
+            </PressableScale>
 
             {/* Mis QR (K1): resumen, filtros y tarjetas */}
 
@@ -1357,11 +1363,11 @@ return (
               </View>
             ) : qrCodes.length === 0 ? (
               <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconBox}>
+                <View style={[styles.emptyIconBox, neuSurface.sunken]}>
                   <Ionicons name="qr-code-outline" size={48} color={COLORS.textMuted} />
                 </View>
-                <Text style={styles.emptyText} maxFontSizeMultiplier={1.2}>{t('visits.empty.title')}</Text>
-                <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
+                <Text style={[styles.emptyText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.empty.title')}</Text>
+                <Text style={[styles.emptySubtext, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.empty.subtitle')}</Text>
               </View>
             ) : (
               renderMyQRList()
@@ -1391,46 +1397,45 @@ return (
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeCreateModal}>
-              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
+              <Text style={[styles.modalCancel, font(500)]} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>{t('visits.newQRCode')}</Text>
+            <Text style={[styles.modalTitle, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.newQRCode')}</Text>
             <View style={{ width: scale(60) }} />
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* QR Type Selector */}
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.qrType')}</Text>
+            <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.qrType')}</Text>
             <View style={styles.typeSelector}>
               {QR_TYPES.map((type) => {
                 const isSelected = qrType === type.id;
                 return (
-                  <TouchableOpacity
+                  <PressableScale variant="neu"
                     key={type.id}
-                    style={[
-                      styles.typeButton,
-                      isSelected && { backgroundColor: type.color, borderColor: type.color }
-                    ]}
+                    neuSurface="none"
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.typeButton, isSelected && styles.typeButtonActive]}
                     onPress={() => setQrType(type.id)}
                   >
                     <Ionicons
                       name={type.icon}
                       size={18}
-                      color={isSelected ? (type.id === 'frequent' ? COLORS.textDark : COLORS.textPrimary) : type.color}
+                      color={isSelected ? neu.teal : type.color}
                       style={{ marginRight: scale(6) }}
                     />
                     <Text style={[
                       styles.typeLabel,
-                      isSelected && { color: type.id === 'frequent' ? COLORS.textDark : COLORS.textPrimary }
-                    ]} maxFontSizeMultiplier={1.2}>
+                      isSelected && styles.typeLabelActive
+                    , font(isSelected ? 600 : 500)]} maxFontSizeMultiplier={1.2} numberOfLines={1}>
                       {type.label}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 );
               })}
             </View>
 
             {/* Visitor Info */}
-            <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorName')} *</Text>
+            <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.visitorName')} *</Text>
             <TextInput
               style={styles.input}
               placeholder={t('visits.visitorNamePlaceholder')}
@@ -1453,7 +1458,7 @@ return (
             {/* Identificación obligatoria en esta comunidad: siempre visible, fuera de la sección */}
             {requireVisitorId && (
               <>
-              <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+              <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>
                 {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
               </Text>
               <TextInput
@@ -1475,14 +1480,14 @@ return (
               accessibilityState={{ expanded: showMoreData }}
             >
               <View style={styles.moreDataTextWrap}>
-                <Text style={styles.moreDataText} maxFontSizeMultiplier={1.2}>
+                <Text style={[styles.moreDataText, font(600)]} maxFontSizeMultiplier={1.2}>
                   {extraDataCount > 0
                     ? t('visits.moreDataCount', { n: extraDataCount, defaultValue: 'Más datos ({{n}})' })
                     : t('visits.addMoreData', '+ Agregar más datos (opcional)')}
                 </Text>
                 {/* Qué hay adentro, solo con la sección cerrada */}
                 {!showMoreData && (
-                  <Text style={styles.moreDataHint} maxFontSizeMultiplier={1.2}>
+                  <Text style={[styles.moreDataHint, font(400)]} maxFontSizeMultiplier={1.2}>
                     {requireVisitorId
                       ? t('visits.moreDataHint.phoneOnly', 'Teléfono para enviarlo por ISSY')
                       : t('visits.moreDataHint.full', 'Teléfono para enviarlo por ISSY · Identificación')}
@@ -1494,7 +1499,7 @@ return (
 
             {showMoreData && (
               <>
-              <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')}</Text>
+              <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.visitorPhone')}</Text>
               <TextInput
                 style={styles.input}
                 placeholder={t('visits.visitorPhonePlaceholder')}
@@ -1509,7 +1514,7 @@ return (
               {lookupLoading && (
                 <View style={styles.lookupRow}>
                   <ActivityIndicator size="small" color={COLORS.cyan} />
-                  <Text style={styles.lookupSearching}>Buscando usuario ISSY...</Text>
+                  <Text style={[styles.lookupSearching, font(400)]}>Buscando usuario ISSY...</Text>
                 </View>
               )}
 
@@ -1520,38 +1525,38 @@ return (
                       {foundUser.profile_image ? (
                         <Image source={{ uri: foundUser.profile_image }} style={styles.foundUserAvatarImg} />
                       ) : (
-                        <Text style={styles.foundUserAvatarText}>
+                        <Text style={[styles.foundUserAvatarText, font(600)]}>
                           {foundUser.name?.charAt(0)?.toUpperCase() || '?'}
                         </Text>
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.foundUserName}>{foundUser.name}</Text>
-                      <Text style={styles.foundUserUnit}>
+                      <Text style={[styles.foundUserName, font(600)]}>{foundUser.name}</Text>
+                      <Text style={[styles.foundUserUnit, font(400)]}>
                         {foundUser.house_number ? `Casa ${foundUser.house_number}` : 'Usuario ISSY'}
                       </Text>
                     </View>
                     <View style={styles.foundUserBadge}>
                       <Ionicons name="checkmark-circle" size={16} color={COLORS.teal} />
-                      <Text style={styles.foundUserBadgeText}>ISSY</Text>
+                      <Text style={[styles.foundUserBadgeText, font(600)]}>ISSY</Text>
                     </View>
                   </View>
 
                   {/* In-App Toggle */}
-                  <TouchableOpacity
+                  <PressableScale variant="neu"
+                    neuSurface="none"
                     style={[styles.inAppToggle, sendInApp && styles.inAppToggleActive]}
                     onPress={() => setSendInApp(!sendInApp)}
-                    activeOpacity={0.7}
                   >
                     <Ionicons 
                       name={sendInApp ? 'paper-plane' : 'paper-plane-outline'} 
                       size={18} 
-                      color={sendInApp ? COLORS.textDark : COLORS.teal} 
+                      color={sendInApp ? neu.teal : neu.textLabel} 
                     />
-                    <Text style={[styles.inAppToggleText, sendInApp && styles.inAppToggleTextActive]}>
+                    <Text style={[styles.inAppToggleText, sendInApp && styles.inAppToggleTextActive, font(sendInApp ? 600 : 500)]}>
                       {sendInApp ? 'Se enviará dentro de ISSY' : 'Enviar dentro de ISSY'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               )}
 
@@ -1559,7 +1564,7 @@ return (
               {sharingMode === 'app_only' && !foundUser && visitorPhone.length >= 8 && !lookupLoading && (
                 <View style={styles.appOnlyWarning}>
                   <Ionicons name="alert-circle" size={18} color={COLORS.orange} />
-                  <Text style={styles.appOnlyWarningText}>
+                  <Text style={[styles.appOnlyWarningText, font(400)]}>
                     Esta comunidad requiere que los códigos QR se envíen dentro de ISSY. El destinatario debe tener la app instalada.
                   </Text>
                 </View>
@@ -1567,7 +1572,7 @@ return (
 
               {!requireVisitorId && (
                 <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>
                 {t('visits.visitorId')}{requireVisitorId ? ' *' : ''}
               </Text>
               <TextInput
@@ -1586,30 +1591,32 @@ return (
             {/* SINGLE QR OPTIONS */}
             {qrType === 'single' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.visitDate')} *</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.visitDate')} *</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-                  <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(visitDate)}</Text>
+                  <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatDate(visitDate)}</Text>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.startTime')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.startTime')}</Text>
                 <TouchableOpacity style={styles.dateInput} onPress={() => setShowTimePicker(true)}>
-                  <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(visitTime)}</Text>
+                  <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatTime(visitTime)}</Text>
                   <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.duration')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.duration')}</Text>
                 <View style={styles.durationSelector}>
                   {DURATIONS.map((d) => (
-                    <TouchableOpacity
+                    <PressableScale variant="neu"
                       key={d.value}
+                      neuSurface="none"
+                      containerStyle={{ flex: 1 }}
                       style={[styles.durationButton, duration === d.value && styles.durationButtonActive]}
                       onPress={() => setDuration(d.value)}
                     >
-                      <Text style={[styles.durationLabel, duration === d.value && styles.durationLabelActive]} maxFontSizeMultiplier={1.2}>
+                      <Text style={[styles.durationLabel, duration === d.value && styles.durationLabelActive, font(duration === d.value ? 600 : 500)]} maxFontSizeMultiplier={1.2}>
                         {d.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   ))}
                 </View>
               </>
@@ -1618,30 +1625,30 @@ return (
             {/* TEMPORARY QR OPTIONS */}
             {qrType === 'temporary' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.dateRange')} *</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.dateRange')} *</Text>
                 <View style={styles.dateRangeRow}>
                   <TouchableOpacity
                     style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
                     onPress={() => setShowStartDatePicker(true)}
                   >
-                    <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(startDate)}</Text>
+                    <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatDate(startDate)}</Text>
                     <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.dateInput, { flex: 1 }]}
                     onPress={() => setShowEndDatePicker(true)}
                   >
-                    <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatDate(endDate)}</Text>
+                    <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatDate(endDate)}</Text>
                     <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
-                    {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                    {access247 && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
+                  <Text style={[styles.checkboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
@@ -1650,25 +1657,25 @@ return (
                       style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
                       onPress={() => setShowStartTimePicker(true)}
                     >
-                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
+                      <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
                       <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dateInput, { flex: 1 }]}
                       onPress={() => setShowEndTimePicker(true)}
                     >
-                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
+                      <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
                       <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 )}
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
-                    {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                    {allDays && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
+                  <Text style={[styles.checkboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -1679,9 +1686,9 @@ return (
                       onPress={() => toggleDay(day.id)}
                     >
                       <View style={[styles.checkbox, selectedDays.includes(day.id) && styles.checkboxChecked]}>
-                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                       </View>
-                      <Text style={styles.dayCheckboxLabel} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
+                      <Text style={[styles.dayCheckboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1691,12 +1698,12 @@ return (
             {/* FREQUENT/PERMANENT QR OPTIONS */}
             {qrType === 'frequent' && (
               <>
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessSchedule')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={() => setAccess247(!access247)}>
                   <View style={[styles.checkbox, access247 && styles.checkboxChecked]}>
-                    {access247 && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                    {access247 && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
+                  <Text style={[styles.checkboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.access247')}</Text>
                 </TouchableOpacity>
 
                 {!access247 && (
@@ -1705,25 +1712,25 @@ return (
                       style={[styles.dateInput, { flex: 1, marginRight: scale(8) }]}
                       onPress={() => setShowStartTimePicker(true)}
                     >
-                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
+                      <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatTime(startTime)}</Text>
                       <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dateInput, { flex: 1 }]}
                       onPress={() => setShowEndTimePicker(true)}
                     >
-                      <Text style={styles.dateInputText} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
+                      <Text style={[styles.dateInputText, font(400)]} maxFontSizeMultiplier={1.2}>{formatTime(endTime)}</Text>
                       <Ionicons name="time-outline" size={20} color={COLORS.textSecondary} />
                     </TouchableOpacity>
                   </View>
                 )}
 
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessDays')}</Text>
                 <TouchableOpacity style={styles.checkboxRow} onPress={toggleAllDays}>
                   <View style={[styles.checkbox, allDays && styles.checkboxChecked]}>
-                    {allDays && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                    {allDays && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                   </View>
-                  <Text style={styles.checkboxLabel} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
+                  <Text style={[styles.checkboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{t('visits.allDays')}</Text>
                 </TouchableOpacity>
 
                 <View style={styles.daysGrid}>
@@ -1734,9 +1741,9 @@ return (
                       onPress={() => toggleDay(day.id)}
                     >
                       <View style={[styles.checkbox, selectedDays.includes(day.id) && styles.checkboxChecked]}>
-                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={COLORS.textDark} />}
+                        {selectedDays.includes(day.id) && <Ionicons name="checkmark" size={16} color={neu.teal} />}
                       </View>
-                      <Text style={styles.dayCheckboxLabel} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
+                      <Text style={[styles.dayCheckboxLabel, font(400)]} maxFontSizeMultiplier={1.2}>{day.fullLabel}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -1745,26 +1752,29 @@ return (
 
             {/* Action Buttons */}
             <View style={styles.buttonRow}>
-              <TouchableOpacity
+              <PressableScale variant="neu"
+                containerStyle={{ flex: 1 }}
                 style={styles.cancelButton}
                 onPress={closeCreateModal}
               >
-                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.generateButton, loading && styles.buttonDisabled]}
+                <Text style={[styles.cancelButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
+              </PressableScale>
+              <PressableScale variant="neu"
+                neuFill={neu.teal}
+                containerStyle={[{ flex: 1 }, loading && styles.buttonDisabled]}
+                style={styles.generateButton}
                 onPress={handleCreateQR}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={COLORS.textDark} size="small" />
+                  <ActivityIndicator color={neu.onAccent} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="qr-code" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
-                    <Text style={styles.generateButtonText} maxFontSizeMultiplier={1.2}>{t('visits.generateQR')}</Text>
+                    <Ionicons name="qr-code" size={20} color={neu.onAccent} style={{ marginRight: scale(8) }} />
+                    <Text style={[styles.generateButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.generateQR')}</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
             <View style={{ height: scale(40) }} />
@@ -1779,10 +1789,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -1803,10 +1813,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowTimePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -1826,10 +1836,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowStartDatePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -1850,10 +1860,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowEndDatePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -1874,10 +1884,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowStartTimePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -1897,10 +1907,10 @@ return (
                 <View style={styles.pickerModalContent}>
                   <View style={styles.pickerModalHeader}>
                     <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
-                      <Text style={styles.pickerModalCancel}>{t('common.cancel')}</Text>
+                      <Text style={[styles.pickerModalCancel, font(500)]}>{t('common.cancel')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
-                      <Text style={styles.pickerModalDone}>{t('common.done') || 'Listo'}</Text>
+                      <Text style={[styles.pickerModalDone, font(600)]}>{t('common.done') || 'Listo'}</Text>
                     </TouchableOpacity>
                   </View>
                   <DateTimePicker
@@ -2016,10 +2026,10 @@ return (
               >
                 {/* Header */}
                 <View style={styles.shareableHeader}>
-                  <Text style={styles.shareableVisitorName} maxFontSizeMultiplier={1.2}>{selectedQR.visitor_name}</Text>
-                  <Text style={styles.shareableCommunity} maxFontSizeMultiplier={1.2}>{communityName}</Text>
-                  <Text style={styles.shareableAuthorized} maxFontSizeMultiplier={1.2}>
-                    {t('visits.authorizedBy')}: <Text style={styles.shareableHostName}>{hostName}</Text>
+                  <Text style={[styles.shareableVisitorName, font(600)]} maxFontSizeMultiplier={1.2}>{selectedQR.visitor_name}</Text>
+                  <Text style={[styles.shareableCommunity, font(600)]} maxFontSizeMultiplier={1.2}>{communityName}</Text>
+                  <Text style={[styles.shareableAuthorized, font(500)]} maxFontSizeMultiplier={1.2}>
+                    {t('visits.authorizedBy')}: <Text style={[styles.shareableHostName, font(600)]}>{hostName}</Text>
                   </Text>
                 </View>
 
@@ -2036,7 +2046,7 @@ return (
                       <Text style={[
                         styles.qrTypePillText,
                         selectedQR.qr_type === type && styles.qrTypePillTextActive
-                      ]} maxFontSizeMultiplier={1.2}>
+                      , font(600)]} maxFontSizeMultiplier={1.2}>
                         {getQRTypeLabel(type)}
                       </Text>
                     </View>
@@ -2057,13 +2067,13 @@ return (
 
                   {/* Manual Code */}
                   <View style={styles.manualCodeSection}>
-                    <Text style={styles.manualCodeLabel} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
-                    <Text style={styles.manualCode} maxFontSizeMultiplier={1.2}>
+                    <Text style={[styles.manualCodeLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
+                    <Text style={[styles.manualCode, font(600)]} maxFontSizeMultiplier={1.2}>
                       {/* Completo: la garita valida qr_code exacto (.eq), un código recortado no existe */}
                       {(selectedQR.qr_code || selectedQR.id).toUpperCase()}
                     </Text>
                   </View>
-                  <Text style={styles.showGuardText} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>
+                  <Text style={[styles.showGuardText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>
                 </View>
 
                 {/* Info Cards */}
@@ -2074,22 +2084,22 @@ return (
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
                     </View>
                   </View>
                 ) : selectedQR.qr_type === 'event' ? (
@@ -2102,22 +2112,22 @@ return (
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.events.entryLabel', 'Ingreso')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getEventEntryWindow(selectedQR)}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.events.entryLabel', 'Ingreso')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getEventEntryWindow(selectedQR)}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                     </View>
                     <View style={styles.infoCard}>
                       <View style={styles.infoCardIcon}>
                         <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
                       </View>
-                      <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
-                      <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
+                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
+                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
                     </View>
                   </View>
                 ) : (
@@ -2125,7 +2135,7 @@ return (
                   <>
                     {/* Fila de días */}
                     <View style={styles.daysRowCard}>
-                      <Text style={styles.daysRowLabel} maxFontSizeMultiplier={1.2}>{t('visits.accessDaysLabel')}</Text>
+                      <Text style={[styles.daysRowLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessDaysLabel')}</Text>
                       <View style={styles.daysRowPills}>
                         {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => {
                           const activeDays = getActiveDays(selectedQR);
@@ -2153,22 +2163,22 @@ return (
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="time-outline" size={16} color={neu.onAccent} />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
-                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
+                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
+                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="home-outline" size={16} color={neu.onAccent} />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
+                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
+                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
                       </View>
                       <View style={styles.infoCard}>
                         <View style={styles.infoCardIcon}>
                           <Ionicons name="checkmark-circle-outline" size={16} color={neu.onAccent} />
                         </View>
-                        <Text style={styles.infoCardLabel} maxFontSizeMultiplier={1.2}>{t('visits.valid')}</Text>
-                        <Text style={styles.infoCardValue} maxFontSizeMultiplier={1.2}>
+                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.valid')}</Text>
+                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>
                           {selectedQR.qr_type === 'frequent'
                             ? t('visits.always')
                             : `${formatDateShort(selectedQR.valid_from)} - ${formatDateShort(selectedQR.valid_until)}`
@@ -2181,39 +2191,41 @@ return (
 
                 {/* Footer - Logo ISSY */}
                 <View style={styles.shareableFooter}>
-                  <Text style={styles.poweredByText} maxFontSizeMultiplier={1.2}>Powered by</Text>
+                  <Text style={[styles.poweredByText, font(500)]} maxFontSizeMultiplier={1.2}>Powered by</Text>
                   <Image
                     source={IssyLogoNegro}
                     style={styles.issyLogoImage}
                     resizeMode="contain"
                   />
-                  <Text style={styles.websiteText} maxFontSizeMultiplier={1.2}>www.joinissy.com</Text>
+                  <Text style={[styles.websiteText, font(500)]} maxFontSizeMultiplier={1.2}>www.joinissy.com</Text>
                 </View>
               </View>
 
               {/* Share Button */}
-              <TouchableOpacity
+              <PressableScale variant="neu"
+                neuFill={neu.teal}
+                containerStyle={sharingImage && styles.buttonDisabled}
                 style={styles.shareButtonPrimary}
                 onPress={() => handleShareQRImage(selectedQR)}
                 disabled={sharingImage}
               >
                 {sharingImage ? (
-                  <ActivityIndicator color={COLORS.textDark} size="small" />
+                  <ActivityIndicator color={neu.onAccent} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="share-outline" size={20} color={COLORS.textDark} style={{ marginRight: scale(8) }} />
-                    <Text style={styles.shareButtonPrimaryText} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
+                    <Ionicons name="share-outline" size={20} color={neu.onAccent} style={{ marginRight: scale(8) }} />
+                    <Text style={[styles.shareButtonPrimaryText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableScale>
 
               {/* Close Button */}
-              <TouchableOpacity
+              <PressableScale variant="neu"
                 style={styles.closeModalButton}
                 onPress={() => { setShowQRModal(false); setSelectedQR(null); }}
               >
-                <Text style={styles.closeModalButtonText} maxFontSizeMultiplier={1.2}>{t('visits.close')}</Text>
-              </TouchableOpacity>
+                <Text style={[styles.closeModalButtonText, font(500)]} maxFontSizeMultiplier={1.2}>{t('visits.close')}</Text>
+              </PressableScale>
             </>
           )}
         </ScrollView>
@@ -2236,9 +2248,9 @@ return (
               setShowQuickModal(false);
               setSelectedProvider(null);
             }}>
-              <Text style={styles.modalCancel} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
+              <Text style={[styles.modalCancel, font(500)]} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
+            <Text style={[styles.modalTitle, font(600)]} maxFontSizeMultiplier={1.2}>Acceso Rápido</Text>
             <View style={{ width: scale(60) }} />
           </View>
 
@@ -2250,14 +2262,14 @@ return (
                   <View style={[styles.quickProviderLogo, { backgroundColor: selectedProvider.color + '20', borderColor: selectedProvider.color }]}>
                     <Ionicons name={selectedProvider.icon} size={40} color={selectedProvider.color} />
                   </View>
-                  <Text style={styles.quickProviderName} maxFontSizeMultiplier={1.2}>{selectedProvider.name}</Text>
-                  <Text style={styles.quickProviderDesc} maxFontSizeMultiplier={1.2}>
+                  <Text style={[styles.quickProviderName, font(600)]} maxFontSizeMultiplier={1.2}>{selectedProvider.name}</Text>
+                  <Text style={[styles.quickProviderDesc, font(400)]} maxFontSizeMultiplier={1.2}>
                     Se generará un QR de uso único para el conductor
                   </Text>
                 </View>
 
                 {/* Driver Name (Optional) */}
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Nombre del conductor (opcional)</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>Nombre del conductor (opcional)</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Ej: Juan Carlos"
@@ -2268,7 +2280,7 @@ return (
                 />
 
                 {/* Driver Phone (Optional - for WhatsApp) */}
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Teléfono del conductor (opcional)</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>Teléfono del conductor (opcional)</Text>
                 <View style={styles.phoneInputRow}>
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
@@ -2282,38 +2294,42 @@ return (
                   {quickDriverPhone.trim().length >= 8 && (
                     <View style={styles.whatsappBadge}>
                       <Ionicons name="share-outline" size={16} color="#25D366" />
-                      <Text style={styles.whatsappBadgeText} maxFontSizeMultiplier={1.2}>Se compartirá el QR automáticamente</Text>
+                      <Text style={[styles.whatsappBadgeText, font(600)]} maxFontSizeMultiplier={1.2}>Se compartirá el QR automáticamente</Text>
                     </View>
                   )}
                 </View>
 
                 {/* Duration Selector */}
-                <Text style={styles.inputLabel} maxFontSizeMultiplier={1.2}>Tiempo de acceso</Text>
+                <Text style={[styles.inputLabel, font(600)]} maxFontSizeMultiplier={1.2}>Tiempo de acceso</Text>
                 <View style={styles.durationSelector}>
                   {QUICK_DURATIONS.map((d) => (
-                    <TouchableOpacity
+                    <PressableScale variant="neu"
                       key={d.value}
-                      style={[styles.durationButton, quickDuration === d.value && { backgroundColor: selectedProvider.color, borderColor: selectedProvider.color }]}
+                      neuSurface="none"
+                      containerStyle={{ flex: 1 }}
+                      style={[styles.durationButton, quickDuration === d.value && styles.durationButtonActive]}
                       onPress={() => setQuickDuration(d.value)}
                     >
-                      <Text style={[styles.durationLabel, quickDuration === d.value && styles.durationLabelActive]} maxFontSizeMultiplier={1.2}>
+                      <Text style={[styles.durationLabel, quickDuration === d.value && styles.durationLabelActive, font(quickDuration === d.value ? 600 : 500)]} maxFontSizeMultiplier={1.2}>
                         {d.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   ))}
                 </View>
 
                 {/* Info Note */}
                 <View style={styles.quickInfoNote}>
                   <Ionicons name="information-circle" size={20} color={COLORS.cyan} />
-                  <Text style={styles.quickInfoText} maxFontSizeMultiplier={1.2}>
+                  <Text style={[styles.quickInfoText, font(400)]} maxFontSizeMultiplier={1.2}>
                     No necesitás guardar el número. Si lo ingresás, al generar el QR se abrirá WhatsApp directo para enviárselo al conductor. El QR expira automáticamente.
                   </Text>
                 </View>
 
                 {/* Generate Button */}
-                <TouchableOpacity
-                  style={[styles.quickGenerateButton, { backgroundColor: selectedProvider.color }, generatingQuick && { opacity: 0.6 }]}
+                <PressableScale variant="neu"
+                  neuFill={selectedProvider.color}
+                  containerStyle={generatingQuick && styles.buttonDisabled}
+                  style={[styles.quickGenerateButton, { backgroundColor: selectedProvider.color }]}
                   onPress={handleQuickDeliveryQR}
                   disabled={generatingQuick}
                 >
@@ -2322,12 +2338,12 @@ return (
                   ) : (
                     <>
                       <Ionicons name="flash" size={22} color={neu.text} style={{ marginRight: scale(8) }} />
-                      <Text style={styles.quickGenerateText} maxFontSizeMultiplier={1.2}>
+                      <Text style={[styles.quickGenerateText, font(600)]} maxFontSizeMultiplier={1.2}>
                         Generar QR para {selectedProvider.name}
                       </Text>
                     </>
                   )}
-                </TouchableOpacity>
+                </PressableScale>
               </>
             )}
 
@@ -2360,12 +2376,12 @@ const styles = StyleSheet.create({
     paddingBottom: scale(16),
   },
   title: {
-    fontSize: scale(28),
-    fontWeight: '700',
+    fontSize: fs(26),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginTop: scale(4),
   },
@@ -2381,14 +2397,14 @@ const styles = StyleSheet.create({
     marginBottom: scale(16),
   },
   disabledQRTitle: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginTop: scale(12),
     marginBottom: scale(8),
   },
   disabledQRText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: scale(20),
@@ -2399,6 +2415,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(14),
     overflow: 'hidden',
     marginTop: scale(8),
+    ...neuSurface.raised,
   },
   createButtonGradient: {
     flexDirection: 'row',
@@ -2406,17 +2423,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: scale(16),
     paddingHorizontal: scale(20),
+    backgroundColor: neu.teal,
   },
   createButtonText: {
-    color: COLORS.textDark,
-    fontSize: scale(15),
+    color: neu.onAccent,
+    fontSize: fs(15),
     fontWeight: '600',
     marginLeft: scale(10),
   },
 
   // Section Title
   sectionTitle: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '500',
     color: COLORS.textSecondary,
     marginTop: scale(24),
@@ -2428,26 +2446,24 @@ const styles = StyleSheet.create({
   qrSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(14),
     paddingVertical: scale(14),
     paddingHorizontal: scale(14),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.raised,
   },
   qrSectionTitle: {
     flex: 1,
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '500',
     color: COLORS.textPrimary,
   },
   qrSectionCount: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textSecondary,
     marginRight: scale(8),
   },
   qrSectionSoon: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textMuted,
     marginRight: scale(8),
   },
@@ -2455,7 +2471,7 @@ const styles = StyleSheet.create({
     marginTop: scale(8),
   },
   qrSectionEmpty: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textMuted,
     paddingVertical: scale(16),
     textAlign: 'center',
@@ -2465,14 +2481,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: scale(12),
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: COLORS.lime + '60',
     paddingVertical: scale(12),
     marginTop: scale(8),
+    ...neuSurface.raisedSm,
   },
   qrSectionCreateText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: COLORS.lime,
   },
@@ -2487,39 +2501,34 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     padding: scale(40),
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.raised,
   },
   emptyIconBox: {
     width: scale(80),
     height: scale(80),
     borderRadius: scale(40),
-    backgroundColor: COLORS.bgCardAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: scale(16),
   },
   emptyText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
   emptySubtext: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginTop: scale(8),
   },
 
   // QR Card
   qrCard: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(16),
     marginBottom: scale(12),
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.raised,
   },
   qrCardContent: {
     padding: scale(16),
@@ -2534,36 +2543,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(10),
     paddingVertical: scale(5),
     borderRadius: scale(6),
+    ...neuSurface.sunkenSm,
   },
   typeBadgeText: {
-    fontSize: scale(10),
-    fontWeight: '700',
+    fontSize: fs(10),
+    fontWeight: '600',
     letterSpacing: 0.5,
   },
   statusBadge: {
     paddingHorizontal: scale(10),
     paddingVertical: scale(5),
     borderRadius: scale(6),
+    ...neuSurface.sunkenSm,
   },
   statusBadgeText: {
-    fontSize: scale(10),
-    fontWeight: '700',
+    fontSize: fs(10),
+    fontWeight: '600',
     color: COLORS.textPrimary,
     letterSpacing: 0.5,
   },
   visitorName: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(4),
   },
   visitorPhone: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginBottom: scale(4),
   },
   validDate: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textMuted,
   },
   cardActionsRow: {
@@ -2576,18 +2587,17 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
   },
   viewQRButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.bgCardAlt,
     paddingVertical: scale(10),
     borderRadius: scale(10),
     marginRight: scale(10),
+    ...neuSurface.raisedSm,
   },
   viewQRButtonText: {
     color: COLORS.cyan,
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     marginLeft: scale(6),
   },
@@ -2595,15 +2605,15 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(10),
-    backgroundColor: neu.coral + '26',
     alignItems: 'center',
     justifyContent: 'center',
+    ...neuSurface.raisedSm,
   },
 
   // Modal Container
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.bgPrimary,
+    backgroundColor: neu.bg,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -2615,12 +2625,12 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   modalCancel: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.cyan,
     fontWeight: '500',
   },
   modalTitle: {
-    fontSize: scale(18),
+    fontSize: fs(18),
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
@@ -2639,9 +2649,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(10),
     paddingHorizontal: scale(12),
     borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
+    ...neuSurface.raisedSm,
   },
   // ===== Lista K1 (Mis QR) =====
   k1Stats: {
@@ -2654,16 +2662,14 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: scale(spacing.md),
     borderRadius: scale(radius.md),
-    backgroundColor: tk.card,
-    borderWidth: 1,
-    borderColor: tk.border,
+    ...neuSurface.sunken,
   },
   k1StatValue: {
-    fontSize: scale(22),
-    fontWeight: '800',
+    fontSize: fs(22),
+    fontWeight: '600',
   },
   k1StatLabel: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: tk.textSecondary,
     marginTop: scale(2),
   },
@@ -2675,30 +2681,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: scale(8),
     borderRadius: radius.pill,
-    backgroundColor: tk.card,
-    borderWidth: 1,
-    borderColor: tk.border,
+    ...neuSurface.raisedSm,
   },
   k1PillActive: {
-    backgroundColor: tk.cyan,
-    borderColor: tk.cyan,
+    ...neuSurface.sunkenSm,
   },
   k1PillText: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: tk.textSecondary,
+    fontSize: fs(13),
+    fontWeight: '500',
+    color: neu.textLabel,
   },
   k1PillTextActive: {
-    color: tk.textDark,
+    color: neu.teal,
+    fontWeight: '600',
   },
   k1Card: {
-    backgroundColor: tk.card,
     borderRadius: scale(radius.md),
-    borderWidth: 1,
-    borderColor: tk.border,
     padding: scale(spacing.lg),
     marginBottom: scale(spacing.md),
     gap: scale(spacing.sm),
+    ...neuSurface.raised,
   },
   k1CardPast: {
     opacity: 0.6,
@@ -2710,18 +2712,19 @@ const styles = StyleSheet.create({
   },
   k1Name: {
     flex: 1,
-    fontSize: scale(16),
-    fontWeight: '700',
+    fontSize: fs(16),
+    fontWeight: '600',
     color: tk.text,
   },
   k1Chip: {
     paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
     borderRadius: radius.pill,
+    height: scale(26),
+    justifyContent: 'center',
   },
   k1ChipText: {
-    fontSize: scale(11),
-    fontWeight: '700',
+    fontSize: fs(11),
+    fontWeight: '600',
   },
   k1StatusRow: {
     flexDirection: 'row',
@@ -2735,11 +2738,11 @@ const styles = StyleSheet.create({
   },
   k1Status: {
     flex: 1,
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: tk.textSecondary,
   },
   k1Empty: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: tk.textSecondary,
     textAlign: 'center',
     paddingVertical: scale(spacing.xl),
@@ -2748,43 +2751,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   moreDataText: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     fontWeight: '600',
     color: COLORS.cyan,
   },
   moreDataHint: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textMuted,
     marginTop: scale(2),
   },
   inputLabel: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: COLORS.textSecondary,
     marginBottom: scale(8),
     marginTop: scale(16),
   },
   input: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(12),
     padding: scale(16),
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.sunken,
   },
   dateInput: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(12),
     padding: scale(16),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.sunken,
   },
   dateInputText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.textPrimary,
   },
   dateRangeRow: {
@@ -2797,21 +2796,25 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   typeButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: scale(12),
     paddingHorizontal: scale(8),
     borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.bgCard,
+    ...neuSurface.raisedSm,
+  },
+  typeButtonActive: {
+    ...neuSurface.sunkenSm,
+  },
+  typeLabelActive: {
+    color: neu.teal,
+    fontWeight: '600',
   },
   typeLabel: {
-    fontSize: scale(11),
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+    fontSize: fs(11),
+    fontWeight: '500',
+    color: neu.textLabel,
   },
 
   // Duration Selector
@@ -2820,26 +2823,23 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   durationButton: {
-    flex: 1,
     paddingVertical: scale(14),
     paddingHorizontal: scale(16),
     borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.bgCard,
     alignItems: 'center',
+    ...neuSurface.raisedSm,
   },
   durationButtonActive: {
-    borderColor: COLORS.cyan,
-    backgroundColor: COLORS.cyan + '20',
+    ...neuSurface.sunkenSm,
   },
   durationLabel: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+    fontSize: fs(14),
+    fontWeight: '500',
+    color: neu.textLabel,
   },
   durationLabelActive: {
-    color: COLORS.cyan,
+    color: neu.teal,
+    fontWeight: '600',
   },
 
   // Checkboxes
@@ -2851,20 +2851,17 @@ const styles = StyleSheet.create({
   checkbox: {
     width: scale(24),
     height: scale(24),
-    borderWidth: 2,
-    borderColor: COLORS.border,
     borderRadius: scale(6),
     marginRight: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.bgCard,
+    ...neuSurface.sunkenSm,
   },
   checkboxChecked: {
-    backgroundColor: COLORS.lime,
-    borderColor: COLORS.lime,
+
   },
   checkboxLabel: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     color: COLORS.textPrimary,
   },
   daysGrid: {
@@ -2878,7 +2875,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(8),
   },
   dayCheckboxLabel: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textPrimary,
   },
 
@@ -2889,34 +2886,31 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   cancelButton: {
-    flex: 1,
     padding: scale(16),
     borderRadius: scale(12),
-    backgroundColor: COLORS.bgCard,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.raisedSm,
   },
   cancelButtonText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: neu.textLabel,
   },
   generateButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
     padding: scale(16),
     borderRadius: scale(12),
+    ...neuSurface.raised,
+    backgroundColor: neu.teal,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.45,
   },
   generateButtonText: {
-    color: COLORS.textDark,
-    fontSize: scale(16),
+    color: neu.onAccent,
+    fontSize: fs(16),
     fontWeight: '600',
   },
 
@@ -2950,22 +2944,22 @@ const styles = StyleSheet.create({
     marginBottom: scale(20),
   },
   shareableVisitorName: {
-    fontSize: scale(32),
-    fontWeight: '700',
+    fontSize: fs(32),
+    fontWeight: '600',
     color: neu.onAccent,
     marginBottom: scale(6),
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   shareableCommunity: {
-    fontSize: scale(17),
+    fontSize: fs(17),
     fontWeight: '600',
     color: '#3D5A6C',
     marginBottom: scale(6),
     textAlign: 'center',
   },
   shareableAuthorized: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: neu.textSoft,
     fontWeight: '500',
   },
@@ -2994,7 +2988,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(26, 61, 77, 0.3)',
   },
   qrTypePillText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: '#6B8A8A',
   },
@@ -3037,20 +3031,20 @@ const styles = StyleSheet.create({
     marginBottom: scale(10),
   },
   manualCodeLabel: {
-    fontSize: scale(10),
+    fontSize: fs(10),
     color: '#8AABAB',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   manualCode: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: '#3D5A6C',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     letterSpacing: 1,
   },
   showGuardText: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: neu.textSoft,
     fontWeight: '600',
     textAlign: 'center',
@@ -3070,7 +3064,7 @@ const styles = StyleSheet.create({
     borderColor: neu.textLabel,
   },
   daysRowLabel: {
-    fontSize: scale(9),
+    fontSize: fs(9),
     color: neu.textSoft,
     fontWeight: '600',
     letterSpacing: 0.3,
@@ -3091,8 +3085,8 @@ const styles = StyleSheet.create({
     backgroundColor: neu.sunken,
   },
   dayPillText: {
-    fontSize: scale(9),
-    fontWeight: '700',
+    fontSize: fs(9),
+    fontWeight: '600',
     color: '#A0B5B5',
   },
   dayPillTextActive: {
@@ -3125,7 +3119,7 @@ const styles = StyleSheet.create({
     marginBottom: scale(6),
   },
   infoCardLabel: {
-    fontSize: scale(9),
+    fontSize: fs(9),
     color: neu.textSoft,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -3133,8 +3127,8 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   infoCardValue: {
-    fontSize: scale(11),
-    fontWeight: '700',
+    fontSize: fs(11),
+    fontWeight: '600',
     color: neu.onAccent,
     textAlign: 'center',
     lineHeight: scale(14),
@@ -3145,7 +3139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   poweredByText: {
-    fontSize: scale(10),
+    fontSize: fs(10),
     color: '#9CBBBB',
     fontWeight: '500',
     marginBottom: scale(4),
@@ -3156,7 +3150,7 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   websiteText: {
-    fontSize: scale(10),
+    fontSize: fs(10),
     color: '#5A7A7A',
     fontWeight: '500',
   },
@@ -3166,37 +3160,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.lime,
     paddingVertical: scale(16),
     paddingHorizontal: scale(32),
     borderRadius: scale(14),
     marginTop: scale(20),
     width: scale(300),
+    ...neuSurface.raised,
+    backgroundColor: neu.teal,
   },
   shareButtonPrimaryText: {
-    color: COLORS.textDark,
-    fontSize: scale(16),
+    color: neu.onAccent,
+    fontSize: fs(16),
     fontWeight: '600',
   },
   closeModalButton: {
     marginTop: scale(16),
     paddingVertical: scale(12),
     paddingHorizontal: scale(32),
+    ...neuSurface.raisedSm,
+    borderRadius: scale(14),
   },
   closeModalButtonText: {
     color: COLORS.textPrimary,
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '500',
   },
 
   // ============ QUICK DELIVERY SECTION ============
   quickAccessSection: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(16),
     padding: scale(16),
     marginBottom: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    ...neuSurface.raised,
   },
   quickAccessHeader: {
     flexDirection: 'row',
@@ -3205,23 +3200,31 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   quickAccessTitle: {
-    fontSize: scale(16),
-    fontWeight: '700',
+    fontSize: fs(16),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   quickAccessSubtitle: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textMuted,
     marginBottom: scale(14),
+  },
+  // Espacio para que la sombra de cada tarjeta no se recorte; los márgenes negativos lo devuelven
+  providersScroll: {
+    marginHorizontal: -scale(12),
+    marginVertical: -scale(12),
   },
   providersRow: {
     flexDirection: 'row',
     gap: scale(12),
-    paddingRight: scale(8),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(12),
   },
   providerButton: {
     alignItems: 'center',
     width: scale(72),
+    ...neuSurface.raisedSm,
+    borderRadius: scale(16),
   },
   providerLogoContainer: {
     width: scale(56),
@@ -3229,7 +3232,6 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
     overflow: 'hidden',
     marginBottom: scale(6),
   },
@@ -3238,7 +3240,7 @@ const styles = StyleSheet.create({
     height: scale(56),
   },
   providerName: {
-    fontSize: scale(11),
+    fontSize: fs(11),
     fontWeight: '600',
     color: COLORS.textSecondary,
     textAlign: 'center',
@@ -3264,13 +3266,13 @@ const styles = StyleSheet.create({
     height: scale(80),
   },
   quickProviderName: {
-    fontSize: scale(22),
-    fontWeight: '700',
+    fontSize: fs(22),
+    fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: scale(4),
   },
   quickProviderDesc: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: COLORS.textMuted,
     textAlign: 'center',
     paddingHorizontal: scale(20),
@@ -3278,15 +3280,15 @@ const styles = StyleSheet.create({
   quickInfoNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.cyan + '10',
     padding: scale(14),
     borderRadius: scale(12),
     marginTop: scale(20),
     gap: scale(10),
+    ...neuSurface.sunken,
   },
   quickInfoText: {
     flex: 1,
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.cyan,
     lineHeight: scale(18),
   },
@@ -3297,10 +3299,11 @@ const styles = StyleSheet.create({
     paddingVertical: scale(16),
     borderRadius: scale(14),
     marginTop: scale(24),
+    ...neuSurface.raised,
   },
   quickGenerateText: {
-    fontSize: scale(16),
-    fontWeight: '700',
+    fontSize: fs(16),
+    fontWeight: '600',
     color: neu.text,
   },
   phoneInputRow: {
@@ -3318,7 +3321,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   whatsappBadgeText: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: '#25D366',
     fontWeight: '600',
   },
@@ -3332,16 +3335,14 @@ const styles = StyleSheet.create({
     paddingVertical: scale(6),
   },
   lookupSearching: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.cyan,
   },
   foundUserCard: {
-    backgroundColor: COLORS.teal + '15',
     borderRadius: scale(12),
     padding: scale(12),
     marginTop: scale(10),
-    borderWidth: 1,
-    borderColor: COLORS.teal + '30',
+    ...neuSurface.sunken,
   },
   foundUserInfo: {
     flexDirection: 'row',
@@ -3363,31 +3364,31 @@ const styles = StyleSheet.create({
     borderRadius: scale(20),
   },
   foundUserAvatarText: {
-    fontSize: scale(16),
-    fontWeight: '700',
+    fontSize: fs(16),
+    fontWeight: '600',
     color: COLORS.teal,
   },
   foundUserName: {
-    fontSize: scale(14),
-    fontWeight: '700',
+    fontSize: fs(14),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   foundUserUnit: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
   },
   foundUserBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(4),
-    backgroundColor: COLORS.teal + '20',
     paddingHorizontal: scale(8),
     paddingVertical: scale(4),
     borderRadius: scale(8),
+    ...neuSurface.sunkenSm,
   },
   foundUserBadgeText: {
-    fontSize: scale(11),
-    fontWeight: '700',
+    fontSize: fs(11),
+    fontWeight: '600',
     color: COLORS.teal,
   },
   inAppToggle: {
@@ -3398,21 +3399,19 @@ const styles = StyleSheet.create({
     marginTop: scale(10),
     paddingVertical: scale(10),
     borderRadius: scale(10),
-    backgroundColor: COLORS.bgCardAlt,
-    borderWidth: 1,
-    borderColor: COLORS.teal + '30',
+    ...neuSurface.raisedSm,
   },
   inAppToggleActive: {
-    backgroundColor: COLORS.teal,
-    borderColor: COLORS.teal,
+    ...neuSurface.sunkenSm,
   },
   inAppToggleText: {
-    fontSize: scale(13),
-    fontWeight: '600',
-    color: COLORS.teal,
+    fontSize: fs(13),
+    fontWeight: '500',
+    color: neu.textLabel,
   },
   inAppToggleTextActive: {
-    color: COLORS.textDark,
+    color: neu.teal,
+    fontWeight: '600',
   },
   appOnlyWarning: {
     flexDirection: 'row',
@@ -3420,12 +3419,12 @@ const styles = StyleSheet.create({
     gap: scale(8),
     marginTop: scale(8),
     padding: scale(10),
-    backgroundColor: COLORS.orange + '15',
     borderRadius: scale(10),
+    ...neuSurface.sunken,
   },
   appOnlyWarningText: {
     flex: 1,
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.orange,
     lineHeight: scale(17),
   },
@@ -3452,12 +3451,12 @@ const styles = StyleSheet.create({
     borderBottomColor: neu.border,
   },
   pickerModalCancel: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     color: neu.textLabel,
     fontWeight: '500',
   },
   pickerModalDone: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     color: neu.teal,
     fontWeight: '600',
   },

@@ -23,10 +23,11 @@ import Constants from 'expo-constants';
 import { useAuth } from '../../src/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { deleteUserAccount } from '../../src/services/api';
-import { LinearGradient } from 'expo-linear-gradient';
 import LanguageSelector from '../../src/components/LanguageSelector';
 import { useTranslation } from '../../src/hooks/useTranslation';
-import { neu } from '../../src/theme/tokens';
+import PressableScale from '../../src/components/home/PressableScale';
+import { neu, neuSurface, fs } from '../../src/theme/tokens';
+import { useHomeFont } from '../../src/theme/homeFont';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -58,6 +59,7 @@ const COLORS = {
 };
 
 export default function Profile() {
+  const font = useHomeFont();
   const { user, signOut, token } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
@@ -298,20 +300,17 @@ export default function Profile() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle} maxFontSizeMultiplier={1.2}>{t('profile.title')}</Text>
+            <Text style={[styles.headerTitle, font(600)]} maxFontSizeMultiplier={1.2}>{t('profile.title')}</Text>
           </View>
 
           {/* Profile Card con Gradiente */}
-          <TouchableOpacity 
-            activeOpacity={0.9}
+          <PressableScale
+            variant="neu"
+            style={styles.profileCard}
             onPress={() => router.push('/edit-profile')}
+            scaleTo={0.98}
           >
-            <LinearGradient
-              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.profileCard}
-            >
+            <View>
               <View style={styles.profileContent}>
                 <View style={styles.avatarContainer}>
                   {user?.avatar_url || user?.profile_photo_url ? (
@@ -320,26 +319,26 @@ export default function Profile() {
                       style={styles.avatar} 
                     />
                   ) : (
-                    <View style={styles.avatarPlaceholder}>
-                      <Text style={styles.avatarText}>{getUserInitials()}</Text>
+                    <View style={[styles.avatarPlaceholder, neuSurface.sunkenSm]}>
+                      <Text style={[styles.avatarText, font(600)]}>{getUserInitials()}</Text>
                     </View>
                   )}
                   <View style={styles.editBadge}>
-                    <Ionicons name="pencil" size={12} color={COLORS.textDark} />
+                    <Ionicons name="pencil" size={12} color={neu.onAccent} />
                   </View>
                 </View>
                 
                 <View style={styles.profileInfo}>
-                  <Text style={styles.profileName} maxFontSizeMultiplier={1.2} numberOfLines={1}>
+                  <Text style={[styles.profileName, font(600)]} maxFontSizeMultiplier={1.2} numberOfLines={1}>
                     {user?.name || user?.email || t('profile.user')}
                   </Text>
-                  <Text style={styles.profileRole} maxFontSizeMultiplier={1.1}>
+                  <Text style={[styles.profileRole, font(400)]} maxFontSizeMultiplier={1.1}>
                     {getUserRole()}
                   </Text>
                   {user?.location_name && (
-                    <View style={styles.locationBadge}>
-                      <Ionicons name="location" size={12} color={COLORS.textPrimary} />
-                      <Text style={styles.locationText} maxFontSizeMultiplier={1.1} numberOfLines={1}>
+                    <View style={[styles.locationBadge, neuSurface.sunkenSm]}>
+                      <Ionicons name="location" size={12} color={neu.textLabel} />
+                      <Text style={[styles.locationText, font(500)]} maxFontSizeMultiplier={1.1} numberOfLines={1}>
                         {user.location_name}
                       </Text>
                     </View>
@@ -348,27 +347,26 @@ export default function Profile() {
 
                 <Ionicons name="chevron-forward" size={24} color={neu.textLabel} />
               </View>
-            </LinearGradient>
-          </TouchableOpacity>
+            </View>
+          </PressableScale>
 
           {/* Menu Sections */}
           {menuSections.map((section, sectionIndex) => (
             <View key={sectionIndex} style={styles.section}>
-              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.1}>
+              <Text style={[styles.sectionTitle, font(600)]} maxFontSizeMultiplier={1.1}>
                 {section.title}
               </Text>
-              <View style={styles.menuContainer}>
+              <View style={[styles.menuContainer, neuSurface.raised]}>
                 {section.items.map((item, index) => (
-                  <TouchableOpacity 
+                  <PressableScale variant="neu" 
                     key={index} 
                     style={[
                       styles.menuItem,
                       index === section.items.length - 1 && !section.title.includes(t('profile.settings')) && styles.menuItemLast,
                     ]}
                     onPress={() => handleMenuPress(item)}
-                    activeOpacity={0.7}
                   >
-                    <View style={[styles.menuIconContainer, { backgroundColor: item.color + '20' }]}>
+                    <View style={[styles.menuIconContainer, neuSurface.sunkenSm]}>
                       <Ionicons name={item.icon} size={22} color={item.color} />
                     </View>
                     <View style={styles.menuInfo}>
@@ -376,26 +374,26 @@ export default function Profile() {
                         <Text style={[
                           styles.menuTitle,
                           item.isDelete && styles.menuTitleDelete
-                        ]} maxFontSizeMultiplier={1.2}>
+                        , font(500)]} maxFontSizeMultiplier={1.2}>
                           {item.title}
                         </Text>
                         {item.badge && (
-                          <View style={[styles.badge, { backgroundColor: item.color }]}>
-                            <Text style={styles.badgeText} maxFontSizeMultiplier={1}>{item.badge}</Text>
+                          <View style={[styles.badge, neuSurface.sunkenSm]}>
+                            <Text style={[styles.badgeText, { color: item.color }, font(600)]} maxFontSizeMultiplier={1}>{item.badge}</Text>
                           </View>
                         )}
                       </View>
                       <Text style={[
                         styles.menuSubtitle,
                         item.isDelete && styles.menuSubtitleDelete
-                      ]} maxFontSizeMultiplier={1.1}>{item.subtitle}</Text>
+                      , font(400)]} maxFontSizeMultiplier={1.1}>{item.subtitle}</Text>
                     </View>
                     <Ionicons 
                       name="chevron-forward" 
                       size={20} 
                       color={item.isDelete ? COLORS.coral : COLORS.textMuted} 
                     />
-                  </TouchableOpacity>
+                  </PressableScale>
                 ))}
                 
                 {/* Agregar LanguageSelector en la sección de Configuración */}
@@ -409,12 +407,12 @@ export default function Profile() {
           ))}
 
           {/* Logout Button */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <PressableScale variant="neu" style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={COLORS.coral} />
-            <Text style={styles.logoutText} maxFontSizeMultiplier={1.2}>{t('profile.logout')}</Text>
-          </TouchableOpacity>
+            <Text style={[styles.logoutText, font(600)]} maxFontSizeMultiplier={1.2}>{t('profile.logout')}</Text>
+          </PressableScale>
 
-          <Text style={styles.version} maxFontSizeMultiplier={1}>ISSY Resident App v{Constants.expoConfig?.version || '1.0.0'}</Text>
+          <Text style={[styles.version, font(400)]} maxFontSizeMultiplier={1}>ISSY Resident App v{Constants.expoConfig?.version || '1.0.0'}</Text>
 
           {/* Espacio para tab bar */}
           <View style={{ height: scale(100) }} />
@@ -434,41 +432,41 @@ export default function Profile() {
               <View style={styles.modalWarningIcon}>
                 <Ionicons name="warning" size={32} color={COLORS.coral} />
               </View>
-              <Text style={styles.modalTitle} maxFontSizeMultiplier={1.2}>
+              <Text style={[styles.modalTitle, font(600)]} maxFontSizeMultiplier={1.2}>
                 {deleteStep === 1 ? t('profile.deleteAccountQuestion') : t('profile.confirmDeletion')}
               </Text>
             </View>
 
             {deleteStep === 1 ? (
               <>
-                <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
+                <Text style={[styles.modalDescription, font(400)]} maxFontSizeMultiplier={1.2}>
                   {t('profile.deleteWarning')}
                 </Text>
                 <View style={styles.deleteList}>
-                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem1')}</Text>
-                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem2')}</Text>
-                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem3')}</Text>
-                  <Text style={styles.deleteListItem}>• {t('profile.deleteItem4')}</Text>
+                  <Text style={[styles.deleteListItem, font(400)]}>• {t('profile.deleteItem1')}</Text>
+                  <Text style={[styles.deleteListItem, font(400)]}>• {t('profile.deleteItem2')}</Text>
+                  <Text style={[styles.deleteListItem, font(400)]}>• {t('profile.deleteItem3')}</Text>
+                  <Text style={[styles.deleteListItem, font(400)]}>• {t('profile.deleteItem4')}</Text>
                 </View>
               </>
             ) : (
               <>
-                <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
+                <Text style={[styles.modalDescription, font(400)]} maxFontSizeMultiplier={1.2}>
                   {t('profile.typeToConfirm')}
                 </Text>
                 <TextInput
-                  style={styles.confirmInput}
+                  style={[styles.confirmInput, neuSurface.sunken]}
                   placeholder={t('profile.deleteWord')}
                   placeholderTextColor={COLORS.textMuted}
                   value={confirmText}
                   onChangeText={setConfirmText}
                   autoCapitalize="characters"
                 />
-                <Text style={styles.modalDescription} maxFontSizeMultiplier={1.2}>
+                <Text style={[styles.modalDescription, font(400)]} maxFontSizeMultiplier={1.2}>
                   {t('profile.enterPassword')}
                 </Text>
                 <TextInput
-                  style={styles.confirmInput}
+                  style={[styles.confirmInput, neuSurface.sunken]}
                   placeholder={t('auth.password')}
                   placeholderTextColor={COLORS.textMuted}
                   value={password}
@@ -479,25 +477,28 @@ export default function Profile() {
             )}
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <PressableScale variant="neu" 
+                containerStyle={{ flex: 1 }}
                 style={styles.cancelButton}
                 onPress={() => setShowDeleteModal(false)}
               >
-                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.confirmDeleteButton, deleting && styles.buttonDisabled]}
+                <Text style={[styles.cancelButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('common.cancel')}</Text>
+              </PressableScale>
+              <PressableScale variant="neu" 
+                neuFill={neu.coral}
+                containerStyle={[{ flex: 1 }, deleting && styles.buttonDisabled]}
+                style={styles.confirmDeleteButton}
                 onPress={handleConfirmDelete}
                 disabled={deleting}
               >
                 {deleting ? (
-                  <ActivityIndicator color={COLORS.textPrimary} size="small" />
+                  <ActivityIndicator color={neu.onAccent} size="small" />
                 ) : (
-                  <Text style={styles.confirmDeleteText} maxFontSizeMultiplier={1.2}>
+                  <Text style={[styles.confirmDeleteText, font(600)]} maxFontSizeMultiplier={1.2}>
                     {deleteStep === 1 ? t('common.next') : t('common.delete')}
                   </Text>
                 )}
-              </TouchableOpacity>
+              </PressableScale>
             </View>
           </View>
         </View>
@@ -522,16 +523,17 @@ const styles = StyleSheet.create({
     paddingBottom: scale(16),
   },
   headerTitle: {
-    fontSize: scale(28),
-    fontWeight: 'bold',
+    fontSize: fs(26),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
 
   // Profile Card
   profileCard: {
     marginHorizontal: scale(16),
-    borderRadius: scale(20),
+    borderRadius: scale(24),
     padding: scale(20),
+    backgroundColor: neu.raised,
   },
   profileContent: {
     flexDirection: 'row',
@@ -545,22 +547,21 @@ const styles = StyleSheet.create({
     width: scale(60),
     height: scale(60),
     borderRadius: scale(30),
-    borderWidth: 3,
-    borderColor: neu.textSoft,
+    borderWidth: 2,
+    borderColor: neu.teal,
   },
   avatarPlaceholder: {
     width: scale(60),
     height: scale(60),
     borderRadius: scale(30),
-    backgroundColor: neu.raised,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: neu.textSoft,
+    borderWidth: 2,
+    borderColor: neu.teal,
   },
   avatarText: {
-    fontSize: scale(24),
-    fontWeight: 'bold',
+    fontSize: fs(24),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   editBadge: {
@@ -570,22 +571,22 @@ const styles = StyleSheet.create({
     width: scale(24),
     height: scale(24),
     borderRadius: scale(12),
-    backgroundColor: COLORS.textPrimary,
+    backgroundColor: neu.teal,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.gradientStart,
+    borderColor: neu.raised,
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
-    fontSize: scale(18),
-    fontWeight: '700',
+    fontSize: fs(18),
+    fontWeight: '600',
     color: COLORS.textPrimary,
   },
   profileRole: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     color: neu.textLabel,
     marginTop: scale(2),
   },
@@ -596,13 +597,12 @@ const styles = StyleSheet.create({
     marginTop: scale(6),
     paddingHorizontal: scale(8),
     paddingVertical: scale(3),
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: scale(10),
+    borderRadius: 999,
     alignSelf: 'flex-start',
   },
   locationText: {
-    fontSize: scale(11),
-    color: COLORS.textPrimary,
+    fontSize: fs(11),
+    color: neu.textLabel,
     fontWeight: '500',
   },
 
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
   },
   sectionTitle: {
-    fontSize: scale(13),
+    fontSize: fs(13),
     fontWeight: '600',
     color: COLORS.textMuted,
     marginBottom: scale(10),
@@ -621,18 +621,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   menuContainer: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: scale(16),
+    borderRadius: scale(20),
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: scale(14),
+    backgroundColor: neu.raised,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: neu.border,
   },
   menuItemLast: {
     borderBottomWidth: 0,
@@ -654,7 +652,7 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   menuTitle: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '500',
     color: COLORS.textPrimary,
   },
@@ -667,12 +665,11 @@ const styles = StyleSheet.create({
     borderRadius: scale(8),
   },
   badgeText: {
-    fontSize: scale(10),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+    fontSize: fs(10),
+    fontWeight: '600',
   },
   menuSubtitle: {
-    fontSize: scale(12),
+    fontSize: fs(12),
     color: COLORS.textSecondary,
     marginTop: scale(2),
   },
@@ -693,24 +690,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: scale(8),
-    backgroundColor: COLORS.bgCard,
-    borderRadius: scale(14),
+    backgroundColor: neu.raised,
+    borderRadius: scale(16),
     padding: scale(16),
     marginHorizontal: scale(16),
     marginTop: scale(32),
-    borderWidth: 1,
-    borderColor: COLORS.coral + '40',
   },
   logoutText: {
     color: COLORS.coral,
-    fontSize: scale(15),
+    fontSize: fs(15),
     fontWeight: '600',
   },
 
   version: {
     textAlign: 'center',
     color: COLORS.textMuted,
-    fontSize: scale(12),
+    fontSize: fs(12),
     marginTop: scale(20),
   },
 
@@ -721,7 +716,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.bgSecondary,
+    ...neuSurface.raised,
     borderTopLeftRadius: scale(24),
     borderTopRightRadius: scale(24),
     padding: scale(24),
@@ -741,41 +736,38 @@ const styles = StyleSheet.create({
     marginBottom: scale(16),
   },
   modalTitle: {
-    fontSize: scale(20),
-    fontWeight: 'bold',
+    fontSize: fs(20),
+    fontWeight: '600',
     color: COLORS.textPrimary,
     textAlign: 'center',
   },
   modalDescription: {
-    fontSize: scale(15),
+    fontSize: fs(15),
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: scale(16),
     lineHeight: scale(22),
   },
   boldText: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: COLORS.coral,
   },
   deleteList: {
-    backgroundColor: COLORS.bgCard,
+    ...neuSurface.sunken,
     borderRadius: scale(12),
     padding: scale(16),
     marginBottom: scale(16),
   },
   deleteListItem: {
-    fontSize: scale(14),
+    fontSize: fs(14),
     color: COLORS.textSecondary,
     marginBottom: scale(8),
   },
   confirmInput: {
-    backgroundColor: COLORS.bgCard,
     borderRadius: scale(12),
     padding: scale(16),
-    fontSize: scale(16),
+    fontSize: fs(16),
     marginBottom: scale(16),
-    borderWidth: 1,
-    borderColor: COLORS.border,
     color: COLORS.textPrimary,
   },
   modalButtons: {
@@ -783,30 +775,28 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   cancelButton: {
-    flex: 1,
     padding: scale(16),
     borderRadius: scale(12),
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: neu.raised,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: neu.textLabel,
   },
   confirmDeleteButton: {
-    flex: 1,
     padding: scale(16),
     borderRadius: scale(12),
     backgroundColor: COLORS.coral,
     alignItems: 'center',
   },
   confirmDeleteText: {
-    fontSize: scale(16),
+    fontSize: fs(16),
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: neu.onAccent,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.45,
   },
 });
