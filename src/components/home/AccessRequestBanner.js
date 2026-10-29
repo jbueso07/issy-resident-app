@@ -49,7 +49,12 @@ export default function AccessRequestBanner({ locationId }) {
   // Push con la app abierta: sin esperar al siguiente ciclo
   useEffect(
     () =>
-      subscribeAccessRequestEvents(() => {
+      subscribeAccessRequestEvents((data) => {
+        // Cancelada en la garita: sale de inmediato y se recarga la lista
+        if (data?.action === 'cancelled') {
+          const id = data.request_id || data.access_request_id;
+          if (id) setRequests((prev) => prev.filter((r) => r.id !== id));
+        }
         if (focusedRef.current) fetchPending();
       }),
     [fetchPending]

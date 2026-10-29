@@ -2313,6 +2313,8 @@
     "verbRejected": "a refusé",
     "expiredTitle": "Demande expirée",
     "expiredMessage": "Le délai pour répondre est dépassé.",
+    "cancelledTitle": "Demande annulée",
+    "cancelledMessage": "La demande a été annulée à la guérite.",
     "done": "Terminé",
     "back": "Retour",
     "reasonPlaceholder": "Motif (facultatif)",

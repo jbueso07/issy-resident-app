@@ -2500,6 +2500,8 @@
     "verbRejected": "rejected",
     "expiredTitle": "Request expired",
     "expiredMessage": "The time to answer has passed.",
+    "cancelledTitle": "Request cancelled",
+    "cancelledMessage": "The request was cancelled at the gate.",
     "done": "Done",
     "back": "Back",
     "reasonPlaceholder": "Reason (optional)",

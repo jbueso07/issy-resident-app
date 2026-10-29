@@ -273,6 +273,13 @@ export default function AccessApprovalScreen() {
         : t('accessRequest.answeredGeneric', 'Esta solicitud ya fue respondida'),
       conflictMessage && !respondedByName ? conflictMessage : null
     );
+  } else if (status === 'cancelled') {
+    body = renderCentered(
+      'ban-outline',
+      neu.amber,
+      t('accessRequest.cancelledTitle', 'Solicitud cancelada'),
+      conflictMessage || t('accessRequest.cancelledMessage', 'La solicitud fue cancelada en la garita.')
+    );
   } else if (status === 'expired') {
     body = renderCentered('time-outline', neu.amber, t('accessRequest.expiredTitle', 'Solicitud vencida'), t('accessRequest.expiredMessage', 'Ya pasó el tiempo para responder.'));
   } else if (request) {

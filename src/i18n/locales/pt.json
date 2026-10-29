@@ -2312,6 +2312,8 @@
     "verbRejected": "recusou",
     "expiredTitle": "Pedido vencido",
     "expiredMessage": "O tempo para responder acabou.",
+    "cancelledTitle": "Solicitação cancelada",
+    "cancelledMessage": "A solicitação foi cancelada na portaria.",
     "done": "Pronto",
     "back": "Voltar",
     "reasonPlaceholder": "Motivo (opcional)",

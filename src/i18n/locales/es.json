@@ -2953,6 +2953,8 @@
     "verbRejected": "rechazó",
     "expiredTitle": "Solicitud vencida",
     "expiredMessage": "Ya pasó el tiempo para responder.",
+    "cancelledTitle": "Solicitud cancelada",
+    "cancelledMessage": "La solicitud fue cancelada en la garita.",
     "done": "Listo",
     "back": "Volver",
     "reasonPlaceholder": "Motivo (opcional)",
