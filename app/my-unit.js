@@ -2,14 +2,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, RefreshControl, Dimensions
+  Alert, ActivityIndicator, RefreshControl, Dimensions, Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
 import { useUserLocation } from '../src/context/UserLocationContext';
-import { getMyOrganizations, switchOrganization } from '../src/services/api';
+import * as Clipboard from 'expo-clipboard';
+import { getMyOrganizations, switchOrganization, getMyHouseCode } from '../src/services/api';
 import { useTranslation } from 'react-i18next';
 import { neu } from '../src/theme/tokens';
 
@@ -43,11 +44,50 @@ export default function MyUnitScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [switching, setSwitching] = useState(null);
+  const [houseCode, setHouseCode] = useState(null); // { code, location_name } solo si la residencial usa códigos
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Recarga al abrir y al cambiar de residencial (desde el carrusel del home o desde aquí)
   useEffect(() => {
     loadOrganizations();
   }, [selectedLocationId]);
+
+  // Código de la casa: se recarga al cambiar de residencial; sin código no se muestra la tarjeta
+  const houseCodeRequestRef = useRef(0);
+  useEffect(() => {
+    const requestId = ++houseCodeRequestRef.current;
+    setHouseCode(null);
+    (async () => {
+      const res = await getMyHouseCode({ locationId: selectedLocationId });
+      if (requestId !== houseCodeRequestRef.current) return;
+      setHouseCode(res.success && res.data?.code ? res.data : null);
+    })();
+  }, [selectedLocationId]);
+
+  const copyHouseCode = async () => {
+    if (!houseCode?.code) return;
+    try {
+      await Clipboard.setStringAsync(houseCode.code);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch (e) {
+      // sin portapapeles no pasa nada: el código sigue a la vista
+    }
+  };
+
+  const shareHouseCode = async () => {
+    if (!houseCode?.code) return;
+    try {
+      await Share.share({
+        message: t('myUnit.houseCodeShareMessage', {
+          location: houseCode.location_name || '',
+          code: houseCode.code,
+        }),
+      });
+    } catch (e) {
+      // el usuario cerró la hoja de compartir
+    }
+  };
 
   // Solo cuenta la respuesta más reciente (al cambiar rápido de residencial)
   const loadRequestIdRef = useRef(0);
@@ -223,6 +263,27 @@ export default function MyUnitScreen() {
               </View>
             )}
 
+            {/* Código de la casa para visitas (solo si la residencial usa códigos) */}
+            {!!houseCode?.code && (
+              <View style={styles.section}>
+                <View style={styles.codeCard}>
+                  <Text style={styles.codeCardTitle}>{t('myUnit.houseCodeTitle')}</Text>
+                  <Text style={styles.codeCardValue} accessibilityLabel={houseCode.code.split('').join(' ')}>{houseCode.code}</Text>
+                  <Text style={styles.codeCardHelp}>{t('myUnit.houseCodeHelp')}</Text>
+                  <View style={styles.codeCardActions}>
+                    <TouchableOpacity style={styles.codeCardBtn} onPress={copyHouseCode}>
+                      <Ionicons name={codeCopied ? 'checkmark' : 'copy-outline'} size={scale(18)} color={COLORS.teal} />
+                      <Text style={styles.codeCardBtnText}>{codeCopied ? t('myUnit.houseCodeCopied') : t('myUnit.houseCodeCopy')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.codeCardBtn, styles.codeCardBtnPrimary]} onPress={shareHouseCode}>
+                      <Ionicons name="share-outline" size={scale(18)} color={COLORS.background} />
+                      <Text style={[styles.codeCardBtnText, { color: COLORS.background }]}>{t('myUnit.houseCodeShare')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* Otras Organizaciones */}
             {organizations.filter(o => !o.is_active && o !== activeOrg).length > 0 && (
               <View style={styles.section}>
@@ -287,6 +348,16 @@ const styles = StyleSheet.create({
   
   section: { padding: scale(16) },
   sectionTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textSecondary, marginBottom: scale(12), textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  // Código de casa
+  codeCard: { backgroundColor: COLORS.card, borderRadius: scale(16), padding: scale(16), borderWidth: 1, borderColor: COLORS.cardBorder, alignItems: 'center' },
+  codeCardTitle: { fontSize: scale(14), fontWeight: '600', color: COLORS.textSecondary },
+  codeCardValue: { fontSize: scale(44), fontWeight: '800', letterSpacing: 8, color: COLORS.teal, marginVertical: scale(10) },
+  codeCardHelp: { fontSize: scale(12), color: COLORS.textMuted, textAlign: 'center' },
+  codeCardActions: { flexDirection: 'row', gap: scale(10), marginTop: scale(14) },
+  codeCardBtn: { flexDirection: 'row', alignItems: 'center', gap: scale(6), paddingHorizontal: scale(14), paddingVertical: scale(10), borderRadius: scale(12), backgroundColor: COLORS.backgroundTertiary },
+  codeCardBtnPrimary: { backgroundColor: COLORS.teal },
+  codeCardBtnText: { fontSize: scale(13), fontWeight: '600', color: COLORS.teal },
 
   // Active Card
   activeCard: { backgroundColor: COLORS.card, borderRadius: scale(16), padding: scale(16), borderWidth: 1, borderColor: COLORS.cardBorder },

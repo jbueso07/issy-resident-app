@@ -26,6 +26,7 @@ import { LocationHeader, LocationPickerModal } from '../../src/components/AdminL
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { neu } from '../../src/theme/tokens';
 import { getResidentApprovalSetting, setResidentApprovalSetting } from '../../src/services/api';
+import HouseIdentificationSection from '../../src/components/admin/HouseIdentificationSection';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -896,6 +897,7 @@ export default function AdminSettings() {
                   icon="enter"
                 />
               )}
+              {residentApproval?.enabled && <HouseIdentificationSection locationId={locationId} />}
             </View>
 
             <View style={styles.section}>

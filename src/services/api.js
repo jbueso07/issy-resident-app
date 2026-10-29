@@ -3100,3 +3100,44 @@ export const setResidentApprovalSetting = async (locationId, enabled) => {
     return accessRequestError(error);
   }
 };
+
+// ── Identificación de casas para el guardia (admin) ──
+const houseAdminCall = async (path, method = 'GET', body) => {
+  try {
+    const data = await authFetch(path, { method, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
+
+// → { mode: 'unit'|'code'|'name', show_resident_name, code_length, suggested_length }
+export const getHouseIdentification = (locationId) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-identification`);
+
+export const setHouseIdentification = (locationId, changes) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-identification`, 'PUT', changes);
+
+// → { code_length, suggested_length, houses: [{ house_key, unit, code, members_count }] }
+export const getHouseCodes = (locationId) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-codes`);
+
+export const setHouseCode = (locationId, houseKey, code) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-codes/${encodeURIComponent(houseKey)}`, 'PUT', { code });
+
+export const regenerateHouseCode = (locationId, houseKey) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-codes/${encodeURIComponent(houseKey)}/regenerate`, 'POST', {});
+
+export const regenerateAllHouseCodes = (locationId, length) =>
+  houseAdminCall(`/admin/settings/location/${locationId}/house-codes/regenerate-all`, 'POST', { length });
+
+// Residente: → { mode, code, unit, location_name } (code es null si el modo no es 'code')
+export const getMyHouseCode = async ({ locationId } = {}) => {
+  try {
+    const headers = locationId ? { 'X-Location-Id': locationId } : {};
+    const data = await authFetch('/units/my-house-code', { method: 'GET', headers });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
