@@ -20,7 +20,7 @@ import {
   Linking,
   LayoutAnimation,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Sharing from 'expo-sharing';
@@ -37,6 +37,7 @@ import { UserLocationSelector, UserLocationPickerModal } from '../../src/compone
 import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode, getRecentVisitors } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
 import useQrBrightness from '../../src/hooks/useQrBrightness';
+import VisitPassCard from '../../src/components/VisitPassCard';
 import { saveImageWithFallback } from '../../src/utils/saveImageToGallery';
 import * as Contacts from 'expo-contacts';
 import AccessTabs from '../../src/components/AccessTabs';
@@ -187,6 +188,14 @@ const formatTimeForBackend = (date) => {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 };
+
+// Barra superior del modal "Ver QR": en el flujo normal, debajo de la barra de estado / isla.
+// Dentro de un Modal los insets del provider de la app no llegan: este componente vive bajo el SafeAreaProvider del modal.
+function QRTopBar({ children }) {
+  const insets = useSafeAreaInsets();
+  const top = Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24) + 8;
+  return <View style={[styles.qrTopBarSafe, { paddingTop: top }]}>{children}</View>;
+}
 
 export default function Visits() {
   const font = useHomeFont();
@@ -2080,220 +2089,26 @@ return (
       visible={showQRModal}
       animationType="fade"
       transparent={true}
+      statusBarTranslucent
       onRequestClose={() => { setShowQRModal(false); setSelectedQR(null); }}
     >
+      <SafeAreaProvider>
       <View style={styles.qrModalOverlay}>
-        <ScrollView
-          contentContainerStyle={styles.qrModalScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {selectedQR && (
-            <>
-              {/* QR Card - Diseño glassmorphism claro para compartir */}
-              <View
-                ref={cardRef}
-                style={styles.shareableCard}
-                collapsable={false}
-              >
-                {/* Header */}
-                <View style={styles.shareableHeader}>
-                  <Text style={[styles.shareableVisitorName, font(600)]} maxFontSizeMultiplier={1.2}>{selectedQR.visitor_name}</Text>
-                  <Text style={[styles.shareableCommunity, font(600)]} maxFontSizeMultiplier={1.2}>{communityName}</Text>
-                  <Text style={[styles.shareableAuthorized, font(500)]} maxFontSizeMultiplier={1.2}>
-                    {t('visits.authorizedBy')}: <Text style={[styles.shareableHostName, font(600)]}>{hostName}</Text>
-                  </Text>
-                </View>
-
-                {/* QR Type Pills */}
-                <View style={styles.qrTypePills}>
-                  {['single', 'temporary', 'frequent'].map((type) => (
-                    <View
-                      key={type}
-                      style={[
-                        styles.qrTypePill,
-                        selectedQR.qr_type === type && styles.qrTypePillActive
-                      ]}
-                    >
-                      <Text style={[
-                        styles.qrTypePillText,
-                        selectedQR.qr_type === type && styles.qrTypePillTextActive
-                      , font(600)]} maxFontSizeMultiplier={1.2}>
-                        {getQRTypeLabel(type)}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* QR Code Card */}
-                <View style={styles.qrCodeCard}>
-                  <View style={styles.qrCodeWrapper}>
-                    <QRCode
-                      value={selectedQR.qr_code || selectedQR.id}
-                      size={220}
-                      backgroundColor="white"
-                      color="#1A3D4D"
-                      getRef={(ref) => (qrRef.current = ref)}
-                    />
-                  </View>
-
-                  {/* Manual Code */}
-                  <View style={styles.manualCodeSection}>
-                    <Text style={[styles.manualCodeLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.manualCode')}</Text>
-                    <Text style={[styles.manualCode, font(600)]} maxFontSizeMultiplier={1.2}>
-                      {/* Completo: la garita valida qr_code exacto (.eq), un código recortado no existe */}
-                      {(selectedQR.qr_code || selectedQR.id).toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={[styles.showGuardText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.showToGuard')}</Text>
-                </View>
-
-                {/* Info Cards */}
-                {selectedQR.qr_type === 'single' ? (
-                  // QR Único: 3 cards
-                  <View style={styles.infoCardsRow}>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="time-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
-                    </View>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="home-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
-                    </View>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
-                    </View>
-                  </View>
-                ) : selectedQR.qr_type === 'event' ? (
-                  // Evento: horario real de ingreso y SIN fila de dias permitidos
-                  // (no aplica a un evento de un dia). Rotulo "Ingreso" y no
-                  // "Horario": valid_until es la hora limite de ENTRADA, no el fin
-                  // del evento (migrations/003: end_time = hora limite de ingreso).
-                  <View style={styles.infoCardsRow}>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="time-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.events.entryLabel', 'Ingreso')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getEventEntryWindow(selectedQR)}</Text>
-                    </View>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="home-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
-                    </View>
-                    <View style={styles.infoCard}>
-                      <View style={styles.infoCardIcon}>
-                        <Ionicons name="calendar-outline" size={16} color={neu.onAccent} />
-                      </View>
-                      <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.date')}</Text>
-                      <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{formatDateShort(selectedQR.valid_from)}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  // QR Temporal/Frecuente: Días + 3 cards
-                  <>
-                    {/* Fila de días */}
-                    <View style={styles.daysRowCard}>
-                      <Text style={[styles.daysRowLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.accessDaysLabel')}</Text>
-                      <View style={styles.daysRowPills}>
-                        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => {
-                          const activeDays = getActiveDays(selectedQR);
-                          return (
-                            <View
-                              key={index}
-                              style={[
-                                styles.dayPill,
-                                activeDays[index] && styles.dayPillActive
-                              ]}
-                            >
-                              <Text style={[
-                                styles.dayPillText,
-                                activeDays[index] && styles.dayPillTextActive
-                              ]} maxFontSizeMultiplier={1.2}>{day}</Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    {/* 3 Info Cards */}
-                    <View style={styles.infoCardsRow}>
-                      <View style={styles.infoCard}>
-                        <View style={styles.infoCardIcon}>
-                          <Ionicons name="time-outline" size={16} color={neu.onAccent} />
-                        </View>
-                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.schedule')}</Text>
-                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{getTimeText(selectedQR)}</Text>
-                      </View>
-                      <View style={styles.infoCard}>
-                        <View style={styles.infoCardIcon}>
-                          <Ionicons name="home-outline" size={16} color={neu.onAccent} />
-                        </View>
-                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.house')}</Text>
-                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>{houseNumber}</Text>
-                      </View>
-                      <View style={styles.infoCard}>
-                        <View style={styles.infoCardIcon}>
-                          <Ionicons name="checkmark-circle-outline" size={16} color={neu.onAccent} />
-                        </View>
-                        <Text style={[styles.infoCardLabel, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.valid')}</Text>
-                        <Text style={[styles.infoCardValue, font(600)]} maxFontSizeMultiplier={1.2}>
-                          {selectedQR.qr_type === 'frequent'
-                            ? t('visits.always')
-                            : `${formatDateShort(selectedQR.valid_from)} - ${formatDateShort(selectedQR.valid_until)}`
-                          }
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-
-                {/* Footer - Logo ISSY */}
-                <View style={styles.shareableFooter}>
-                  <Text style={[styles.poweredByText, font(500)]} maxFontSizeMultiplier={1.2}>Powered by</Text>
-                  <Image
-                    source={IssyLogoNegro}
-                    style={styles.issyLogoImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={[styles.websiteText, font(500)]} maxFontSizeMultiplier={1.2}>www.joinissy.com</Text>
-                </View>
-              </View>
-
-              {/* Share Button */}
-              <PressableScale variant="neu"
-                neuFill={neu.teal}
-                containerStyle={sharingImage && styles.buttonDisabled}
-                style={styles.shareButtonPrimary}
-                onPress={() => handleShareQRImage(selectedQR)}
-                disabled={sharingImage}
-              >
-                {sharingImage ? (
-                  <ActivityIndicator color={neu.onAccent} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="share-outline" size={20} color={neu.onAccent} style={{ marginRight: scale(8) }} />
-                    <Text style={[styles.shareButtonPrimaryText, font(600)]} maxFontSizeMultiplier={1.2}>{t('visits.shareQR')}</Text>
-                  </>
-                )}
-              </PressableScale>
-
-              {/* Guardar en galería */}
+        {/* Barra fija arriba (fuera de lo que se captura) */}
+        <QRTopBar>
+          <View style={styles.qrTopBar}>
+            <PressableScale variant="neu" neuSmall
+              style={styles.qrTopClose}
+              onPress={() => { setShowQRModal(false); setSelectedQR(null); }}
+              accessibilityRole="button"
+              accessibilityLabel={t('visits.close')}
+            >
+              <Ionicons name="close" size={24} color={neu.text} />
+            </PressableScale>
+            <View style={styles.qrTopActions}>
               <PressableScale variant="neu" neuSmall
                 containerStyle={savingGallery && styles.buttonDisabled}
-                style={styles.saveGalleryButton}
+                style={styles.qrTopButton}
                 onPress={handleSaveQRImage}
                 disabled={savingGallery || sharingImage}
                 accessibilityLabel={t('deviceTools.gallery.saveButton')}
@@ -2302,23 +2117,58 @@ return (
                   <ActivityIndicator color={neu.teal} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="download-outline" size={20} color={neu.teal} style={{ marginRight: scale(8) }} />
-                    <Text style={[styles.saveGalleryButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('deviceTools.gallery.saveButton')}</Text>
+                    <Ionicons name="download-outline" size={18} color={neu.teal} />
+                    <Text style={[styles.qrTopButtonText, font(600)]} maxFontSizeMultiplier={1.2}>{t('deviceTools.gallery.saveShort')}</Text>
                   </>
                 )}
               </PressableScale>
-
-              {/* Close Button */}
-              <PressableScale variant="neu"
-                style={styles.closeModalButton}
-                onPress={() => { setShowQRModal(false); setSelectedQR(null); }}
+              <PressableScale variant="neu" neuSmall
+                neuFill={neu.teal}
+                containerStyle={sharingImage && styles.buttonDisabled}
+                style={styles.qrTopButton}
+                onPress={() => handleShareQRImage(selectedQR)}
+                disabled={sharingImage || savingGallery}
+                accessibilityLabel={t('visits.shareQR')}
               >
-                <Text style={[styles.closeModalButtonText, font(500)]} maxFontSizeMultiplier={1.2}>{t('visits.close')}</Text>
+                {sharingImage ? (
+                  <ActivityIndicator color={neu.onAccent} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="share-outline" size={18} color={neu.onAccent} />
+                    <Text style={[styles.qrTopButtonText, { color: neu.onAccent }, font(600)]} maxFontSizeMultiplier={1.2}>{t('deviceTools.gallery.share')}</Text>
+                  </>
+                )}
               </PressableScale>
+            </View>
+          </View>
+        </QRTopBar>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.qrModalScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {selectedQR && (
+            <>
+              {/* Tarjeta del pase: la misma vista se captura para compartir/guardar */}
+              <VisitPassCard
+                qr={selectedQR}
+                cardRef={cardRef}
+                qrRefCallback={(ref) => (qrRef.current = ref)}
+                communityName={communityName}
+                hostName={hostName}
+                houseNumber={houseNumber}
+                typeLabel={selectedQR.qr_type === 'event' ? t('home2.newQR.types.event', 'Evento') : getQRTypeLabel(selectedQR.qr_type)}
+                timeText={getTimeText(selectedQR)}
+                entryWindow={getEventEntryWindow(selectedQR)}
+                activeDays={getActiveDays(selectedQR)}
+                t={t}
+                language={language}
+              />
             </>
           )}
         </ScrollView>
       </View>
+      </SafeAreaProvider>
       </Modal>
     )}
     {/* ============================================ */}
@@ -3013,8 +2863,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(16),
-    paddingTop: scale(60),
+    paddingTop: scale(12),
     paddingBottom: scale(40),
+  },
+  qrTopBarSafe: {
+    zIndex: 10,
+    elevation: 10,
+  },
+  qrTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingBottom: scale(4),
+  },
+  qrTopClose: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrTopActions: {
+    flexDirection: 'row',
+    gap: scale(10),
+  },
+  qrTopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(6),
+    height: 44,
+    minWidth: 44,
+    paddingHorizontal: scale(14),
+    borderRadius: 22,
+  },
+  qrTopButtonText: {
+    color: neu.text,
+    fontSize: fs(14),
+    fontWeight: '600',
   },
 
   // ============ SHAREABLE CARD - Glassmorphism claro ============

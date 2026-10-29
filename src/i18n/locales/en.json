@@ -56,7 +56,8 @@
       "errorMessage": "We couldn't save the image to your gallery. You can share it now.",
       "share": "Share",
       "notNow": "Not now",
-      "saveButton": "Save to gallery"
+      "saveButton": "Save to gallery",
+      "saveShort": "Save"
     },
     "contacts": {
       "button": "Contacts",
@@ -244,6 +245,14 @@
     "announcements": "Announcements"
   },
   "visits": {
+    "pass": {
+      "arrival": "Arrival time",
+      "from": "From",
+      "until": "Until",
+      "validFor": "Valid for",
+      "oneEntry": "Single entry",
+      "manualHint": "Manual code · show it at the gate"
+    },
     "suggestions": {
       "title": "Previous visitors",
       "remove": "Remove from suggestions",
@@ -554,6 +563,8 @@
     "new": "New",
     "readMore": "Read more",
     "postedBy": "Posted by",
+    "kind": "Announcement",
+    "viewFull": "View full",
     "timeAgo": {
       "now": "Just now",
       "minutesAgo": "{{count}} min ago",

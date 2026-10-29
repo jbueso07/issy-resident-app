@@ -62,7 +62,8 @@
       "errorMessage": "No se pudo guardar la imagen en tu galería. Puedes compartirla ahora.",
       "share": "Compartir",
       "notNow": "Ahora no",
-      "saveButton": "Guardar en galería"
+      "saveButton": "Guardar en galería",
+      "saveShort": "Guardar"
     },
     "contacts": {
       "button": "Contactos",
@@ -258,6 +259,14 @@
     }
   },
   "visits": {
+    "pass": {
+      "arrival": "Hora de llegada",
+      "from": "Desde",
+      "until": "Hasta",
+      "validFor": "Válido para",
+      "oneEntry": "Una sola entrada",
+      "manualHint": "Código manual · muéstralo en la garita"
+    },
     "suggestions": {
       "title": "Visitas anteriores",
       "remove": "Quitar de sugerencias",
@@ -620,6 +629,8 @@
     "new": "Nuevo",
     "readMore": "Leer más",
     "postedBy": "Publicado por",
+    "kind": "Anuncio",
+    "viewFull": "Ver completa",
     "timeAgo": {
       "now": "Ahora mismo",
       "minutesAgo": "Hace {{count}} min",

@@ -45,7 +45,8 @@
       "errorMessage": "Não foi possível salvar a imagem na sua galeria. Você pode compartilhá-la agora.",
       "share": "Compartilhar",
       "notNow": "Agora não",
-      "saveButton": "Salvar na galeria"
+      "saveButton": "Salvar na galeria",
+      "saveShort": "Salvar"
     },
     "contacts": {
       "button": "Contatos",
@@ -233,6 +234,14 @@
     "announcements": "Anúncios"
   },
   "visits": {
+    "pass": {
+      "arrival": "Hora de chegada",
+      "from": "De",
+      "until": "Até",
+      "validFor": "Válido para",
+      "oneEntry": "Uma única entrada",
+      "manualHint": "Código manual · mostre na portaria"
+    },
     "suggestions": {
       "title": "Visitantes anteriores",
       "remove": "Remover das sugestões",
@@ -437,6 +446,8 @@
     "new": "Novo",
     "readMore": "Ler mais",
     "postedBy": "Publicado por",
+    "kind": "Anúncio",
+    "viewFull": "Ver completa",
     "timeAgo": {
       "now": "Agora mesmo",
       "minutesAgo": "{{count}} min atrás",
