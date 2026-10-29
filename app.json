@@ -16,6 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.issy.resident",
       "usesAppleSignIn": true,
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      },
       "associatedDomains": [
         "applinks:app.joinissy.com",
         "applinks:joinissy.com"
@@ -91,7 +94,10 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#AAFF00"
+          "color": "#AAFF00",
+          "sounds": [
+            "./assets/sounds/solicitud.wav"
+          ]
         }
       ],
       [

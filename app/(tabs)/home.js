@@ -34,6 +34,7 @@ import HomeSegments from '../../src/components/home/HomeSegments';
 import RecentActivity from '../../src/components/home/RecentActivity';
 import AllFunctions, { useHomeIconSize } from '../../src/components/home/AllFunctions';
 import AdminPanel from '../../src/components/home/AdminPanel';
+import AccessRequestBanner from '../../src/components/home/AccessRequestBanner';
 import { neu } from '../../src/theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -682,6 +683,9 @@ export default function Home() {
           switching={switchingLocation}
           onOpenLocationList={() => setShowLocationModal(true)}
         />
+
+        {/* Solicitudes de ingreso pendientes de mi casa (visitante sin QR) */}
+        <AccessRequestBanner locationId={currentLocationId} />
 
         {/* Banner de Emergencia Activa */}
         {activePanic && (

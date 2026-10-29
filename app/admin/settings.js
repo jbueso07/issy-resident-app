@@ -25,6 +25,7 @@ import { useAdminLocation } from '../../src/context/AdminLocationContext';
 import { LocationHeader, LocationPickerModal } from '../../src/components/AdminLocationPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { neu } from '../../src/theme/tokens';
+import { getResidentApprovalSetting, setResidentApprovalSetting } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -106,6 +107,10 @@ export default function AdminSettings() {
     notes: '',
   });
 
+  // "Solicitudes de ingreso sin QR" (locations.require_resident_approval): se guarda al instante, aparte de "Guardar"
+  const [residentApproval, setResidentApproval] = useState(null); // { enabled, guardAllows }
+  const [savingResidentApproval, setSavingResidentApproval] = useState(false);
+
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
   const locationId = selectedLocationId || profile?.location_id || user?.location_id;
@@ -118,6 +123,41 @@ export default function AdminSettings() {
     }
     loadData();
   }, [locationId]);
+
+  const loadResidentApproval = async () => {
+    if (!locationId) return;
+    const res = await getResidentApprovalSetting(locationId);
+    if (res.success) {
+      setResidentApproval({
+        enabled: res.data.require_resident_approval === true,
+        guardAllows: res.data.guard_app_allows !== false,
+      });
+    } else {
+      setResidentApproval(null);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && locationId) loadResidentApproval();
+  }, [locationId]);
+
+  const handleResidentApprovalChange = async (enabled) => {
+    if (savingResidentApproval || !residentApproval) return;
+    const previous = residentApproval;
+    setResidentApproval({ ...previous, enabled });
+    setSavingResidentApproval(true);
+    const res = await setResidentApprovalSetting(locationId, enabled);
+    setSavingResidentApproval(false);
+    if (res.success) {
+      setResidentApproval({
+        enabled: res.data.require_resident_approval === true,
+        guardAllows: res.data.guard_app_allows !== false,
+      });
+    } else {
+      setResidentApproval(previous);
+      Alert.alert(t('common.error'), t('admin.settings.errors.saveFailed'));
+    }
+  };
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -842,6 +882,20 @@ export default function AdminSettings() {
                 onChange={(v) => handleLocationSettingChange('require_visitor_id', v)}
                 icon="id-card"
               />
+              {residentApproval && (
+                <SettingToggle
+                  label={t('admin.settings.location.residentApproval')}
+                  description={
+                    t('admin.settings.location.residentApprovalDesc') +
+                    (residentApproval.enabled && !residentApproval.guardAllows
+                      ? '\n\n⚠️ ' + t('admin.settings.location.residentApprovalGuardOff')
+                      : '')
+                  }
+                  value={residentApproval.enabled}
+                  onChange={handleResidentApprovalChange}
+                  icon="enter"
+                />
+              )}
             </View>
 
             <View style={styles.section}>

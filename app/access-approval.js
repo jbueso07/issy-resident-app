@@ -1,700 +1,527 @@
 // app/access-approval.js
-// ISSY - Access Request Approval Screen (Resident)
-// Shows visitor info + swipe-to-approve/reject
+// ISSY - Solicitud de ingreso (Requerir ingreso v2): el residente ve las fotos y aprueba o rechaza.
+// Llega por: tap en el push (app abierta, en segundo plano o cerrada), botones Aprobar/Rechazar de la
+// notificación (action preseleccionada: igual hay que confirmar aquí), o la tarjeta del home.
+// Cualquier miembro activo de la casa puede responder; el primero gana (409 para los demás).
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  ScrollView,
   Image,
   TextInput,
+  Modal,
   ActivityIndicator,
-  Dimensions,
-  Animated,
-  PanResponder,
-  Alert,
   Vibration,
   Platform,
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../src/context/AuthContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { neu } from '../src/theme/tokens';
+import { useTranslation } from '../src/hooks/useTranslation';
+import PressableScale from '../src/components/home/PressableScale';
+import { neu, neuSurface, fs, scale, MAX_FONT_SCALE } from '../src/theme/tokens';
+import { useHomeFont } from '../src/theme/homeFont';
+import { getAccessRequest, respondAccessRequest } from '../src/services/api';
+import { subscribeAccessRequestEvents } from '../src/hooks/useNotifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = (size) => (SCREEN_WIDTH / 375) * size;
-const API_URL = 'https://api.joinissy.com/api';
+const DEFAULT_WINDOW_SECONDS = 300;
 
-const COLORS = {
-  bgPrimary: neu.bg,
-  bgSecondary: neu.sunken,
-  bgCard: neu.raised,
-  lime: neu.teal,
-  cyan: neu.teal,
-  teal: neu.teal,
-  success: neu.teal,
-  danger: neu.coral,
-  warning: neu.amber,
-  purple: neu.lilac,
-  textPrimary: neu.text,
-  textSecondary: neu.textLabel,
-  textMuted: neu.textSoft,
-  border: neu.border,
-};
+const pad = (n) => String(n).padStart(2, '0');
+const formatCountdown = (seconds) => `${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}`;
+const topInset = (insets) => Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24);
 
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
+// Visor a pantalla completa de las fotos (X siempre visible, debajo de la barra de estado)
+function PhotoViewer({ photos, startIndex, onClose, closeLabel }) {
+  return (
+    <Modal visible animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <SafeAreaProvider>
+        <PhotoViewerContent photos={photos} startIndex={startIndex} onClose={onClose} closeLabel={closeLabel} />
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
+function PhotoViewerContent({ photos, startIndex, onClose, closeLabel }) {
+  const insets = useSafeAreaInsets();
+  const font = useHomeFont();
+  const [index, setIndex] = useState(startIndex);
+  const [size, setSize] = useState({ width: SCREEN_WIDTH, height: Dimensions.get('window').height });
+
+  return (
+    <View style={styles.viewerRoot} onLayout={(e) => setSize(e.nativeEvent.layout)}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        contentOffset={{ x: startIndex * size.width, y: 0 }}
+        onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / size.width))}
+      >
+        {photos.map((p) => (
+          <View key={p.key} style={{ width: size.width, height: size.height, justifyContent: 'center' }}>
+            <Image source={{ uri: p.uri }} style={styles.viewerImage} resizeMode="contain" />
+          </View>
+        ))}
+      </ScrollView>
+
+      <View style={[styles.viewerCaption, { bottom: Math.max(insets.bottom, 16) + 8 }]} pointerEvents="none">
+        <Text style={[styles.viewerCaptionText, font(600)]} allowFontScaling={false}>
+          {photos[index]?.label}
+          {photos.length > 1 ? `  ·  ${index + 1}/${photos.length}` : ''}
+        </Text>
+      </View>
+
+      {/* Posición en containerStyle (capa exterior); se dibuja al final para quedar por encima */}
+      <PressableScale
+        variant="neu"
+        neuSurface="none"
+        containerStyle={[styles.viewerCloseWrap, { top: topInset(insets) + 8 }]}
+        style={styles.viewerClose}
+        onPress={onClose}
+        accessibilityLabel={closeLabel}
+      >
+        <Ionicons name="close" size={24} color="#FFFFFF" />
+      </PressableScale>
+    </View>
+  );
+}
 
 export default function AccessApprovalScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const font = useHomeFont();
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const requestId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const preselected = params.action === 'approved' || params.action === 'rejected' ? params.action : null;
 
-  const [requestData, setRequestData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState('loading'); // loading | ready | error
+  const [errorKind, setErrorKind] = useState('generic'); // offline | forbidden | notFound | generic
+  const [request, setRequest] = useState(null);
+  const [now, setNow] = useState(Date.now());
   const [responding, setResponding] = useState(false);
-  const [rejected, setRejected] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [responded, setResponded] = useState(false);
-  const [responseAction, setResponseAction] = useState(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [outcome, setOutcome] = useState(null); // approved | rejected (respuesta propia)
+  const [rejecting, setRejecting] = useState(preselected === 'rejected');
+  const [reason, setReason] = useState('');
+  const [conflictMessage, setConflictMessage] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(null);
 
-  // Swipe animation
-  const pan = useRef(new Animated.ValueXY()).current;
-  const swipeDirection = useRef(null);
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
+  }, [router]);
 
-  // Timer
-  const timerRef = useRef(null);
+  const load = useCallback(
+    async (silent = false) => {
+      if (!requestId) {
+        setErrorKind('notFound');
+        setPhase('error');
+        return;
+      }
+      if (!silent) setPhase('loading');
+      const res = await getAccessRequest(requestId);
+      if (res.success) {
+        setRequest(res.data);
+        setPhase('ready');
+        return;
+      }
+      if (silent) return; // una recarga silenciosa que falla no tira la pantalla ya cargada
+      setErrorKind(res.offline ? 'offline' : res.status === 403 ? 'forbidden' : res.status === 404 ? 'notFound' : 'generic');
+      setPhase('error');
+    },
+    [requestId]
+  );
 
-  // Fetch request data
   useEffect(() => {
-    fetchRequestData();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    load();
+  }, [load]);
+
+  // Si otro miembro de la casa responde mientras esto está abierto
+  useEffect(
+    () =>
+      subscribeAccessRequestEvents((data) => {
+        const id = data?.request_id || data?.access_request_id;
+        if (data?.type === 'access_request_resolved' && id === requestId) load(true);
+      }),
+    [requestId, load]
+  );
+
+  // Reloj del contador
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const fetchRequestData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        Alert.alert('Error', 'No estás autenticado');
-        router.back();
-        return;
-      }
+  const expiresAtMs = request?.expires_at ? new Date(request.expires_at).getTime() : 0;
+  const createdAtMs = request?.created_at ? new Date(request.created_at).getTime() : 0;
+  const totalSeconds = expiresAtMs && createdAtMs ? Math.max(60, Math.round((expiresAtMs - createdAtMs) / 1000)) : DEFAULT_WINDOW_SECONDS;
+  const remaining = expiresAtMs ? Math.max(0, Math.ceil((expiresAtMs - now) / 1000)) : 0;
+  const status = request ? (request.status === 'pending' && remaining <= 0 ? 'expired' : request.status) : null;
 
-      const requestId = params.id;
-      if (!requestId) {
-        Alert.alert('Error', 'ID de solicitud no válido');
-        router.back();
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/access-requests/${requestId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await response.json();
-
-      if (!result.success || !result.data) {
-        Alert.alert('Error', result.message || 'Solicitud no encontrada');
-        router.back();
-        return;
-      }
-
-      setRequestData(result.data);
-
-      // Check if already responded
-      if (result.data.status !== 'pending') {
-        setResponded(true);
-        setResponseAction(result.data.status);
-      }
-
-      // Start countdown timer
-      if (result.data.expires_at && result.data.status === 'pending') {
-        const updateTimer = () => {
-          const now = Date.now();
-          const expires = new Date(result.data.expires_at).getTime();
-          const remaining = Math.max(0, Math.ceil((expires - now) / 1000));
-          setRemainingSeconds(remaining);
-          if (remaining <= 0) {
-            clearInterval(timerRef.current);
-            setResponded(true);
-            setResponseAction('expired');
-          }
-        };
-        updateTimer();
-        timerRef.current = setInterval(updateTimer, 1000);
-      }
-    } catch (err) {
-      console.error('Error fetching access request:', err);
-      Alert.alert('Error', 'No se pudo cargar la solicitud');
-    } finally {
-      setLoading(false);
+  const photos = useMemo(() => {
+    if (!request) return [];
+    const list = [];
+    (request.visitor_photos || []).forEach((uri, i) =>
+      list.push({ key: `v${i}`, uri, label: t('accessRequest.photoVisitor', 'Visitante') })
+    );
+    (request.id_photo_urls || []).forEach((uri, i) =>
+      list.push({ key: `i${i}`, uri, label: t('accessRequest.photoId', 'Cédula') })
+    );
+    if (request.plate_photo_url) {
+      list.push({ key: 'p0', uri: request.plate_photo_url, label: t('accessRequest.photoPlate', 'Placa') });
     }
-  };
+    return list;
+  }, [request, t]);
 
-  // Pan responder for swipe-to-approve
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 10 && !responded && !responding,
-      onPanResponderMove: (_, gesture) => {
-        pan.setValue({ x: gesture.dx, y: 0 });
-        swipeDirection.current = gesture.dx > 0 ? 'right' : 'left';
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
-          // Swiped right → Approve
-          Animated.spring(pan, {
-            toValue: { x: SCREEN_WIDTH, y: 0 },
-            useNativeDriver: true,
-          }).start(() => handleRespond('approved'));
-        } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          // Swiped left → Show rejection form
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
-          }).start();
-          setRejected(true);
-        } else {
-          // Snap back
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  const handleRespond = async (action) => {
-    if (responding || responded) return;
+  const submit = async (action) => {
+    if (responding) return;
     setResponding(true);
+    const res = await respondAccessRequest(requestId, action, reason);
+    setResponding(false);
 
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const body = { action };
-      if (action === 'rejected' && rejectionReason.trim()) {
-        body.rejection_reason = rejectionReason.trim();
-      }
-
-      const response = await fetch(`${API_URL}/access-requests/${params.id}/respond`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setResponded(true);
-        setResponseAction(action);
-        Vibration.vibrate(action === 'approved' ? [0, 150, 50, 150] : 300);
-        if (timerRef.current) clearInterval(timerRef.current);
-      } else {
-        Alert.alert('Error', result.message || 'No se pudo procesar la respuesta');
-        // Reset swipe
-        Animated.spring(pan, {
-          toValue: { x: 0, y: 0 },
-          useNativeDriver: true,
-        }).start();
-      }
-    } catch (err) {
-      console.error('Error responding to request:', err);
-      Alert.alert('Error', 'Error de conexión');
-      Animated.spring(pan, {
-        toValue: { x: 0, y: 0 },
-        useNativeDriver: true,
-      }).start();
-    } finally {
-      setResponding(false);
+    if (res.success) {
+      Vibration.vibrate(action === 'approved' ? [0, 150, 50, 150] : 300);
+      setOutcome(action);
+      return;
     }
+    if (res.status === 409) {
+      // Otro miembro respondió primero, o venció
+      setConflictMessage(res.error || null);
+      setRejecting(false);
+      load(true);
+      return;
+    }
+    if (res.status === 403) {
+      setErrorKind('forbidden');
+      setPhase('error');
+      return;
+    }
+    Alert.alert(
+      t('common.error'),
+      res.offline ? t('accessRequest.offline', 'Sin conexión. Revisa tu internet e intenta de nuevo.') : res.error || t('accessRequest.respondError', 'No se pudo enviar tu respuesta.')
+    );
   };
 
-  // Derive swipe background color
-  const swipeBgColor = pan.x.interpolate({
-    inputRange: [-SCREEN_WIDTH * 0.5, 0, SCREEN_WIDTH * 0.5],
-    outputRange: [neu.coral + '26', 'transparent', neu.teal + '26'],
-    extrapolate: 'clamp',
-  });
+  // ---------- Vistas de estado ----------
+  const renderCentered = (iconName, iconColor, title, message, extra) => (
+    <View style={styles.centered}>
+      <View style={[styles.stateIcon, neuSurface.sunken]}>
+        <Ionicons name={iconName} size={scale(44)} color={iconColor} />
+      </View>
+      <Text style={[styles.stateTitle, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{title}</Text>
+      {!!message && (
+        <Text style={[styles.stateMessage, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{message}</Text>
+      )}
+      {extra}
+      <PressableScale variant="neu" style={styles.doneButton} onPress={goBack}>
+        <Text style={[styles.doneButtonText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {t('accessRequest.done', 'Listo')}
+        </Text>
+      </PressableScale>
+    </View>
+  );
 
-  const swipeOpacity = pan.x.interpolate({
-    inputRange: [-SCREEN_WIDTH * 0.3, 0, SCREEN_WIDTH * 0.3],
-    outputRange: [0.8, 0, 0.8],
-    extrapolate: 'clamp',
-  });
+  const respondedByName = request?.responded_by?.name;
+  const respondedVerb =
+    status === 'approved' ? t('accessRequest.verbApproved', 'aprobó') : t('accessRequest.verbRejected', 'rechazó');
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={COLORS.purple} size="large" style={{ flex: 1 }} />
-      </SafeAreaView>
+  let body;
+  if (phase === 'loading') {
+    body = (
+      <View style={styles.centered}>
+        <ActivityIndicator color={neu.teal} size="large" />
+      </View>
+    );
+  } else if (phase === 'error') {
+    const map = {
+      forbidden: ['lock-closed-outline', t('accessRequest.notYoursTitle', 'Esta solicitud no es de tu casa'), t('accessRequest.notYoursMessage', 'Solo los miembros de la casa pueden verla y responderla.')],
+      notFound: ['help-circle-outline', t('accessRequest.notFoundTitle', 'Solicitud no encontrada'), t('accessRequest.notFoundMessage', 'Puede que ya no exista.')],
+      offline: ['cloud-offline-outline', t('accessRequest.offlineTitle', 'Sin conexión'), t('accessRequest.offline', 'Sin conexión. Revisa tu internet e intenta de nuevo.')],
+      generic: ['alert-circle-outline', t('accessRequest.loadErrorTitle', 'No se pudo cargar'), t('accessRequest.loadError', 'Intenta de nuevo en un momento.')],
+    };
+    const [icon, title, message] = map[errorKind] || map.generic;
+    body = renderCentered(
+      icon,
+      errorKind === 'forbidden' ? neu.coral : neu.amber,
+      title,
+      message,
+      errorKind === 'offline' || errorKind === 'generic' ? (
+        <PressableScale variant="neu" neuFill={neu.teal} style={styles.retryButton} onPress={() => load()}>
+          <Text style={[styles.retryText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {t('accessRequest.retry', 'Reintentar')}
+          </Text>
+        </PressableScale>
+      ) : null
+    );
+  } else if (outcome) {
+    body =
+      outcome === 'approved'
+        ? renderCentered('checkmark-circle', neu.teal, t('accessRequest.approvedTitle', 'Acceso aprobado'), t('accessRequest.approvedMessage', 'El guardia fue notificado para permitir el ingreso.'))
+        : renderCentered('close-circle', neu.coral, t('accessRequest.rejectedTitle', 'Acceso rechazado'), t('accessRequest.rejectedMessage', 'El guardia fue notificado.'));
+  } else if (status === 'approved' || status === 'rejected') {
+    body = renderCentered(
+      status === 'approved' ? 'checkmark-circle-outline' : 'close-circle-outline',
+      status === 'approved' ? neu.teal : neu.coral,
+      respondedByName
+        ? t('accessRequest.answeredBy', { name: respondedByName, action: respondedVerb, defaultValue: 'Ya respondió {{name}}: {{action}}' })
+        : t('accessRequest.answeredGeneric', 'Esta solicitud ya fue respondida'),
+      conflictMessage && !respondedByName ? conflictMessage : null
+    );
+  } else if (status === 'expired') {
+    body = renderCentered('time-outline', neu.amber, t('accessRequest.expiredTitle', 'Solicitud vencida'), t('accessRequest.expiredMessage', 'Ya pasó el tiempo para responder.'));
+  } else if (request) {
+    const urgent = remaining < 60;
+    const progress = Math.max(0, Math.min(1, remaining / totalSeconds));
+    const time = request.created_at
+      ? new Date(request.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const gate = request.gate_name || request.gate?.name;
+
+    body = (
+      <>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={[styles.metaLine, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {[gate, time].filter(Boolean).join(' · ')}
+          </Text>
+
+          {/* Contador */}
+          <View style={[styles.countdownCard, neuSurface.sunken]}>
+            <Text style={[styles.countdownLabel, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {t('accessRequest.timeLeft', 'Tiempo restante')}
+            </Text>
+            <Text
+              style={[styles.countdownValue, font(700), { color: urgent ? neu.coral : neu.teal }]}
+              maxFontSizeMultiplier={1.2}
+              accessibilityLabel={formatCountdown(remaining)}
+            >
+              {formatCountdown(remaining)}
+            </Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: urgent ? neu.coral : neu.teal }]} />
+            </View>
+          </View>
+
+          {preselected && !rejecting && (
+            <View style={styles.hintBox}>
+              <Ionicons name="information-circle-outline" size={18} color={neu.teal} />
+              <Text style={[styles.hintText, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {t('accessRequest.hintApprove', 'Revisa las fotos y confirma con un toque.')}
+              </Text>
+            </View>
+          )}
+          {!!conflictMessage && (
+            <Text style={[styles.conflictText, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{conflictMessage}</Text>
+          )}
+
+          {/* Visitante */}
+          <View style={[styles.visitorCard, neuSurface.raised]}>
+            <Text style={[styles.sectionLabel, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {t('accessRequest.visitor', 'Visitante')}
+            </Text>
+            <Text style={[styles.visitorName, font(700)]} maxFontSizeMultiplier={1.3}>{request.visitor_name}</Text>
+            {!!request.house && (
+              <View style={styles.infoRow}>
+                <Ionicons name="home-outline" size={16} color={neu.textLabel} />
+                <Text style={[styles.infoText, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {t('accessRequest.house', { house: request.house, defaultValue: 'Casa {{house}}' })}
+                </Text>
+              </View>
+            )}
+            {!!request.guard_name && (
+              <View style={styles.infoRow}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={neu.textLabel} />
+                <Text style={[styles.infoText, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {t('accessRequest.registeredBy', { name: request.guard_name, defaultValue: 'Registrado por {{name}}' })}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Placa en texto */}
+          {!!request.vehicle_plate && (
+            <View style={[styles.plateCard, neuSurface.sunken]}>
+              <Ionicons name="car-outline" size={20} color={neu.textLabel} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionLabel, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {t('accessRequest.photoPlate', 'Placa')}
+                </Text>
+                <Text style={[styles.plateText, font(700)]} maxFontSizeMultiplier={1.3}>{request.vehicle_plate}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Fotos */}
+          <Text style={[styles.sectionTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {t('accessRequest.photos', 'Fotos')}
+          </Text>
+          {photos.length === 0 ? (
+            <Text style={[styles.noPhotos, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {t('accessRequest.noPhotos', 'El guardia no adjuntó fotos.')}
+            </Text>
+          ) : (
+            <View style={styles.photoGrid}>
+              {photos.map((p, i) => (
+                <PressableScale
+                  key={p.key}
+                  variant="neu"
+                  containerStyle={styles.photoSlot}
+                  style={styles.photoCard}
+                  onPress={() => setViewerIndex(i)}
+                  accessibilityLabel={`${p.label}. ${t('accessRequest.viewFull', 'Ver completa')}`}
+                >
+                  <Image source={{ uri: p.uri }} style={styles.photoImage} resizeMode="cover" />
+                  <View style={styles.photoLabelRow}>
+                    <Text style={[styles.photoLabel, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{p.label}</Text>
+                    <Ionicons name="expand-outline" size={14} color={neu.textLabel} />
+                  </View>
+                </PressableScale>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Acciones */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.actionBar, { paddingBottom: Math.max(insets.bottom, 12) + 4 }]}>
+            {rejecting ? (
+              <>
+                <TextInput
+                  style={[styles.reasonInput, font(400)]}
+                  placeholder={t('accessRequest.reasonPlaceholder', 'Motivo (opcional)')}
+                  placeholderTextColor={neu.textSoft}
+                  value={reason}
+                  onChangeText={setReason}
+                  maxLength={200}
+                  multiline
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                />
+                <View style={styles.actionRow}>
+                  <PressableScale variant="neu" neuSmall containerStyle={styles.actionBack} style={styles.actionButton} onPress={() => setRejecting(false)} disabled={responding}>
+                    <Text style={[styles.actionBackText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('accessRequest.back', 'Volver')}</Text>
+                  </PressableScale>
+                  <PressableScale variant="neu" neuFill={neu.coral} containerStyle={styles.actionMain} style={styles.actionButton} onPress={() => submit('rejected')} disabled={responding}>
+                    {responding ? <ActivityIndicator color={neu.onAccent} /> : (
+                      <Text style={[styles.actionMainText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('accessRequest.confirmReject', 'Confirmar rechazo')}</Text>
+                    )}
+                  </PressableScale>
+                </View>
+              </>
+            ) : (
+              <View style={styles.actionRow}>
+                <PressableScale variant="neu" neuFill={neu.coral} containerStyle={styles.actionSide} style={styles.actionButton} onPress={() => setRejecting(true)} disabled={responding}>
+                  <Ionicons name="close" size={20} color={neu.onAccent} />
+                  <Text style={[styles.actionMainText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('accessRequest.reject', 'Rechazar')}</Text>
+                </PressableScale>
+                <PressableScale variant="neu" neuFill={neu.teal} containerStyle={styles.actionMain} style={styles.actionButton} onPress={() => submit('approved')} disabled={responding}>
+                  {responding ? <ActivityIndicator color={neu.onAccent} /> : (
+                    <>
+                      <Ionicons name="checkmark" size={22} color={neu.onAccent} />
+                      <Text style={[styles.actionMainText, font(700)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('accessRequest.approve', 'Aprobar')}</Text>
+                    </>
+                  )}
+                </PressableScale>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </>
     );
   }
 
-  const minutes = Math.floor(remainingSeconds / 60);
-  const seconds = remainingSeconds % 60;
-  const visitorName = requestData?.visitor_name || params.visitor_name || 'Visitante';
-  const guardName = requestData?.guard?.name || params.guard_name || 'Guardia';
-  const visitorPhotos = requestData?.visitor_photos || [];
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Solicitud de Ingreso</Text>
-        <View style={{ width: 40 }} />
+        <PressableScale variant="neu" neuSmall style={styles.backButton} onPress={goBack} accessibilityLabel={t('common.back')}>
+          <Ionicons name="arrow-back" size={22} color={neu.text} />
+        </PressableScale>
+        <Text style={[styles.headerTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>
+          {t('accessRequest.title', 'Solicitud de ingreso')}
+        </Text>
       </View>
 
-      {/* Timer */}
-      {!responded && remainingSeconds > 0 && (
-        <View style={styles.timerBar}>
-          <Ionicons name="time-outline" size={16} color={remainingSeconds < 60 ? COLORS.danger : COLORS.purple} />
-          <Text style={[styles.timerText, remainingSeconds < 60 && { color: COLORS.danger }]}>
-            {minutes}:{seconds.toString().padStart(2, '0')}
-          </Text>
-          <View style={styles.timerProgress}>
-            <View
-              style={[
-                styles.timerProgressFill,
-                { width: `${(remainingSeconds / 300) * 100}%` },
-                remainingSeconds < 60 && { backgroundColor: COLORS.danger },
-              ]}
-            />
-          </View>
-        </View>
-      )}
+      {body}
 
-      {/* Visitor info card */}
-      <View style={styles.visitorCard}>
-        {/* Visitor photos */}
-        {visitorPhotos.length > 0 && (
-          <View style={styles.photoContainer}>
-            <Image source={{ uri: visitorPhotos[0] }} style={styles.visitorPhoto} />
-          </View>
-        )}
-
-        <View style={styles.visitorIcon}>
-          <Ionicons name="person" size={40} color={COLORS.purple} />
-        </View>
-
-        <Text style={styles.visitorName}>{visitorName}</Text>
-        <Text style={styles.visitorMeta}>Solicita acceso a la comunidad</Text>
-
-        <View style={styles.infoRow}>
-          <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.infoText}>Reportado por: {guardName}</Text>
-        </View>
-      </View>
-
-      {/* Response area */}
-      {!responded && !rejected && (
-        <View style={styles.swipeContainer}>
-          <Animated.View style={[styles.swipeBg, { backgroundColor: swipeBgColor }]}>
-            <Animated.View style={[styles.swipeHint, { left: 20, opacity: swipeOpacity }]}>
-              <Ionicons name="close-circle" size={32} color={COLORS.danger} />
-              <Text style={[styles.swipeHintText, { color: COLORS.danger }]}>Rechazar</Text>
-            </Animated.View>
-            <Animated.View style={[styles.swipeHint, { right: 20, opacity: swipeOpacity }]}>
-              <Ionicons name="checkmark-circle" size={32} color={COLORS.success} />
-              <Text style={[styles.swipeHintText, { color: COLORS.success }]}>Aprobar</Text>
-            </Animated.View>
-          </Animated.View>
-
-          <Animated.View
-            {...panResponder.panHandlers}
-            style={[
-              styles.swipeButton,
-              { transform: [{ translateX: pan.x }] },
-            ]}
-          >
-            <Ionicons name="swap-horizontal" size={28} color={COLORS.textPrimary} />
-            <Text style={styles.swipeButtonText}>Desliza para responder</Text>
-          </Animated.View>
-        </View>
-      )}
-
-      {/* Rejection form */}
-      {!responded && rejected && (
-        <View style={styles.rejectionForm}>
-          <Text style={styles.rejectionTitle}>Rechazar acceso</Text>
-          <TextInput
-            style={styles.rejectionInput}
-            placeholder="Motivo del rechazo (opcional)"
-            placeholderTextColor={COLORS.textMuted}
-            value={rejectionReason}
-            onChangeText={setRejectionReason}
-            multiline
-            numberOfLines={3}
-          />
-          <View style={styles.rejectionActions}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => { setRejected(false); setRejectionReason(''); }}
-            >
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.rejectBtn, responding && { opacity: 0.5 }]}
-              disabled={responding}
-              onPress={() => handleRespond('rejected')}
-            >
-              {responding ? (
-                <ActivityIndicator color={neu.text} size="small" />
-              ) : (
-                <Text style={styles.rejectBtnText}>Confirmar Rechazo</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Quick action buttons (fallback for accessibility) */}
-      {!responded && !rejected && (
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickReject, responding && { opacity: 0.5 }]}
-            disabled={responding}
-            onPress={() => setRejected(true)}
-          >
-            <Ionicons name="close" size={22} color={COLORS.danger} />
-            <Text style={[styles.quickActionText, { color: COLORS.danger }]}>Rechazar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickApprove, responding && { opacity: 0.5 }]}
-            disabled={responding}
-            onPress={() => handleRespond('approved')}
-          >
-            {responding ? (
-              <ActivityIndicator color={neu.text} size="small" />
-            ) : (
-              <>
-                <Ionicons name="checkmark" size={22} color={neu.text} />
-                <Text style={styles.quickApproveText}>Aprobar Ingreso</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Result */}
-      {responded && (
-        <View style={styles.resultContainer}>
-          {responseAction === 'approved' && (
-            <>
-              <Ionicons name="checkmark-circle" size={72} color={COLORS.success} />
-              <Text style={[styles.resultTitle, { color: COLORS.success }]}>Acceso Aprobado</Text>
-              <Text style={styles.resultSubtitle}>
-                El guardia ha sido notificado para permitir el ingreso
-              </Text>
-            </>
-          )}
-          {responseAction === 'rejected' && (
-            <>
-              <Ionicons name="close-circle" size={72} color={COLORS.danger} />
-              <Text style={[styles.resultTitle, { color: COLORS.danger }]}>Acceso Rechazado</Text>
-              <Text style={styles.resultSubtitle}>
-                El guardia ha sido notificado del rechazo
-              </Text>
-            </>
-          )}
-          {responseAction === 'expired' && (
-            <>
-              <Ionicons name="time" size={72} color={COLORS.warning} />
-              <Text style={[styles.resultTitle, { color: COLORS.warning }]}>Solicitud Expirada</Text>
-              <Text style={styles.resultSubtitle}>
-                No se respondió dentro del tiempo límite
-              </Text>
-            </>
-          )}
-          <TouchableOpacity style={styles.doneButton} onPress={() => router.back()}>
-            <Text style={styles.doneButtonText}>Cerrar</Text>
-          </TouchableOpacity>
-        </View>
+      {viewerIndex !== null && (
+        <PhotoViewer
+          photos={photos}
+          startIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          closeLabel={t('common.close')}
+        />
       )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.bgPrimary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.bgSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: scale(17),
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
+  container: { flex: 1, backgroundColor: neu.bg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10 },
+  backButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: neu.raised },
+  headerTitle: { flex: 1, fontSize: fs(20), fontWeight: '600', color: neu.text },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24, gap: 14 },
+  metaLine: { fontSize: fs(14), color: neu.textLabel },
 
-  // Timer
-  timerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  timerText: {
-    fontSize: scale(15),
-    fontWeight: '700',
-    color: COLORS.purple,
-    fontVariant: ['tabular-nums'],
-    minWidth: 40,
-  },
-  timerProgress: {
-    flex: 1,
-    height: 4,
-    backgroundColor: COLORS.bgCard,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  timerProgressFill: {
-    height: '100%',
-    backgroundColor: COLORS.purple,
-    borderRadius: 2,
-  },
+  countdownCard: { borderRadius: 24, paddingVertical: 18, paddingHorizontal: 20, alignItems: 'center', gap: 6 },
+  countdownLabel: { fontSize: fs(13), color: neu.textSoft },
+  countdownValue: { fontSize: fs(52), fontWeight: '700', fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  progressTrack: { alignSelf: 'stretch', height: 6, borderRadius: 3, backgroundColor: neu.bgDeep, overflow: 'hidden', marginTop: 4 },
+  progressFill: { height: '100%', borderRadius: 3 },
 
-  // Visitor Card
-  visitorCard: {
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  photoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: COLORS.purple,
-  },
-  visitorPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  visitorIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: neu.lilac + '1F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  visitorName: {
-    fontSize: scale(24),
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  visitorMeta: {
-    fontSize: scale(14),
-    color: COLORS.textSecondary,
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoText: {
-    fontSize: scale(13),
-    color: COLORS.textSecondary,
-  },
+  hintBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, backgroundColor: neu.sunken },
+  hintText: { flex: 1, fontSize: fs(13), color: neu.textLabel },
+  conflictText: { fontSize: fs(13), color: neu.amber },
 
-  // Swipe
-  swipeContainer: {
-    marginHorizontal: 20,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.bgCard,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  swipeBg: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-  },
-  swipeHint: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  swipeHintText: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  swipeButton: {
-    width: SCREEN_WIDTH - 80,
-    height: 56,
-    marginHorizontal: 20,
-    borderRadius: 28,
-    backgroundColor: COLORS.bgSecondary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  swipeButtonText: {
-    fontSize: scale(15),
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
+  visitorCard: { borderRadius: 24, padding: 20, gap: 8 },
+  sectionLabel: { fontSize: fs(12), color: neu.textSoft },
+  visitorName: { fontSize: fs(28), fontWeight: '700', color: neu.text },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  infoText: { flex: 1, fontSize: fs(14), color: neu.textLabel },
 
-  // Quick Actions
-  quickActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginTop: 8,
-  },
-  quickReject: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.danger,
-    gap: 6,
-  },
-  quickActionText: {
-    fontSize: scale(15),
-    fontWeight: '700',
-  },
-  quickApprove: {
-    flex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 14,
-    backgroundColor: COLORS.success,
-    gap: 6,
-  },
-  quickApproveText: {
-    fontSize: scale(15),
-    fontWeight: '700',
-    color: neu.text,
-  },
+  plateCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, paddingVertical: 14, paddingHorizontal: 16 },
+  plateText: { fontSize: fs(24), fontWeight: '700', color: neu.text, letterSpacing: 3 },
 
-  // Rejection
-  rejectionForm: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  rejectionTitle: {
-    fontSize: scale(17),
-    fontWeight: '700',
-    color: COLORS.danger,
-    marginBottom: 12,
-  },
-  rejectionInput: {
-    backgroundColor: COLORS.bgCard,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: scale(15),
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginBottom: 16,
-  },
-  rejectionActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontSize: scale(14),
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  rejectBtn: {
-    flex: 2,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: COLORS.danger,
-    alignItems: 'center',
-  },
-  rejectBtnText: {
-    fontSize: scale(14),
-    color: neu.text,
-    fontWeight: '700',
-  },
+  sectionTitle: { fontSize: fs(16), fontWeight: '600', color: neu.text, marginTop: 4 },
+  noPhotos: { fontSize: fs(14), color: neu.textSoft },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  photoSlot: { width: (SCREEN_WIDTH - 40 - 12) / 2 },
+  photoCard: { borderRadius: 18, padding: 8, backgroundColor: neu.raised, gap: 8 },
+  photoImage: { width: '100%', aspectRatio: 1, borderRadius: 12, backgroundColor: neu.bgDeep },
+  photoLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 2 },
+  photoLabel: { fontSize: fs(13), fontWeight: '600', color: neu.textLabel },
 
-  // Result
-  resultContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  resultTitle: {
-    fontSize: scale(24),
-    fontWeight: '800',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  resultSubtitle: {
-    fontSize: scale(14),
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  doneButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  doneButtonText: {
-    fontSize: scale(15),
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
+  actionBar: { paddingHorizontal: 20, paddingTop: 12, gap: 10, backgroundColor: neu.bg, borderTopWidth: 1, borderTopColor: neu.border },
+  actionRow: { flexDirection: 'row', gap: 12 },
+  actionSide: { flex: 1 },
+  actionMain: { flex: 2 },
+  actionBack: { flex: 1 },
+  actionButton: { minHeight: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
+  actionMainText: { fontSize: fs(16), fontWeight: '700', color: neu.onAccent },
+  actionBackText: { fontSize: fs(15), fontWeight: '600', color: neu.textLabel },
+  reasonInput: { minHeight: 56, maxHeight: 110, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12, fontSize: fs(15), color: neu.text, backgroundColor: neu.sunken },
+
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  stateIcon: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  stateTitle: { fontSize: fs(22), fontWeight: '700', color: neu.text, textAlign: 'center' },
+  stateMessage: { fontSize: fs(14), color: neu.textLabel, textAlign: 'center', lineHeight: fs(14) * 1.5 },
+  doneButton: { marginTop: 16, minWidth: 160, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 18, alignItems: 'center', backgroundColor: neu.raised },
+  doneButtonText: { fontSize: fs(15), fontWeight: '600', color: neu.text },
+  retryButton: { marginTop: 8, paddingVertical: 12, paddingHorizontal: 28, borderRadius: 16, alignItems: 'center' },
+  retryText: { fontSize: fs(15), fontWeight: '600', color: neu.onAccent },
+
+  viewerRoot: { flex: 1, backgroundColor: '#000000' },
+  viewerImage: { width: '100%', height: '100%' },
+  viewerCloseWrap: { position: 'absolute', right: 16, zIndex: 10, elevation: 10 },
+  viewerClose: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  viewerCaption: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  viewerCaptionText: { color: '#FFFFFF', fontSize: 14, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, overflow: 'hidden' },
 });

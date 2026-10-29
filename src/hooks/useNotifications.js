@@ -8,6 +8,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import i18n from '../i18n/i18n';
 
 const API_URL = 'https://api.joinissy.com/api';
 
@@ -20,6 +21,130 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// ============================================================
+// Solicitudes de ingreso (Requerir ingreso v2)
+// ============================================================
+const ACCESS_REQUEST_CHANNEL_ID = 'access_request';
+const ACCESS_REQUEST_CATEGORY_ID = 'access_request';
+const ACCESS_REQUEST_EVENT_TYPES = ['access_request', 'access_request_resolved'];
+
+const tr = (key, fallback) => {
+  try {
+    const v = i18n.t(key);
+    return v && v !== key ? v : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+// Canal (Android) + categoría con botones Aprobar/Rechazar. Una sola vez por arranque.
+// Ojo Android: el sonido de un canal queda fijo al crearlo; 'solicitud.wav' solo existe en builds
+// que lo empaquetan (plugin expo-notifications → sounds en app.json).
+let accessRequestSetupPromise = null;
+export function setupAccessRequestNotifications() {
+  if (!accessRequestSetupPromise) {
+    accessRequestSetupPromise = (async () => {
+      try {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync(ACCESS_REQUEST_CHANNEL_ID, {
+            name: tr('accessRequest.channelName', 'Solicitudes de ingreso'),
+            importance: Notifications.AndroidImportance.MAX,
+            sound: 'solicitud.wav',
+            vibrationPattern: [0, 800, 300, 800, 300, 800, 300, 800],
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: false,
+            enableVibrate: true,
+            lightColor: '#4FD3B8',
+          });
+        }
+        await Notifications.setNotificationCategoryAsync(ACCESS_REQUEST_CATEGORY_ID, [
+          {
+            identifier: 'approve',
+            buttonTitle: tr('accessRequest.approve', 'Aprobar'),
+            options: { opensAppToForeground: true },
+          },
+          {
+            identifier: 'reject',
+            buttonTitle: tr('accessRequest.reject', 'Rechazar'),
+            options: { opensAppToForeground: true, isDestructive: true },
+          },
+        ]);
+      } catch (error) {
+        console.log('⚠️ Error configurando canal/categoría de solicitudes:', error);
+        accessRequestSetupPromise = null;
+      }
+    })();
+  }
+  return accessRequestSetupPromise;
+}
+
+// Eventos en vivo para pantallas abiertas (home, /access-approval)
+const accessRequestListeners = new Set();
+export function subscribeAccessRequestEvents(callback) {
+  accessRequestListeners.add(callback);
+  return () => accessRequestListeners.delete(callback);
+}
+function emitAccessRequestEvent(data) {
+  accessRequestListeners.forEach((cb) => {
+    try {
+      cb(data);
+    } catch (e) {
+      console.log('accessRequest listener error:', e);
+    }
+  });
+}
+
+// Un tap (o botón) se atiende UNA vez: el hook se monta en más de un lugar y el arranque en frío
+// entrega la misma respuesta por el listener y por getLastNotificationResponseAsync.
+const handledAccessRequestResponses = new Set();
+let accessRequestNavigationReady = false;
+let pendingAccessRequestResponse = null;
+
+function routeAccessRequestResponse(response) {
+  const data = response?.notification?.request?.content?.data || {};
+  const requestId = data.request_id || data.access_request_id;
+  if (!requestId) return;
+
+  const actionId = response.actionIdentifier;
+  const key = `${response.notification.request.identifier}:${actionId}`;
+  if (handledAccessRequestResponses.has(key)) return;
+  handledAccessRequestResponses.add(key);
+
+  const params = { id: String(requestId) };
+  // Botón de la notificación → acción preseleccionada (el residente confirma en la pantalla)
+  if (data.type === 'access_request') {
+    if (actionId === 'approve') params.action = 'approved';
+    else if (actionId === 'reject') params.action = 'rejected';
+  }
+  router.push({ pathname: '/access-approval', params });
+}
+
+// Lo llama el layout cuando ya hay sesión y la navegación está lista (pasada la pantalla de inicio)
+export async function setAccessRequestNavigationReady(ready) {
+  accessRequestNavigationReady = ready;
+  if (!ready) return;
+
+  if (pendingAccessRequestResponse) {
+    const pending = pendingAccessRequestResponse;
+    pendingAccessRequestResponse = null;
+    routeAccessRequestResponse(pending);
+  }
+
+  // App abierta desde cerrada por el tap en la notificación (o en uno de sus botones)
+  try {
+    const last = await Notifications.getLastNotificationResponseAsync();
+    const lastType = last?.notification?.request?.content?.data?.type;
+    if (last && ACCESS_REQUEST_EVENT_TYPES.includes(lastType)) {
+      routeAccessRequestResponse(last);
+      try {
+        await Notifications.clearLastNotificationResponseAsync();
+      } catch {}
+    }
+  } catch (error) {
+    console.log('⚠️ getLastNotificationResponseAsync falló:', error);
+  }
+}
+
 export const useNotifications = () => {
   const [expoPushToken, setExpoPushToken] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -29,6 +154,9 @@ export const useNotifications = () => {
   const responseListener = useRef();
 
   useEffect(() => {
+    // Canal y botones de "Solicitud de ingreso"
+    setupAccessRequestNotifications();
+
     // Registrar para push notifications
     registerForPushNotificationsAsync()
       .then(token => {
@@ -51,6 +179,10 @@ export const useNotifications = () => {
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('📬 Notification received:', notification);
       setNotification(notification);
+      const receivedData = notification?.request?.content?.data;
+      if (ACCESS_REQUEST_EVENT_TYPES.includes(receivedData?.type)) {
+        emitAccessRequestEvent(receivedData);
+      }
     });
 
     // Listener para cuando el usuario toca una notificación
@@ -182,17 +314,13 @@ function handleNotificationResponse(response) {
   console.log('📱 Notification data:', data);
 
   // Navegar a diferentes pantallas según el tipo de notificación
-  if (data?.type === 'access_request' && data?.access_request_id) {
-    // Resident tapped an access request notification → go to approval screen
-    router.push({
-      pathname: '/access-approval',
-      params: {
-        id: data.access_request_id,
-        visitor_name: data.visitor_name || '',
-        guard_name: data.guard_name || '',
-        expires_at: data.expires_at || '',
-      },
-    });
+  if (ACCESS_REQUEST_EVENT_TYPES.includes(data?.type) && (data?.request_id || data?.access_request_id)) {
+    // Sin navegación lista (arranque en frío, splash, sin sesión): se atiende cuando el layout avise
+    if (!accessRequestNavigationReady) {
+      pendingAccessRequestResponse = response;
+      return;
+    }
+    routeAccessRequestResponse(response);
   } else if (data?.type === 'announcement') {
     router.push('/announcements');
   } else if (data?.type === 'incident' || data?.type === 'incident_update') {

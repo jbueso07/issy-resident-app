@@ -3027,3 +3027,76 @@ export const changePassword = async (currentPassword, newPassword) => {
     return { success: false, error: error.message, sessionExpired: error.sessionExpired };
   }
 };
+
+// ==========================================
+// SOLICITUDES DE INGRESO (Requerir ingreso v2)
+// ==========================================
+
+// Errores de authFetch: error.status (HTTP), error.data (payload). Sin status = sin conexión.
+const accessRequestError = (error) => ({
+  success: false,
+  status: error.status || 0,
+  offline: !error.status && !error.sessionExpired,
+  error: error.message,
+  data: error.data || null,
+  sessionExpired: error.sessionExpired,
+});
+
+export const getAccessRequest = async (id) => {
+  try {
+    const data = await authFetch(`/access-requests/${id}`, { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
+
+export const respondAccessRequest = async (id, action, rejectionReason) => {
+  try {
+    const body = { action };
+    if (action === 'rejected' && rejectionReason && rejectionReason.trim()) {
+      body.rejection_reason = rejectionReason.trim();
+    }
+    const data = await authFetch(`/access-requests/${id}/respond`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
+
+// Pendientes de MI casa en la residencial activa (X-Location-Id)
+export const getMyPendingAccessRequests = async ({ locationId } = {}) => {
+  try {
+    const headers = locationId ? { 'X-Location-Id': locationId } : {};
+    const data = await authFetch('/access-requests/my-pending', { method: 'GET', headers });
+    const list = data.data || data;
+    return { success: true, data: Array.isArray(list) ? list : [] };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
+
+// Admin: interruptor "Solicitudes de ingreso sin QR" → { require_resident_approval, guard_app_allows, effective }
+export const getResidentApprovalSetting = async (locationId) => {
+  try {
+    const data = await authFetch(`/admin/settings/location/${locationId}/resident-approval`, { method: 'GET' });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
+
+export const setResidentApprovalSetting = async (locationId, enabled) => {
+  try {
+    const data = await authFetch(`/admin/settings/location/${locationId}/resident-approval`, {
+      method: 'PUT',
+      body: JSON.stringify({ enabled }),
+    });
+    return { success: true, data: data.data || data };
+  } catch (error) {
+    return accessRequestError(error);
+  }
+};
