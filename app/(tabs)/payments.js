@@ -423,6 +423,12 @@ const processCardPayment = async () => {
 
       const data = await response.json();
 
+      // El backend deshabilitó este cobro: se muestra su mensaje y no se marca nada como pagado
+      if (response.status === 503 && data.code === 'CARD_PAYMENT_UNAVAILABLE') {
+        Alert.alert(t('common.error'), data.error);
+        return;
+      }
+
       if (data.success) {
         Alert.alert(
           t('communityPayments.cardPayment.success'),

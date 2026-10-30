@@ -2264,7 +2264,7 @@ export const payCommunityChargeWithCard = async (chargeId, paymentMethodId) => {
     return { success: true, data: data.data || data, message: data.message };
   } catch (error) {
     console.error('Error paying with card:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    return { success: false, error: error.message, code: error.code || null, status: error.status, sessionExpired: error.sessionExpired };
   }
 };
 
