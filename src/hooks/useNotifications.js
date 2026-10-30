@@ -9,6 +9,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import i18n from '../i18n/i18n';
+import { getNotificationRoute, getNotificationLocationId, parseNotificationData } from '../utils/notificationRoute';
 
 const API_URL = 'https://api.joinissy.com/api';
 
@@ -95,48 +96,109 @@ function emitAccessRequestEvent(data) {
   });
 }
 
+// ============================================================
+// Toque en una notificación (push, botón o lista): una sola ruta de navegación
+// ============================================================
+
+// Puente con los contextos de React (lo registra NotificationInitializer en app/_layout.js):
+//   getActiveLocationId(), getMembershipIds(), isAdmin(), switchTo(locationId) -> Promise<boolean>
+let locationBridge = null;
+export function setNotificationLocationBridge(bridge) {
+  locationBridge = bridge;
+}
+
+// ¿Se puede navegar? Si la notificación es de otra residencial se cambia a ella ANTES de navegar.
+// Si el usuario ya no pertenece a esa residencial: false (se va a Notificaciones sin cambiar).
+async function ensureNotificationLocation(locationId) {
+  if (!locationId || !locationBridge) return true;
+  if (String(locationBridge.getActiveLocationId?.() || '') === String(locationId)) return true;
+  const memberships = (locationBridge.getMembershipIds?.() || []).map(String);
+  if (!memberships.includes(String(locationId))) return false;
+  try {
+    return (await locationBridge.switchTo(locationId)) === true;
+  } catch (error) {
+    console.log('⚠️ No se pudo cambiar de residencial desde la notificación:', error);
+    return false;
+  }
+}
+
+/**
+ * Abre la pantalla de una notificación. `notification` = { type, data, location_id? }
+ * (fila de la lista o { type, data } del push). Una notificación de otra residencial cambia
+ * primero a esa residencial. Sin pantalla propia: desde un push va a Notificaciones; desde la lista no hace nada.
+ */
+export async function openNotificationTarget(notification, { fromPush = false } = {}) {
+  const route = getNotificationRoute(notification, { isAdmin: !!locationBridge?.isAdmin?.() });
+  if (!route) {
+    if (fromPush) router.push('/notifications');
+    return false;
+  }
+  const allowed = await ensureNotificationLocation(getNotificationLocationId(notification));
+  if (!allowed) {
+    router.push('/notifications');
+    return false;
+  }
+  router.push(route);
+  return true;
+}
+
 // Un tap (o botón) se atiende UNA vez: el hook se monta en más de un lugar y el arranque en frío
 // entrega la misma respuesta por el listener y por getLastNotificationResponseAsync.
-const handledAccessRequestResponses = new Set();
-let accessRequestNavigationReady = false;
-let pendingAccessRequestResponse = null;
+const handledResponses = new Set();
+let notificationNavigationReady = false;
+let pendingResponse = null;
 
-function routeAccessRequestResponse(response) {
+async function routeAccessRequestResponse(response) {
   const data = response?.notification?.request?.content?.data || {};
   const requestId = data.request_id || data.access_request_id;
   if (!requestId) return;
 
-  const actionId = response.actionIdentifier;
-  const key = `${response.notification.request.identifier}:${actionId}`;
-  if (handledAccessRequestResponses.has(key)) return;
-  handledAccessRequestResponses.add(key);
-
   const params = { id: String(requestId) };
   // Botón de la notificación → acción preseleccionada (el residente confirma en la pantalla)
   if (data.type === 'access_request') {
+    const actionId = response.actionIdentifier;
     if (actionId === 'approve') params.action = 'approved';
     else if (actionId === 'reject') params.action = 'rejected';
+  }
+
+  const allowed = await ensureNotificationLocation(data.location_id);
+  if (!allowed) {
+    router.push('/notifications');
+    return;
   }
   router.push({ pathname: '/access-approval', params });
 }
 
+function routeNotificationResponse(response) {
+  const content = response?.notification?.request?.content;
+  const data = parseNotificationData(content?.data);
+  const key = `${response?.notification?.request?.identifier}:${response?.actionIdentifier}`;
+  if (handledResponses.has(key)) return;
+  handledResponses.add(key);
+
+  if (data.type === 'access_request' && (data.request_id || data.access_request_id)) {
+    routeAccessRequestResponse(response);
+    return;
+  }
+  openNotificationTarget({ type: data.type, data }, { fromPush: true });
+}
+
 // Lo llama el layout cuando ya hay sesión y la navegación está lista (pasada la pantalla de inicio)
 export async function setAccessRequestNavigationReady(ready) {
-  accessRequestNavigationReady = ready;
+  notificationNavigationReady = ready;
   if (!ready) return;
 
-  if (pendingAccessRequestResponse) {
-    const pending = pendingAccessRequestResponse;
-    pendingAccessRequestResponse = null;
-    routeAccessRequestResponse(pending);
+  if (pendingResponse) {
+    const pending = pendingResponse;
+    pendingResponse = null;
+    routeNotificationResponse(pending);
   }
 
-  // App abierta desde cerrada por el tap en la notificación (o en uno de sus botones)
+  // App abierta desde cerrada por el tap en una notificación (o en uno de sus botones), de cualquier tipo
   try {
     const last = await Notifications.getLastNotificationResponseAsync();
-    const lastType = last?.notification?.request?.content?.data?.type;
-    if (last && ACCESS_REQUEST_EVENT_TYPES.includes(lastType)) {
-      routeAccessRequestResponse(last);
+    if (last) {
+      routeNotificationResponse(last);
       try {
         await Notifications.clearLastNotificationResponseAsync();
       } catch {}
@@ -313,40 +375,14 @@ export async function sendTokenToBackend(pushToken, authToken = null) {
   }
 }
 
-// Manejar cuando el usuario toca una notificación
+// Manejar cuando el usuario toca una notificación (cualquier tipo)
 function handleNotificationResponse(response) {
-  const data = response.notification.request.content.data;
-
-  console.log('📱 Notification data:', data);
-
-  // Navegar a diferentes pantallas según el tipo de notificación
-  if (ACCESS_REQUEST_EVENT_TYPES.includes(data?.type) && (data?.request_id || data?.access_request_id)) {
-    // Sin navegación lista (arranque en frío, splash, sin sesión): se atiende cuando el layout avise
-    if (!accessRequestNavigationReady) {
-      pendingAccessRequestResponse = response;
-      return;
-    }
-    routeAccessRequestResponse(response);
-  } else if (data?.type === 'announcement') {
-    router.push('/announcements');
-  } else if (data?.type === 'incident' || data?.type === 'incident_update') {
-    // Backend confirmado: incidentController.js L125/L321/L433 y
-    // pushNotificationService.js L395/L411 siempre envian data.incident_id.
-    const incidentId = data?.incident_id;
-    if (incidentId) {
-      router.push(`/admin/incidents?openId=${incidentId}`);
-    } else {
-      router.push('/admin/incidents');
-    }
-  } else if (data?.type === 'incident_comment') {
-    // Comentario en un incidente: lo reciben el reportero y los admins.
-    // incident-detail permite acceso a ambos (backend getIncidentById).
-    if (data?.incident_id) {
-      router.push(`/incident-detail?id=${data.incident_id}`);
-    }
-  } else if (data?.type === 'visitor_arrived') {
-    router.push('/notifications');
+  // Sin navegación lista (arranque en frío, splash, sin sesión): se atiende cuando el layout avise
+  if (!notificationNavigationReady) {
+    pendingResponse = response;
+    return;
   }
+  routeNotificationResponse(response);
 }
 
 // Función helper para enviar notificación local (útil para testing)

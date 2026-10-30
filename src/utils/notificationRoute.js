@@ -1,7 +1,7 @@
 // src/utils/notificationRoute.js
 // ISSY - Grupo y destino de cada notificación según su `type` (valores reales del backend).
-// Por ahora solo lo usa Actividades recientes del Home v2; app/notifications.js y
-// useNotifications.js se migran a este mapa en un commit aparte.
+// FUENTE ÚNICA de rutas: la usan Actividades recientes, app/notifications.js y el toque del push
+// (useNotifications.js). Para un push se llama con { type, data } tomados de content.data.
 
 const GROUP_TYPES = {
   visit: [
@@ -12,6 +12,8 @@ const GROUP_TYPES = {
     'access_request',
     'access_request_response',
     'event_guest_checkin',
+    'event_guest_checkout',
+    'access_request_resolved',
   ],
   report: ['incident', 'incident_comment', 'incident_status', 'incident_update'],
   announcement: ['announcement', 'service_announcement'],
@@ -52,6 +54,7 @@ const GROUP_TYPES = {
     'member_approved',
     'member_rejected',
     'registration_pending',
+    'member_pending',
     'account_suspended',
     'account_reactivated',
   ],
@@ -68,6 +71,10 @@ const TYPE_TO_GROUP = Object.entries(GROUP_TYPES).reduce((acc, [group, types]) =
 const NO_ROUTE_TYPES = ['marketplace_sale', 'marketplace_refund'];
 
 const VISITS_ROUTE = { pathname: '/(tabs)/visits', params: { tab: 'visitors' } };
+// Solicitudes de ingreso de mi casa (quién respondió, entrada y salida)
+const REQUESTS_HISTORY_ROUTE = { pathname: '/access-requests-history', params: {} };
+// Pánico / emergencia: el home muestra la alerta activa
+const HOME_ROUTE = { pathname: '/(tabs)/home', params: {} };
 // QR que otro residente me compartió
 const SHARED_QR_ROUTE = { pathname: '/(tabs)/visits', params: { tab: 'invitations' } };
 
@@ -87,6 +94,12 @@ export const parseNotificationData = (data) => {
 
 // visit | report | announcement | reservation | payment | emergency | account (tipos desconocidos)
 export const getNotificationGroup = (type) => TYPE_TO_GROUP[type] || 'account';
+
+// Residencial a la que pertenece la notificación (data.location_id del backend, o la fila ya resuelta por la API)
+export const getNotificationLocationId = (notification) => {
+  const data = parseNotificationData(notification?.data);
+  return data.location_id || notification?.location_id || null;
+};
 
 export const getNotificationRoute = (notification, { isAdmin = false } = {}) => {
   if (!notification?.type) return null;
@@ -111,7 +124,10 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
 
   if (type === 'qr_shared') return SHARED_QR_ROUTE;
 
-  if (type === 'registration_pending') {
+  // Otro miembro de la casa respondió / se canceló: va al historial de solicitudes
+  if (type === 'access_request_resolved') return REQUESTS_HISTORY_ROUTE;
+
+  if (type === 'registration_pending' || type === 'member_pending') {
     return isAdmin ? { pathname: '/admin/community-management', params: {} } : null;
   }
 
@@ -137,8 +153,10 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
       return { pathname: '/reservations', params: {} };
     case 'payment':
       return { pathname: '/(tabs)/payments', params: {} };
+    case 'emergency':
+      return HOME_ROUTE;
     default:
-      // Emergencia: useNotifications.js no tiene ruta para pánico. Cuenta y desconocidos: sin destino.
+      // Cuenta y tipos desconocidos: sin pantalla propia (el push cae en Notificaciones)
       return null;
   }
 };

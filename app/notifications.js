@@ -16,6 +16,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
+import { openNotificationTarget } from '../src/hooks/useNotifications';
+import { getNotificationGroup } from '../src/utils/notificationRoute';
 import { useTranslation } from 'react-i18next';
 import { neu } from '../src/theme/tokens';
 
@@ -63,7 +65,10 @@ export default function NotificationsScreen() {
   // Mapeo de tipos a iconos y colores (labels traducidos)
   const getNotificationConfig = (type) => {
     const configs = {
-      visitor_arrived: { icon: 'car-outline', color: COLORS.teal, label: t('notifications.types.visitor') },
+      // visitor_arrived = entrada de una visita (QR, delivery o solicitud de ingreso)
+      visitor_arrived: { icon: 'enter-outline', color: COLORS.teal, label: t('notifications.types.entry') },
+      event_guest_checkin: { icon: 'enter-outline', color: COLORS.teal, label: t('notifications.types.entry') },
+      event_guest_checkout: { icon: 'exit-outline', color: COLORS.orange, label: t('notifications.types.exit') },
       visitor_entry: { icon: 'enter-outline', color: COLORS.teal, label: t('notifications.types.entry') },
       visitor_exit: { icon: 'exit-outline', color: COLORS.orange, label: t('notifications.types.exit') },
       announcement: { icon: 'megaphone-outline', color: COLORS.cyan, label: t('notifications.types.announcement') },
@@ -78,7 +83,17 @@ export default function NotificationsScreen() {
       admin: { icon: 'shield-outline', color: COLORS.purple, label: t('notifications.types.admin') },
       general: { icon: 'notifications-outline', color: COLORS.textSecondary, label: t('notifications.types.general') },
     };
-    return configs[type] || configs.general;
+    if (configs[type]) return configs[type];
+    // Tipos sin entrada propia: icono y etiqueta de su grupo
+    const byGroup = {
+      visit: configs.visitor_entry,
+      report: configs.incident,
+      announcement: configs.announcement,
+      reservation: configs.reservation,
+      payment: configs.payment,
+      emergency: { icon: 'alert-circle-outline', color: COLORS.coral, label: t('notifications.types.incident') },
+    };
+    return byGroup[getNotificationGroup(type)] || configs.general;
   };
 
   // Locale dinámico para fechas
@@ -193,63 +208,14 @@ export default function NotificationsScreen() {
     }
   };
 
-  // Algunos proveedores entregan `data` como string JSON en vez de objeto.
-  const safeParse = (raw) => {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
   const handleNotificationPress = (notification) => {
     // Marcar como leída
     if (!notification.read) {
       markAsRead(notification.id);
     }
 
-    // Navegar según el tipo
-    const { type, data } = notification;
-    
-    switch (type) {
-      case 'visitor_arrived':
-      case 'visitor_entry':
-      case 'visitor_exit':
-        router.push('/(tabs)/visits');
-        break;
-      case 'announcement':
-        if (data?.announcement_id) {
-          router.push(`/announcements/${data.announcement_id}`);
-        } else {
-          router.push('/announcements');
-        }
-        break;
-      case 'reservation':
-      case 'reservation_status':
-        router.push('/reservations');
-        break;
-      case 'incident':
-      case 'incident_update': {
-        const payload = typeof data === 'string' ? safeParse(data) : data;
-        const incidentId = payload?.incident_id;
-        if (incidentId) {
-          router.push(`/admin/incidents?openId=${incidentId}`);
-        } else {
-          router.push('/admin/incidents');
-        }
-        break;
-      }
-      case 'payment_due':
-      case 'payment':
-        router.push('/(tabs)/payments');
-        break;
-      case 'member_pending':
-        router.push('/admin/community-management');
-        break;
-      default:
-        // No navegar, solo marcar como leída
-        break;
-    }
+    // Misma tabla de rutas que el push y Actividades recientes (cambia de residencial si hace falta)
+    openNotificationTarget(notification);
   };
 
   const renderNotification = ({ item }) => {
