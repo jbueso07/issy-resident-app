@@ -15,7 +15,8 @@ const API_URL = 'https://api.joinissy.com/api';
 // Configurar cómo se muestran las notificaciones cuando la app está en primer plano
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -209,6 +210,11 @@ export const useNotifications = () => {
   };
 };
 
+// Único lugar que pide el permiso de notificaciones (arranque y botón "Activar" del home)
+export async function requestNotificationPermission() {
+  return Notifications.requestPermissionsAsync();
+}
+
 // Registrar dispositivo para push notifications
 async function registerForPushNotificationsAsync() {
   let token;
@@ -225,7 +231,7 @@ async function registerForPushNotificationsAsync() {
 
   // Si no hay permisos, solicitarlos
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await requestNotificationPermission();
     finalStatus = status;
   }
 

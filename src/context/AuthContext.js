@@ -912,6 +912,32 @@ const { expoPushToken } = useNotifications();
     try {
       hasBeenAuthenticated.current = false;
 
+      // Avisa al backend ANTES de borrar la sesión para que libere el push de este teléfono.
+      // Máximo 3 s; si falla o no hay red, igual se cierra la sesión.
+      try {
+        const sessionToken = await AsyncStorage.getItem('token');
+        if (sessionToken) {
+          const pushToken = await AsyncStorage.getItem('pushToken');
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3000);
+          try {
+            await fetch(`${API_URL}/auth/logout`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${sessionToken}`,
+              },
+              body: JSON.stringify(pushToken ? { push_token: pushToken } : {}),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timer);
+          }
+        }
+      } catch (logoutError) {
+        console.log('Logout en backend no disponible, se cierra la sesión igual:', logoutError?.message);
+      }
+
       await AsyncStorage.multiRemove(['token', 'refreshToken']);
 
       // Optionally clear biometric data

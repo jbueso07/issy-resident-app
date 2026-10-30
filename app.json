@@ -95,6 +95,7 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#AAFF00",
+          "mode": "production",
           "sounds": [
             "./assets/sounds/solicitud.wav"
           ]

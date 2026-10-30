@@ -28,7 +28,7 @@ import Constants from 'expo-constants';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { authFetch } from '../../services/api';
-import { sendTokenToBackend } from '../../hooks/useNotifications';
+import { sendTokenToBackend, requestNotificationPermission } from '../../hooks/useNotifications';
 import { getNotificationGroup, getNotificationRoute } from '../../utils/notificationRoute';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
@@ -450,7 +450,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
       return;
     }
     try {
-      const { status, canAskAgain } = await Notifications.requestPermissionsAsync();
+      const { status, canAskAgain } = await requestNotificationPermission();
       setPermission({ granted: status === 'granted', canAskAgain });
       // Sin esto el token no llega al backend hasta el siguiente arranque de la app
       if (status === 'granted') registerPushToken();
