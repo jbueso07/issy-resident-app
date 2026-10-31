@@ -672,6 +672,13 @@
     }
   },
   "admin": {
+    "communityManagement": {
+      "phone": "Telefone",
+      "phonePlaceholder": "+504 9999-9999",
+      "errors": {
+        "invalidPhone": "Telefone inválido. Use de 8 a 15 dígitos, com ou sem +504."
+      }
+    },
     "accessProcess": {
       "title": "Processos de Acesso",
       "subtitle": "Configuração de captura",

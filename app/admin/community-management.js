@@ -122,7 +122,7 @@ export default function CommunityManagement() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [deactivationReason, setDeactivationReason] = useState('');
   const [customReason, setCustomReason] = useState('');
-  const [editForm, setEditForm] = useState({ name: '', email: '', role: '', unit_number: '', unit_type: 'house' });
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: '', unit_number: '', unit_type: 'house' });
   const [actionLoading, setActionLoading] = useState(false);
   
   // Card/Tag Management State
@@ -438,6 +438,7 @@ export default function CommunityManagement() {
     setEditForm({
       name: member.user?.name || '',
       email: member.user?.email || '',
+      phone: member.user?.phone || '',
       role: member.role || 'resident',
       unit_number: member.unit_number || '',
       unit_type: member.unit_type || 'house',
@@ -560,23 +561,40 @@ export default function CommunityManagement() {
   };
 
   const saveEditMember = async () => {
+    // Validación básica del teléfono (vacío = borrarlo); el backend normaliza y valida de nuevo
+    const phoneText = (editForm.phone || '').trim();
+    if (phoneText && !/^\+?[0-9\s\-().]+$/.test(phoneText)) {
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.invalidPhone'));
+      return;
+    }
+    const phoneDigits = phoneText.replace(/\D/g, '');
+    if (phoneText && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
+      Alert.alert(t('common.error'), t('admin.communityManagement.errors.invalidPhone'));
+      return;
+    }
+
     setActionLoading(true);
     try {
       const headers = await getAuthHeaders();
+      // El teléfono solo se envía si cambió (así un usuario de varias comunidades no se bloquea por reenviarlo igual)
+      const { phone: _phone, ...rest } = editForm;
+      const body = phoneText !== (selectedMember?.user?.phone || '').trim() ? { ...rest, phone: phoneText } : rest;
       const res = await fetch(
         `${API_URL}/invitations/organization/members/${selectedMember.id}`,
         {
           method: 'PUT',
           headers,
-          body: JSON.stringify(editForm),
+          body: JSON.stringify(body),
         }
       );
       const data = await res.json();
-      console.log('📍 Locations response - count:', data.data?.length || 0, 'items');
       if (data.success) {
         Alert.alert(t('common.success'), t('admin.communityManagement.success.updated'));
         fetchData();
+        setShowEditModal(false);
+        setSelectedMember(null);
       } else {
+        // 400 (formato) y 409 (número repetido) llegan en español desde el backend; el modal sigue abierto para corregir
         Alert.alert(t('common.error'), data.error || t('admin.communityManagement.errors.updateFailed'));
       }
     } catch (error) {
@@ -584,8 +602,6 @@ export default function CommunityManagement() {
       Alert.alert(t('common.error'), t('admin.communityManagement.errors.updateFailed'));
     } finally {
       setActionLoading(false);
-      setShowEditModal(false);
-      setSelectedMember(null);
     }
   };
 // DELETE MEMBER FROM LOCATION
@@ -1357,6 +1373,18 @@ export default function CommunityManagement() {
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                />
+
+                <Text style={styles.inputLabel}>{t('admin.communityManagement.phone')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editForm.phone}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, phone: text }))}
+                  placeholder={t('admin.communityManagement.phonePlaceholder')}
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="phone-pad"
+                  autoCorrect={false}
+                  maxLength={20}
                 />
 
                 <Text style={styles.inputLabel}>{t('admin.communityManagement.unitNumber')}</Text>

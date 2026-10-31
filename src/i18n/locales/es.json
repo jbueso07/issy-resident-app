@@ -1729,6 +1729,8 @@
       }
     },
     "communityManagement": {
+      "phone": "Teléfono",
+      "phonePlaceholder": "+504 9999-9999",
       "deactivateMember": "Desactivar Miembro",
       "selectDeactivationReason": "Selecciona el motivo de desactivación para {{name}}",
       "deactivate": "Desactivar",
@@ -1806,6 +1808,7 @@
         "deactivated": "Miembro desactivado"
       },
       "errors": {
+        "invalidPhone": "Teléfono inválido. Usa 8 a 15 dígitos, con o sin +504.",
         "loadFailed": "Error al cargar",
         "approveFailed": "Error al aprobar",
         "rejectFailed": "Error al rechazar",

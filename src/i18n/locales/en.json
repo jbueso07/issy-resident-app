@@ -791,6 +791,13 @@
     }
   },
   "admin": {
+    "communityManagement": {
+      "phone": "Phone",
+      "phonePlaceholder": "+504 9999-9999",
+      "errors": {
+        "invalidPhone": "Invalid phone number. Use 8 to 15 digits, with or without +504."
+      }
+    },
     "accessProcess": {
       "title": "Access Processes",
       "subtitle": "Capture configuration",
