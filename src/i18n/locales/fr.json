@@ -1926,7 +1926,10 @@
       "member": "Membre",
       "approved": "Approuvé",
       "admin": "Admin",
-      "general": "Général"
+      "general": "Général",
+      "account": "Compte",
+      "emergency": "Urgence",
+      "patrol": "Patrouille"
     },
     "time": {
       "now": "Maintenant",

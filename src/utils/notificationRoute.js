@@ -15,7 +15,7 @@ const GROUP_TYPES = {
     'event_guest_checkout',
     'access_request_resolved',
   ],
-  report: ['incident', 'incident_comment', 'incident_status', 'incident_update'],
+  report: ['incident', 'incident_comment', 'incident_status', 'incident_update', 'patrol_completed'],
   announcement: ['announcement', 'service_announcement'],
   reservation: [
     'reservation_pending',
@@ -31,6 +31,9 @@ const GROUP_TYPES = {
     'payment_confirmed',
     'payment_verified',
     'payment_rejected',
+    'payment_reversed',
+    'payment_cancelled',
+    'payment_card_failed',
     'proof_submitted',
     'new_charge',
     'community_payment_success',
@@ -47,6 +50,7 @@ const GROUP_TYPES = {
     'panic_attended',
     'panic_escalated',
     'panic_auto_closed',
+    'guard_emergency',
     'emergency',
   ],
   account: [
@@ -57,6 +61,9 @@ const GROUP_TYPES = {
     'member_pending',
     'account_suspended',
     'account_reactivated',
+    'member_removed',
+    'member_suspended',
+    'member_role_changed',
   ],
 };
 
@@ -130,6 +137,20 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
   if (type === 'registration_pending' || type === 'member_pending') {
     return isAdmin ? { pathname: '/admin/community-management', params: {} } : null;
   }
+
+  // Aprobado o reactivado: ya puede usar la app, el home es su punto de partida
+  if (type === 'member_approved' || type === 'account_reactivated') return HOME_ROUTE;
+
+  // Patrulla terminada: el backend solo la manda a admins
+  if (type === 'patrol_completed') {
+    return isAdmin ? { pathname: '/admin/patrol-reports', params: {} } : null;
+  }
+
+  // member_rejected / member_removed / member_suspended / member_role_changed, welcome y
+  // account_suspended: sin pantalla propia a propósito. El push cae en Notificaciones (ya es
+  // la lista donde está el aviso) y tocar la fila en la lista no hace nada, así no se apila
+  // otra copia de /notifications. Mi unidad no aplica: el usuario rechazado/dado de baja
+  // puede ya no tener unidad en esa residencial.
 
   switch (TYPE_TO_GROUP[type]) {
     case 'visit':

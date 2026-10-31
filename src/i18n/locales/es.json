@@ -791,7 +791,10 @@
       "member": "Miembro",
       "approved": "Aprobado",
       "admin": "Admin",
-      "general": "General"
+      "general": "General",
+      "account": "Cuenta",
+      "emergency": "Emergencia",
+      "patrol": "Patrulla"
     },
     "time": {
       "now": "Ahora",

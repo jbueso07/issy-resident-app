@@ -80,6 +80,22 @@ export default function NotificationsScreen() {
       payment: { icon: 'wallet-outline', color: COLORS.lime, label: t('notifications.types.payment') },
       member_pending: { icon: 'person-add-outline', color: COLORS.blue, label: t('notifications.types.member') },
       member_approved: { icon: 'checkmark-circle-outline', color: COLORS.lime, label: t('notifications.types.approved') },
+      payment_overdue: { icon: 'wallet-outline', color: COLORS.coral, label: t('notifications.types.payment') },
+      payment_confirmed: { icon: 'checkmark-circle-outline', color: COLORS.lime, label: t('notifications.types.payment') },
+      community_payment_success: { icon: 'checkmark-circle-outline', color: COLORS.lime, label: t('notifications.types.payment') },
+      payment_verified: { icon: 'checkmark-circle-outline', color: COLORS.lime, label: t('notifications.types.payment') },
+      payment_rejected: { icon: 'close-circle-outline', color: COLORS.coral, label: t('notifications.types.payment') },
+      payment_reversed: { icon: 'arrow-undo-outline', color: COLORS.orange, label: t('notifications.types.payment') },
+      payment_cancelled: { icon: 'close-circle-outline', color: COLORS.textSecondary, label: t('notifications.types.payment') },
+      payment_card_failed: { icon: 'card-outline', color: COLORS.coral, label: t('notifications.types.payment') },
+      member_rejected: { icon: 'close-circle-outline', color: COLORS.coral, label: t('notifications.types.account') },
+      member_removed: { icon: 'person-remove-outline', color: COLORS.coral, label: t('notifications.types.account') },
+      member_suspended: { icon: 'ban-outline', color: COLORS.coral, label: t('notifications.types.account') },
+      account_suspended: { icon: 'ban-outline', color: COLORS.coral, label: t('notifications.types.account') },
+      member_role_changed: { icon: 'swap-horizontal-outline', color: COLORS.blue, label: t('notifications.types.account') },
+      account_reactivated: { icon: 'checkmark-circle-outline', color: COLORS.lime, label: t('notifications.types.account') },
+      guard_emergency: { icon: 'alert-circle-outline', color: COLORS.coral, label: t('notifications.types.emergency') },
+      patrol_completed: { icon: 'shield-checkmark-outline', color: COLORS.teal, label: t('notifications.types.patrol') },
       admin: { icon: 'shield-outline', color: COLORS.purple, label: t('notifications.types.admin') },
       general: { icon: 'notifications-outline', color: COLORS.textSecondary, label: t('notifications.types.general') },
     };
@@ -91,7 +107,8 @@ export default function NotificationsScreen() {
       announcement: configs.announcement,
       reservation: configs.reservation,
       payment: configs.payment,
-      emergency: { icon: 'alert-circle-outline', color: COLORS.coral, label: t('notifications.types.incident') },
+      emergency: { icon: 'alert-circle-outline', color: COLORS.coral, label: t('notifications.types.emergency') },
+      account: { icon: 'person-circle-outline', color: COLORS.blue, label: t('notifications.types.account') },
     };
     return byGroup[getNotificationGroup(type)] || configs.general;
   };

@@ -688,7 +688,10 @@
       "member": "Member",
       "approved": "Approved",
       "admin": "Admin",
-      "general": "General"
+      "general": "General",
+      "account": "Account",
+      "emergency": "Emergency",
+      "patrol": "Patrol"
     },
     "time": {
       "now": "Now",
