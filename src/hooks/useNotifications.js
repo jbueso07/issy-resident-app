@@ -96,6 +96,23 @@ function emitAccessRequestEvent(data) {
   });
 }
 
+// Aviso de que llegó un push con la app abierta (cualquier tipo): lo usa el contador de no leídas
+// (NotificationCountContext). Mismo patrón que los eventos de solicitudes de ingreso.
+const notificationReceivedListeners = new Set();
+export function subscribeNotificationReceived(callback) {
+  notificationReceivedListeners.add(callback);
+  return () => notificationReceivedListeners.delete(callback);
+}
+function emitNotificationReceived(data) {
+  notificationReceivedListeners.forEach((cb) => {
+    try {
+      cb(data);
+    } catch (e) {
+      console.log('notificationReceived listener error:', e);
+    }
+  });
+}
+
 // ============================================================
 // Toque en una notificación (push, botón o lista): una sola ruta de navegación
 // ============================================================
@@ -246,6 +263,7 @@ export const useNotifications = () => {
       if (ACCESS_REQUEST_EVENT_TYPES.includes(receivedData?.type)) {
         emitAccessRequestEvent(receivedData);
       }
+      emitNotificationReceived(receivedData);
     });
 
     // Listener para cuando el usuario toca una notificación
@@ -396,27 +414,6 @@ export async function sendLocalNotification(title, body, data = {}) {
     },
     trigger: null, // Inmediato
   });
-}
-
-// Función para obtener el conteo de notificaciones no leídas
-export async function getUnreadCount() {
-  try {
-    const token = await AsyncStorage.getItem('token');
-    
-    if (!token) return 0;
-
-    const response = await fetch(`${API_URL}/notifications/unread-count`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-    return data.data?.unread_count || 0;
-  } catch (error) {
-    console.error('Error getting unread count:', error);
-    return 0;
-  }
 }
 
 // Función para marcar todas como leídas

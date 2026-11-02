@@ -23,7 +23,7 @@ const MODES = ['unit', 'code', 'name'];
 
 export default function HouseIdentificationSection({ locationId }) {
   const { t } = useTranslation();
-  const [settings, setSettings] = useState(null); // { mode, showName, codeLength, suggestedLength }
+  const [settings, setSettings] = useState(null); // { mode, showName, showAuthorizer, codeLength, suggestedLength }
   const [saving, setSaving] = useState(false);
   const [confirmedMode, setConfirmedMode] = useState(null); // modo confirmado por el SERVIDOR (no el optimista)
   const [codes, setCodes] = useState(null); // { houses, codeLength, suggestedLength }
@@ -39,6 +39,8 @@ export default function HouseIdentificationSection({ locationId }) {
     setSettings({
       mode: data.mode || 'unit',
       showName: data.show_resident_name === true,
+      // null = el backend no manda el campo (versión vieja): el interruptor no se muestra
+      showAuthorizer: typeof data.show_authorizer_on_scan === 'boolean' ? data.show_authorizer_on_scan : null,
       codeLength: data.code_length || null,
       suggestedLength: data.suggested_length || null,
     });
@@ -111,6 +113,8 @@ export default function HouseIdentificationSection({ locationId }) {
   };
 
   const handleShowNameChange = (value) => save({ show_resident_name: value }, { showName: value });
+
+  const handleShowAuthorizerChange = (value) => save({ show_authorizer_on_scan: value }, { showAuthorizer: value });
 
   const startEdit = (house) => {
     setEditingKey(house.house_key);
@@ -233,6 +237,23 @@ export default function HouseIdentificationSection({ locationId }) {
             disabled={saving}
             trackColor={{ false: neu.sunken, true: neu.teal + '50' }}
             thumbColor={settings.showName ? neu.teal : neu.textSoft}
+            ios_backgroundColor={neu.sunken}
+          />
+        </View>
+      )}
+
+      {settings.showAuthorizer !== null && (
+        <View style={styles.switchRow}>
+          <View style={styles.switchText}>
+            <Text style={styles.radioLabel}>{t('admin.settings.location.houseShowAuthorizer')}</Text>
+            <Text style={styles.radioDesc}>{t('admin.settings.location.houseShowAuthorizerDesc')}</Text>
+          </View>
+          <Switch
+            value={settings.showAuthorizer}
+            onValueChange={handleShowAuthorizerChange}
+            disabled={saving}
+            trackColor={{ false: neu.sunken, true: neu.teal + '50' }}
+            thumbColor={settings.showAuthorizer ? neu.teal : neu.textSoft}
             ios_backgroundColor={neu.sunken}
           />
         </View>

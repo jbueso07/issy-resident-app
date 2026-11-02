@@ -1307,6 +1307,8 @@
         "houseModeNameDesc": "O porteiro busca por nome e vê o nome abreviado, por exemplo María L.",
         "houseShowName": "Mostrar ao porteiro o nome do titular",
         "houseShowNameDesc": "Aparece ao lado da casa, por exemplo Casa B7 · Luis M.",
+        "houseShowAuthorizer": "Mostrar ao porteiro quem autorizou",
+        "houseShowAuthorizerDesc": "Ao ler o QR de uma visita ou entrega, o porteiro vê o nome de quem autorizou.",
         "houseCodesTitle": "Códigos das casas",
         "houseCodesDesc": "Os códigos têm {{length}} dígitos. Toque em um código para editá-lo.",
         "houseCodesSeeAll": "Ver todos ({{count}})",

@@ -1276,6 +1276,8 @@
         "houseModeNameDesc": "L'agent cherche par nom et voit un nom abrégé, par exemple María L.",
         "houseShowName": "Montrer à l'agent le nom du titulaire",
         "houseShowNameDesc": "Affiché à côté de la maison, par exemple Maison B7 · Luis M.",
+        "houseShowAuthorizer": "Montrer à l'agent qui a autorisé",
+        "houseShowAuthorizerDesc": "En lisant le QR d'une visite ou d'une livraison, l'agent voit le nom de la personne qui l'a autorisé.",
         "houseCodesTitle": "Codes de maison",
         "houseCodesDesc": "Les codes ont {{length}} chiffres. Touchez un code pour le modifier.",
         "houseCodesSeeAll": "Tout voir ({{count}})",

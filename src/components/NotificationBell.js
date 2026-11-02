@@ -1,7 +1,7 @@
 // src/components/NotificationBell.js
 // ISSY - Campana de notificaciones con badge
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   TouchableOpacity,
@@ -11,9 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
-import { authFetch } from '../services/api';
-import { useFocusEffect } from '@react-navigation/native';
+import { useNotificationCount } from '../context/NotificationCountContext';
 import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -30,41 +28,8 @@ const COLORS = {
 // style / badgeStyle: opcionales para la piel del home (sin ellos se ve igual que siempre)
 export default function NotificationBell({ size = 24, color = COLORS.textPrimary, style, badgeStyle }) {
   const router = useRouter();
-  const { token } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const fetchUnreadCount = useCallback(async () => {
-    if (!token) return;
-    
-    try {
-      // authFetch: token vigente de AsyncStorage y renovación en 401 (el de AuthContext puede estar vencido)
-      const result = await authFetch('/notifications/unread-count');
-      
-      if (result.success) {
-        setUnreadCount(result.data?.unread_count || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
-    }
-  }, [token]);
-
-  // Fetch on mount
-  useEffect(() => {
-    fetchUnreadCount();
-  }, [fetchUnreadCount]);
-
-  // Refresh when screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      fetchUnreadCount();
-    }, [fetchUnreadCount])
-  );
-
-  // Poll every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  // Contador compartido (NotificationCountContext): la campana solo lo muestra
+  const { unreadCount } = useNotificationCount();
 
   const handlePress = () => {
     router.push('/notifications');

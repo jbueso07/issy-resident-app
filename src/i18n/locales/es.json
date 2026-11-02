@@ -1531,6 +1531,8 @@
         "houseModeNameDesc": "El guardia busca por nombre y ve el nombre abreviado, por ejemplo María L.",
         "houseShowName": "Mostrar al guardia el nombre del titular",
         "houseShowNameDesc": "Aparece junto a la casa, por ejemplo Casa B7 · Luis M.",
+        "houseShowAuthorizer": "Mostrar al guardia quién autorizó",
+        "houseShowAuthorizerDesc": "Al leer el QR de una visita o un delivery, el guardia ve el nombre de quien lo autorizó.",
         "houseCodesTitle": "Códigos de casa",
         "houseCodesDesc": "Los códigos tienen {{length}} dígitos. Toca un código para editarlo.",
         "houseCodesSeeAll": "Ver todos ({{count}})",

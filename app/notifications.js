@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
+import { useNotificationCount } from '../src/context/NotificationCountContext';
 import { openNotificationTarget } from '../src/hooks/useNotifications';
 import { getNotificationGroup } from '../src/utils/notificationRoute';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +53,7 @@ const COLORS = {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { token } = useAuth();
+  const { applyRead, applyAllRead } = useNotificationCount();
   const { t, i18n } = useTranslation();
   const language = i18n.language;
   
@@ -188,6 +190,8 @@ export default function NotificationsScreen() {
   };
 
   const markAsRead = async (notificationId) => {
+    // Solo baja el contador si estaba sin leer
+    const wasUnread = notifications.some(n => n.id === notificationId && !n.read);
     try {
       await fetch(`${API_URL}/notifications/${notificationId}/read`, {
         method: 'PATCH',
@@ -202,6 +206,7 @@ export default function NotificationsScreen() {
           n.id === notificationId ? { ...n, read: true } : n
         )
       );
+      if (wasUnread) applyRead(1);
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -220,6 +225,7 @@ export default function NotificationsScreen() {
       setNotifications(prev =>
         prev.map(n => ({ ...n, read: true }))
       );
+      applyAllRead();
     } catch (error) {
       console.error('Error marking all as read:', error);
     }

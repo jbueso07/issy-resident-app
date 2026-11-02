@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { LanguageProvider } from '../src/context/LanguageContext';
 import { AdminLocationProvider } from '../src/context/AdminLocationContext';
 import { UserLocationProvider, useUserLocation } from '../src/context/UserLocationContext';
+import { NotificationCountProvider } from '../src/context/NotificationCountContext';
 import { authFetch } from '../src/services/api';
 import { StatusBar } from 'expo-status-bar';
 import { useNotifications, setAccessRequestNavigationReady, setNotificationLocationBridge } from '../src/hooks/useNotifications';
@@ -85,16 +86,18 @@ export default function RootLayout() {
       <LanguageProvider>
         <AdminLocationProvider>
           <UserLocationProvider>
-            <StatusBar style="light" />
-            <NotificationInitializer />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="admin" />
-              <Stack.Screen name="join/[code]" />
-              <Stack.Screen name="marketplace-hub" />
-            </Stack>
+            <NotificationCountProvider>
+              <StatusBar style="light" />
+              <NotificationInitializer />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="admin" />
+                <Stack.Screen name="join/[code]" />
+                <Stack.Screen name="marketplace-hub" />
+              </Stack>
+            </NotificationCountProvider>
           </UserLocationProvider>
         </AdminLocationProvider>
       </LanguageProvider>

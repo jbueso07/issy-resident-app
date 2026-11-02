@@ -1426,6 +1426,8 @@
         "houseModeNameDesc": "The guard searches by name and sees a shortened name, for example María L.",
         "houseShowName": "Show the guard the account holder's name",
         "houseShowNameDesc": "Shown next to the house, for example House B7 · Luis M.",
+        "houseShowAuthorizer": "Show the guard who authorized",
+        "houseShowAuthorizerDesc": "When scanning a visitor or delivery QR, the guard sees the name of who authorized it.",
         "houseCodesTitle": "House codes",
         "houseCodesDesc": "Codes have {{length}} digits. Tap a code to edit it.",
         "houseCodesSeeAll": "See all ({{count}})",

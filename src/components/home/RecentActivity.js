@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useAuth } from '../../context/AuthContext';
+import { useNotificationCount } from '../../context/NotificationCountContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { authFetch } from '../../services/api';
 import { sendTokenToBackend, requestNotificationPermission } from '../../hooks/useNotifications';
@@ -212,6 +213,7 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
   const insets = useSafeAreaInsets();
   const { t, language } = useTranslation();
   const { user } = useAuth();
+  const { applyRead } = useNotificationCount();
   const font = useHomeFont();
   const userId = user?.id;
   const storageKey = userId ? `hidden_activity_${userId}` : null;
@@ -391,12 +393,14 @@ export default function RecentActivity({ isAdmin = false, onLoaded, refreshKey, 
     if (ids.length === 0) return;
     ids.forEach((id) => markedRef.current.add(id));
     setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, read: true } : i)));
+    // El contador de la campana baja sin pedirlo al servidor (solo si estaba sin leer)
+    if (!item.read) applyRead(1);
     ids.forEach((id) =>
       authFetch(`/notifications/${id}/read`, { method: 'PATCH' }).catch((error) =>
         console.error('Error marking activity as read:', error)
       )
     );
-  }, []);
+  }, [applyRead]);
 
   useEffect(() => {
     const pending = visibleItems.filter(
