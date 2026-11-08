@@ -10,7 +10,9 @@ import { useHomeFont } from '../../theme/homeFont';
 import { radius, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
 
 const ISSY_URL = 'https://joinissy.com';
-const LOGO = require('../../../assets/logos/issy-header.png');
+// Logo a color (arco y punto verdes, letras claras), 600×486 con fondo transparente
+const LOGO = require('../../../assets/logos/issy-logo-color.png');
+const LOGO_RATIO = 600 / 486;
 
 export default function HomeHeader() {
   const { t } = useTranslation();
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   logo: {
-    width: (scale(34) * 600) / 459,
+    width: scale(34) * LOGO_RATIO,
     height: scale(34),
   },
   brandText: {

@@ -151,7 +151,7 @@ export default function Login() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../../assets/logos/issy-white.png')}
+              source={require('../../assets/logos/issy-logo-color.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -360,9 +360,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: scale(40),
   },
+  // Logo a color 600×486
   logoImage: {
-    width: scale(160),
-    height: scale(65),
+    width: scale(120),
+    height: scale(120 * 486 / 600),
   },
   socialButtons: {
     width: '100%',
