@@ -73,7 +73,8 @@ function NotificationInitializer() {
 
   useEffect(() => {
     if (notification) {
-      console.log('📬 New notification received:', notification.request.content);
+      // Solo el tipo, nunca el contenido
+      console.log('📬 Nueva notificación:', notification.request?.content?.data?.type || 'sin tipo');
     }
   }, [notification]);
   

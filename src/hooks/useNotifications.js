@@ -165,6 +165,50 @@ const handledResponses = new Set();
 let notificationNavigationReady = false;
 let pendingResponse = null;
 
+// Última respuesta ya abierta, guardada entre arranques. En Android el sistema puede volver a
+// entregar el mismo toque al abrir el app otra vez (p. ej. desde Recientes); si coincide, se salta.
+const LAST_OPENED_RESPONSE_KEY = 'notifications.lastOpenedResponse';
+// AsyncStorage nunca debe frenar la navegación: si tarda más que esto, se sigue como si no hubiera nada
+const STORAGE_TIMEOUT_MS = 1500;
+
+// Identificador de la notificación + acción + fecha (no lleva contenido de la notificación)
+function getResponseKey(response) {
+  const notification = response?.notification;
+  const id = notification?.request?.identifier || '';
+  const action = response?.actionIdentifier || '';
+  const date = notification?.date || '';
+  return `${id}|${action}|${date}`;
+}
+
+// Sin identificador ni fecha no hay cómo reconocerla en otro arranque: no se guarda
+function canRememberResponse(key) {
+  const [id, , date] = key.split('|');
+  return !!id || (!!date && date !== '0');
+}
+
+function withTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(null), STORAGE_TIMEOUT_MS)),
+  ]);
+}
+
+async function wasResponseOpenedBefore(key) {
+  if (!canRememberResponse(key)) return false;
+  try {
+    return (await withTimeout(AsyncStorage.getItem(LAST_OPENED_RESPONSE_KEY))) === key;
+  } catch {
+    return false;
+  }
+}
+
+function rememberOpenedResponse(key) {
+  if (!canRememberResponse(key)) return;
+  try {
+    Promise.resolve(AsyncStorage.setItem(LAST_OPENED_RESPONSE_KEY, key)).catch(() => {});
+  } catch {}
+}
+
 async function routeAccessRequestResponse(response) {
   const data = response?.notification?.request?.content?.data || {};
   const requestId = data.request_id || data.access_request_id;
@@ -186,18 +230,37 @@ async function routeAccessRequestResponse(response) {
   router.push({ pathname: '/access-approval', params });
 }
 
-function routeNotificationResponse(response) {
+async function routeNotificationResponse(response) {
   const content = response?.notification?.request?.content;
   const data = parseNotificationData(content?.data);
-  const key = `${response?.notification?.request?.identifier}:${response?.actionIdentifier}`;
+  const key = getResponseKey(response);
+  // Se marca antes de cualquier espera: la misma respuesta puede llegar dos veces casi a la vez
   if (handledResponses.has(key)) return;
   handledResponses.add(key);
 
-  if (data.type === 'access_request' && (data.request_id || data.access_request_id)) {
-    routeAccessRequestResponse(response);
+  // Sin tipo no es un toque real en una notificación del app (en Android, al abrir desde cerrada,
+  // la librería convierte cualquier dato del arranque en una "respuesta"): no se navega a ningún lado
+  if (!data.type) {
+    console.log('🔕 Respuesta de notificación sin tipo ignorada');
     return;
   }
-  openNotificationTarget({ type: data.type, data }, { fromPush: true });
+
+  // Ya se abrió en un arranque anterior: no repetir
+  if (await wasResponseOpenedBefore(key)) return;
+  rememberOpenedResponse(key);
+
+  if (data.type === 'access_request' && (data.request_id || data.access_request_id)) {
+    await routeAccessRequestResponse(response);
+    return;
+  }
+  await openNotificationTarget({ type: data.type, data }, { fromPush: true });
+}
+
+// Nunca deja escapar un error: la navegación del resto del app sigue normal
+function routeNotificationResponseSafely(response) {
+  routeNotificationResponse(response).catch((error) => {
+    console.log('⚠️ No se pudo abrir la notificación:', error?.message || 'error');
+  });
 }
 
 // Lo llama el layout cuando ya hay sesión y la navegación está lista (pasada la pantalla de inicio)
@@ -208,14 +271,14 @@ export async function setAccessRequestNavigationReady(ready) {
   if (pendingResponse) {
     const pending = pendingResponse;
     pendingResponse = null;
-    routeNotificationResponse(pending);
+    routeNotificationResponseSafely(pending);
   }
 
   // App abierta desde cerrada por el tap en una notificación (o en uno de sus botones), de cualquier tipo
   try {
     const last = await Notifications.getLastNotificationResponseAsync();
     if (last) {
-      routeNotificationResponse(last);
+      routeNotificationResponseSafely(last);
       try {
         await Notifications.clearLastNotificationResponseAsync();
       } catch {}
@@ -257,9 +320,10 @@ export const useNotifications = () => {
 
     // Listener para notificaciones recibidas mientras la app está abierta
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('📬 Notification received:', notification);
       setNotification(notification);
       const receivedData = notification?.request?.content?.data;
+      // Solo el tipo, nunca el contenido (lleva nombres de visitas, residentes, montos…)
+      console.log('📬 Notificación recibida:', receivedData?.type || 'sin tipo');
       if (ACCESS_REQUEST_EVENT_TYPES.includes(receivedData?.type)) {
         emitAccessRequestEvent(receivedData);
       }
@@ -268,7 +332,7 @@ export const useNotifications = () => {
 
     // Listener para cuando el usuario toca una notificación
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('👆 Notification tapped:', response);
+      console.log('👆 Notificación tocada:', parseNotificationData(response?.notification?.request?.content?.data).type || 'sin tipo');
       handleNotificationResponse(response);
     });
 
@@ -400,7 +464,7 @@ function handleNotificationResponse(response) {
     pendingResponse = response;
     return;
   }
-  routeNotificationResponse(response);
+  routeNotificationResponseSafely(response);
 }
 
 // Función helper para enviar notificación local (útil para testing)
