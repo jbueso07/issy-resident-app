@@ -131,6 +131,11 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
 
   if (type === 'qr_shared') return SHARED_QR_ROUTE;
 
+  // Pago verificado/confirmado con recibo nuevo (W9): abre ese recibo. Sin receipt_id, a Pagos como antes.
+  if ((type === 'payment_verified' || type === 'payment_confirmed') && data.receipt_id) {
+    return { pathname: '/receipt-detail', params: { id: String(data.receipt_id) } };
+  }
+
   // Otro miembro de la casa respondió / se canceló: va al historial de solicitudes
   if (type === 'access_request_resolved') return REQUESTS_HISTORY_ROUTE;
 

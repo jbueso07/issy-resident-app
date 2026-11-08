@@ -28,7 +28,9 @@ import { useUserLocation } from '../../src/context/UserLocationContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { 
   getPaymentMethods,
+  getMyReceipts,
 } from '../../src/services/api';
+import { isInvoice } from '../../src/utils/receipts';
 import { supabase } from '../../src/config/supabase';
 import PressableScale from '../../src/components/home/PressableScale';
 import { neu, neuSurface, fs } from '../../src/theme/tokens';
@@ -71,6 +73,8 @@ export default function Payments() {
   
   // State
   const [charges, setCharges] = useState({ pending: [], paid: [] });
+  // Recibos vigentes por payment_id (para "Ver recibo" en el Historial)
+  const [receiptsByPayment, setReceiptsByPayment] = useState({});
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +106,7 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
     if (locationIdRef.current !== selectedLocationId) {
       locationIdRef.current = selectedLocationId;
       setCharges({ pending: [], paid: [] });
+      setReceiptsByPayment({});
       setPaymentSettings(null);
       setLoading(true);
     }
@@ -115,6 +120,7 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
       await Promise.all([
         loadCharges(isStale),
         loadPaymentSettings(isStale),
+        loadReceipts(isStale),
         loadCards()
       ]);
     } catch (error) {
@@ -151,6 +157,19 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
       if (isStale()) return;
       console.error('Error loading charges:', error);
     }
+  };
+
+  // Si falla, el Historial queda como antes (sin "Ver recibo")
+  const loadReceipts = async (isStale = () => false) => {
+    const result = await getMyReceipts(selectedLocationId);
+    if (isStale() || !result.success) return;
+    const map = {};
+    result.data.forEach((receipt) => {
+      if (receipt.payment_id && receipt.status !== 'void' && !map[receipt.payment_id]) {
+        map[receipt.payment_id] = receipt;
+      }
+    });
+    setReceiptsByPayment(map);
   };
 
   const loadPaymentSettings = async (isStale = () => false) => {
@@ -577,6 +596,30 @@ const processCardPayment = async () => {
           </PressableScale>
         </View>
 
+        {/* Recibos: arriba del Historial */}
+        {activeTab === 'history' && (
+          <View style={styles.receiptLinks}>
+            <PressableScale
+              variant="neu"
+              style={styles.receiptLink}
+              containerStyle={styles.receiptLinkContainer}
+              onPress={() => router.push('/receipts')}
+            >
+              <Ionicons name="receipt-outline" size={scale(24)} color={neu.teal} />
+              <Text style={[styles.receiptLinkText, font(600)]}>Mis recibos</Text>
+            </PressableScale>
+            <PressableScale
+              variant="neu"
+              style={styles.receiptLink}
+              containerStyle={styles.receiptLinkContainer}
+              onPress={() => router.push('/billing-info')}
+            >
+              <Ionicons name="id-card-outline" size={scale(24)} color={neu.teal} />
+              <Text style={[styles.receiptLinkText, font(600)]}>Datos para mis recibos</Text>
+            </PressableScale>
+          </View>
+        )}
+
         {/* Content */}
         {activeTab === 'cards' ? (
           <View style={styles.emptyCard}>
@@ -753,6 +796,25 @@ const processCardPayment = async () => {
 </Text>
 </View>
 )}
+
+                    {/* Ver recibo: solo pagos con recibo vigente */}
+                    {activeTab === 'history' && charge.payment_status === 'paid' && charge.payment_id &&
+                      receiptsByPayment[charge.payment_id] && (
+                      <PressableScale
+                        variant="neu"
+                        neuSmall
+                        style={styles.viewReceiptButton}
+                        onPress={() => router.push({
+                          pathname: '/receipt-detail',
+                          params: { id: String(receiptsByPayment[charge.payment_id].id) },
+                        })}
+                      >
+                        <Ionicons name="document-text-outline" size={scale(20)} color={COLORS.teal} />
+                        <Text style={[styles.viewReceiptText, font(600)]}>
+                          {isInvoice(receiptsByPayment[charge.payment_id]) ? 'Ver factura' : 'Ver recibo'}
+                        </Text>
+                      </PressableScale>
+                    )}
 </View>
 </CardWrapper>
 );
@@ -1524,6 +1586,42 @@ detailStatusText: {
   },
 
   // Paid Badge
+  receiptLinks: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginTop: scale(16),
+  },
+  receiptLinkContainer: {
+    flex: 1,
+  },
+  receiptLink: {
+    flex: 1,
+    minHeight: scale(84),
+    borderRadius: scale(18),
+    padding: scale(14),
+    gap: scale(8),
+    justifyContent: 'center',
+  },
+  receiptLinkText: {
+    fontSize: fs(16),
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  viewReceiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    gap: scale(8),
+    minHeight: scale(48),
+    borderRadius: scale(14),
+    marginTop: scale(12),
+  },
+  viewReceiptText: {
+    fontSize: fs(16),
+    fontWeight: '600',
+    color: COLORS.teal,
+  },
   paidBadge: {
     flexDirection: 'row',
     alignItems: 'center',

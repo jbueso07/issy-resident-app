@@ -88,15 +88,18 @@ const refreshToken = async () => {
 // AUTH FETCH CON AUTO-REFRESH
 // ==========================================
 
+// options.responseType === 'text': devuelve el cuerpo como texto (solo con 200/2xx). Los errores del
+// backend vienen en JSON aunque se pida texto, así que se revisa el status antes de leer el cuerpo.
 export const authFetch = async (endpoint, options = {}, isRetry = false) => {
   const token = await AsyncStorage.getItem('token');
-  
+  const { responseType, ...fetchOptions } = options;
+
   const config = {
-    ...options,
+    ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
+      ...fetchOptions.headers,
     },
   };
 
@@ -137,6 +140,17 @@ export const authFetch = async (endpoint, options = {}, isRetry = false) => {
     const error = new Error('SESSION_EXPIRED');
     error.sessionExpired = true;
     throw error;
+  }
+
+  if (responseType === 'text') {
+    if (response.ok) return response.text();
+    let errData = {};
+    try { errData = (await response.json()) || {}; } catch (e) { errData = {}; }
+    const err = new Error(errData.error || errData.message || 'Error en la solicitud');
+    err.status = response.status;
+    err.code = errData.code || null;
+    err.data = errData.data || errData;
+    throw err;
   }
 
   const data = await response.json();
@@ -3139,5 +3153,75 @@ export const getMyHouseCode = async ({ locationId } = {}) => {
     return { success: true, data: data.data || data };
   } catch (error) {
     return accessRequestError(error);
+  }
+};
+
+// ==========================================
+// RECIBOS DEL RESIDENTE Y DATOS PARA RECIBOS (W9/W10)
+// ==========================================
+
+// Error común: status (404, 400…), sesión terminada o problema de red (sin datos personales en logs)
+const receiptsError = (error) => ({
+  success: false,
+  error: error?.message || 'Error en la solicitud',
+  status: error?.status || null,
+  sessionExpired: !!error?.sessionExpired,
+});
+
+const withLocation = (path, locationId) =>
+  (locationId ? `${path}?location_id=${encodeURIComponent(locationId)}` : path);
+
+// Mis recibos de la residencial → [{ id, receipt_number, receipt_type, payment_id, concept, total_amount, status, … }]
+export const getMyReceipts = async (locationId) => {
+  try {
+    const data = await authFetch(withLocation('/accounting/my-receipts', locationId));
+    return { success: true, data: Array.isArray(data?.data) ? data.data : [] };
+  } catch (error) {
+    return receiptsError(error);
+  }
+};
+
+// Un recibo mío → { receipt, business } (404 si no existe o no es mío)
+export const getMyReceipt = async (receiptId) => {
+  try {
+    const data = await authFetch(`/accounting/my-receipts/${encodeURIComponent(receiptId)}`);
+    return { success: true, data: data?.data || null };
+  } catch (error) {
+    return receiptsError(error);
+  }
+};
+
+// HTML del recibo (diseño único del backend)
+export const getMyReceiptHtml = async (receiptId) => {
+  try {
+    const html = await authFetch(`/accounting/my-receipts/${encodeURIComponent(receiptId)}/html`, {
+      responseType: 'text',
+      headers: { Accept: 'text/html' },
+    });
+    return { success: true, data: html };
+  } catch (error) {
+    return receiptsError(error);
+  }
+};
+
+// Mis datos para recibos → { billing_name, tax_id, resident_name, has_profile, … }
+export const getMyBilling = async (locationId) => {
+  try {
+    const data = await authFetch(withLocation('/accounting/my-billing', locationId));
+    return { success: true, data: data?.data || null };
+  } catch (error) {
+    return receiptsError(error);
+  }
+};
+
+export const updateMyBilling = async ({ locationId, billingName, taxId }) => {
+  try {
+    const data = await authFetch('/accounting/my-billing', {
+      method: 'PUT',
+      body: JSON.stringify({ location_id: locationId, billing_name: billingName, tax_id: taxId }),
+    });
+    return { success: true, data: data?.data || null };
+  } catch (error) {
+    return receiptsError(error);
   }
 };
