@@ -1387,6 +1387,9 @@
         "saveFailed": "Não foi possível salvar",
         "suspendFailed": "Não foi possível suspender",
         "reactivateFailed": "Não foi possível reativar",
+        "suspendHereOnly": "Suspender só neste condomínio",
+        "reactivateHereOnly": "Reativar só neste condomínio",
+        "suspendedHereOnly": "Pronto, suspenso neste condomínio. Nos outros continua igual.",
         "operationFailed": "Não foi possível completar",
         "reasonRequired": "A razão é obrigatória",
         "addFailed": "Não foi possível adicionar",
@@ -1394,6 +1397,15 @@
       }
     },
     "users": {
+      "resetLink": {
+        "title": "Não é possível alterar aqui",
+        "otherCommunity": "Esta pessoa também pertence a outro condomínio.",
+        "send": "Enviar link para o e-mail",
+        "sentTitle": "✅ Link enviado",
+        "sent": "Enviamos um link para o e-mail para alterar a senha.",
+        "failed": "Não foi possível enviar o link",
+        "connection": "Erro de conexão ao enviar o link"
+      },
       "title": "Usuários",
       "accessDenied": "Acesso Negado",
       "noPermissions": "Você não tem permissões",
@@ -2365,5 +2377,13 @@
     "homeCardCta": "Toque para responder",
     "homeCardMore": "Toque para responder · +{{others}} mais",
     "homeCardA11y": "{{visitor}} está em {{gate}}. Toque para responder"
+  },
+  "unpaid": {
+    "badge": "Pagamentos pendentes",
+    "banner": "Você tem pagamentos pendentes em {{name}}. Seu QR de morador continua funcionando; seu cartão e seus QR de visitas estão pausados até você ficar em dia.",
+    "viewPayments": "Ver meus pagamentos",
+    "visitorsPaused": "Seus QR de visitas em {{name}} estão pausados até você ficar em dia com seus pagamentos.",
+    "onlyEssentials": "Enquanto tiver pagamentos pendentes em {{name}}, aqui você só pode usar seu QR de morador, Pagamentos e Recibos.",
+    "changeLocation": "Trocar de condomínio"
   }
 }

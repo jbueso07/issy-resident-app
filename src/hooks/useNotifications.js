@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import i18n from '../i18n/i18n';
-import { getNotificationRoute, getNotificationLocationId, parseNotificationData } from '../utils/notificationRoute';
+import { getNotificationRoute, getNotificationLocationId, parseNotificationData, isRouteAllowedWhenUnpaid } from '../utils/notificationRoute';
 
 const API_URL = 'https://api.joinissy.com/api';
 
@@ -118,7 +118,8 @@ function emitNotificationReceived(data) {
 // ============================================================
 
 // Puente con los contextos de React (lo registra NotificationInitializer en app/_layout.js):
-//   getActiveLocationId(), getMembershipIds(), isAdmin(), switchTo(locationId) -> Promise<boolean>
+//   getActiveLocationId(), getMembershipIds(), isAdmin(), switchTo(locationId) -> Promise<boolean>,
+//   isRestricted(locationId) -> boolean (en mora), selectLocal(locationId) -> Promise<boolean> (sin backend)
 let locationBridge = null;
 export function setNotificationLocationBridge(bridge) {
   locationBridge = bridge;
@@ -126,8 +127,23 @@ export function setNotificationLocationBridge(bridge) {
 
 // ¿Se puede navegar? Si la notificación es de otra residencial se cambia a ella ANTES de navegar.
 // Si el usuario ya no pertenece a esa residencial: false (se va a Notificaciones sin cambiar).
-async function ensureNotificationLocation(locationId) {
+async function ensureNotificationLocation(locationId, route) {
   if (!locationId || !locationBridge) return true;
+  // Aviso de mora: Mi QR recibe la residencial y la elige ella (sin switch-location). SOLO esa ruta;
+  // cualquier otra notificación de otra residencial sigue cambiando de residencial como antes.
+  if (route?.pathname === '/(tabs)/visits' && route?.params?.tab === 'myqr' && route?.params?.location_id) return true;
+  // Residencial en mora (Falta de pago): solo QR de residente, Pagos y Recibos, y se elige SOLO en
+  // el app (el backend rechaza /auth/switch-location hacia ella). Lo demás va a Notificaciones.
+  if (locationBridge.isRestricted?.(locationId)) {
+    if (!isRouteAllowedWhenUnpaid(route)) return false;
+    if (String(locationBridge.getActiveLocationId?.() || '') === String(locationId)) return true;
+    try {
+      return (await locationBridge.selectLocal?.(locationId)) === true;
+    } catch (error) {
+      console.log('⚠️ No se pudo elegir la residencial desde la notificación:', error);
+      return false;
+    }
+  }
   if (String(locationBridge.getActiveLocationId?.() || '') === String(locationId)) return true;
   const memberships = (locationBridge.getMembershipIds?.() || []).map(String);
   if (!memberships.includes(String(locationId))) return false;
@@ -150,7 +166,7 @@ export async function openNotificationTarget(notification, { fromPush = false } 
     if (fromPush) router.push('/notifications');
     return false;
   }
-  const allowed = await ensureNotificationLocation(getNotificationLocationId(notification));
+  const allowed = await ensureNotificationLocation(getNotificationLocationId(notification), route);
   if (!allowed) {
     router.push('/notifications');
     return false;

@@ -146,12 +146,22 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
   // Aprobado o reactivado: ya puede usar la app, el home es su punto de partida
   if (type === 'member_approved' || type === 'account_reactivated') return HOME_ROUTE;
 
+  // Desactivado por Falta de pago (data.kind 'unpaid'): su QR de residente de ESA residencial sigue
+  // funcionando. location_id va a la pantalla, que elige la residencial SOLO en el app (en mora no
+  // existe /auth/switch-location). Sin kind (otros motivos o backend viejo): como siempre, sin pantalla.
+  if (type === 'member_suspended' && data.kind === 'unpaid') {
+    return {
+      pathname: '/(tabs)/visits',
+      params: data.location_id ? { tab: 'myqr', location_id: String(data.location_id) } : { tab: 'myqr' },
+    };
+  }
+
   // Patrulla terminada: el backend solo la manda a admins
   if (type === 'patrol_completed') {
     return isAdmin ? { pathname: '/admin/patrol-reports', params: {} } : null;
   }
 
-  // member_rejected / member_removed / member_suspended / member_role_changed, welcome y
+  // member_rejected / member_removed / member_suspended (sin kind 'unpaid') / member_role_changed, welcome y
   // account_suspended: sin pantalla propia a propósito. El push cae en Notificaciones (ya es
   // la lista donde está el aviso) y tocar la fila en la lista no hace nada, así no se apila
   // otra copia de /notifications. Mi unidad no aplica: el usuario rechazado/dado de baja
@@ -185,6 +195,14 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
       // Cuenta y tipos desconocidos: sin pantalla propia (el push cae en Notificaciones)
       return null;
   }
+};
+
+// Pantallas que sí funcionan en una residencial en mora (Falta de pago): QR de residente, Pagos y Recibos.
+// Cualquier otra notificación de esa residencial cae en Notificaciones, sin cambiar de residencial.
+export const isRouteAllowedWhenUnpaid = (route) => {
+  if (!route?.pathname) return false;
+  if (route.pathname === '/(tabs)/visits') return route.params?.tab === 'myqr';
+  return ['/(tabs)/payments', '/receipts', '/receipt-detail'].includes(route.pathname);
 };
 
 export default getNotificationRoute;

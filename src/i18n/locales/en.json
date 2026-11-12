@@ -1506,6 +1506,9 @@
         "saveFailed": "Could not save",
         "suspendFailed": "Could not suspend",
         "reactivateFailed": "Could not reactivate",
+        "suspendHereOnly": "Suspend only in this community",
+        "reactivateHereOnly": "Reactivate only in this community",
+        "suspendedHereOnly": "Done, suspended in this community. Their other communities are unchanged.",
         "operationFailed": "Could not complete",
         "reasonRequired": "Reason is required",
         "addFailed": "Could not add",
@@ -1513,6 +1516,15 @@
       }
     },
     "users": {
+      "resetLink": {
+        "title": "Can't change it here",
+        "otherCommunity": "This person also belongs to another community.",
+        "send": "Send a link to their email",
+        "sentTitle": "✅ Link sent",
+        "sent": "We sent a link to their email to change the password.",
+        "failed": "Could not send the link",
+        "connection": "Connection error while sending the link"
+      },
       "title": "Users",
       "accessDenied": "Access Denied",
       "noPermissions": "You don't have permissions",
@@ -2553,5 +2565,13 @@
     "homeCardCta": "Tap to respond",
     "homeCardMore": "Tap to respond · +{{others}} more",
     "homeCardA11y": "{{visitor}} is at {{gate}}. Tap to respond"
+  },
+  "unpaid": {
+    "badge": "Pending payments",
+    "banner": "You have pending payments at {{name}}. Your resident QR still works; your card and your visitor QRs are paused until you catch up.",
+    "viewPayments": "View my payments",
+    "visitorsPaused": "Your visitor QRs at {{name}} are paused until you catch up on your payments.",
+    "onlyEssentials": "While you have pending payments at {{name}}, you can only use your resident QR, Payments and Receipts here.",
+    "changeLocation": "Change community"
   }
 }

@@ -3,7 +3,7 @@
 // y secciones (Actividades recientes · Todas las funciones · Administración).
 // La lógica de pánico, cambio de residencial y estados sin comunidad se conserva.
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import { useTranslation } from '../../src/hooks/useTranslation';
 import { createPanic, getMyActivePanic, cancelPanic, authFetch } from '../../src/services/api';
 import HomeHeader from '../../src/components/home/HomeHeader';
 import LocationCarousel, { getRoleLabel } from '../../src/components/home/LocationCarousel';
+import { UnpaidBadge } from '../../src/components/UnpaidLocationNotice';
 import QuickActions from '../../src/components/home/QuickActions';
 import HomeSegments from '../../src/components/home/HomeSegments';
 import RecentActivity from '../../src/components/home/RecentActivity';
@@ -96,7 +97,7 @@ const switchLocationAPI = async (locationId) => {
 
 export default function Home() {
   const { user, profile, hasLocation, refreshProfile } = useAuth();
-  const { selectLocation } = useUserLocation();
+  const { selectLocation, restrictedLocationIds, isRestrictedLocation } = useUserLocation();
   const router = useRouter();
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
@@ -144,6 +145,15 @@ export default function Home() {
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
   const userLocations = profile?.user_locations || [];
+  // Residenciales en mora (Falta de pago) marcadas para el carrusel y la lista.
+  // Sin ninguna en mora es la MISMA lista de siempre.
+  const restrictedKey = (restrictedLocationIds || []).join('|');
+  const carouselLocations = useMemo(() => {
+    if (!restrictedKey) return userLocations;
+    const ids = restrictedKey.split('|');
+    return userLocations.map((loc) => (ids.includes(loc.location_id) ? { ...loc, restricted: 'unpaid' } : loc));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.user_locations, restrictedKey]);
 
   // Check if user has pending approval (registered with code but not yet approved)
   const isPendingApproval = profile?.pending_locations?.some(ul => ul.status === 'pending')
@@ -288,6 +298,14 @@ export default function Home() {
 
   const handleSwitchLocation = async (location) => {
     if (!location?.location_id || switchingLocation) return;
+    // En mora (Falta de pago): NUNCA /auth/switch-location (el backend lo rechaza). Se elige solo
+    // en el app y se abre su QR de residente; el home sigue en la residencial actual.
+    if (isRestrictedLocation(location.location_id)) {
+      setShowLocationModal(false);
+      await selectLocation(location.location_id);
+      router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } });
+      return;
+    }
     setSwitchingLocation(true);
     try {
       const result = await switchLocationAPI(location.location_id);
@@ -523,8 +541,8 @@ export default function Home() {
   const showLocationSearch = userLocations.length > LOCATION_SEARCH_MIN;
   const locationQuery = normalizeSearch(locationSearch);
   const visibleLocations = locationQuery
-    ? userLocations.filter((loc) => normalizeSearch(loc.name).includes(locationQuery))
-    : userLocations;
+    ? carouselLocations.filter((loc) => normalizeSearch(loc.name).includes(locationQuery))
+    : carouselLocations;
 
   const renderLocationModal = () => (
     <Modal
@@ -597,6 +615,7 @@ export default function Home() {
                           {detail}
                         </Text>
                       )}
+                      {loc.restricted === 'unpaid' && <UnpaidBadge style={{ marginTop: 4 }} />}
                     </View>
                   </View>
                   {isCurrent && (
@@ -676,7 +695,7 @@ export default function Home() {
 
         {/* Residencial deslizable: ancho completo (sin margen lateral) */}
         <LocationCarousel
-          locations={userLocations}
+          locations={carouselLocations}
           currentLocationId={currentLocationId}
           user={profile || user}
           onSwitchLocation={handleSwitchLocation}

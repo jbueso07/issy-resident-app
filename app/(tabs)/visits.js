@@ -36,6 +36,7 @@ import { useUserLocation } from '../../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../../src/components/UserLocationPicker';
 import { getMyQRCodes, generateQRCode, deleteQRCode, getResidentQRSecret, lookupUserForQR, getQRSharingMode, getRecentVisitors } from '../../src/services/api';
 import CompactResidentQR from '../../src/components/CompactResidentQR';
+import UnpaidLocationNotice from '../../src/components/UnpaidLocationNotice';
 import useQrBrightness from '../../src/hooks/useQrBrightness';
 import VisitPassCard from '../../src/components/VisitPassCard';
 import { saveImageWithFallback } from '../../src/utils/saveImageToGallery';
@@ -202,7 +203,8 @@ export default function Visits() {
   const { profile, user } = useAuth();
   const userId = user?.id || profile?.id;
   const { t, language } = useTranslation();
-  const { userLocations, selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading } = useUserLocation();
+  const { userLocations, selectedLocationId, selectedLocation, locationName, hasMultipleLocations, loading: locationLoading,
+    selectedRestricted, selectLocation, refreshLocations, isKnownLocation } = useUserLocation();
   const qrRef = useRef(null);
 
   // Dynamic QR types with translations
@@ -267,13 +269,27 @@ export default function Visits() {
 
   // Mejora 1: acceso directo desde el boton "Nuevo QR" del home.
   // Lee params de navegacion para abrir el tab Visitantes + el modal de crear.
-  const { tab: navTab, create: navCreate, type: navType } = useLocalSearchParams();
+  const { tab: navTab, create: navCreate, type: navType, location_id: navLocationId } = useLocalSearchParams();
   const navRouter = useRouter();
+
+  // Notificación de mora (member_suspended + kind 'unpaid'): trae la residencial. Se recarga la
+  // lista (ya viene en mora) y se elige SOLO en el app, sin /auth/switch-location.
+  useEffect(() => {
+    if (!navLocationId) return;
+    const locationId = String(navLocationId);
+    navRouter.setParams({ location_id: undefined });
+    (async () => {
+      await refreshLocations?.();
+      if (isKnownLocation?.(locationId)) await selectLocation(locationId);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navLocationId]);
   useEffect(() => {
     if (navTab) setActiveTab(String(navTab));
     // Tipo preseleccionado desde la hoja "Nuevo QR" (single | temporary | frequent)
     if (['single', 'temporary', 'frequent'].includes(navType)) setQrType(navType);
-    if (navCreate === '1') {
+    // En mora no se abre el formulario: la pestaña Visitantes muestra el aviso
+    if (navCreate === '1' && !selectedRestricted) {
       setShowCreateModal(true);
     }
     // one-shot: limpiar para que tocar dos veces el mismo acceso siempre funcione
@@ -414,6 +430,13 @@ export default function Visits() {
 
   // Quick Delivery states
   const [showQuickModal, setShowQuickModal] = useState(false);
+  // Residencial en mora: no se crean QR de visitas ahí (el backend también lo rechaza con 403).
+  // Cubre el botón "+" de la barra, el acceso rápido y cambiar de residencial con el formulario abierto.
+  useEffect(() => {
+    if (!selectedRestricted) return;
+    if (showCreateModal) setShowCreateModal(false);
+    if (showQuickModal) setShowQuickModal(false);
+  }, [selectedRestricted, showCreateModal, showQuickModal]);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [quickDuration, setQuickDuration] = useState(60);
   const [quickDriverName, setQuickDriverName] = useState('');
@@ -1326,6 +1349,11 @@ return (
         {/* Tabs */}
         <AccessTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
+        {/* Residencial en mora: el QR de residente sigue; tarjeta y QR de visitas en pausa */}
+        {activeTab === 'myqr' && selectedRestricted && (
+          <UnpaidLocationNotice name={locationName} message="banner" />
+        )}
+
         {/* Tab: Mi QR */}
         {activeTab === 'myqr' && residentQRData && (
           <CompactResidentQR
@@ -1363,8 +1391,13 @@ return (
           </View>
         )}
 
+        {/* Tab: Visitantes, en mora: sin crear QR ni lista de QR de visitas de esa residencial */}
+        {activeTab === 'visitors' && selectedRestricted && (
+          <UnpaidLocationNotice name={locationName} message="visitorsPaused" />
+        )}
+
         {/* Tab: Visitantes */}
-        {activeTab === 'visitors' && (
+        {activeTab === 'visitors' && !selectedRestricted && (
           <>
             {/* ============================================ */}
             {/* QUICK DELIVERY / UBER ACCESS */}

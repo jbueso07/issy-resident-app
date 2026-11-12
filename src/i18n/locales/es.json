@@ -1611,6 +1611,9 @@
         "saveFailed": "No se pudo guardar",
         "suspendFailed": "No se pudo suspender",
         "reactivateFailed": "No se pudo reactivar",
+        "suspendHereOnly": "Suspender solo en esta residencial",
+        "reactivateHereOnly": "Reactivar solo en esta residencial",
+        "suspendedHereOnly": "Listo, quedó suspendido en esta residencial. En sus otras residenciales sigue igual.",
         "operationFailed": "No se pudo completar",
         "reasonRequired": "La razón es requerida",
         "addFailed": "No se pudo agregar",
@@ -1618,6 +1621,15 @@
       }
     },
     "users": {
+      "resetLink": {
+        "title": "No se puede cambiar aquí",
+        "otherCommunity": "Esta persona también pertenece a otra residencial.",
+        "send": "Enviarle enlace a su correo",
+        "sentTitle": "✅ Enlace enviado",
+        "sent": "Le enviamos un enlace a su correo para cambiar la contraseña.",
+        "failed": "No se pudo enviar el enlace",
+        "connection": "Error de conexión al enviar el enlace"
+      },
       "title": "Usuarios",
       "accessDenied": "Acceso Denegado",
       "noPermissions": "Sin permisos",
@@ -3002,5 +3014,13 @@
     "homeCardCta": "Toca para responder",
     "homeCardMore": "Toca para responder · +{{others}} más",
     "homeCardA11y": "{{visitor}} está en {{gate}}. Toca para responder"
+  },
+  "unpaid": {
+    "badge": "Pagos pendientes",
+    "banner": "Tienes pagos pendientes en {{name}}. Tu QR de residente sigue funcionando; tu tarjeta y tus QR de visitas están pausados hasta que te pongas al día.",
+    "viewPayments": "Ver mis pagos",
+    "visitorsPaused": "Tus QR de visitas en {{name}} están pausados hasta que te pongas al día con tus pagos.",
+    "onlyEssentials": "Mientras tengas pagos pendientes en {{name}}, aquí solo puedes usar tu QR de residente, Pagos y Recibos.",
+    "changeLocation": "Cambiar de residencial"
   }
 }

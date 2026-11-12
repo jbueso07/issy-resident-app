@@ -25,6 +25,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
 import { useUserLocation } from '../../src/context/UserLocationContext';
+import { UnpaidBadge } from '../../src/components/UnpaidLocationNotice';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { 
   getPaymentMethods,
@@ -68,7 +69,7 @@ export default function Payments() {
   const font = useHomeFont();
   const router = useRouter();
   const { profile, token } = useAuth();
-  const { selectedLocationId } = useUserLocation();
+  const { selectedLocationId, selectedRestricted, locationName } = useUserLocation();
   const { t } = useTranslation();
   
   // State
@@ -133,7 +134,8 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
     }
   };
 
-  // El backend toma la residencial del usuario (users.location_id); location_id viaja por si algún día la respeta
+  // Residencial elegida en el app. El backend la respeta si hay membresía activa o en mora (Falta de pago);
+  // sin location_id usa la del token (users.location_id), como siempre
   const locationQuery = selectedLocationId ? `?location_id=${encodeURIComponent(selectedLocationId)}` : '';
 
   const loadCharges = async (isStale = () => false) => {
@@ -363,7 +365,8 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
       const proofUrl = await uploadProofImage(proofImage.uri);
 
       // Submit proof to API
-      const response = await fetch(`${API_URL}/community-payments/${selectedCharge.id}/submit-proof`, {
+      // location_id: la residencial elegida (en mora el backend solo acepta el comprobante con ella)
+      const response = await fetch(`${API_URL}/community-payments/${selectedCharge.id}/submit-proof${locationQuery}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -512,7 +515,15 @@ const processCardPayment = async () => {
         <View style={styles.header}>
           <View>
             <Text style={[styles.title, font(600)]}>{t('communityPayments.title')}</Text>
-            <Text style={[styles.subtitle, font(400)]}>{t('communityPayments.subtitle')}</Text>
+            {selectedRestricted ? (
+              // Residencial en mora elegida en el app: que se vea de cuál son estos cobros
+              <>
+                <Text style={[styles.subtitle, font(400)]}>{locationName}</Text>
+                <UnpaidBadge style={{ marginTop: scale(4) }} />
+              </>
+            ) : (
+              <Text style={[styles.subtitle, font(400)]}>{t('communityPayments.subtitle')}</Text>
+            )}
           </View>
           <PressableScale variant="neu" style={styles.methodsBtn} onPress={handleGoToMethods}>
             <Ionicons name="card-outline" size={22} color={COLORS.textPrimary} />

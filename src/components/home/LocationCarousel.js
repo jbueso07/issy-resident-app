@@ -11,6 +11,7 @@ import { View, Text, Image, FlatList, StyleSheet, ActivityIndicator, Dimensions 
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/useTranslation';
+import { UnpaidBadge } from '../UnpaidLocationNotice';
 import PressableScale from './PressableScale';
 import { useHomeFont } from '../../theme/homeFont';
 import { radius, spacing, scale, fs, MAX_FONT_SCALE, neu, neuSurface } from '../../theme/tokens';
@@ -100,6 +101,9 @@ export default function LocationCarousel({
     const location = cards[index];
     if (!location || switching || index === currentIndex) return;
     onSwitchLocation?.(location);
+    // En mora (Falta de pago): no cambia la residencial del home (solo se elige en el app y se
+    // abre su QR), así que la tarjeta visible regresa a la actual
+    if (location.restricted === 'unpaid') scrollToCard(currentIndex);
   };
 
   // La tarjeta visible siempre es la residencial real: si el cambio falla o
@@ -237,6 +241,7 @@ export default function LocationCarousel({
             <Text style={[styles.locationName, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={2}>
               {item.name || t('home.myCommunity')}
             </Text>
+            {item.restricted === 'unpaid' && <UnpaidBadge style={{ marginTop: scale(4) }} />}
             {!!item.house_number && (
               <View style={[styles.houseChip, neuSurface.sunkenSm]}>
                 <Text style={[styles.house, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE} numberOfLines={1}>

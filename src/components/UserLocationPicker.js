@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useUserLocation } from '../context/UserLocationContext';
+import { useUserLocation, isRestrictedRow } from '../context/UserLocationContext';
+import { UnpaidBadge } from './UnpaidLocationNotice';
 import { neu } from '../theme/tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -103,11 +104,13 @@ export const UserLocationPickerModal = () => {
                   {getLocationAddress(loc) ? (
                     <Text style={styles.locationAddress}>{getLocationAddress(loc)}</Text>
                   ) : null}
-                  {loc.is_primary && (
+                  {loc.is_primary && !isRestrictedRow(loc) && (
                     <View style={styles.primaryBadge}>
                       <Text style={styles.primaryBadgeText}>Principal</Text>
                     </View>
                   )}
+                  {/* En mora (Falta de pago): se elige solo en el app, sin /auth/switch-location */}
+                  {isRestrictedRow(loc) && <UnpaidBadge style={{ marginTop: 6 }} />}
                 </View>
                 {isSelected && (
                   <Ionicons name="checkmark-circle" size={22} color={COLORS.lime} />

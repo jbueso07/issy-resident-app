@@ -27,12 +27,12 @@ function NotificationInitializer() {
   // Tap en una solicitud de ingreso con la app cerrada: se atiende cuando ya hay sesión y la app
   // pasó de la pantalla de inicio a las pestañas (si no, el replace del splash taparía la pantalla).
   const { user, loading, profile, refreshProfile } = useAuth();
-  const { userLocations, selectedLocationId, selectLocation } = useUserLocation();
+  const { userLocations, selectedLocationId, selectLocation, isRestrictedLocation } = useUserLocation();
 
   // Puente para que el toque de una notificación de OTRA residencial cambie a ella antes de navegar
   // (mismo mecanismo que el carrusel del home: /auth/switch-location + selectLocation + refreshProfile).
   const bridgeStateRef = useRef({});
-  bridgeStateRef.current = { userLocations, selectedLocationId, selectLocation, refreshProfile, profile, user };
+  bridgeStateRef.current = { userLocations, selectedLocationId, selectLocation, isRestrictedLocation, refreshProfile, profile, user };
   useEffect(() => {
     setNotificationLocationBridge({
       getActiveLocationId: () => bridgeStateRef.current.selectedLocationId,
@@ -42,6 +42,12 @@ function NotificationInitializer() {
       isAdmin: () => {
         const { profile: p, user: u } = bridgeStateRef.current;
         return ['admin', 'superadmin'].includes(p?.role || u?.role);
+      },
+      // En mora (Falta de pago): se elige solo en el app, sin /auth/switch-location
+      isRestricted: (locationId) => !!bridgeStateRef.current.isRestrictedLocation?.(locationId),
+      selectLocal: async (locationId) => {
+        await bridgeStateRef.current.selectLocation(locationId);
+        return true;
       },
       switchTo: async (locationId) => {
         const result = await authFetch('/auth/switch-location', {

@@ -1356,6 +1356,9 @@
         "saveFailed": "Impossible d'enregistrer",
         "suspendFailed": "Impossible de suspendre",
         "reactivateFailed": "Impossible de réactiver",
+        "suspendHereOnly": "Suspendre seulement dans cette résidence",
+        "reactivateHereOnly": "Réactiver seulement dans cette résidence",
+        "suspendedHereOnly": "Fait : suspendu dans cette résidence. Ses autres résidences ne changent pas.",
         "operationFailed": "Impossible de compléter",
         "reasonRequired": "La raison est requise",
         "addFailed": "Impossible d'ajouter",
@@ -1363,6 +1366,15 @@
       }
     },
     "users": {
+      "resetLink": {
+        "title": "Impossible de le modifier ici",
+        "otherCommunity": "Cette personne appartient aussi à une autre résidence.",
+        "send": "Lui envoyer un lien par e-mail",
+        "sentTitle": "✅ Lien envoyé",
+        "sent": "Nous lui avons envoyé un lien par e-mail pour changer le mot de passe.",
+        "failed": "Impossible d'envoyer le lien",
+        "connection": "Erreur de connexion lors de l'envoi du lien"
+      },
       "title": "Utilisateurs",
       "accessDenied": "Accès Refusé",
       "noPermissions": "Vous n'avez pas les permissions",
@@ -2366,5 +2378,13 @@
     "homeCardCta": "Appuyez pour répondre",
     "homeCardMore": "Appuyez pour répondre · +{{others}} de plus",
     "homeCardA11y": "{{visitor}} est à {{gate}}. Appuyez pour répondre"
+  },
+  "unpaid": {
+    "badge": "Paiements en attente",
+    "banner": "Vous avez des paiements en attente à {{name}}. Votre QR de résident fonctionne toujours ; votre carte et vos QR de visiteurs sont en pause jusqu'à ce que vous soyez à jour.",
+    "viewPayments": "Voir mes paiements",
+    "visitorsPaused": "Vos QR de visiteurs à {{name}} sont en pause jusqu'à ce que vous soyez à jour de vos paiements.",
+    "onlyEssentials": "Tant que vous avez des paiements en attente à {{name}}, vous ne pouvez utiliser ici que votre QR de résident, les Paiements et les Reçus.",
+    "changeLocation": "Changer de résidence"
   }
 }

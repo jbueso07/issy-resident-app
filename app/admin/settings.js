@@ -304,6 +304,25 @@ export default function AdminSettings() {
     }
   };
 
+  // HW1 F: el backend explica por qué no se puede (403 OTHER_COMMUNITY: la persona también es de
+  // otra residencial) y en ese caso se ofrece hacerlo SOLO en esta residencial (membresía).
+  const readBody = async (res) => {
+    try { return await res.json(); } catch { return {}; }
+  };
+  const serverMessage = (data, fallbackKey) => data?.message || data?.error || t(fallbackKey);
+  const hereLocation = (data) => {
+    const ids = data?.admin_location_ids || [];
+    return ids.includes(locationId) ? locationId : ids[0];
+  };
+  const changeOnlyHere = async (userId, action, body) => {
+    const headers = await getAuthHeaders();
+    return fetch(`${API_URL}/api/admin/users/${userId}/${action}-in-location`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+  };
+
   // User suspension handlers
   const handleSuspendUser = async () => {
     if (!selectedUser) return;
@@ -325,7 +344,39 @@ export default function AdminSettings() {
         setSuspendForm({ reason: 'admin_suspended', message: '' });
         loadData();
       } else {
-        Alert.alert(t('common.error'), t('admin.settings.errors.suspendFailed'));
+        const data = await readBody(res);
+        const here = data?.code === 'OTHER_COMMUNITY' ? hereLocation(data) : null;
+        if (here) {
+          const userId = selectedUser.id;
+          Alert.alert(t('common.error'), serverMessage(data, 'admin.settings.errors.suspendFailed'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: t('admin.settings.errors.suspendHereOnly'),
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const r2 = await changeOnlyHere(userId, 'suspend', {
+                    location_id: here,
+                    reason: suspendForm.reason,
+                    message: suspendForm.message,
+                  });
+                  if (r2.ok) {
+                    Alert.alert(t('common.success'), t('admin.settings.errors.suspendedHereOnly'));
+                    setShowSuspendModal(false);
+                    setSuspendForm({ reason: 'admin_suspended', message: '' });
+                    loadData();
+                  } else {
+                    Alert.alert(t('common.error'), serverMessage(await readBody(r2), 'admin.settings.errors.suspendFailed'));
+                  }
+                } catch (e) {
+                  Alert.alert(t('common.error'), t('admin.settings.errors.suspendFailed'));
+                }
+              },
+            },
+          ]);
+        } else {
+          Alert.alert(t('common.error'), serverMessage(data, 'admin.settings.errors.suspendFailed'));
+        }
       }
     } catch (error) {
       Alert.alert(t('common.error'), t('admin.settings.errors.suspendFailed'));
@@ -351,7 +402,31 @@ export default function AdminSettings() {
                 Alert.alert(t('common.success'), t('admin.settings.success.userReactivated'));
                 loadData();
               } else {
-                Alert.alert(t('common.error'), t('admin.settings.errors.reactivateFailed'));
+                const data = await readBody(res);
+                const here = data?.code === 'OTHER_COMMUNITY' ? hereLocation(data) : null;
+                if (here) {
+                  Alert.alert(t('common.error'), serverMessage(data, 'admin.settings.errors.reactivateFailed'), [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                      text: t('admin.settings.errors.reactivateHereOnly'),
+                      onPress: async () => {
+                        try {
+                          const r2 = await changeOnlyHere(userId, 'reactivate', { location_id: here });
+                          if (r2.ok) {
+                            Alert.alert(t('common.success'), t('admin.settings.success.userReactivated'));
+                            loadData();
+                          } else {
+                            Alert.alert(t('common.error'), serverMessage(await readBody(r2), 'admin.settings.errors.reactivateFailed'));
+                          }
+                        } catch (e) {
+                          Alert.alert(t('common.error'), t('admin.settings.errors.reactivateFailed'));
+                        }
+                      },
+                    },
+                  ]);
+                } else {
+                  Alert.alert(t('common.error'), serverMessage(data, 'admin.settings.errors.reactivateFailed'));
+                }
               }
             } catch (error) {
               Alert.alert(t('common.error'), t('admin.settings.errors.reactivateFailed'));

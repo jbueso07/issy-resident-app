@@ -359,6 +359,33 @@ export default function AdminUsers() {
         setResetNewPassword('');
         setResetConfirmPassword('');
         setTimeout(() => setShowModal(true), 300);
+      } else if (data.alternative === 'send_reset_link') {
+        // HW1 F: la persona también es de otra residencial → no se puede poner la contraseña, pero
+        // sí mandarle un enlace a SU correo (el admin nunca ve ni pone la contraseña)
+        const target = selectedUser;
+        Alert.alert(t('admin.users.resetLink.title', 'No se puede cambiar aquí'), data.message || t('admin.users.resetLink.otherCommunity', 'Esta persona también pertenece a otra residencial.'), [
+          { text: t('common.cancel', 'Cancelar'), style: 'cancel' },
+          {
+            text: t('admin.users.resetLink.send', 'Enviarle enlace a su correo'),
+            onPress: async () => {
+              try {
+                const h2 = await getAuthHeaders();
+                const r2 = await fetch(`${API_URL}/users/${target.user_id}/send-reset-link`, { method: 'POST', headers: h2, body: '{}' });
+                const d2 = await r2.json().catch(() => ({}));
+                if (r2.ok && d2.success) {
+                  Alert.alert(t('admin.users.resetLink.sentTitle', '✅ Enlace enviado'), d2.message || t('admin.users.resetLink.sent', 'Le enviamos un enlace a su correo para cambiar la contraseña.'));
+                  setShowPasswordResetModal(false);
+                  setResetNewPassword('');
+                  setResetConfirmPassword('');
+                } else {
+                  Alert.alert('Error', d2.message || d2.error || t('admin.users.resetLink.failed', 'No se pudo enviar el enlace'));
+                }
+              } catch (e) {
+                Alert.alert('Error', t('admin.users.resetLink.connection', 'Error de conexión al enviar el enlace'));
+              }
+            },
+          },
+        ]);
       } else {
         Alert.alert('Error', data.message || 'No se pudo resetear la contraseña');
       }

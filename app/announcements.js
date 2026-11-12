@@ -27,6 +27,7 @@ import { getAnnouncements, markAnnouncementRead } from '../src/services/api';
 import { useTranslation } from '../src/hooks/useTranslation';
 import { useUserLocation } from '../src/context/UserLocationContext';
 import { UserLocationSelector, UserLocationPickerModal } from '../src/components/UserLocationPicker';
+import UnpaidLocationNotice from '../src/components/UnpaidLocationNotice';
 import PressableScale from '../src/components/home/PressableScale';
 import { neu, neuSurface, fs, radius } from '../src/theme/tokens';
 import { useHomeFont } from '../src/theme/homeFont';
@@ -58,7 +59,8 @@ export default function AnnouncementsScreen({ fromTab = false }) {
   const font = useHomeFont();
   const router = useRouter();
   const { t, language } = useTranslation();
-  const { selectedLocationId, selectedLocation, loading: locationLoading } = useUserLocation();
+  const { selectedLocationId, selectedLocation, loading: locationLoading, selectedRestricted, locationName,
+    hasMultipleLocations, openPicker } = useUserLocation();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +69,14 @@ export default function AnnouncementsScreen({ fromTab = false }) {
 
   const fetchAnnouncements = async () => {
     if (!selectedLocationId) return;
+    // Residencial en mora: no se piden. El backend, sin membresía activa ahí, responde con los
+    // anuncios de la residencial del token (otra residencial) y se verían como si fueran de esta.
+    if (selectedRestricted) {
+      setAnnouncements([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const result = await getAnnouncements(selectedLocationId);
       if (result.success) {
@@ -85,12 +95,12 @@ export default function AnnouncementsScreen({ fromTab = false }) {
       setLoading(true);
       fetchAnnouncements();
     }
-  }, [selectedLocationId]);
+  }, [selectedLocationId, selectedRestricted]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAnnouncements();
-  }, [selectedLocationId]);
+  }, [selectedLocationId, selectedRestricted]);
 
   const handleOpenAnnouncement = async (announcement) => {
     setSelectedAnnouncement(announcement);
@@ -268,7 +278,14 @@ export default function AnnouncementsScreen({ fromTab = false }) {
             tintColor={COLORS.purple}
           />
         }
-        ListEmptyComponent={renderEmptyState}
+        ListEmptyComponent={selectedRestricted ? (
+          <UnpaidLocationNotice
+            name={locationName}
+            message="onlyEssentials"
+            style={{ marginTop: scale(16) }}
+            onChangeLocation={hasMultipleLocations ? openPicker : undefined}
+          />
+        ) : renderEmptyState}
         showsVerticalScrollIndicator={false}
       />
 

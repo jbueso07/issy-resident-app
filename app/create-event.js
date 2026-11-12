@@ -21,6 +21,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import UnpaidLocationNotice from '../src/components/UnpaidLocationNotice';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -76,7 +77,7 @@ export default function CreateEventScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   // location_id SIEMPRE del contexto (misma fuente que el INSERT de QRs de visita)
-  const { selectedLocationId, locationName } = useUserLocation();
+  const { selectedLocationId, locationName, selectedRestricted } = useUserLocation();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -304,6 +305,27 @@ export default function CreateEventScreen() {
   }
 
   // ─── Pasos 1 y 2 ───
+  // Residencial en mora (Falta de pago): los eventos son QR de visitas, quedan pausados ahí
+  // (el backend también lo rechaza). Sin formulario: solo el aviso.
+  if (selectedRestricted) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBack} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.2}>
+            {t('visits.events.title', 'Crear evento')}
+          </Text>
+          <View style={{ width: scale(40) }} />
+        </View>
+        <View style={{ padding: scale(20) }}>
+          <UnpaidLocationNotice name={locationName} message="visitorsPaused" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
