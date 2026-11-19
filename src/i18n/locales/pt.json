@@ -485,6 +485,13 @@
       "playground": "Playground"
     },
     "errors": {
+      "selectAreaAndTime": "Selecione área e horário",
+      "maxSlots": "Máximo de horários atingido",
+      "consecutiveSlots": "Os horários devem ser consecutivos",
+      "createError": "Erro ao criar reserva",
+      "cancelError": "Erro ao cancelar",
+      "userNotFound": "Usuário não encontrado",
+      "availabilityError": "Não foi possível carregar a disponibilidade",
       "areaRequired": "Selecione uma área",
       "dateRequired": "Selecione uma data",
       "timeRequired": "Selecione um horário",

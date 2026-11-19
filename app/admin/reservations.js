@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { supabase } from '../../src/config/supabase';
+import { rejectReservation } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAdminLocation } from '../../src/context/AdminLocationContext';
@@ -190,22 +190,15 @@ export default function AdminReservationsScreen() {
           onPress: async () => {
             setProcessing(reservation.id);
             try {
-              const { error } = await supabase
-                .from('area_reservations')
-                .update({
-                  status: 'rejected',
-                  rejected_at: new Date().toISOString(),
-                  rejected_by: profile?.id || user?.id
-                })
-                .eq('id', reservation.id);
-
-              if (error) throw error;
+              // PUT /reservations/:id/reject: admin de la residencial de la reserva; revoca su QR
+              const result = await rejectReservation(reservation.id);
+              if (!result.success) throw new Error(result.error);
               
               Alert.alert(t('common.success'), t('admin.reservations.success.rejected'));
               loadReservations();
               setShowDetailModal(false);
             } catch (error) {
-              Alert.alert(t('common.error'), t('admin.reservations.errors.rejectFailed'));
+              Alert.alert(t('common.error'), error?.message || t('admin.reservations.errors.rejectFailed'));
             } finally {
               setProcessing(null);
             }

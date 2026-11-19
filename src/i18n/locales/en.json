@@ -602,6 +602,13 @@
       "playground": "Playground"
     },
     "errors": {
+      "selectAreaAndTime": "Select an area and time",
+      "maxSlots": "Maximum number of time slots reached",
+      "consecutiveSlots": "Time slots must be consecutive",
+      "createError": "Error creating reservation",
+      "cancelError": "Error cancelling reservation",
+      "userNotFound": "User not found",
+      "availabilityError": "Could not load availability",
       "areaRequired": "Select an area",
       "dateRequired": "Select a date",
       "timeRequired": "Select a time",

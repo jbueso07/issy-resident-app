@@ -486,6 +486,13 @@
       "playground": "Aire de jeux"
     },
     "errors": {
+      "selectAreaAndTime": "Sélectionnez un espace et un horaire",
+      "maxSlots": "Nombre maximal de créneaux atteint",
+      "consecutiveSlots": "Les créneaux doivent être consécutifs",
+      "createError": "Erreur lors de la création de la réservation",
+      "cancelError": "Erreur lors de l'annulation",
+      "userNotFound": "Utilisateur introuvable",
+      "availabilityError": "Impossible de charger les disponibilités",
       "areaRequired": "Sélectionnez un espace",
       "dateRequired": "Sélectionnez une date",
       "timeRequired": "Sélectionnez une heure",

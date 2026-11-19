@@ -19,7 +19,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { supabase } from '../src/config/supabase';
+import {
+  getMyReservations,
+  getAreaAvailability,
+  createReservation,
+  cancelReservation,
+} from '../src/services/api';
 import { useAuth } from '../src/context/AuthContext';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from '../src/hooks/useTranslation';
@@ -165,24 +170,11 @@ export default function ReservationsScreen() {
 
       const locationId = profile?.location_id || profile?.current_location?.location_id || user?.location_id;
 
-      let query = supabase
-        .from('area_reservations')
-        .select(`
-          *,
-          area:common_areas!area_id(id, name, type, image_url, location_id)
-        `)
-        .eq('user_id', userId);
-
-      if (locationId) {
-        query = query.eq('location_id', locationId);
-      }
-
-      query = query.order('reservation_date', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setMyReservations(data || []);
+      // GET /reservations/my: solo las mías, de la residencial que muestra la pantalla, de la más
+      // nueva a la más vieja, con `area` (igual que el select directo de antes)
+      const result = await getMyReservations({ locationId });
+      if (!result.success) throw new Error(result.error);
+      setMyReservations(result.data || []);
     } catch (error) {
       console.error('Error loading reservations:', error);
     }
@@ -193,12 +185,15 @@ export default function ReservationsScreen() {
       setLoadingAvailability(true);
       setSelectedSlots([]);
 
-      const { data, error } = await supabase.rpc('get_area_availability', {
-        p_area_id: areaId,
-        p_date: date
-      });
-
-      if (error) throw error;
+      // GET /common-areas/:id/availability: `availability` es lo que devolvía el RPC
+      // get_area_availability (arreglo o { slots }), así que se pinta igual que antes
+      const result = await getAreaAvailability(areaId, date);
+      if (!result.success) {
+        setAvailability([]);
+        Alert.alert('Error', result.error || t('reservations.errors.availabilityError'));
+        return;
+      }
+      const data = result.availability;
       
       // Handle different response formats
       if (Array.isArray(data)) {
@@ -388,18 +383,16 @@ export default function ReservationsScreen() {
       const startTime = selectedSlots[0].start_time;
       const endTime = selectedSlots[selectedSlots.length - 1].end_time;
 
-      const { data, error } = await supabase.rpc('create_reservation', {
-        p_area_id: selectedArea.id,
-        p_user_id: userId,
-        p_date: selectedDate,
-        p_start_time: startTime,
-        p_end_time: endTime,
-        p_purpose: null,
-        p_attendees: attendees,
-        p_notes: null
+      // POST /reservations: mismas reglas que el RPC; las horas van tal cual vienen en los turnos
+      const data = await createReservation({
+        area_id: selectedArea.id,
+        reservation_date: selectedDate,
+        start_time: startTime,
+        end_time: endTime,
+        attendees,
+        purpose: null,
+        notes: null,
       });
-
-      if (error) throw error;
 
       if (data.success) {
         setShowCreateModal(false);
@@ -409,8 +402,8 @@ export default function ReservationsScreen() {
         Alert.alert('Error', data.error || t('reservations.errors.createError'));
       }
     } catch (error) {
-      console.error('Error creating reservation:', error);
-      Alert.alert('Error', t('reservations.errors.createError'));
+      console.error('Error creating reservation:', error?.message);
+      Alert.alert('Error', error?.message || t('reservations.errors.createError'));
     } finally {
       setSubmitting(false);
     }
@@ -429,22 +422,14 @@ export default function ReservationsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase
-                .from('area_reservations')
-                .update({
-                  status: 'cancelled',
-                  cancelled_at: new Date().toISOString(),
-                  cancelled_by: profile?.id || user?.id,
-                  cancellation_reason: 'Cancelled by user'
-                })
-                .eq('id', reservation.id);
-
-              if (error) throw error;
+              // PUT /reservations/:id/cancel: solo la propia; revoca su QR si tenía
+              const result = await cancelReservation(reservation.id, 'Cancelled by user');
+              if (!result.success) throw new Error(result.error);
               loadMyReservations();
               setShowDetailModal(false);
               Alert.alert(t('common.done'), t('reservations.cancelSuccess'));
             } catch (error) {
-              Alert.alert('Error', t('reservations.errors.cancelError'));
+              Alert.alert('Error', error?.message || t('reservations.errors.cancelError'));
             }
           }
         }

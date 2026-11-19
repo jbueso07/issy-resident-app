@@ -674,6 +674,7 @@
       "playground": "Área de juegos"
     },
     "errors": {
+      "availabilityError": "No se pudo cargar la disponibilidad",
       "areaRequired": "Selecciona un área",
       "dateRequired": "Selecciona una fecha",
       "timeRequired": "Selecciona un horario",

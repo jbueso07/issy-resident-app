@@ -479,48 +479,88 @@ export const getCommonAreaById = async (id) => {
   }
 };
 
-export const getMyReservations = async () => {
+// Reservas por la API (bloque "Reservas por API", entrega 2). El backend aplica las mismas reglas
+// que el RPC create_reservation de Supabase. Errores del backend: { success:false, error, message }
+// (reservar agrega reason); aquí vuelven como { success:false, error, status, reason }.
+const reservationError = (error) => ({
+  success: false,
+  // SESSION_EXPIRED es un código interno: la pantalla usa su texto de siempre
+  error: error.sessionExpired ? null : error.message,
+  status: error.status || null,
+  reason: error.data?.reason || null,
+  sessionExpired: error.sessionExpired,
+});
+
+// GET /reservations/my → { success, data: [ …reserva, area:{ id, name, type, image_url, rules, location_id } ] }
+export const getMyReservations = async ({ locationId, status, upcoming } = {}) => {
   try {
-    const data = await authFetch('/reservations/my');
-    return { success: true, data: data.data || data };
+    const qs = new URLSearchParams();
+    if (locationId) qs.append('location_id', locationId);
+    if (status) qs.append('status', status);
+    if (upcoming) qs.append('upcoming', 'true');
+    const query = qs.toString();
+    const data = await authFetch(`/reservations/my${query ? `?${query}` : ''}`);
+    return { success: true, data: data.data || [] };
   } catch (error) {
-    console.error('Error fetching reservations:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error fetching reservations:', error?.status || error?.message);
+    return reservationError(error);
   }
 };
 
+// POST /reservations { area_id, reservation_date, start_time, end_time, attendees, purpose, notes }
+// → { success, message, reservation_id, status, total_amount, requires_payment, data }
 export const createReservation = async (reservationData) => {
   try {
     const data = await authFetch('/reservations', {
       method: 'POST',
       body: JSON.stringify(reservationData),
     });
-    return { success: true, data: data.data || data };
+    return { ...data, success: true };
   } catch (error) {
-    console.error('Error creating reservation:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error creating reservation:', error?.status || error?.message);
+    return reservationError(error);
   }
 };
 
-export const cancelReservation = async (id) => {
+// PUT /reservations/:id/cancel { reason? } → { success, status:'cancelled', qr_revoked }
+export const cancelReservation = async (id, reason) => {
   try {
     const data = await authFetch(`/reservations/${id}/cancel`, {
       method: 'PUT',
+      body: JSON.stringify(reason ? { reason } : {}),
     });
-    return { success: true, data: data.data || data };
+    return { ...data, success: true };
   } catch (error) {
-    console.error('Error canceling reservation:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error canceling reservation:', error?.status || error?.message);
+    return reservationError(error);
   }
 };
 
+// PUT /reservations/:id/reject { reason? } (admin de la residencial de la reserva)
+// → { success, status:'rejected', qr_revoked }
+export const rejectReservation = async (id, reason) => {
+  try {
+    const data = await authFetch(`/reservations/${id}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify(reason ? { reason } : {}),
+    });
+    return { ...data, success: true };
+  } catch (error) {
+    console.error('Error rejecting reservation:', error?.status || error?.message);
+    return reservationError(error);
+  }
+};
+
+// GET /common-areas/:id/availability?date=YYYY-MM-DD
+// → { success, availability, available, reason, slots, data, blocked_schedules }.
+// `availability` es lo mismo que devolvía el RPC get_area_availability (arreglo o { slots }).
 export const getAreaAvailability = async (areaId, date) => {
   try {
-    const data = await authFetch(`/reservations/availability/${areaId}?date=${date}`);
-    return { success: true, data: data.data || data };
+    const data = await authFetch(`/common-areas/${areaId}/availability?date=${encodeURIComponent(date)}`);
+    return { ...data, success: true };
   } catch (error) {
-    console.error('Error fetching availability:', error);
-    return { success: false, error: error.message, sessionExpired: error.sessionExpired };
+    console.error('Error fetching availability:', error?.status || error?.message);
+    return reservationError(error);
   }
 };
 
