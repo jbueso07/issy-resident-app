@@ -4,8 +4,7 @@
 // muestra en la vista previa del sistema o se convierte a PDF para compartir.
 
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
+import { shareHtmlAsPdf } from './pdfShare';
 
 // "Factura" solo cuando la residencial emite recibo fiscal (igual que la web); si no, "Recibo".
 export const isInvoice = (receipt) => receipt?.receipt_type === 'fiscal';
@@ -75,24 +74,5 @@ export const receiptErrorMessage = (result) => {
 export const previewReceiptHtml = (html) => Print.printAsync({ html, width: 612, height: 792 });
 
 // PDF tamaño carta con nombre legible, y menú de compartir
-export const shareReceiptPdf = async (html, receipt) => {
-  const { uri } = await Print.printToFileAsync({ html, width: 612, height: 792 });
-  let fileUri = uri;
-  try {
-    const target = `${FileSystem.cacheDirectory}${receiptPdfName(receipt)}`;
-    await FileSystem.deleteAsync(target, { idempotent: true });
-    await FileSystem.moveAsync({ from: uri, to: target });
-    fileUri = target;
-  } catch (e) {
-    // Si no se pudo renombrar, se comparte con el nombre temporal
-    fileUri = uri;
-  }
-  if (!(await Sharing.isAvailableAsync())) {
-    throw new Error('SHARING_UNAVAILABLE');
-  }
-  await Sharing.shareAsync(fileUri, {
-    mimeType: 'application/pdf',
-    UTI: 'com.adobe.pdf',
-    dialogTitle: 'Compartir recibo',
-  });
-};
+export const shareReceiptPdf = (html, receipt) =>
+  shareHtmlAsPdf(html, { fileName: receiptPdfName(receipt), dialogTitle: 'Compartir recibo' });

@@ -2616,6 +2616,7 @@
     "gatesDesc": "Gestión de puntos de entrada",
     "accessReports": "Reportes de Acceso",
     "accessReportsDesc": "Auditoría e historial",
+    "usageReport": "Reporte de uso",
     "reports": "Reportes",
     "reportsDesc": "Estadísticas y métricas",
     "patrols": "Rondines",
@@ -3023,5 +3024,38 @@
     "visitorsPaused": "Tus QR de visitas en {{name}} están pausados hasta que te pongas al día con tus pagos.",
     "onlyEssentials": "Mientras tengas pagos pendientes en {{name}}, aquí solo puedes usar tu QR de residente, Pagos y Recibos.",
     "changeLocation": "Cambiar de residencial"
+  },
+  "usageReport": {
+    "title": "Reporte de uso",
+    "intro": "Cuánto se usa ISSY en la residencial: QR creados, visitas que entraron y casas activas, en un PDF tamaño carta.",
+    "period": "Período",
+    "presets": {
+      "last7": "Últimos 7 días",
+      "thisMonth": "Este mes",
+      "lastMonth": "Mes pasado"
+    },
+    "from": "Desde",
+    "to": "Hasta",
+    "daysOne": "{{count}} día",
+    "daysOther": "{{count}} días",
+    "names": "Incluir nombres",
+    "namesHelp": "Apagado, el reporte muestra solo números de casa. Úsalo encendido solo si el reporte no saldrá de la administración.",
+    "generate": "Generar PDF",
+    "generating": "Generando reporte…",
+    "generatingHint": "Un período largo puede tardar unos segundos. No cierres esta pantalla.",
+    "note": "Al terminar se abre el menú para guardar o enviar el PDF.",
+    "share": "Compartir reporte",
+    "noAccess": "Solo los administradores de la residencial pueden generar este reporte.",
+    "noLocation": "Elige una residencial en el inicio para generar el reporte.",
+    "errors": {
+      "missing": "Elige las fechas Desde y Hasta.",
+      "order": "La fecha Desde no puede ser después de Hasta.",
+      "future": "La fecha Hasta no puede ser después de hoy.",
+      "tooLong": "El período máximo es de {{max}} días. Elegiste {{days}} días.",
+      "tooMany": "Demasiadas solicitudes. Intenta en un minuto.",
+      "generic": "No se pudo generar el reporte. Intenta de nuevo.",
+      "session": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sharing": "Este teléfono no permite compartir archivos."
+    }
   }
 }

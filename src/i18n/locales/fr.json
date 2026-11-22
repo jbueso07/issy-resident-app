@@ -2103,6 +2103,7 @@
     "gatesDesc": "Gestion des points d’entrée",
     "accessReports": "Rapports d’accès",
     "accessReportsDesc": "Audit et historique",
+    "usageReport": "Rapport d'utilisation",
     "reports": "Rapports",
     "reportsDesc": "Statistiques et indicateurs",
     "patrols": "Rondes",
@@ -2393,5 +2394,38 @@
     "visitorsPaused": "Vos QR de visiteurs à {{name}} sont en pause jusqu'à ce que vous soyez à jour de vos paiements.",
     "onlyEssentials": "Tant que vous avez des paiements en attente à {{name}}, vous ne pouvez utiliser ici que votre QR de résident, les Paiements et les Reçus.",
     "changeLocation": "Changer de résidence"
+  },
+  "usageReport": {
+    "title": "Rapport d'utilisation",
+    "intro": "L'utilisation d'ISSY dans la résidence : QR créés, visites entrées et maisons actives, dans un PDF format lettre.",
+    "period": "Période",
+    "presets": {
+      "last7": "7 derniers jours",
+      "thisMonth": "Ce mois-ci",
+      "lastMonth": "Mois dernier"
+    },
+    "from": "Du",
+    "to": "Au",
+    "daysOne": "{{count}} jour",
+    "daysOther": "{{count}} jours",
+    "names": "Inclure les noms",
+    "namesHelp": "Désactivé, le rapport affiche seulement les numéros de maison. Activez-le seulement si le rapport ne sort pas de l'administration.",
+    "generate": "Générer le PDF",
+    "generating": "Génération du rapport…",
+    "generatingHint": "Une longue période peut prendre quelques secondes. Ne fermez pas cet écran.",
+    "note": "Une fois prêt, le menu pour enregistrer ou envoyer le PDF s'ouvre.",
+    "share": "Partager le rapport",
+    "noAccess": "Seuls les administrateurs de la résidence peuvent générer ce rapport.",
+    "noLocation": "Choisissez une résidence sur l'accueil pour générer le rapport.",
+    "errors": {
+      "missing": "Choisissez les dates Du et Au.",
+      "order": "La date Du ne peut pas être après la date Au.",
+      "future": "La date Au ne peut pas être après aujourd'hui.",
+      "tooLong": "La période maximale est de {{max}} jours. Vous avez choisi {{days}} jours.",
+      "tooMany": "Trop de demandes. Réessayez dans une minute.",
+      "generic": "Le rapport n'a pas pu être généré. Réessayez.",
+      "session": "Votre session est terminée. Reconnectez-vous.",
+      "sharing": "Ce téléphone ne permet pas de partager des fichiers."
+    }
   }
 }

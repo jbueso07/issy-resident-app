@@ -1,5 +1,5 @@
 // src/components/home/AdminPanel.js
-// ISSY - Administración en el Home v2: las 18 herramientas de ADMIN_SERVICES (home.js), agrupadas.
+// ISSY - Administración en el Home v2: las herramientas de ADMIN_SERVICES (home.js) y el Reporte de uso, agrupadas.
 // Mismas rutas y misma regla superAdminOnly que el carrusel actual.
 
 import { useMemo } from 'react';
@@ -22,6 +22,7 @@ export default function AdminPanel({ isSuperAdmin = false, locationName, size = 
         items: [
           { key: 'gates', label: t('adminMenu.gates'), icon: 'business-outline', color: colors.teal, route: '/admin/gates' },
           { key: 'access-reports', label: t('adminMenu.accessReports'), icon: 'shield-checkmark-outline', color: colors.blue, route: '/admin/access-reports' },
+          { key: 'usage-report', label: t('adminMenu.usageReport', 'Reporte de uso'), icon: 'document-text-outline', color: colors.teal, route: '/admin/usage-report' },
           { key: 'patrols', label: t('adminMenu.patrols', 'Rondines'), icon: 'footsteps-outline', color: colors.orange, route: '/admin/patrols' },
           { key: 'patrol-reports', label: t('adminMenu.patrolReports', 'Reportes de Rondines'), icon: 'stats-chart-outline', color: colors.cyan, route: '/admin/patrol-reports' },
           { key: 'guard-shifts', label: t('adminMenu.guardShifts'), icon: 'time-outline', color: colors.blue, route: '/admin/guard-shifts' },

@@ -90,9 +90,10 @@ const refreshToken = async () => {
 
 // options.responseType === 'text': devuelve el cuerpo como texto (solo con 200/2xx). Los errores del
 // backend vienen en JSON aunque se pida texto, así que se revisa el status antes de leer el cuerpo.
+// options.withHeaders (solo con 'text'): devuelve { body, headers }. options.timeoutMs: espera máxima (15 s).
 export const authFetch = async (endpoint, options = {}, isRetry = false) => {
   const token = await AsyncStorage.getItem('token');
-  const { responseType, ...fetchOptions } = options;
+  const { responseType, withHeaders, timeoutMs, ...fetchOptions } = options;
 
   const config = {
     ...fetchOptions,
@@ -104,7 +105,7 @@ export const authFetch = async (endpoint, options = {}, isRetry = false) => {
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs || 15000);
   let response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, { ...config, signal: controller.signal });
@@ -143,7 +144,10 @@ export const authFetch = async (endpoint, options = {}, isRetry = false) => {
   }
 
   if (responseType === 'text') {
-    if (response.ok) return response.text();
+    if (response.ok) {
+      const body = await response.text();
+      return withHeaders ? { body, headers: response.headers } : body;
+    }
     let errData = {};
     try { errData = (await response.json()) || {}; } catch (e) { errData = {}; }
     const err = new Error(errData.error || errData.message || 'Error en la solicitud');
@@ -3263,5 +3267,37 @@ export const updateMyBilling = async ({ locationId, billingName, taxId }) => {
     return { success: true, data: data?.data || null };
   } catch (error) {
     return receiptsError(error);
+  }
+};
+
+// ==========================================
+// REPORTE DE USO (admin): GET /admin/reports/usage
+// ==========================================
+
+// HTML del reporte listo para imprimir (lo arma y escapa el backend) y el nombre sugerido del PDF
+// (encabezado X-Report-Filename). Errores: { success:false, status, error (message del servidor) }.
+export const getUsageReportHtml = async ({ locationId, from, to, names }) => {
+  const query = [
+    `location_id=${encodeURIComponent(locationId)}`,
+    `from=${encodeURIComponent(from)}`,
+    `to=${encodeURIComponent(to)}`,
+    `names=${names ? '1' : '0'}`,
+    'format=html',
+  ].join('&');
+  try {
+    const { body, headers } = await authFetch(`/admin/reports/usage?${query}`, {
+      responseType: 'text',
+      withHeaders: true,
+      timeoutMs: 60000,
+      headers: { Accept: 'text/html' },
+    });
+    return { success: true, data: body, fileName: headers?.get?.('x-report-filename') || '' };
+  } catch (error) {
+    return {
+      success: false,
+      status: error?.status || null,
+      error: (error?.status && (error.data?.message || error.data?.error)) || '',
+      sessionExpired: !!error?.sessionExpired,
+    };
   }
 };

@@ -2272,6 +2272,7 @@
     "gatesDesc": "Entry points management",
     "accessReports": "Access Reports",
     "accessReportsDesc": "Audit and history",
+    "usageReport": "Usage report",
     "reports": "Reports",
     "reportsDesc": "Statistics and metrics",
     "patrols": "Patrols",
@@ -2580,5 +2581,38 @@
     "visitorsPaused": "Your visitor QRs at {{name}} are paused until you catch up on your payments.",
     "onlyEssentials": "While you have pending payments at {{name}}, you can only use your resident QR, Payments and Receipts here.",
     "changeLocation": "Change community"
+  },
+  "usageReport": {
+    "title": "Usage report",
+    "intro": "How much ISSY is used in the community: QR codes created, visits that came in and active homes, in a letter-size PDF.",
+    "period": "Period",
+    "presets": {
+      "last7": "Last 7 days",
+      "thisMonth": "This month",
+      "lastMonth": "Last month"
+    },
+    "from": "From",
+    "to": "To",
+    "daysOne": "{{count}} day",
+    "daysOther": "{{count}} days",
+    "names": "Include names",
+    "namesHelp": "When off, the report shows only house numbers. Turn it on only if the report will stay within the administration.",
+    "generate": "Generate PDF",
+    "generating": "Generating report…",
+    "generatingHint": "A long period can take a few seconds. Don't close this screen.",
+    "note": "When it's ready, the menu to save or send the PDF opens.",
+    "share": "Share report",
+    "noAccess": "Only the community's administrators can generate this report.",
+    "noLocation": "Choose a community on the home screen to generate the report.",
+    "errors": {
+      "missing": "Choose the From and To dates.",
+      "order": "The From date can't be after the To date.",
+      "future": "The To date can't be after today.",
+      "tooLong": "The maximum period is {{max}} days. You chose {{days}} days.",
+      "tooMany": "Too many requests. Try again in a minute.",
+      "generic": "The report couldn't be generated. Try again.",
+      "session": "Your session ended. Sign in again.",
+      "sharing": "This phone can't share files."
+    }
   }
 }

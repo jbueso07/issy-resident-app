@@ -2102,6 +2102,7 @@
     "gatesDesc": "Gestão dos pontos de entrada",
     "accessReports": "Relatórios de acesso",
     "accessReportsDesc": "Auditoria e histórico",
+    "usageReport": "Relatório de uso",
     "reports": "Relatórios",
     "reportsDesc": "Estatísticas e métricas",
     "patrols": "Rondas",
@@ -2392,5 +2393,38 @@
     "visitorsPaused": "Seus QR de visitas em {{name}} estão pausados até você ficar em dia com seus pagamentos.",
     "onlyEssentials": "Enquanto tiver pagamentos pendentes em {{name}}, aqui você só pode usar seu QR de morador, Pagamentos e Recibos.",
     "changeLocation": "Trocar de condomínio"
+  },
+  "usageReport": {
+    "title": "Relatório de uso",
+    "intro": "Quanto o ISSY é usado no condomínio: QR criados, visitas que entraram e casas ativas, em um PDF tamanho carta.",
+    "period": "Período",
+    "presets": {
+      "last7": "Últimos 7 dias",
+      "thisMonth": "Este mês",
+      "lastMonth": "Mês passado"
+    },
+    "from": "De",
+    "to": "Até",
+    "daysOne": "{{count}} dia",
+    "daysOther": "{{count}} dias",
+    "names": "Incluir nomes",
+    "namesHelp": "Desligado, o relatório mostra só os números das casas. Ligue apenas se o relatório não sair da administração.",
+    "generate": "Gerar PDF",
+    "generating": "Gerando relatório…",
+    "generatingHint": "Um período longo pode levar alguns segundos. Não feche esta tela.",
+    "note": "Quando terminar, abre o menu para salvar ou enviar o PDF.",
+    "share": "Compartilhar relatório",
+    "noAccess": "Só os administradores do condomínio podem gerar este relatório.",
+    "noLocation": "Escolha um condomínio no início para gerar o relatório.",
+    "errors": {
+      "missing": "Escolha as datas De e Até.",
+      "order": "A data De não pode ser depois da data Até.",
+      "future": "A data Até não pode ser depois de hoje.",
+      "tooLong": "O período máximo é de {{max}} dias. Você escolheu {{days}} dias.",
+      "tooMany": "Muitas solicitações. Tente em um minuto.",
+      "generic": "Não foi possível gerar o relatório. Tente de novo.",
+      "session": "Sua sessão terminou. Entre novamente.",
+      "sharing": "Este telefone não permite compartilhar arquivos."
+    }
   }
 }
