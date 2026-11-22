@@ -1,18 +1,25 @@
 // app/admin/usage-report.js
 // ISSY - Admin: Reporte de uso del control de acceso en PDF.
-// GET /admin/reports/usage?location_id={residencial activa}&from&to&names&format=html (el backend arma
-// el HTML y decide el permiso); aquí solo se elige el período, se convierte a PDF carta y se comparte.
-// Solo admin de la residencial activa o superadmin (misma regla que el panel de Administración del home).
+// GET /admin/reports/usage?location_id={residencial elegida aquí}&from&to&names&format=html (el backend
+// arma el HTML y decide el permiso); aquí se elige residencial y período, se convierte a PDF carta y se comparte.
+// Solo admin o superadmin (misma regla que el panel de Administración del home).
+// Residenciales para elegir (mismas fuentes que app/admin/community-map.js):
+//   - superadmin: GET /locations (todas; se quitan las dadas de baja)
+//   - admin: profile.user_locations (GET /auth/me, solo membresías activas) con rol admin
+// La elección vive solo en esta pantalla: no cambia la residencial activa del app ni se guarda.
 
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Switch, ActivityIndicator, Platform, Modal, FlatList, TextInput, Pressable,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTranslation } from '../../src/hooks/useTranslation';
-import { getUsageReportHtml } from '../../src/services/api';
+import { authFetch, getUsageReportHtml } from '../../src/services/api';
 import { shareHtmlAsPdf } from '../../src/utils/pdfShare';
 import {
   MAX_RANGE_DAYS,
@@ -29,6 +36,24 @@ import { neu, neuSurface, scale, fs, MAX_FONT_SCALE } from '../../src/theme/toke
 import { useHomeFont } from '../../src/theme/homeFont';
 
 const PRESETS = ['last7', 'thisMonth', 'lastMonth'];
+const SEARCH_AFTER = 8;
+
+const byName = (a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+const fold = (text) => String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Membresías admin activas del perfil → [{ id, name }] sin repetidos
+const adminLocationsFromProfile = (profile) => {
+  const map = new Map();
+  (profile?.user_locations || [])
+    // /auth/me ya filtra status 'active' y no manda is_active: solo se excluye un false explícito
+    .filter((ul) => ul.location_id && ul.is_active !== false && ['admin', 'superadmin'].includes(ul.role))
+    .forEach((ul) => {
+      if (!map.has(ul.location_id)) {
+        map.set(ul.location_id, { id: ul.location_id, name: ul.name || ul.location_name || ul.location?.name || '' });
+      }
+    });
+  return [...map.values()].sort(byName);
+};
 
 export default function UsageReportScreen() {
   const router = useRouter();
@@ -36,12 +61,19 @@ export default function UsageReportScreen() {
   const { t, language } = useTranslation();
   const { profile, user } = useAuth();
 
-  // Residencial activa del app (la del home) y la misma regla de admin que el panel de Administración
-  const locationId = profile?.location_id || null;
-  const currentLocation = profile?.current_location || profile?.location || null;
-  const locationName = currentLocation?.name || '';
+  // Misma regla de admin que el panel de Administración
   const userRole = profile?.role || user?.role || 'user';
   const isAdmin = ['admin', 'superadmin'].includes(userRole);
+  const isSuperAdmin = userRole === 'superadmin';
+  const activeLocationId = profile?.location_id || null;
+
+  // Residenciales que se pueden elegir aquí y la elegida (solo estado de esta pantalla)
+  const [options, setOptions] = useState(isSuperAdmin ? null : () => adminLocationsFromProfile(profile));
+  const [optionsError, setOptionsError] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const initialPickRef = useRef(false);
 
   const initial = presetRange('thisMonth');
   const [preset, setPreset] = useState('thisMonth');
@@ -56,11 +88,75 @@ export default function UsageReportScreen() {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
-  // Si cambia la residencial activa, el error anterior ya no aplica
-  useEffect(() => { setError(null); }, [locationId]);
+  // Superadmin: todas las residenciales activas (GET /locations). Admin: sus membresías admin del perfil.
+  const loadSuperAdminLocations = async () => {
+    setOptionsError(false);
+    setOptions(null);
+    try {
+      const data = await authFetch('/locations', { method: 'GET' });
+      const list = Array.isArray(data) ? data : data?.data || [];
+      const mapped = (Array.isArray(list) ? list : [])
+        .filter((l) => l?.id && l.is_active !== false)
+        .map((l) => ({ id: l.id, name: l.name || '' }))
+        .sort(byName);
+      if (mountedRef.current) setOptions(mapped);
+    } catch (err) {
+      console.error('[usageReport] no se pudieron cargar las residenciales:', err?.status || err?.message);
+      if (mountedRef.current) {
+        setOptions([]);
+        setOptionsError(true);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (isSuperAdmin) loadSuperAdminLocations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (isAdmin && !isSuperAdmin) setOptions(adminLocationsFromProfile(profile));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, isSuperAdmin, profile?.user_locations]);
+
+  // Valor inicial (una sola vez): la residencial activa del app si está en la lista; si no, ninguna
+  useEffect(() => {
+    if (initialPickRef.current || !options) return;
+    initialPickRef.current = true;
+    if (activeLocationId && options.some((o) => o.id === activeLocationId)) setSelectedId(activeLocationId);
+  }, [options, activeLocationId]);
+
+  // Si la elegida deja de estar en la lista (p. ej. el perfil se recargó), se quita
+  useEffect(() => {
+    if (selectedId && options && !options.some((o) => o.id === selectedId)) setSelectedId(null);
+  }, [options, selectedId]);
+
+  const selected = (options || []).find((o) => o.id === selectedId) || null;
+  const locationId = selected?.id || null;
+  const locationName = selected?.name || '';
+
+  const filtered = (() => {
+    const list = options || [];
+    const q = fold(query.trim());
+    return q ? list.filter((o) => fold(o.name).includes(q)) : list;
+  })();
+
+  const chooseLocation = (id) => {
+    setSelectedId(id);
+    setError(null);
+    setPickerOpen(false);
+    setQuery('');
+  };
+
+  const openPicker = () => {
+    if (busy || !options || options.length < 2) return;
+    setQuery('');
+    setPickerOpen(true);
+  };
 
   const today = hondurasToday();
   const check = validateRange(from, to);
+  const canGenerate = check.ok && !!locationId;
   const rangeMessage = check.ok ? null : t(`usageReport.errors.${check.key}`, { days: check.days, max: MAX_RANGE_DAYS });
 
   const locale = language === 'en' ? 'en-US' : language === 'fr' ? 'fr-FR' : language === 'pt' ? 'pt-BR' : 'es-HN';
@@ -142,17 +238,77 @@ export default function UsageReportScreen() {
     </View>
   );
 
-  if (!isAdmin || !locationId) {
+  if (!isAdmin) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         {header}
         <View style={styles.center}>
-          <Ionicons name={isAdmin ? 'business-outline' : 'lock-closed-outline'} size={scale(48)} color={neu.textSoft} />
+          <Ionicons name="lock-closed-outline" size={scale(48)} color={neu.textSoft} />
           <Text style={[styles.centerText, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {t(isAdmin ? 'usageReport.noLocation' : 'usageReport.noAccess')}
+            {t('usageReport.noAccess')}
           </Text>
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // Fila de la residencial: nombre fijo con una sola opción; con varias, se toca y abre la lista
+  let locationRow;
+  if (!options) {
+    locationRow = (
+      <View style={styles.location}>
+        <ActivityIndicator color={neu.teal} />
+        <Text style={[styles.locationHint, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('usageReport.loadingLocations')}</Text>
+      </View>
+    );
+  } else if (optionsError) {
+    locationRow = (
+      <View style={styles.location}>
+        <Ionicons name="cloud-offline-outline" size={scale(20)} color={neu.coral} />
+        <Text style={[styles.locationHint, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('usageReport.locationsError')}</Text>
+        <PressableScale variant="neu" neuSmall style={styles.retry} onPress={loadSuperAdminLocations}>
+          <Text style={[styles.retryText, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('usageReport.retry')}</Text>
+        </PressableScale>
+      </View>
+    );
+  } else if (options.length === 0) {
+    locationRow = (
+      <View style={styles.location}>
+        <Ionicons name="business-outline" size={scale(20)} color={neu.textSoft} />
+        <Text style={[styles.locationHint, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{t('usageReport.noAdminLocations')}</Text>
+      </View>
+    );
+  } else if (options.length === 1 && selected) {
+    locationRow = (
+      <View style={styles.location}>
+        <Ionicons name="business-outline" size={scale(20)} color={neu.teal} />
+        <Text style={[styles.locationName, font(600)]} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {locationName || t('home.myCommunity', 'Mi comunidad')}
+        </Text>
+      </View>
+    );
+  } else {
+    const single = options.length === 1;
+    locationRow = (
+      <PressableScale
+        variant="neu"
+        neuSmall
+        style={styles.locationPicker}
+        onPress={single ? () => chooseLocation(options[0].id) : openPicker}
+        disabled={busy}
+        accessibilityLabel={`${t('usageReport.location')}: ${selected ? locationName : t('usageReport.chooseLocation')}`}
+        accessibilityHint={single ? undefined : t('usageReport.changeLocation')}
+      >
+        <Ionicons name="business-outline" size={scale(20)} color={selected ? neu.teal : neu.amber} />
+        <Text
+          style={[styles.locationName, !selected && styles.locationPlaceholder, font(600)]}
+          numberOfLines={2}
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+        >
+          {selected ? (locationName || t('home.myCommunity', 'Mi comunidad')) : t('usageReport.chooseLocation')}
+        </Text>
+        {!single && <Ionicons name="chevron-down" size={scale(20)} color={busy ? neu.textSoft : neu.text} />}
+      </PressableScale>
     );
   }
 
@@ -195,12 +351,7 @@ export default function UsageReportScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {header}
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.location}>
-          <Ionicons name="business-outline" size={scale(20)} color={neu.teal} />
-          <Text style={[styles.locationName, font(600)]} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {locationName || t('home.myCommunity', 'Mi comunidad')}
-          </Text>
-        </View>
+        {locationRow}
         <Text style={[styles.intro, font(400)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
           {t('usageReport.intro')}
         </Text>
@@ -277,10 +428,10 @@ export default function UsageReportScreen() {
 
         <PressableScale
           variant="neu"
-          neuFill={busy || !check.ok ? neu.sunken : neu.teal}
+          neuFill={busy || !canGenerate ? neu.sunken : neu.teal}
           style={styles.generate}
           onPress={generate}
-          disabled={busy || !check.ok}
+          disabled={busy || !canGenerate}
           accessibilityLabel={busy ? t('usageReport.generating') : t('usageReport.generate')}
           accessibilityState={{ busy }}
         >
@@ -293,9 +444,9 @@ export default function UsageReportScreen() {
             </>
           ) : (
             <>
-              <Ionicons name="document-text-outline" size={scale(20)} color={check.ok ? neu.onAccent : neu.textSoft} />
+              <Ionicons name="document-text-outline" size={scale(20)} color={canGenerate ? neu.onAccent : neu.textSoft} />
               <Text
-                style={[styles.generateText, !check.ok && styles.generateTextBusy, font(600)]}
+                style={[styles.generateText, !canGenerate && styles.generateTextBusy, font(600)]}
                 maxFontSizeMultiplier={MAX_FONT_SCALE}
               >
                 {t('usageReport.generate')}
@@ -316,6 +467,82 @@ export default function UsageReportScreen() {
           onChange={onPickerChange(androidPicker)}
         />
       )}
+
+      <Modal
+        visible={pickerOpen && !busy}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerOpen(false)}
+      >
+        <KeyboardAvoidingView style={styles.sheetOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.sheetBackdrop} onPress={() => setPickerOpen(false)} accessibilityLabel={t('common.close', 'Cerrar')} />
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, font(600)]} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityRole="header">
+                {t('usageReport.location')}
+              </Text>
+              <PressableScale
+                variant="neu"
+                neuSmall
+                style={styles.sheetClose}
+                onPress={() => setPickerOpen(false)}
+                hitSlop={8}
+                accessibilityLabel={t('common.close', 'Cerrar')}
+              >
+                <Ionicons name="close" size={scale(22)} color={neu.text} />
+              </PressableScale>
+            </View>
+            {(options || []).length > SEARCH_AFTER && (
+              <View style={[styles.search, neuSurface.sunkenSm]}>
+                <Ionicons name="search" size={scale(18)} color={neu.textSoft} />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder={t('usageReport.searchLocation')}
+                  placeholderTextColor={neu.textSoft}
+                  style={[styles.searchInput, font(400)]}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  clearButtonMode="while-editing"
+                  returnKeyType="search"
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
+                />
+              </View>
+            )}
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.sheetList}
+              renderItem={({ item }) => {
+                const active = item.id === selectedId;
+                return (
+                  <Pressable
+                    style={({ pressed }) => [styles.option, active && styles.optionActive, pressed && styles.optionPressed]}
+                    onPress={() => chooseLocation(item.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[styles.optionText, active && styles.optionTextActive, font(active ? 600 : 500)]}
+                      numberOfLines={2}
+                      maxFontSizeMultiplier={MAX_FONT_SCALE}
+                    >
+                      {item.name || t('home.myCommunity', 'Mi comunidad')}
+                    </Text>
+                    {active && <Ionicons name="checkmark" size={scale(20)} color={neu.teal} />}
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={(
+                <Text style={[styles.sheetEmpty, font(500)]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {t('usageReport.noLocationMatch')}
+                </Text>
+              )}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -337,6 +564,51 @@ const styles = StyleSheet.create({
   centerText: { fontSize: fs(17), color: neu.textLabel, textAlign: 'center' },
   location: { flexDirection: 'row', alignItems: 'center', gap: scale(8) },
   locationName: { flex: 1, fontSize: fs(18), fontWeight: '600', color: neu.text },
+  locationPlaceholder: { color: neu.amber },
+  locationHint: { flex: 1, fontSize: fs(15), color: neu.textLabel },
+  locationPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    borderRadius: scale(16),
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(10),
+    minHeight: scale(52),
+  },
+  retry: { borderRadius: scale(12), paddingHorizontal: scale(14), minHeight: scale(40), justifyContent: 'center' },
+  retryText: { fontSize: fs(15), fontWeight: '600', color: neu.teal },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: neu.overlay },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject },
+  sheet: {
+    backgroundColor: neu.bg,
+    borderTopLeftRadius: scale(24),
+    borderTopRightRadius: scale(24),
+    paddingTop: scale(16),
+    paddingHorizontal: scale(16),
+    maxHeight: '80%',
+    gap: scale(12),
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: scale(12) },
+  sheetTitle: { flex: 1, fontSize: fs(20), fontWeight: '600', color: neu.text },
+  sheetClose: { width: scale(40), height: scale(40), borderRadius: scale(20), alignItems: 'center', justifyContent: 'center' },
+  search: { flexDirection: 'row', alignItems: 'center', gap: scale(8), borderRadius: scale(14), paddingHorizontal: scale(12), minHeight: scale(46) },
+  searchInput: { flex: 1, fontSize: fs(16), color: neu.text, paddingVertical: scale(8) },
+  sheetList: { paddingBottom: scale(40) },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    paddingHorizontal: scale(14),
+    minHeight: scale(52),
+    borderRadius: scale(14),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: neu.border,
+  },
+  optionActive: { backgroundColor: neu.raised },
+  optionPressed: { backgroundColor: neu.sunken },
+  optionText: { flex: 1, fontSize: fs(16), color: neu.textLabel, paddingVertical: scale(10) },
+  optionTextActive: { color: neu.text },
+  sheetEmpty: { fontSize: fs(15), color: neu.textSoft, textAlign: 'center', paddingVertical: scale(24) },
   intro: { fontSize: fs(15), color: neu.textLabel, lineHeight: fs(21), marginTop: -scale(8) },
   card: { borderRadius: scale(18), padding: scale(16), gap: scale(14) },
   cardTitle: { fontSize: fs(17), fontWeight: '600', color: neu.text },
