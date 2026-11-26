@@ -2,6 +2,7 @@
 // Aviso de residencial en mora (membresía desactivada por Falta de pago), SOLO para esa residencial.
 // Ahí siguen el QR de residente, Pagos y Recibos; tarjeta y QR de visitas quedan pausados.
 // message: 'banner' (QR de residente) | 'visitorsPaused' (pestaña Visitantes) | 'onlyEssentials' (resto)
+// onViewResidentQR: botón "Ver mi QR de residente" (p. ej. desde Visitantes, que en mora está en pausa)
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ const DEFAULTS = {
   onlyEssentials: 'Mientras tengas pagos pendientes en {{name}}, aquí solo puedes usar tu QR de residente, Pagos y Recibos.',
 };
 
-export default function UnpaidLocationNotice({ name, message = 'banner', style, onChangeLocation }) {
+export default function UnpaidLocationNotice({ name, message = 'banner', style, onChangeLocation, onViewResidentQR }) {
   const router = useRouter();
   const { t } = useTranslation();
   const font = useHomeFont();
@@ -33,6 +34,18 @@ export default function UnpaidLocationNotice({ name, message = 'banner', style, 
         </Text>
       </View>
       <View style={styles.actions}>
+        {!!onViewResidentQR && (
+          <PressableScale
+            variant="neu"
+            style={styles.button}
+            onPress={onViewResidentQR}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.qrButtonText, font(600)]} maxFontSizeMultiplier={1.2}>
+              {t('unpaid.viewResidentQR', 'Ver mi QR de residente')}
+            </Text>
+          </PressableScale>
+        )}
         <PressableScale
           variant="neu"
           neuFill={neu.teal}
@@ -103,6 +116,10 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: scale(14),
     color: neu.onAccent,
+  },
+  qrButtonText: {
+    fontSize: scale(14),
+    color: neu.teal,
   },
   linkButton: {
     paddingVertical: scale(10),

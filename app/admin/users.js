@@ -70,6 +70,19 @@ const getInviteRoles = (t) => ({
   admin: { label: t('admin.users.roles.administrator'), icon: 'settings', color: COLORS.purple },
 });
 
+// Motivos para desactivar un miembro: mismas opciones y mismo texto que la web
+// (frontend/src/components/community/communityHelpers.js SUSPEND_REASONS). Se envía el texto en
+// español: el backend reconoce 'Falta de pago' (el QR de residente sigue funcionando en esa residencial).
+const DEACTIVATION_REASONS = [
+  { id: 'moved', text: 'Se mudó' },
+  { id: 'payment', text: 'Falta de pago' },
+  { id: 'violation', text: 'Violación de reglas' },
+  { id: 'temporary', text: 'Suspensión temporal' },
+  { id: 'request', text: 'Solicitud del usuario' },
+  { id: 'duplicate', text: 'Cuenta duplicada' },
+  { id: 'other', text: '' },
+];
+
 export default function AdminUsers() {
   const { t } = useTranslation();
   const ROLES = getRoles(t);
@@ -100,6 +113,12 @@ export default function AdminUsers() {
   const [createMethod, setCreateMethod] = useState('invite');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Desactivar miembro: motivo obligatorio (como Comunidad › Desactivar miembro y la web)
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateReasonId, setDeactivateReasonId] = useState(null);
+  const [deactivateCustomReason, setDeactivateCustomReason] = useState('');
+  const [deactivating, setDeactivating] = useState(false);
 
   // Password reset state
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
@@ -289,45 +308,83 @@ export default function AdminUsers() {
     );
   };
 
+  // PUT de la membresía de ESTA residencial (regla de oro: nunca toca otra residencial ni la cuenta).
+  // Al desactivar SIEMPRE va el motivo: sin él el backend bloquea también el QR de residente.
+  const updateMembershipStatus = async (isActive, reason = null) => {
+    const headers = await getAuthHeaders();
+    const body = isActive
+      ? { is_active: true }
+      : { is_active: false, deactivation_reason: reason };
+    const response = await fetch(
+      `${API_URL}/invitations/organization/members/${selectedUser.membership_id}`,
+      { method: 'PUT', headers, body: JSON.stringify(body) }
+    );
+    if (!response.ok) {
+      let message = null;
+      try { message = (await response.json())?.error || null; } catch (e) { message = null; }
+      throw new Error(message || t('admin.users.errors.statusUpdateFailed'));
+    }
+    Alert.alert(t('common.success'), isActive ? t('admin.users.success.userActivated') : t('admin.users.success.userDeactivated'));
+    setSelectedUser({ ...selectedUser, is_active: isActive });
+    fetchData();
+  };
+
   const handleToggleStatus = async () => {
     if (!selectedUser || !selectedUser.membership_id) return;
-    
+
     const newStatus = !selectedUser.is_active;
+
+    // Desactivar: primero el motivo (mismas opciones que la web; "Falta de pago" deja el QR de residente)
+    if (!newStatus) {
+      setDeactivateReasonId(null);
+      setDeactivateCustomReason('');
+      setShowModal(false);
+      setTimeout(() => setShowDeactivateModal(true), 300);
+      return;
+    }
+
     Alert.alert(
-      newStatus ? t('admin.users.activateUserTitle') : t('admin.users.deactivateUserTitle'),
-      t('admin.users.toggleStatusConfirm', { action: newStatus ? t('admin.users.activate') : t('admin.users.deactivate'), name: selectedUser.name || selectedUser.full_name }),
+      t('admin.users.activateUserTitle'),
+      t('admin.users.toggleStatusConfirm', { action: t('admin.users.activate'), name: selectedUser.name || selectedUser.full_name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
           text: t('common.confirm'),
-          style: newStatus ? 'default' : 'destructive',
+          style: 'default',
           onPress: async () => {
             try {
-              const headers = await getAuthHeaders();
-              const response = await fetch(
-                `${API_URL}/invitations/organization/members/${selectedUser.membership_id}`,
-                {
-                  method: 'PUT',
-                  headers,
-                  body: JSON.stringify({ is_active: newStatus }),
-                }
-              );
-              
-              if (response.ok) {
-                Alert.alert(t('common.success'), newStatus ? t('admin.users.success.userActivated') : t('admin.users.success.userDeactivated'));
-                setSelectedUser({ ...selectedUser, is_active: newStatus });
-                fetchData();
-                setShowModal(false);
-              } else {
-                Alert.alert(t('common.error'), t('admin.users.errors.statusUpdateFailed'));
-              }
+              await updateMembershipStatus(true);
+              setShowModal(false);
             } catch (error) {
-              Alert.alert(t('common.error'), t('admin.users.errors.statusUpdateFailed'));
+              Alert.alert(t('common.error'), error.message || t('admin.users.errors.statusUpdateFailed'));
             }
           }
         }
       ]
     );
+  };
+
+  const confirmDeactivate = async () => {
+    if (!selectedUser || !selectedUser.membership_id || deactivating) return;
+    const option = DEACTIVATION_REASONS.find((r) => r.id === deactivateReasonId);
+    if (!option) {
+      Alert.alert(t('common.error'), t('admin.users.deactivateReason.selectReason', 'Elige el motivo de la desactivación.'));
+      return;
+    }
+    const reason = option.id === 'other' ? deactivateCustomReason.trim() : option.text;
+    if (!reason) {
+      Alert.alert(t('common.error'), t('admin.users.deactivateReason.writeReason', 'Escribe el motivo.'));
+      return;
+    }
+    setDeactivating(true);
+    try {
+      await updateMembershipStatus(false, reason);
+      setShowDeactivateModal(false);
+    } catch (error) {
+      Alert.alert(t('common.error'), error.message || t('admin.users.errors.statusUpdateFailed'));
+    } finally {
+      setDeactivating(false);
+    }
   };
 
   // Resetear contraseña de usuario
@@ -1467,6 +1524,134 @@ export default function AdminUsers() {
               </View>
             </View>
           </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Desactivar miembro: motivo obligatorio. Solo afecta su membresía en ESTA residencial. */}
+      <Modal
+        visible={showDeactivateModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => !deactivating && setShowDeactivateModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, backgroundColor: neu.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          >
+            <View style={{
+              backgroundColor: COLORS.backgroundSecondary,
+              borderRadius: 16,
+              padding: 24,
+              width: '100%',
+              maxWidth: 400,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Ionicons name="close-circle" size={22} color={COLORS.danger} />
+                <Text style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginLeft: 10, flex: 1 }}>
+                  {t('admin.users.deactivateUserTitle')}
+                </Text>
+              </View>
+
+              <Text style={{ color: COLORS.textSecondary, fontSize: 14, marginBottom: 16 }}>
+                {t('admin.users.deactivateReason.subtitle', {
+                  name: selectedUser?.name || selectedUser?.full_name || '',
+                  defaultValue: '¿Por qué desactivas a {{name}} en esta residencial?',
+                })}
+              </Text>
+
+              <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+                {DEACTIVATION_REASONS.map((reason) => {
+                  const selected = deactivateReasonId === reason.id;
+                  return (
+                    <TouchableOpacity
+                      key={reason.id}
+                      onPress={() => setDeactivateReasonId(reason.id)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: selected ? COLORS.danger : COLORS.border,
+                        backgroundColor: selected ? COLORS.danger + '15' : COLORS.backgroundTertiary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Ionicons
+                        name={selected ? 'radio-button-on' : 'radio-button-off'}
+                        size={18}
+                        color={selected ? COLORS.danger : COLORS.textSecondary}
+                      />
+                      <Text style={{ color: COLORS.textPrimary, fontSize: 15, marginLeft: 10, flex: 1 }}>
+                        {t(`admin.users.deactivateReason.reasons.${reason.id}`, reason.text || 'Otro motivo')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {deactivateReasonId === 'payment' && (
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 4, marginBottom: 8 }}>
+                    {t('admin.users.deactivateReason.paymentHint', 'Su QR de residente, sus pagos y el botón de pánico siguen funcionando en esta residencial; la tarjeta y los QR de visitas quedan pausados.')}
+                  </Text>
+                )}
+
+                {deactivateReasonId === 'other' && (
+                  <TextInput
+                    style={{
+                      color: COLORS.textPrimary,
+                      backgroundColor: COLORS.backgroundTertiary,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: COLORS.border,
+                      padding: 12,
+                      fontSize: 15,
+                      marginTop: 4,
+                      marginBottom: 8,
+                    }}
+                    placeholder={t('admin.users.deactivateReason.otherPlaceholder', 'Escribe el motivo')}
+                    placeholderTextColor={COLORS.textMuted}
+                    value={deactivateCustomReason}
+                    onChangeText={setDeactivateCustomReason}
+                    maxLength={200}
+                  />
+                )}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, padding: 14, borderRadius: 10, alignItems: 'center', backgroundColor: COLORS.backgroundTertiary }}
+                  onPress={() => setShowDeactivateModal(false)}
+                  disabled={deactivating}
+                >
+                  <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    padding: 14,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    backgroundColor: COLORS.danger,
+                    opacity: deactivateReasonId && !deactivating ? 1 : 0.5,
+                  }}
+                  onPress={confirmDeactivate}
+                  disabled={!deactivateReasonId || deactivating}
+                >
+                  {deactivating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>{t('admin.users.deactivate')}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>

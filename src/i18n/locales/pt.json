@@ -234,6 +234,14 @@
     "announcements": "Anúncios"
   },
   "visits": {
+    "residentQrError": {
+      "title": "Seu QR de residente não está disponível",
+      "generic": "Não foi possível carregar seu QR de residente. Deslize para baixo para tentar de novo."
+    },
+    "noLocation": {
+      "title": "Não encontramos seu condomínio",
+      "message": "Feche e abra o app; se continuar, contate sua administração."
+    },
     "pass": {
       "arrival": "Hora de chegada",
       "from": "De",
@@ -595,6 +603,9 @@
     }
   },
   "support": {
+    "version": {
+      "embedded": "sem OTA"
+    },
     "title": "Suporte",
     "subtitle": "Como podemos ajudar?",
     "contactUs": "Fale conosco",
@@ -1404,6 +1415,22 @@
       }
     },
     "users": {
+      "deactivateReason": {
+        "subtitle": "Por que você está desativando {{name}} neste condomínio?",
+        "selectReason": "Escolha o motivo da desativação.",
+        "writeReason": "Escreva o motivo.",
+        "paymentHint": "O QR de residente, os pagamentos e o botão de pânico continuam funcionando neste condomínio; o cartão e os QR de visitantes ficam pausados.",
+        "otherPlaceholder": "Escreva o motivo",
+        "reasons": {
+          "moved": "Mudou-se",
+          "payment": "Falta de pagamento",
+          "violation": "Violação das regras",
+          "temporary": "Suspensão temporária",
+          "request": "Solicitação do usuário",
+          "duplicate": "Conta duplicada",
+          "other": "Outro motivo"
+        }
+      },
       "resetLink": {
         "title": "Não é possível alterar aqui",
         "otherCommunity": "Esta pessoa também pertence a outro condomínio.",
@@ -2386,7 +2413,11 @@
     "homeCardMore": "Toque para responder · +{{others}} mais",
     "homeCardA11y": "{{visitor}} está em {{gate}}. Toque para responder"
   },
+  "communityPayments": {
+    "forbidden": "Você não tem acesso às cobranças deste condomínio. Contate sua administração."
+  },
   "unpaid": {
+    "viewResidentQR": "Ver meu QR de residente",
     "badge": "Pagamentos pendentes",
     "banner": "Você tem pagamentos pendentes em {{name}}. Seu QR de morador continua funcionando; seu cartão e seus QR de visitas estão pausados até você ficar em dia.",
     "viewPayments": "Ver meus pagamentos",

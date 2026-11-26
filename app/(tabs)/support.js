@@ -16,6 +16,54 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { neu } from '../../src/theme/tokens';
+import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
+
+// Versión real del app: la del binario (tienda) y la OTA que está corriendo. expo-application ya
+// viene en el binario (dependencia de expo-notifications); si no estuviera, se usa la de app.json.
+let nativeVersion = null;
+let nativeBuild = null;
+try {
+  // eslint-disable-next-line global-require
+  const Application = require('expo-application');
+  nativeVersion = Application.nativeApplicationVersion || null;
+  nativeBuild = Application.nativeBuildVersion || null;
+} catch (e) {
+  nativeVersion = null;
+}
+
+const formatOtaDate = (date) => {
+  if (!date) return '';
+  try {
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  } catch (e) {
+    return '';
+  }
+};
+
+// "ISSY v1.2.0 (45) · OTA 4be97558 · 2026-11-22 · runtime 1.2.0" o "ISSY v1.2.0 (45) · sin OTA · runtime 1.2.0"
+const getVersionLine = (t) => {
+  const version = nativeVersion || Constants.expoConfig?.version || '';
+  const head = `ISSY v${version}${nativeBuild ? ` (${nativeBuild})` : ''}`;
+  let ota;
+  try {
+    if (Updates.isEmbeddedLaunch || !Updates.updateId) {
+      ota = t('support.version.embedded', 'sin OTA');
+    } else {
+      const date = formatOtaDate(Updates.createdAt);
+      // Grupo de EAS (el id que muestra `eas update:list`); si no viene, el id del update
+      const group = Updates.manifest?.metadata?.updateGroup || Updates.updateId;
+      ota = `OTA ${String(group).slice(0, 8)}${date ? ` · ${date}` : ''}`;
+    }
+  } catch (e) {
+    ota = '';
+  }
+  const runtime = Updates.runtimeVersion ? ` · runtime ${Updates.runtimeVersion}` : '';
+  return [head, ota].filter(Boolean).join(' · ') + runtime;
+};
 
 export default function Support() {
   const { t } = useTranslation();
@@ -166,7 +214,7 @@ export default function Support() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>ISSY Resident App v1.0.0</Text>
+          <Text style={styles.appVersion} selectable>{getVersionLine(t)}</Text>
           <Text style={styles.appCopyright}>{t('support.copyright')}</Text>
         </View>
 

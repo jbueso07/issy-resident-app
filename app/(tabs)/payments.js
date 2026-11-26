@@ -98,6 +98,10 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
   // DATA LOADING
   // ============================================
 
+  // 403 al cargar los cobros (sin membresía activa ni en mora en esa residencial): su mensaje, en vez de
+  // listas vacías sin explicación
+  const [chargesError, setChargesError] = useState(null);
+
   // Al cambiar de residencial: se vacían cargos y datos de pago al momento (nunca los de la otra)
   // y se recarga. Solo cuenta la respuesta más reciente (al cambiar rápido de residencial).
   const locationIdRef = useRef(selectedLocationId);
@@ -109,6 +113,7 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
       setCharges({ pending: [], paid: [] });
       setReceiptsByPayment({});
       setPaymentSettings(null);
+      setChargesError(null);
       setLoading(true);
     }
     loadData();
@@ -150,10 +155,14 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
       if (isStale()) return;
       
       if (data.success) {
+        setChargesError(null);
         setCharges({
           pending: data.data.pending || [],
           paid: data.data.paid || []
         });
+      } else if (response.status === 403) {
+        setCharges({ pending: [], paid: [] });
+        setChargesError(data.error || t('communityPayments.forbidden', 'No tienes acceso a los cobros de esta residencial. Contacta a tu administración.'));
       }
     } catch (error) {
       if (isStale()) return;
@@ -529,6 +538,14 @@ const processCardPayment = async () => {
             <Ionicons name="card-outline" size={22} color={COLORS.textPrimary} />
           </PressableScale>
         </View>
+
+        {/* Sin acceso a los cobros de esta residencial (403): el motivo del backend */}
+        {!!chargesError && (
+          <View style={[styles.chargesError, neuSurface.sunkenSm]} accessibilityRole="alert">
+            <Ionicons name="alert-circle" size={22} color={neu.amber} />
+            <Text style={[styles.chargesErrorText, font(500)]} maxFontSizeMultiplier={1.3}>{chargesError}</Text>
+          </View>
+        )}
 
         {/* Balance Card */}
         <View style={styles.balanceCard}>
@@ -1288,6 +1305,22 @@ detailStatusText: {
     alignItems: 'center',
     paddingTop: scale(16),
     paddingBottom: scale(12),
+  },
+  chargesError: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(10),
+    borderRadius: scale(16),
+    padding: scale(14),
+    marginBottom: scale(16),
+    borderWidth: 1,
+    borderColor: neu.amber + '55',
+  },
+  chargesErrorText: {
+    flex: 1,
+    fontSize: scale(14),
+    lineHeight: scale(20),
+    color: COLORS.textPrimary,
   },
   title: {
     fontSize: fs(24),

@@ -259,6 +259,14 @@
     }
   },
   "visits": {
+    "residentQrError": {
+      "title": "Tu QR de residente no está disponible",
+      "generic": "No pudimos cargar tu QR de residente. Desliza hacia abajo para intentar de nuevo."
+    },
+    "noLocation": {
+      "title": "No encontramos tu residencial",
+      "message": "Cierra y abre el app; si sigue, contacta a tu administración."
+    },
     "pass": {
       "arrival": "Hora de llegada",
       "from": "Desde",
@@ -810,6 +818,9 @@
     }
   },
   "support": {
+    "version": {
+      "embedded": "sin OTA"
+    },
     "title": "Soporte",
     "subtitle": "¿En qué podemos ayudarte?",
     "contactUs": "Contáctanos",
@@ -1622,6 +1633,22 @@
       }
     },
     "users": {
+      "deactivateReason": {
+        "subtitle": "¿Por qué desactivas a {{name}} en esta residencial?",
+        "selectReason": "Elige el motivo de la desactivación.",
+        "writeReason": "Escribe el motivo.",
+        "paymentHint": "Su QR de residente, sus pagos y el botón de pánico siguen funcionando en esta residencial; la tarjeta y los QR de visitas quedan pausados.",
+        "otherPlaceholder": "Escribe el motivo",
+        "reasons": {
+          "moved": "Se mudó",
+          "payment": "Falta de pago",
+          "violation": "Violación de reglas",
+          "temporary": "Suspensión temporal",
+          "request": "Solicitud del usuario",
+          "duplicate": "Cuenta duplicada",
+          "other": "Otro motivo"
+        }
+      },
       "resetLink": {
         "title": "No se puede cambiar aquí",
         "otherCommunity": "Esta persona también pertenece a otra residencial.",
@@ -2645,6 +2672,7 @@
     "marketplaceDesc": "Compra y vende en tu comunidad"
   },
   "communityPayments": {
+    "forbidden": "No tienes acceso a los cobros de esta residencial. Contacta a tu administración.",
     "title": "Cobros de Comunidad",
     "subtitle": "Gestiona tus pagos de comunidad",
     "loading": "Cargando cobros...",
@@ -3018,6 +3046,7 @@
     "homeCardA11y": "{{visitor}} está en {{gate}}. Toca para responder"
   },
   "unpaid": {
+    "viewResidentQR": "Ver mi QR de residente",
     "badge": "Pagos pendientes",
     "banner": "Tienes pagos pendientes en {{name}}. Tu QR de residente sigue funcionando; tu tarjeta y tus QR de visitas están pausados hasta que te pongas al día.",
     "viewPayments": "Ver mis pagos",

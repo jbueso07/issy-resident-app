@@ -11,6 +11,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { useAuth } from '../../src/context/AuthContext';
+import { useUserLocation } from '../../src/context/UserLocationContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import NewQRSheet from '../../src/components/home/NewQRSheet';
 import PressableScale from '../../src/components/home/PressableScale';
@@ -61,6 +62,8 @@ const CENTER_OVERHANG = 20;
 
 function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
   const { t } = useTranslation();
+  // Residencial elegida en mora (Falta de pago): Visitantes está en pausa, así que "Mis QR" abre Mi QR
+  const { selectedRestricted } = useUserLocation();
   const [barWidth, setBarWidth] = useState(0);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const indicatorX = useRef(new Animated.Value(0)).current;
@@ -111,8 +114,9 @@ function IssyTabBar({ state, navigation, bottom, onOpenNewQR }) {
       ? navigation.emit({ type: 'tabPress', target: target.key, canPreventDefault: true })
       : { defaultPrevented: false };
     if (event.defaultPrevented) return;
-    // Mis QR siempre manda la pestaña de visitantes, aunque Visitas ya esté abierta
-    if (!isFocused || item.params) navigation.navigate(item.route, item.params);
+    // Mis QR siempre manda su pestaña (visitantes; en mora, Mi QR), aunque Visitas ya esté abierta
+    const params = item.key === 'myqr' && selectedRestricted ? { tab: 'myqr' } : item.params;
+    if (!isFocused || params) navigation.navigate(item.route, params);
   };
 
   if (keyboardOpen) return null;

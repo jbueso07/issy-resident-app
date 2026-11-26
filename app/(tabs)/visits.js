@@ -259,6 +259,8 @@ export default function Visits() {
   const [residentQRDisabled, setResidentQRDisabled] = useState(false); // ✅ Track if feature is disabled
   // Sin casa en la residencial seleccionada: aviso en vez de QR
   const [residentQRNoHome, setResidentQRNoHome] = useState(false);
+  // Cualquier otro fallo del QR de residente: mensaje (el del backend si es 403) en vez de pantalla en blanco
+  const [residentQRError, setResidentQRError] = useState(null);
   // Formulario de QR: teléfono e identificación en una sección plegable (opcionales)
   const [showMoreData, setShowMoreData] = useState(false);
   const [activeTab, setActiveTab] = useState("myqr");
@@ -487,6 +489,7 @@ export default function Visits() {
     const isStale = () => requestId !== residentQRRequestIdRef.current;
     setResidentQRDisabled(false); // Reset disabled state
     setResidentQRNoHome(false);
+    setResidentQRError(null);
     // Sin casa "con certeza" (cuando /auth/me ya manda unit_number): no se pide el secreto
     const membership = profile?.user_locations?.find((l) => l.location_id === selectedLocationId);
     if (hasKnownNoHome(membership)) {
@@ -509,6 +512,12 @@ export default function Visits() {
         } else if (result.error?.includes('no está habilitado') || result.reason === 'FEATURE_DISABLED') {
           // ✅ Feature is disabled by admin
           setResidentQRDisabled(true);
+        } else if (!result.sessionExpired) {
+          // 403 inesperado (cuenta suspendida, QR bloqueado, sin membresía): el texto del backend
+          setResidentQRError(
+            (result.forbidden && result.error)
+              || t('visits.residentQrError.generic', 'No pudimos cargar tu QR de residente. Desliza hacia abajo para intentar de nuevo.')
+          );
         }
       }
     } catch (error) {
@@ -518,6 +527,9 @@ export default function Visits() {
       if (!isStale()) setLoadingResidentQR(false);
     }
   };
+  // Versión vigente para el pull-to-refresh (onRefresh es un useCallback sin dependencias)
+  const loadResidentQRSecretRef = useRef(loadResidentQRSecret);
+  loadResidentQRSecretRef.current = loadResidentQRSecret;
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   // Al cambiar de residencial: la lista (y los números de arriba) se vacían al momento y recargan
@@ -623,6 +635,8 @@ export default function Visits() {
     setRefreshing(true);
     loadQRCodes();
     setAccessesRefreshKey((key) => key + 1);
+    // Mi QR también se reintenta (p. ej. después de un error)
+    loadResidentQRSecretRef.current?.();
   }, []);
 
   const resetForm = () => {
@@ -1391,9 +1405,40 @@ return (
           </View>
         )}
 
-        {/* Tab: Visitantes, en mora: sin crear QR ni lista de QR de visitas de esa residencial */}
+        {/* Otro fallo del QR de residente (403 inesperado, red): mensaje en vez de pantalla en blanco */}
+        {activeTab === 'myqr' && !!selectedLocationId && residentQRError && !loadingResidentQR && (
+          <View style={styles.disabledQRContainer}>
+            <Ionicons name="alert-circle-outline" size={scale(48)} color={COLORS.textMuted} />
+            <Text style={[styles.disabledQRTitle, { textAlign: 'center' }, font(600)]} maxFontSizeMultiplier={1.2}>
+              {t('visits.residentQrError.title', 'Tu QR de residente no está disponible')}
+            </Text>
+            <Text style={[styles.disabledQRText, font(400)]} maxFontSizeMultiplier={1.2}>
+              {residentQRError}
+            </Text>
+          </View>
+        )}
+
+        {/* Sin residencial elegida y la lista ya cargó: aviso en vez de cargar para siempre */}
+        {activeTab === 'myqr' && !selectedLocationId && !locationLoading && (
+          <View style={styles.disabledQRContainer}>
+            <Ionicons name="business-outline" size={scale(48)} color={COLORS.textMuted} />
+            <Text style={[styles.disabledQRTitle, { textAlign: 'center' }, font(600)]} maxFontSizeMultiplier={1.2}>
+              {t('visits.noLocation.title', 'No encontramos tu residencial')}
+            </Text>
+            <Text style={[styles.disabledQRText, font(400)]} maxFontSizeMultiplier={1.2}>
+              {t('visits.noLocation.message', 'Cierra y abre el app; si sigue, contacta a tu administración.')}
+            </Text>
+          </View>
+        )}
+
+        {/* Tab: Visitantes, en mora: sin crear QR ni lista de QR de visitas de esa residencial.
+            El QR de residente sí sirve: botón directo a Mi QR */}
         {activeTab === 'visitors' && selectedRestricted && (
-          <UnpaidLocationNotice name={locationName} message="visitorsPaused" />
+          <UnpaidLocationNotice
+            name={locationName}
+            message="visitorsPaused"
+            onViewResidentQR={() => setActiveTab('myqr')}
+          />
         )}
 
         {/* Tab: Visitantes */}

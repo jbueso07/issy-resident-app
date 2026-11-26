@@ -245,6 +245,14 @@
     "announcements": "Announcements"
   },
   "visits": {
+    "residentQrError": {
+      "title": "Your resident QR is not available",
+      "generic": "We couldn't load your resident QR. Pull down to try again."
+    },
+    "noLocation": {
+      "title": "We couldn't find your community",
+      "message": "Close and reopen the app; if it continues, contact your administration."
+    },
     "pass": {
       "arrival": "Arrival time",
       "from": "From",
@@ -713,6 +721,9 @@
     }
   },
   "support": {
+    "version": {
+      "embedded": "no OTA"
+    },
     "title": "Support",
     "subtitle": "How can we help you?",
     "contactUs": "Contact us",
@@ -1523,6 +1534,22 @@
       }
     },
     "users": {
+      "deactivateReason": {
+        "subtitle": "Why are you deactivating {{name}} in this community?",
+        "selectReason": "Choose the reason for the deactivation.",
+        "writeReason": "Write the reason.",
+        "paymentHint": "Their resident QR, payments and panic button keep working in this community; their card and visitor QR codes are paused.",
+        "otherPlaceholder": "Write the reason",
+        "reasons": {
+          "moved": "Moved out",
+          "payment": "Non-payment",
+          "violation": "Rule violation",
+          "temporary": "Temporary suspension",
+          "request": "User's request",
+          "duplicate": "Duplicate account",
+          "other": "Other reason"
+        }
+      },
       "resetLink": {
         "title": "Can't change it here",
         "otherCommunity": "This person also belongs to another community.",
@@ -2574,7 +2601,11 @@
     "homeCardMore": "Tap to respond · +{{others}} more",
     "homeCardA11y": "{{visitor}} is at {{gate}}. Tap to respond"
   },
+  "communityPayments": {
+    "forbidden": "You don't have access to this community's charges. Contact your administration."
+  },
   "unpaid": {
+    "viewResidentQR": "View my resident QR",
     "badge": "Pending payments",
     "banner": "You have pending payments at {{name}}. Your resident QR still works; your card and your visitor QRs are paused until you catch up.",
     "viewPayments": "View my payments",

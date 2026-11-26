@@ -2102,6 +2102,8 @@ export const getResidentQRSecret = async (locationId) => {
       error: error.message,
       noHome,
       reason: error.data?.reason,
+      // 403 del backend (cuenta suspendida, QR bloqueado, sin membresía…): su mensaje se muestra tal cual
+      forbidden: error.status === 403,
       sessionExpired: error.sessionExpired,
     };
   }

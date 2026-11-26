@@ -234,6 +234,14 @@
     "announcements": "Annonces"
   },
   "visits": {
+    "residentQrError": {
+      "title": "Votre QR de résident n'est pas disponible",
+      "generic": "Nous n'avons pas pu charger votre QR de résident. Faites glisser vers le bas pour réessayer."
+    },
+    "noLocation": {
+      "title": "Nous n'avons pas trouvé votre résidence",
+      "message": "Fermez et rouvrez l'app ; si le problème persiste, contactez votre administration."
+    },
     "pass": {
       "arrival": "Heure d’arrivée",
       "from": "Du",
@@ -564,6 +572,9 @@
     }
   },
   "support": {
+    "version": {
+      "embedded": "sans OTA"
+    },
     "title": "Support",
     "subtitle": "Comment pouvons-nous vous aider ?",
     "contactUs": "Contactez-nous",
@@ -1373,6 +1384,22 @@
       }
     },
     "users": {
+      "deactivateReason": {
+        "subtitle": "Pourquoi désactivez-vous {{name}} dans cette résidence ?",
+        "selectReason": "Choisissez le motif de la désactivation.",
+        "writeReason": "Écrivez le motif.",
+        "paymentHint": "Son QR de résident, ses paiements et le bouton panique continuent de fonctionner dans cette résidence ; la carte et les QR de visiteurs sont suspendus.",
+        "otherPlaceholder": "Écrivez le motif",
+        "reasons": {
+          "moved": "A déménagé",
+          "payment": "Défaut de paiement",
+          "violation": "Violation du règlement",
+          "temporary": "Suspension temporaire",
+          "request": "Demande de l'utilisateur",
+          "duplicate": "Compte en double",
+          "other": "Autre motif"
+        }
+      },
       "resetLink": {
         "title": "Impossible de le modifier ici",
         "otherCommunity": "Cette personne appartient aussi à une autre résidence.",
@@ -2387,7 +2414,11 @@
     "homeCardMore": "Appuyez pour répondre · +{{others}} de plus",
     "homeCardA11y": "{{visitor}} est à {{gate}}. Appuyez pour répondre"
   },
+  "communityPayments": {
+    "forbidden": "Vous n'avez pas accès aux frais de cette résidence. Contactez votre administration."
+  },
   "unpaid": {
+    "viewResidentQR": "Voir mon QR de résident",
     "badge": "Paiements en attente",
     "banner": "Vous avez des paiements en attente à {{name}}. Votre QR de résident fonctionne toujours ; votre carte et vos QR de visiteurs sont en pause jusqu'à ce que vous soyez à jour.",
     "viewPayments": "Voir mes paiements",
