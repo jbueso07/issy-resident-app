@@ -69,6 +69,39 @@ const formatClock = (value, locale) => {
   return date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 };
 
+// ---------- Pase de visita (temporal / frecuente): filas "Horario" y "Días" ----------
+// Mismo criterio que la garita (backend utils/qrSchedule.js): access_days null, vacío o con los 7
+// días = cualquier día; is_24_7 o sin horario = todo el día. access_time_* son horas locales de la
+// residencial y se muestran tal cual (no se convierten de zona).
+
+// "Mié, Jue, Vie" (lunes → domingo) o "Todos los días"
+export const formatDaysList = (days, t, language) => {
+  if (days.length === 0 || days.length === 7) return t('visits.pass.everyDay', 'Todos los días');
+  const locale = localeFor(language);
+  return days.map((d) => shortDayName(WEEK_ORDER.indexOf(d), locale)).join(', ');
+};
+
+// { hours: '7:00 a. m. – 4:00 p. m.' | 'Todo el día', days: 'Mié, Jue, Vie' | 'Todos los días' }
+// o null si el QR no es temporal ni frecuente (una vez y evento siguen como antes).
+export const getPassScheduleRows = (qr, t, language) => {
+  if (qr?.qr_type !== 'temporary' && qr?.qr_type !== 'frequent') return null;
+  const locale = localeFor(language);
+  const start = formatClock(qr.access_time_start, locale);
+  const end = formatClock(qr.access_time_end, locale);
+  const hours = qr.is_24_7 || !start || !end ? t('visits.pass.allDay', 'Todo el día') : `${start} – ${end}`;
+  return { hours, days: formatDaysList(parseAccessDays(qr.access_days), t, language) };
+};
+
+// ¿La fecha cae justo en el borde del día? (inicio 00:00 / fin 23:59, hora del teléfono).
+// Así "Desde/Hasta" muestran solo la fecha y no "12:00 a. m." / "11:59 p. m.".
+export const isDayEdge = (iso, edge) => {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return false;
+  return edge === 'start'
+    ? d.getHours() === 0 && d.getMinutes() === 0
+    : d.getHours() === 23 && d.getMinutes() === 59;
+};
+
 const formatTime = (iso, locale) =>
   new Date(iso).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 

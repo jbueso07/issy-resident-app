@@ -254,6 +254,10 @@
       "message": "Close and reopen the app; if it continues, contact your administration."
     },
     "pass": {
+      "hours": "Hours",
+      "days": "Days",
+      "allDay": "All day",
+      "everyDay": "Every day",
       "arrival": "Arrival time",
       "from": "From",
       "until": "Until",

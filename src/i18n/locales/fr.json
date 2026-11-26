@@ -243,6 +243,10 @@
       "message": "Fermez et rouvrez l'app ; si le problème persiste, contactez votre administration."
     },
     "pass": {
+      "hours": "Horaires",
+      "days": "Jours",
+      "allDay": "Toute la journée",
+      "everyDay": "Tous les jours",
       "arrival": "Heure d’arrivée",
       "from": "Du",
       "until": "Jusqu’au",

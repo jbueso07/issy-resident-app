@@ -47,7 +47,7 @@ import { hasKnownNoHome } from '../../src/components/home/LocationCarousel';
 import PressableScale from '../../src/components/home/PressableScale';
 import { colors as tk, radius, spacing, neu, neuSurface, fs } from '../../src/theme/tokens';
 import { useHomeFont } from '../../src/theme/homeFont';
-import { TYPE_COLORS } from '../../src/utils/receivedQR';
+import { TYPE_COLORS, getPassScheduleRows } from '../../src/utils/receivedQR';
 import { getMyQRStatusLine, getMyQRSummary, filterMyQRs, MY_QR_FILTERS } from '../../src/utils/myQRStatus';
 import {
   loadSuggestionPrefs,
@@ -1123,27 +1123,11 @@ const getTimeText = (qr) => {
   return t('visits.access247');
 };
 
-// Obtener días activos como array booleano
-const getActiveDays = (qr) => {
-  if (!qr.access_days) return [true, true, true, true, true, true, true];
-
-  try {
-    const parsed = typeof qr.access_days === 'string'
-      ? JSON.parse(qr.access_days)
-      : qr.access_days;
-
-    const WEEKDAY_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return WEEKDAY_ORDER.map(day => parsed.includes(day));
-  } catch {
-    return [true, true, true, true, true, true, true];
-  }
-};
-
 // Ventana real de INGRESO de un evento. valid_from/valid_until ya vienen
 // calculados por el backend desde event_date + start_time/end_time en la zona
 // horaria de la comunidad, asi que no hace falta joinear con events.
 // No se usan is_24_7 ni access_days: createEvent los deja en false/null, y los
-// fallbacks genericos de getTimeText/getActiveDays mentian "Acceso 24/7" y
+// fallbacks genericos de getTimeText (y los días del pase) mentian "Acceso 24/7" y
 // "todos los dias" en la tarjeta que termina viendo el invitado.
 const getEventEntryWindow = (qr) => {
   if (!qr?.valid_from || !qr?.valid_until) return '';
@@ -1207,6 +1191,9 @@ const renderQRCard = (qr) => {
     (qr.qr_type === 'event'
       ? `${formatDateShort(qr.valid_from)} · ${getEventEntryWindow(qr)}`
       : getCardValidityText(qr));
+  // Temporal / frecuente: horario y días a la vista ("7:00 a. m. – 4:00 p. m. · Mié, Jue, Vie")
+  const schedule = getPassScheduleRows(qr, t, language);
+  const scheduleLine = schedule ? `${schedule.hours} · ${schedule.days}` : '';
 
   // TODO(Tanda 2): los eventos deberían abrir `/event-detail?id=${qr.id}` (lista de invitados);
   // por ahora abren el mismo modal de QR que una visita.
@@ -1222,7 +1209,7 @@ const renderQRCard = (qr) => {
       style={[styles.k1Card, past && styles.k1CardPast]}
       onPress={openQR}
       scaleTo={0.98}
-      accessibilityLabel={`${qr.visitor_name}. ${statusLine}`}
+      accessibilityLabel={[qr.visitor_name, statusLine, scheduleLine].filter(Boolean).join('. ')}
     >
       <View style={styles.k1CardTop}>
         <Text style={[styles.k1Name, font(600)]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{qr.visitor_name}</Text>
@@ -1237,6 +1224,11 @@ const renderQRCard = (qr) => {
           <View style={[styles.k1Dot, { backgroundColor: past ? tk.textMuted : typeColor }]} />
           <Text style={[styles.k1Status, font(400)]} maxFontSizeMultiplier={1.2} numberOfLines={2}>{statusLine}</Text>
         </View>
+      )}
+      {!!scheduleLine && (
+        <Text style={[styles.k1Status, styles.k1Schedule, font(400)]} maxFontSizeMultiplier={1.2} numberOfLines={2}>
+          {scheduleLine}
+        </Text>
       )}
 
       {/* Acciones de siempre */}
@@ -2238,7 +2230,6 @@ return (
                 typeLabel={selectedQR.qr_type === 'event' ? t('home2.newQR.types.event', 'Evento') : getQRTypeLabel(selectedQR.qr_type)}
                 timeText={getTimeText(selectedQR)}
                 entryWindow={getEventEntryWindow(selectedQR)}
-                activeDays={getActiveDays(selectedQR)}
                 t={t}
                 language={language}
               />
@@ -2757,6 +2748,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fs(13),
     color: tk.textSecondary,
+  },
+  // Línea de horario y días: alineada con el texto del estado (después del punto)
+  k1Schedule: {
+    flex: 0,
+    marginTop: scale(2),
+    marginLeft: scale(8) + scale(spacing.sm),
   },
   k1Empty: {
     fontSize: fs(14),

@@ -243,6 +243,10 @@
       "message": "Feche e abra o app; se continuar, contate sua administração."
     },
     "pass": {
+      "hours": "Horário",
+      "days": "Dias",
+      "allDay": "O dia todo",
+      "everyDay": "Todos os dias",
       "arrival": "Hora de chegada",
       "from": "De",
       "until": "Até",

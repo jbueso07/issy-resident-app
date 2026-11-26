@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { useHomeFont } from '../theme/homeFont';
+import { getPassScheduleRows, isDayEdge } from '../utils/receivedQR';
 
 const LOGO = require('../../assets/isologotipo-negro.png');
 // El PNG (8000x4500) trae mucho margen transparente: el dibujo ocupa solo la zona de abajo (fracciones del
@@ -29,7 +30,6 @@ const C = {
   soft: '#5F6E6C',
   accent: '#0E8C74',
   separator: '#D2DAD8',
-  dayOff: '#A7B2B0',
 };
 
 const CARD_WIDTH = Math.min(358, Dimensions.get('window').width - 32);
@@ -95,7 +95,6 @@ export default function VisitPassCard({
   typeLabel,
   timeText,
   entryWindow,
-  activeDays,
   cardRef,
   qrRefCallback,
   t,
@@ -116,13 +115,18 @@ export default function VisitPassCard({
       ? cap(d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(',', ''))
       : '';
   };
-  const dateTime = (v) => {
+  // Temporal: si la hora es el borde del día (00:00 al inicio, 23:59 al final) va solo la fecha;
+  // el horario real va en su propia fila.
+  const dateTime = (v, edge) => {
     const d = parse(v);
     if (!d) return '';
     const day = cap(d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/[,.]/g, ''));
+    if (edge && isDayEdge(v, edge)) return day;
     const time = d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', hour12: true });
     return `${day} · ${time}`;
   };
+  // Filas "Horario" y "Días" (temporal y frecuente); null en una vez y evento
+  const schedule = getPassScheduleRows(qr, t, language);
 
   // Filas de detalle según el tipo; sin dato → sin fila
   const rows = [];
@@ -135,12 +139,14 @@ export default function VisitPassCard({
     addRow('house', 'home-outline', t('visits.house'), houseNumber);
     addRow('valid', 'checkmark-circle-outline', t('visits.pass.validFor'), t('visits.pass.oneEntry'));
   } else if (type === 'temporary') {
-    addRow('from', 'calendar-outline', t('visits.pass.from'), dateTime(qr.valid_from));
-    addRow('until', 'calendar-number-outline', t('visits.pass.until'), dateTime(qr.valid_until));
+    addRow('from', 'calendar-outline', t('visits.pass.from'), dateTime(qr.valid_from, 'start'));
+    addRow('until', 'calendar-number-outline', t('visits.pass.until'), dateTime(qr.valid_until, 'end'));
+    addRow('time', 'time-outline', t('visits.pass.hours', 'Horario'), schedule?.hours);
+    addRow('days', 'today-outline', t('visits.pass.days', 'Días'), schedule?.days);
     addRow('house', 'home-outline', t('visits.house'), houseNumber);
   } else if (type === 'frequent') {
-    rows.push({ key: 'days', icon: 'calendar-outline', label: t('visits.accessDaysLabel'), days: true });
-    addRow('time', 'time-outline', t('visits.schedule'), timeText);
+    addRow('time', 'time-outline', t('visits.pass.hours', 'Horario'), schedule?.hours);
+    addRow('days', 'today-outline', t('visits.pass.days', 'Días'), schedule?.days);
     addRow('house', 'home-outline', t('visits.house'), houseNumber);
   } else {
     // Evento: ventana real de ingreso
@@ -150,7 +156,6 @@ export default function VisitPassCard({
   }
 
   const code = (qr.qr_code || qr.id || '').toString();
-  const dayLetters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
   return (
     <View ref={cardRef} collapsable={false} style={styles.card}>
@@ -222,24 +227,7 @@ export default function VisitPassCard({
                 </View>
               </Surface>
               <Txt style={[styles.detailLabel, font(400)]}>{row.label}</Txt>
-              {row.days ? (
-                <View style={styles.daysRow}>
-                  {dayLetters.map((letter, i) => (
-                    <Txt
-                      key={i}
-                      style={[
-                        styles.dayLetter,
-                        font(activeDays?.[i] ? 700 : 500),
-                        { color: activeDays?.[i] ? C.accent : C.dayOff },
-                      ]}
-                    >
-                      {letter}
-                    </Txt>
-                  ))}
-                </View>
-              ) : (
-                <Txt style={[styles.detailValue, font(600)]} numberOfLines={2}>{row.value}</Txt>
-              )}
+              <Txt style={[styles.detailValue, font(600)]} numberOfLines={2}>{row.value}</Txt>
             </View>
           ))}
         </Surface>
@@ -368,16 +356,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: C.text,
     textAlign: 'right',
-  },
-  daysRow: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  dayLetter: {
-    fontSize: 13,
-    fontWeight: '700',
   },
   footer: {
     fontSize: 11,
