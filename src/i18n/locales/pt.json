@@ -695,6 +695,7 @@
   },
   "admin": {
     "communityManagement": {
+      "nonContributorHint": "Só o QR de morador funciona neste condomínio; cartão, visitas, reservas, pagamentos e botão de pânico ficam pausados.",
       "phone": "Telefone",
       "phonePlaceholder": "+504 9999-9999",
       "errors": {
@@ -1420,12 +1421,14 @@
     },
     "users": {
       "deactivateReason": {
+        "nonContributorHint": "Só o QR de morador funciona neste condomínio; cartão, visitas, reservas, pagamentos e botão de pânico ficam pausados.",
         "subtitle": "Por que você está desativando {{name}} neste condomínio?",
         "selectReason": "Escolha o motivo da desativação.",
         "writeReason": "Escreva o motivo.",
         "paymentHint": "O QR de residente, os pagamentos e o botão de pânico continuam funcionando neste condomínio; o cartão e os QR de visitantes ficam pausados.",
         "otherPlaceholder": "Escreva o motivo",
         "reasons": {
+          "nonContributor": "Não contribuinte",
           "moved": "Mudou-se",
           "payment": "Falta de pagamento",
           "violation": "Violação das regras",
@@ -2419,6 +2422,10 @@
   },
   "communityPayments": {
     "forbidden": "Você não tem acesso às cobranças deste condomínio. Contate sua administração."
+  },
+  "nonContributor": {
+    "notice": "Em {{name}} só o seu QR de morador está disponível. Fale com a sua administração.",
+    "badge": "Não contribuinte"
   },
   "unpaid": {
     "viewResidentQR": "Ver meu QR de residente",

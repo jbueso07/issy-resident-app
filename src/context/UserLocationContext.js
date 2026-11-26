@@ -9,11 +9,13 @@ const STORAGE_KEY = 'user_selected_location_id';
 
 const UserLocationContext = createContext({});
 
-// Residencial en mora: membresía desactivada por Falta de pago (my-locations?include_restricted=1
-// la manda al final con restricted: 'unpaid'). Ahí solo sirven el QR de residente, Pagos y Recibos.
+// Residencial restringida (my-locations?include_restricted=1 la manda al final con `restricted`):
+//   'unpaid'          → Falta de pago: ahí solo sirven el QR de residente, Pagos y Recibos.
+//   'non_contributor' → No aportante: ahí SOLO el QR de residente (sin pagos, recibos ni pánico).
 // Se elige SOLO en el app: nunca se llama /auth/switch-location hacia ella (el backend lo rechaza).
 const getLocId = (l) => l?.location_id || l?.id;
-export const isRestrictedRow = (l) => !!l && l.restricted === 'unpaid';
+export const RESTRICTION_KINDS = ['unpaid', 'non_contributor'];
+export const isRestrictedRow = (l) => !!l && RESTRICTION_KINDS.includes(l.restricted);
 
 export const useUserLocation = () => useContext(UserLocationContext);
 
@@ -28,6 +30,9 @@ export const UserLocationProvider = ({ children }) => {
   // (toque de notificación, justo después de refreshLocations)
   const [restrictedIds, setRestrictedIds] = useState([]);
   const restrictedIdsRef = useRef([]);
+  // Tipo de restricción por id ('unpaid' | 'non_contributor'), como texto 'id:tipo|…' para comparar fácil
+  const [restrictionKey, setRestrictionKey] = useState('');
+  const restrictionKindsRef = useRef({});
   const knownIdsRef = useRef([]);
 
   // Fetch user's locations from user_locations table
@@ -52,8 +57,12 @@ export const UserLocationProvider = ({ children }) => {
         // Comparación explícita contra false: si el backend no incluye el campo
         // en /users/my-locations, no se filtra nada (el filtro definitivo va en backend).
         const activeLocations = data.data.filter(l => (l.location || l).is_active !== false);
-        const restricted = activeLocations.filter(isRestrictedRow).map(getLocId).filter(Boolean);
+        const restrictedRows = activeLocations.filter(isRestrictedRow).filter(getLocId);
+        const restricted = restrictedRows.map(getLocId);
         restrictedIdsRef.current = restricted;
+        restrictionKindsRef.current = Object.fromEntries(restrictedRows.map((l) => [String(getLocId(l)), l.restricted]));
+        const kindsKey = restrictedRows.map((l) => `${getLocId(l)}:${l.restricted}`).join('|');
+        setRestrictionKey((prev) => (prev === kindsKey ? prev : kindsKey));
         knownIdsRef.current = activeLocations.map(getLocId).filter(Boolean);
         setRestrictedIds((prev) => (prev.join('|') === restricted.join('|') ? prev : restricted));
         setUserLocations(activeLocations);
@@ -171,6 +180,17 @@ export const UserLocationProvider = ({ children }) => {
     () => !!selectedLocationId && restrictedIds.includes(selectedLocationId),
     [selectedLocationId, restrictedIds]
   );
+  // 'unpaid' | 'non_contributor' | null de cualquier residencial (lectura al momento)
+  const restrictionKindOf = useCallback(
+    (locationId) => (locationId ? restrictionKindsRef.current[String(locationId)] || null : null),
+    // restrictionKey: se recalcula cuando cambian los tipos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [restrictionKey]
+  );
+  const selectedRestrictionKind = useMemo(
+    () => (selectedRestricted ? restrictionKindOf(selectedLocationId) : null),
+    [selectedRestricted, selectedLocationId, restrictionKindOf]
+  );
 
   // Get location name helper
   const getLocationName = useCallback(() => {
@@ -191,9 +211,13 @@ export const UserLocationProvider = ({ children }) => {
       // Computed
       hasMultipleLocations: userLocations.length > 1,
       locationName: getLocationName(),
-      // Mora (Falta de pago): ids en mora y si la seleccionada lo está
+      // Restringidas (Falta de pago o No aportante): ids y si la seleccionada lo está
       restrictedLocationIds: restrictedIds,
       selectedRestricted,
+      // Tipo: 'unpaid' (Falta de pago) | 'non_contributor' (No aportante) | null
+      selectedRestrictionKind,
+      selectedNonContributor: selectedRestrictionKind === 'non_contributor',
+      restrictionKindOf,
       isRestrictedLocation,
       isKnownLocation,
       

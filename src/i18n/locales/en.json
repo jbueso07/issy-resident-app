@@ -814,6 +814,7 @@
   },
   "admin": {
     "communityManagement": {
+      "nonContributorHint": "Only their resident QR works in this community; card, visitors, reservations, payments and panic button are paused.",
       "phone": "Phone",
       "phonePlaceholder": "+504 9999-9999",
       "errors": {
@@ -1539,12 +1540,14 @@
     },
     "users": {
       "deactivateReason": {
+        "nonContributorHint": "Only their resident QR works in this community; card, visitors, reservations, payments and panic button are paused.",
         "subtitle": "Why are you deactivating {{name}} in this community?",
         "selectReason": "Choose the reason for the deactivation.",
         "writeReason": "Write the reason.",
         "paymentHint": "Their resident QR, payments and panic button keep working in this community; their card and visitor QR codes are paused.",
         "otherPlaceholder": "Write the reason",
         "reasons": {
+          "nonContributor": "Non-contributor",
           "moved": "Moved out",
           "payment": "Non-payment",
           "violation": "Rule violation",
@@ -2607,6 +2610,10 @@
   },
   "communityPayments": {
     "forbidden": "You don't have access to this community's charges. Contact your administration."
+  },
+  "nonContributor": {
+    "notice": "In {{name}} only your resident QR is available. Contact your administration.",
+    "badge": "Non-contributor"
   },
   "unpaid": {
     "viewResidentQR": "View my resident QR",

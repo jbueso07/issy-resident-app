@@ -67,6 +67,8 @@ const getRolesConfig = (t) => ({
 const getDeactivationReasons = (t) => [
   { id: 'moved', label: t('admin.communityManagement.deactivationReasons.moved'), icon: '🏠' },
   { id: 'payment', label: t('admin.communityManagement.deactivationReasons.payment'), icon: '💳' },
+  // No aportante: siempre se manda el texto en español (el backend lo reconoce por ese texto)
+  { id: 'nonContributor', label: t('admin.communityManagement.deactivationReasons.nonContributor', 'No aportante'), icon: '🏘️', text: 'No aportante' },
   { id: 'violation', label: t('admin.communityManagement.deactivationReasons.violation'), icon: '⚠️' },
   { id: 'temporary', label: t('admin.communityManagement.deactivationReasons.temporary'), icon: '✈️' },
   { id: 'request', label: t('admin.communityManagement.deactivationReasons.request'), icon: '📝' },
@@ -422,8 +424,8 @@ export default function CommunityManagement() {
       return;
     }
     
-    const reason = deactivationReason === 'other' ? customReason : 
-      DEACTIVATION_REASONS.find(r => r.id === deactivationReason)?.label;
+    const option = DEACTIVATION_REASONS.find(r => r.id === deactivationReason);
+    const reason = deactivationReason === 'other' ? customReason : (option?.text || option?.label);
     
     if (deactivationReason === 'other' && !customReason.trim()) {
       Alert.alert(t('common.error'), t('admin.communityManagement.errors.writeReason'));
@@ -1220,6 +1222,12 @@ export default function CommunityManagement() {
               </TouchableOpacity>
             ))}
 
+            {deactivationReason === 'nonContributor' && (
+              <Text style={styles.reasonHint}>
+                {t('admin.communityManagement.nonContributorHint', 'Solo su QR de residente funciona en esta residencial; tarjeta, visitas, reservas, pagos y pánico quedan pausados.')}
+              </Text>
+            )}
+
             {deactivationReason === 'other' && (
               <TextInput
                 style={styles.customReasonInput}
@@ -1996,6 +2004,13 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: COLORS.textSecondary,
     marginTop: scale(2),
+  },
+  reasonHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   deactivationReason: {
     fontSize: scale(11),

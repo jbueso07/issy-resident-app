@@ -27,7 +27,7 @@ const RING_LENGTH = 4 * (RING_SIZE - 2 * RING_RADIUS) + 2 * Math.PI * RING_RADIU
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
-export default function QuickActions({ onPanicLongPress }) {
+export default function QuickActions({ onPanicLongPress, hidePanic = false }) {
   const router = useRouter();
   const { t } = useTranslation();
   const font = useHomeFont();
@@ -37,7 +37,8 @@ export default function QuickActions({ onPanicLongPress }) {
     { id: 'qr', label: t('home2.actions.newQR', 'Nuevo QR'), route: '/(tabs)/visits', params: { tab: 'visitors', create: '1' } },
     { id: 'report', label: t('home2.actions.report', 'Reportar'), route: '/incidents', params: { create: '1' } },
     { id: 'pay', label: t('home2.actions.pay', 'Pagar'), route: '/(tabs)/payments' },
-    { id: 'panic', label: t('home2.actions.emergency', 'Emergencia'), isPanic: true },
+    // No aportante en la residencial del home: sin Emergencia
+    ...(hidePanic ? [] : [{ id: 'panic', label: t('home2.actions.emergency', 'Emergencia'), isPanic: true }]),
   ];
 
   const handlePress = (action) => {

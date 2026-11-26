@@ -1638,12 +1638,14 @@
     },
     "users": {
       "deactivateReason": {
+        "nonContributorHint": "Solo su QR de residente funciona en esta residencial; tarjeta, visitas, reservas, pagos y pánico quedan pausados.",
         "subtitle": "¿Por qué desactivas a {{name}} en esta residencial?",
         "selectReason": "Elige el motivo de la desactivación.",
         "writeReason": "Escribe el motivo.",
         "paymentHint": "Su QR de residente, sus pagos y el botón de pánico siguen funcionando en esta residencial; la tarjeta y los QR de visitas quedan pausados.",
         "otherPlaceholder": "Escribe el motivo",
         "reasons": {
+          "nonContributor": "No aportante",
           "moved": "Se mudó",
           "payment": "Falta de pago",
           "violation": "Violación de reglas",
@@ -1775,6 +1777,7 @@
       }
     },
     "communityManagement": {
+      "nonContributorHint": "Solo su QR de residente funciona en esta residencial; tarjeta, visitas, reservas, pagos y pánico quedan pausados.",
       "phone": "Teléfono",
       "phonePlaceholder": "+504 9999-9999",
       "deactivateMember": "Desactivar Miembro",
@@ -1832,6 +1835,7 @@
         "unitPlaceholder": "Ej: A-101"
       },
       "deactivationReasons": {
+        "nonContributor": "No aportante",
         "moved": "Se mudó",
         "payment": "Falta de pago",
         "violation": "Violación de reglas",
@@ -3048,6 +3052,10 @@
     "homeCardCta": "Toca para responder",
     "homeCardMore": "Toca para responder · +{{others}} más",
     "homeCardA11y": "{{visitor}} está en {{gate}}. Toca para responder"
+  },
+  "nonContributor": {
+    "notice": "En {{name}} solo tu QR de residente está disponible. Contacta a tu administración.",
+    "badge": "No aportante"
   },
   "unpaid": {
     "viewResidentQR": "Ver mi QR de residente",

@@ -26,6 +26,8 @@ import {
   cancelReservation,
 } from '../src/services/api';
 import { useAuth } from '../src/context/AuthContext';
+import { useUserLocation } from '../src/context/UserLocationContext';
+import UnpaidLocationNotice from '../src/components/UnpaidLocationNotice';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from '../src/hooks/useTranslation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -101,6 +103,12 @@ export default function ReservationsScreen() {
   const router = useRouter();
   const { user, profile } = useAuth();
   const { t, language } = useTranslation();
+  const { restrictionKindOf } = useUserLocation();
+  // Esta pantalla trabaja con la residencial vigente (profile.location_id): si ahí es No aportante,
+  // las reservas quedan en pausa (el backend también las rechaza)
+  const reservationsPaused = restrictionKindOf?.(profile?.location_id) === 'non_contributor';
+  const pausedLocationName = (profile?.user_locations || []).find((l) => l.location_id === profile?.location_id)?.name
+    || profile?.location_name || '';
 
   // Get locale based on language
   const getLocale = () => {
@@ -475,6 +483,27 @@ export default function ReservationsScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.teal} />
           <Text style={styles.loadingText}>{t('reservations.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (reservationsPaused) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('reservations.title')}</Text>
+          <View style={{ width: scale(40) }} />
+        </View>
+        <View style={styles.scrollContent}>
+          <UnpaidLocationNotice
+            name={pausedLocationName}
+            kind="non_contributor"
+            onViewResidentQR={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
+          />
         </View>
       </SafeAreaView>
     );

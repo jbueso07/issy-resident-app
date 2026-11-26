@@ -76,6 +76,7 @@ const getInviteRoles = (t) => ({
 const DEACTIVATION_REASONS = [
   { id: 'moved', text: 'Se mudó' },
   { id: 'payment', text: 'Falta de pago' },
+  { id: 'nonContributor', text: 'No aportante' },
   { id: 'violation', text: 'Violación de reglas' },
   { id: 'temporary', text: 'Suspensión temporal' },
   { id: 'request', text: 'Solicitud del usuario' },
@@ -1598,6 +1599,12 @@ export default function AdminUsers() {
                 {deactivateReasonId === 'payment' && (
                   <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 4, marginBottom: 8 }}>
                     {t('admin.users.deactivateReason.paymentHint', 'Su QR de residente, sus pagos y el botón de pánico siguen funcionando en esta residencial; la tarjeta y los QR de visitas quedan pausados.')}
+                  </Text>
+                )}
+
+                {deactivateReasonId === 'nonContributor' && (
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 4, marginBottom: 8 }}>
+                    {t('admin.users.deactivateReason.nonContributorHint', 'Solo su QR de residente funciona en esta residencial; tarjeta, visitas, reservas, pagos y pánico quedan pausados.')}
                   </Text>
                 )}
 

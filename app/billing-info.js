@@ -4,6 +4,7 @@
 // que el backend. Solo cambia los recibos que vienen; los que ya existen no cambian.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -18,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserLocation } from '../src/context/UserLocationContext';
+import UnpaidLocationNotice from '../src/components/UnpaidLocationNotice';
 import { getMyBilling, updateMyBilling } from '../src/services/api';
 import ReceiptsHeader from '../src/components/receipts/ReceiptsHeader';
 import PressableScale from '../src/components/home/PressableScale';
@@ -29,7 +31,8 @@ const SESSION_MESSAGE = 'Tu sesión terminó. Vuelve a iniciar sesión.';
 
 export default function BillingInfoScreen() {
   const font = useHomeFont();
-  const { selectedLocationId } = useUserLocation();
+  const router = useRouter();
+  const { selectedLocationId, selectedNonContributor, locationName } = useUserLocation();
 
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +115,18 @@ export default function BillingInfoScreen() {
   const shownTax = billing?.tax_id ? formatRtn(billing.tax_id) : 'Sin RTN';
 
   let body;
-  if (loading) {
+  // No aportante en la residencial elegida: aviso en lugar del contenido
+  if (selectedNonContributor) {
+    body = (
+      <View style={styles.nonContributorBox}>
+        <UnpaidLocationNotice
+          name={locationName}
+          kind="non_contributor"
+          onViewResidentQR={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
+        />
+      </View>
+    );
+  } else if (loading) {
     body = (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={neu.teal} />
@@ -261,6 +275,9 @@ export default function BillingInfoScreen() {
 }
 
 const styles = StyleSheet.create({
+  nonContributorBox: {
+    padding: scale(20),
+  },
   container: { flex: 1, backgroundColor: neu.bg },
   flex: { flex: 1 },
   full: { width: '100%' },

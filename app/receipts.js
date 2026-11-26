@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useUserLocation } from '../src/context/UserLocationContext';
+import UnpaidLocationNotice from '../src/components/UnpaidLocationNotice';
 import { getMyReceipts } from '../src/services/api';
 import ReceiptsHeader from '../src/components/receipts/ReceiptsHeader';
 import PressableScale from '../src/components/home/PressableScale';
@@ -24,7 +25,7 @@ import {
 export default function ReceiptsScreen() {
   const router = useRouter();
   const font = useHomeFont();
-  const { selectedLocationId } = useUserLocation();
+  const { selectedLocationId, selectedNonContributor, locationName } = useUserLocation();
 
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,7 +119,18 @@ export default function ReceiptsScreen() {
   );
 
   let body;
-  if (loading) {
+  // No aportante en la residencial elegida: aviso en lugar del contenido
+  if (selectedNonContributor) {
+    body = (
+      <View style={styles.nonContributorBox}>
+        <UnpaidLocationNotice
+          name={locationName}
+          kind="non_contributor"
+          onViewResidentQR={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
+        />
+      </View>
+    );
+  } else if (loading) {
     body = (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={neu.teal} />
@@ -164,6 +176,9 @@ export default function ReceiptsScreen() {
 }
 
 const styles = StyleSheet.create({
+  nonContributorBox: {
+    padding: scale(20),
+  },
   container: { flex: 1, backgroundColor: neu.bg },
   list: { paddingHorizontal: scale(16), paddingBottom: scale(40) },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: scale(24), gap: scale(16) },

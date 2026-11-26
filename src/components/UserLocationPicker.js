@@ -110,7 +110,7 @@ export const UserLocationPickerModal = () => {
                     </View>
                   )}
                   {/* En mora (Falta de pago): se elige solo en el app, sin /auth/switch-location */}
-                  {isRestrictedRow(loc) && <UnpaidBadge style={{ marginTop: 6 }} />}
+                  {isRestrictedRow(loc) && <UnpaidBadge kind={loc.restricted} style={{ marginTop: 6 }} />}
                 </View>
                 {isSelected && (
                   <Ionicons name="checkmark-circle" size={22} color={COLORS.lime} />

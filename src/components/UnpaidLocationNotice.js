@@ -3,6 +3,8 @@
 // Ahí siguen el QR de residente, Pagos y Recibos; tarjeta y QR de visitas quedan pausados.
 // message: 'banner' (QR de residente) | 'visitorsPaused' (pestaña Visitantes) | 'onlyEssentials' (resto)
 // onViewResidentQR: botón "Ver mi QR de residente" (p. ej. desde Visitantes, que en mora está en pausa)
+// kind: 'unpaid' (Falta de pago) | 'non_contributor' (No aportante). Sin kind, el de la residencial
+// elegida. No aportante: un solo texto ("solo tu QR de residente") y SIN "Ver mis pagos".
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +12,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import PressableScale from './home/PressableScale';
 import { neu, neuSurface } from '../theme/tokens';
 import { useHomeFont } from '../theme/homeFont';
+import { useUserLocation } from '../context/UserLocationContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
@@ -19,18 +22,24 @@ const DEFAULTS = {
   visitorsPaused: 'Tus QR de visitas en {{name}} están pausados hasta que te pongas al día con tus pagos.',
   onlyEssentials: 'Mientras tengas pagos pendientes en {{name}}, aquí solo puedes usar tu QR de residente, Pagos y Recibos.',
 };
+const NON_CONTRIBUTOR_DEFAULT = 'En {{name}} solo tu QR de residente está disponible. Contacta a tu administración.';
 
-export default function UnpaidLocationNotice({ name, message = 'banner', style, onChangeLocation, onViewResidentQR }) {
+export default function UnpaidLocationNotice({ name, message = 'banner', style, onChangeLocation, onViewResidentQR, kind }) {
   const router = useRouter();
   const { t } = useTranslation();
   const font = useHomeFont();
+  const { selectedRestrictionKind } = useUserLocation() || {};
+  const nonContributor = (kind || selectedRestrictionKind) === 'non_contributor';
+  const text = nonContributor
+    ? t('nonContributor.notice', { name: name || '', defaultValue: NON_CONTRIBUTOR_DEFAULT })
+    : t(`unpaid.${message}`, { name: name || '', defaultValue: DEFAULTS[message] });
 
   return (
     <View style={[styles.box, neuSurface.sunkenSm, style]} accessibilityRole="alert">
       <View style={styles.row}>
         <Ionicons name="alert-circle" size={scale(22)} color={neu.amber} />
         <Text style={[styles.text, font(500)]} maxFontSizeMultiplier={1.3}>
-          {t(`unpaid.${message}`, { name: name || '', defaultValue: DEFAULTS[message] })}
+          {text}
         </Text>
       </View>
       <View style={styles.actions}>
@@ -46,17 +55,19 @@ export default function UnpaidLocationNotice({ name, message = 'banner', style, 
             </Text>
           </PressableScale>
         )}
-        <PressableScale
-          variant="neu"
-          neuFill={neu.teal}
-          style={styles.button}
-          onPress={() => router.push('/(tabs)/payments')}
-          accessibilityRole="button"
-        >
-          <Text style={[styles.buttonText, font(600)]} maxFontSizeMultiplier={1.2}>
-            {t('unpaid.viewPayments', 'Ver mis pagos')}
-          </Text>
-        </PressableScale>
+        {!nonContributor && (
+          <PressableScale
+            variant="neu"
+            neuFill={neu.teal}
+            style={styles.button}
+            onPress={() => router.push('/(tabs)/payments')}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.buttonText, font(600)]} maxFontSizeMultiplier={1.2}>
+              {t('unpaid.viewPayments', 'Ver mis pagos')}
+            </Text>
+          </PressableScale>
+        )}
         {!!onChangeLocation && (
           <PressableScale style={styles.linkButton} onPress={onChangeLocation} accessibilityRole="button">
             <Text style={[styles.linkText, font(600)]} maxFontSizeMultiplier={1.2}>
@@ -69,14 +80,14 @@ export default function UnpaidLocationNotice({ name, message = 'banner', style, 
   );
 }
 
-// Etiqueta corta "Pagos pendientes" para selectores y tarjetas
-export function UnpaidBadge({ style }) {
+// Etiqueta corta para selectores y tarjetas: "Pagos pendientes" o, con kind 'non_contributor', "No aportante"
+export function UnpaidBadge({ style, kind }) {
   const { t } = useTranslation();
   const font = useHomeFont();
   return (
     <View style={[styles.badge, style]}>
       <Text style={[styles.badgeText, font(600)]} maxFontSizeMultiplier={1.2} numberOfLines={1}>
-        {t('unpaid.badge', 'Pagos pendientes')}
+        {kind === 'non_contributor' ? t('nonContributor.badge', 'No aportante') : t('unpaid.badge', 'Pagos pendientes')}
       </Text>
     </View>
   );

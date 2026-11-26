@@ -25,7 +25,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../src/context/AuthContext';
 import { useUserLocation } from '../../src/context/UserLocationContext';
-import { UnpaidBadge } from '../../src/components/UnpaidLocationNotice';
+import UnpaidLocationNotice, { UnpaidBadge } from '../../src/components/UnpaidLocationNotice';
 import { useTranslation } from '../../src/hooks/useTranslation';
 import { 
   getPaymentMethods,
@@ -69,7 +69,7 @@ export default function Payments() {
   const font = useHomeFont();
   const router = useRouter();
   const { profile, token } = useAuth();
-  const { selectedLocationId, selectedRestricted, locationName } = useUserLocation();
+  const { selectedLocationId, selectedRestricted, selectedNonContributor, locationName } = useUserLocation();
   const { t } = useTranslation();
   
   // State
@@ -122,6 +122,12 @@ const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
   const loadData = async () => {
     const requestId = ++loadRequestIdRef.current;
     const isStale = () => requestId !== loadRequestIdRef.current;
+    // No aportante en la residencial elegida: no hay cobros que pedir (el backend responde 403)
+    if (selectedNonContributor) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       await Promise.all([
         loadCharges(isStale),
@@ -494,6 +500,28 @@ const processCardPayment = async () => {
   const handleGoToMethods = () => {
     router.push('/payment-methods');
   };
+
+  // No aportante en la residencial elegida: aviso en lugar de cobros, recibos y datos de pago
+  if (selectedNonContributor) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.title, font(600)]}>{t('communityPayments.title')}</Text>
+              <Text style={[styles.subtitle, font(400)]}>{locationName}</Text>
+              <UnpaidBadge kind="non_contributor" style={{ marginTop: scale(4) }} />
+            </View>
+          </View>
+          <UnpaidLocationNotice
+            name={locationName}
+            kind="non_contributor"
+            onViewResidentQR={() => router.push({ pathname: '/(tabs)/visits', params: { tab: 'myqr' } })}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (

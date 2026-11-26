@@ -97,7 +97,7 @@ const switchLocationAPI = async (locationId) => {
 
 export default function Home() {
   const { user, profile, hasLocation, refreshProfile } = useAuth();
-  const { selectLocation, restrictedLocationIds, isRestrictedLocation } = useUserLocation();
+  const { selectLocation, restrictedLocationIds, isRestrictedLocation, restrictionKindOf } = useUserLocation();
   const router = useRouter();
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
@@ -145,15 +145,17 @@ export default function Home() {
 
   const userHasLocation = hasLocation ? hasLocation() : !!profile?.location_id;
   const userLocations = profile?.user_locations || [];
-  // Residenciales en mora (Falta de pago) marcadas para el carrusel y la lista.
-  // Sin ninguna en mora es la MISMA lista de siempre.
+  // Residenciales en mora (Falta de pago) o No aportante marcadas para el carrusel y la lista.
+  // Sin ninguna restringida es la MISMA lista de siempre.
   const restrictedKey = (restrictedLocationIds || []).join('|');
   const carouselLocations = useMemo(() => {
     if (!restrictedKey) return userLocations;
     const ids = restrictedKey.split('|');
-    return userLocations.map((loc) => (ids.includes(loc.location_id) ? { ...loc, restricted: 'unpaid' } : loc));
+    return userLocations.map((loc) => (ids.includes(loc.location_id)
+      ? { ...loc, restricted: restrictionKindOf(loc.location_id) || 'unpaid' }
+      : loc));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.user_locations, restrictedKey]);
+  }, [profile?.user_locations, restrictedKey, restrictionKindOf]);
 
   // Check if user has pending approval (registered with code but not yet approved)
   const isPendingApproval = profile?.pending_locations?.some(ul => ul.status === 'pending')
@@ -215,6 +217,8 @@ export default function Home() {
   // Polling: consultar cada 15s si el usuario tiene una emergencia activa.
   // Actualiza banner con estado más reciente (ack, minutos, etc).
   const currentLocationId = profile?.location_id || null;
+  // No aportante en la residencial del home: sin botón de pánico (ni aviso de marcar la casa)
+  const panicHidden = restrictionKindOf(currentLocationId) === 'non_contributor';
   const fetchMyActivePanic = useCallback(async () => {
     try {
       // X-Location-Id igual que createPanic: has_home_pin se calcula para esa membresía
@@ -615,7 +619,7 @@ export default function Home() {
                           {detail}
                         </Text>
                       )}
-                      {loc.restricted === 'unpaid' && <UnpaidBadge style={{ marginTop: 4 }} />}
+                      {(loc.restricted === 'unpaid' || loc.restricted === 'non_contributor') && <UnpaidBadge kind={loc.restricted} style={{ marginTop: 4 }} />}
                     </View>
                   </View>
                   {isCurrent && (
@@ -736,7 +740,7 @@ export default function Home() {
         )}
 
         {/* Aviso persistente: marcar la casa (solo cuando el backend dice has_home_pin === false) */}
-        {hasHomePin === false && (
+        {hasHomePin === false && !panicHidden && (
           <View style={styles.homePinCardContainer}>
             <TouchableOpacity style={styles.homePinCard} onPress={goToMyHomeLocation} activeOpacity={0.85}>
               <View style={styles.homePinIconWrap}>
@@ -758,8 +762,8 @@ export default function Home() {
           </View>
         )}
 
-        {/* Acciones rápidas: Emergencia usa el mismo handlePanicLongPress (2 s) */}
-        <QuickActions onPanicLongPress={handlePanicLongPress} />
+        {/* Acciones rápidas: Emergencia usa el mismo handlePanicLongPress (2 s); oculta si es No aportante */}
+        <QuickActions onPanicLongPress={handlePanicLongPress} hidePanic={panicHidden} />
 
         <HomeSegments
           segments={segments}

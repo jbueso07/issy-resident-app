@@ -146,10 +146,11 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
   // Aprobado o reactivado: ya puede usar la app, el home es su punto de partida
   if (type === 'member_approved' || type === 'account_reactivated') return HOME_ROUTE;
 
-  // Desactivado por Falta de pago (data.kind 'unpaid'): su QR de residente de ESA residencial sigue
-  // funcionando. location_id va a la pantalla, que elige la residencial SOLO en el app (en mora no
-  // existe /auth/switch-location). Sin kind (otros motivos o backend viejo): como siempre, sin pantalla.
-  if (type === 'member_suspended' && data.kind === 'unpaid') {
+  // Desactivado por Falta de pago (data.kind 'unpaid') o No aportante ('non_contributor'): su QR de
+  // residente de ESA residencial sigue funcionando. location_id va a la pantalla, que elige la
+  // residencial SOLO en el app (ahí no existe /auth/switch-location). Sin kind (otros motivos o backend
+  // viejo): como siempre, sin pantalla.
+  if (type === 'member_suspended' && (data.kind === 'unpaid' || data.kind === 'non_contributor')) {
     return {
       pathname: '/(tabs)/visits',
       params: data.location_id ? { tab: 'myqr', location_id: String(data.location_id) } : { tab: 'myqr' },
@@ -161,7 +162,7 @@ export const getNotificationRoute = (notification, { isAdmin = false } = {}) => 
     return isAdmin ? { pathname: '/admin/patrol-reports', params: {} } : null;
   }
 
-  // member_rejected / member_removed / member_suspended (sin kind 'unpaid') / member_role_changed, welcome y
+  // member_rejected / member_removed / member_suspended (sin kind 'unpaid' ni 'non_contributor') / member_role_changed, welcome y
   // account_suspended: sin pantalla propia a propósito. El push cae en Notificaciones (ya es
   // la lista donde está el aviso) y tocar la fila en la lista no hace nada, así no se apila
   // otra copia de /notifications. Mi unidad no aplica: el usuario rechazado/dado de baja

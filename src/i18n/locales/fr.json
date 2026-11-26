@@ -664,6 +664,7 @@
   },
   "admin": {
     "communityManagement": {
+      "nonContributorHint": "Seul son QR de résident fonctionne dans cette résidence ; carte, visites, réservations, paiements et bouton d’urgence sont en pause.",
       "phone": "Téléphone",
       "phonePlaceholder": "+504 9999-9999",
       "errors": {
@@ -1389,12 +1390,14 @@
     },
     "users": {
       "deactivateReason": {
+        "nonContributorHint": "Seul son QR de résident fonctionne dans cette résidence ; carte, visites, réservations, paiements et bouton d’urgence sont en pause.",
         "subtitle": "Pourquoi désactivez-vous {{name}} dans cette résidence ?",
         "selectReason": "Choisissez le motif de la désactivation.",
         "writeReason": "Écrivez le motif.",
         "paymentHint": "Son QR de résident, ses paiements et le bouton panique continuent de fonctionner dans cette résidence ; la carte et les QR de visiteurs sont suspendus.",
         "otherPlaceholder": "Écrivez le motif",
         "reasons": {
+          "nonContributor": "Non contributeur",
           "moved": "A déménagé",
           "payment": "Défaut de paiement",
           "violation": "Violation du règlement",
@@ -2420,6 +2423,10 @@
   },
   "communityPayments": {
     "forbidden": "Vous n'avez pas accès aux frais de cette résidence. Contactez votre administration."
+  },
+  "nonContributor": {
+    "notice": "À {{name}}, seul ton QR de résident est disponible. Contacte ton administration.",
+    "badge": "Non contributeur"
   },
   "unpaid": {
     "viewResidentQR": "Voir mon QR de résident",
